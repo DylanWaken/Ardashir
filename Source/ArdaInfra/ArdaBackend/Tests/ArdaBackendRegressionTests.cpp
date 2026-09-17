@@ -69,6 +69,18 @@ namespace
 		FArdaRHIDeviceRef mDevice;
 	};
 
+	TEST_P(FArdaBackendRegressionTest, EquivalentSignedZeroSamplersShareCacheEntry)
+	{
+		FArdaRHISamplerDesc Desc;
+		Desc.mMipBias = 0.0f;
+		auto Positive = mDevice->CreateSampler(Desc);
+		ASSERT_TRUE(Positive) << Positive.mStatus.mMessage.c_str();
+		Desc.mMipBias = -0.0f;
+		auto Negative = mDevice->CreateSampler(Desc);
+		ASSERT_TRUE(Negative) << Negative.mStatus.mMessage.c_str();
+		EXPECT_EQ(Positive.mValue.Get(), Negative.mValue.Get());
+	}
+
 	TEST_P(FArdaBackendRegressionTest, IntegerBufferClearPreservesStateAndWritesEveryWord)
 	{
 		FArdaRHIBufferDesc Desc;

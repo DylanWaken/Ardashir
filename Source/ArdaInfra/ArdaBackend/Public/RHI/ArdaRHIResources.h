@@ -1283,6 +1283,11 @@ namespace arda
      */
 	[[nodiscard]] FArdaRHIStatus Validate(const FArdaRHIInputLayoutDesc& Value);
 
+	/** Validates attachment usage, format, ranges, and matching sample counts. Different attachment extents
+	 * are permitted; native rendering uses their common minimum extent. Device ownership/limits are separate.
+	 */
+	[[nodiscard]] FArdaRHIStatus Validate(const FArdaRHIFramebufferDesc& Value);
+
 	/**
      * Validates the descriptor.
      * @param Value The value.

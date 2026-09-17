@@ -8,7 +8,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <functional>
 #include <type_traits>
 
@@ -64,11 +63,4 @@ namespace arda
 		}
 	}
 
-	/** Returns a float's exact object representation for semantic hashing. */
-	[[nodiscard]] inline uint32_t ArdaFloatBits(float Value) noexcept
-	{
-		uint32_t Bits;
-		std::memcpy(&Bits, &Value, sizeof(Bits));
-		return Bits;
-	}
 }

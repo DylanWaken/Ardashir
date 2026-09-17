@@ -14,6 +14,12 @@ namespace
 	};
 
 	const FArdaBooleanRequirementCase BooleanRequirements[] = {
+	    {"IndirectFirstInstance",
+	        &FArdaRHIFeatureRequirements::mbRequireIndirectFirstInstance,
+	        [](FArdaRHICapabilities& C) -> bool&
+	        {
+		        return C.mbIndirectFirstInstance;
+	        }},
 	    {"InlineRayQueries",
 	        &FArdaRHIFeatureRequirements::mbRequireInlineRayQueries,
 	        [](FArdaRHICapabilities& C) -> bool&
@@ -448,6 +454,25 @@ namespace
 		EXPECT_TRUE(Capabilities.Evaluate(Requirements).IsSupported());
 		Capabilities.mRayTracing.mbOpacityMicromaps = true;
 		EXPECT_TRUE(Capabilities.Evaluate(Requirements).IsSupported());
+	}
+
+	TEST(ArdaFeatureRequirements, MeshOnlyDoesNotSatisfyAmplificationDespiteItsNumericValue)
+	{
+		static_assert(static_cast<uint8_t>(EArdaRHIMeshShaderTier::MeshAndAmplificationShaders) == 1);
+		static_assert(static_cast<uint8_t>(EArdaRHIMeshShaderTier::MeshShadersOnly) == 2);
+		FArdaRHIFeatureRequirements Requirements;
+		Requirements.mbRequireMeshShaders = true;
+		FArdaRHICapabilities Capabilities;
+		Capabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::MeshShadersOnly;
+		EXPECT_TRUE(Capabilities.Evaluate(Requirements).IsSupported());
+		Requirements.mMinMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+		EXPECT_FALSE(Capabilities.Evaluate(Requirements).IsSupported());
+		Requirements.mMinMeshShaderTier = EArdaRHIMeshShaderTier::MeshShadersOnly;
+		EXPECT_TRUE(Capabilities.Evaluate(Requirements).IsSupported());
+		Capabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+		EXPECT_TRUE(Capabilities.Evaluate(Requirements).IsSupported());
+		Requirements.mMinMeshShaderTier = static_cast<EArdaRHIMeshShaderTier>(255);
+		EXPECT_FALSE(Capabilities.Evaluate(Requirements).IsSupported());
 	}
 
 	TEST(ArdaFeatureRequirements, SubgroupContractCoversEveryPossibleNativeWidth)

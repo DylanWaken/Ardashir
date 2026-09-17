@@ -7,6 +7,62 @@ namespace arda
 {
 	namespace
 	{
+		template <class Record, class Handle, class ResourceRef>
+		Record* BindResource(bool bCompiled,
+		    TArdaInductorRecordStore<Record, Handle>& Records,
+		    eastl::unordered_map<const void*, Record*>& Imports,
+		    ResourceRef Resource,
+		    EArdaRHIResourceState State,
+		    eastl::string Name)
+		{
+			if (bCompiled || !Resource)
+			{
+				ARDA_CHECK_MSG("Inductor binds require a live object before finalization.");
+			}
+			const void* Identity = Resource->GetPhysicalIdentity();
+			if (!Identity)
+			{
+				Identity = Resource.Get();
+			}
+			if (auto Found = Imports.find(Identity); Found != Imports.end())
+			{
+				return Found->second;
+			}
+			const auto Index = Records.Append(eastl::move(Resource), State, eastl::move(Name));
+			auto* Result = &Records.Get(Index);
+			Imports.emplace(Identity, Result);
+			return Result;
+		}
+
+		template <class Record, class Handle, class Access>
+		auto ResolveResourceForPass(FArdaInductorCommandProgram::FArdaImpl& Graph,
+		    FArdaInductorCommandHandle Pass,
+		    Record* Resource,
+		    const TArdaInductorRecordStore<Record, Handle>& Records,
+		    eastl::vector<Access> FArdaInductorCommandState::* Accesses,
+		    Handle Access::* ResourceHandle)
+		{
+			std::lock_guard<std::mutex> Lock(Graph.mPassAccessMutex);
+			const auto* Command = Graph.mPasses.TryGet(Pass);
+			if (!Resource || !Command || !Graph.mActivePassAccess.count(Pass.GetIndex()) ||
+			    Records.TryGet(Resource->GetHandle()) != Resource || !Resource->GetResource())
+			{
+				ARDA_CHECK_MSG("A pass requested an unavailable Inductor resource.");
+			}
+			// Ranges govern hazards; one declared access admits the resource's parent object.
+			const auto& Declared = Command->GetState().*Accesses;
+			if (eastl::none_of(Declared.begin(),
+			        Declared.end(),
+			        [&](const auto& State)
+			        {
+				        return State.*ResourceHandle == Resource->GetHandle();
+			        }))
+			{
+				ARDA_CHECK_MSG("A pass requested a resource absent from its declared accesses.");
+			}
+			return Resource->GetResource().Get();
+		}
+
 		[[nodiscard]] arda::EArdaRHIResourceState MergePassState(arda::EArdaRHIResourceState Existing,
 		    arda::EArdaRHIResourceState Required)
 		{
@@ -29,7 +85,7 @@ namespace arda
 		{
 			eastl::vector<eastl::vector<arda::EArdaRHIResourceState>> TextureStates;
 			TextureStates.reserve(Graph.mTextures.GetCount());
-			for (const FArdaInductorTexture* Texture : Graph.mTextures.GetEntries())
+			for (const auto& Texture : Graph.mTextures.GetEntries())
 			{
 				const arda::FArdaRHITextureDesc& Desc = Texture->GetDesc();
 				arda::EArdaRHIResourceState Initial = Texture->GetInitialState();
@@ -42,7 +98,7 @@ namespace arda
 
 			eastl::vector<arda::EArdaRHIResourceState> BufferStates;
 			BufferStates.reserve(Graph.mBuffers.GetCount());
-			for (const FArdaInductorBuffer* Buffer : Graph.mBuffers.GetEntries())
+			for (const auto& Buffer : Graph.mBuffers.GetEntries())
 			{
 				arda::EArdaRHIResourceState Initial = Buffer->GetInitialState();
 				if (Initial == arda::EArdaRHIResourceState::Unknown)
@@ -52,14 +108,14 @@ namespace arda
 				BufferStates.push_back(Initial);
 			}
 			eastl::vector<arda::EArdaRHIResourceState> AccelStructStates;
-			for (const FArdaInductorAccelerationStructure* AccelStruct : Graph.mAccelStructs.GetEntries())
+			for (const auto& AccelStruct : Graph.mAccelStructs.GetEntries())
 			{
 				auto Initial = AccelStruct->GetInitialState();
 				AccelStructStates.push_back(
 				    Initial == arda::EArdaRHIResourceState::Unknown ? arda::EArdaRHIResourceState::Common : Initial);
 			}
 
-			for (FArdaInductorCommand* Pass : Graph.mPasses.GetEntries())
+			for (const auto& Pass : Graph.mPasses.GetEntries())
 			{
 				Pass->GetState().mTextureTransitions.clear();
 				Pass->GetState().mBufferTransitions.clear();
@@ -172,7 +228,7 @@ namespace arda
 
 			// The synthetic epilogue owns graph-exit transitions and UAV ordering.
 			FArdaInductorCommand& Epilogue = Graph.mPasses.Get(Graph.mPlan.mEpilogue);
-			for (const FArdaInductorTexture* Texture : Graph.mTextures.GetEntries())
+			for (const auto& Texture : Graph.mTextures.GetEntries())
 			{
 				if (!Texture->GetFirstUse().IsValid())
 				{
@@ -193,7 +249,7 @@ namespace arda
 					    }
 				    });
 			}
-			for (const FArdaInductorBuffer* Buffer : Graph.mBuffers.GetEntries())
+			for (const auto& Buffer : Graph.mBuffers.GetEntries())
 			{
 				if (!Buffer->GetFirstUse().IsValid())
 				{
@@ -208,7 +264,7 @@ namespace arda
 					    {Buffer->GetHandle(), BufferStates[Index], Buffer->GetFinalState(), bUAVBarrier});
 				}
 			}
-			for (const FArdaInductorAccelerationStructure* AccelStruct : Graph.mAccelStructs.GetEntries())
+			for (const auto& AccelStruct : Graph.mAccelStructs.GetEntries())
 			{
 				if (!AccelStruct->GetFirstUse().IsValid())
 				{
@@ -242,48 +298,24 @@ namespace arda
 	    EArdaRHIResourceState State,
 	    eastl::string Name)
 	{
-		if (mImpl->mbCompiled || !Resource)
-		{
-			ARDA_CHECK_MSG("Inductor binds require a live object before finalization.");
-		}
-		const void* Identity = Resource->GetPhysicalIdentity();
-		if (!Identity)
-		{
-			Identity = Resource.Get();
-		}
-		auto& Imports = mImpl->mImportedTextures;
-		if (auto Found = Imports.find(Identity); Found != Imports.end())
-		{
-			return Found->second;
-		}
-		const auto Handle = mImpl->mTextures.Append(eastl::move(Resource), State, eastl::move(Name));
-		auto* Record = &mImpl->mTextures.Get(Handle);
-		Imports.emplace(Identity, Record);
-		return Record;
+		return BindResource(mImpl->mbCompiled,
+		    mImpl->mTextures,
+		    mImpl->mImportedTextures,
+		    eastl::move(Resource),
+		    State,
+		    eastl::move(Name));
 	}
 
 	FArdaInductorBuffer* FArdaInductorCommandProgram::BindBuffer(FArdaRHIBufferRef Resource,
 	    EArdaRHIResourceState State,
 	    eastl::string Name)
 	{
-		if (mImpl->mbCompiled || !Resource)
-		{
-			ARDA_CHECK_MSG("Inductor binds require a live object before finalization.");
-		}
-		const void* Identity = Resource->GetPhysicalIdentity();
-		if (!Identity)
-		{
-			Identity = Resource.Get();
-		}
-		auto& Imports = mImpl->mImportedBuffers;
-		if (auto Found = Imports.find(Identity); Found != Imports.end())
-		{
-			return Found->second;
-		}
-		const auto Handle = mImpl->mBuffers.Append(eastl::move(Resource), State, eastl::move(Name));
-		auto* Record = &mImpl->mBuffers.Get(Handle);
-		Imports.emplace(Identity, Record);
-		return Record;
+		return BindResource(mImpl->mbCompiled,
+		    mImpl->mBuffers,
+		    mImpl->mImportedBuffers,
+		    eastl::move(Resource),
+		    State,
+		    eastl::move(Name));
 	}
 
 	FArdaInductorAccelerationStructure* FArdaInductorCommandProgram::BindAccelerationStructure(
@@ -291,24 +323,12 @@ namespace arda
 	    EArdaRHIResourceState State,
 	    eastl::string Name)
 	{
-		if (mImpl->mbCompiled || !Resource)
-		{
-			ARDA_CHECK_MSG("Inductor binds require a live object before finalization.");
-		}
-		const void* Identity = Resource->GetPhysicalIdentity();
-		if (!Identity)
-		{
-			Identity = Resource.Get();
-		}
-		auto& Imports = mImpl->mImportedAccelStructs;
-		if (auto Found = Imports.find(Identity); Found != Imports.end())
-		{
-			return Found->second;
-		}
-		const auto Handle = mImpl->mAccelStructs.Append(eastl::move(Resource), State, eastl::move(Name));
-		auto* Record = &mImpl->mAccelStructs.Get(Handle);
-		Imports.emplace(Identity, Record);
-		return Record;
+		return BindResource(mImpl->mbCompiled,
+		    mImpl->mAccelStructs,
+		    mImpl->mImportedAccelStructs,
+		    eastl::move(Resource),
+		    State,
+		    eastl::move(Name));
 	}
 
 	FArdaInductorCommandHandle FArdaInductorCommandProgram::AppendCommand(eastl::string Name,
@@ -366,7 +386,7 @@ namespace arda
 		auto& G = *mImpl;
 		G.mPlan.mEpilogue = G.mPasses.Append("Inductor exit", EArdaRHIQueueType::Graphics);
 		G.mPasses.Get(G.mPlan.mEpilogue).GetState().mbSentinel = true;
-		for (const auto* Command : G.mPasses.GetEntries())
+		for (const auto& Command : G.mPasses.GetEntries())
 		{
 			G.mPlan.mExecutionOrder.push_back(Command->GetHandle());
 			if (Command->GetHandle() != G.mPlan.mEpilogue)
@@ -375,7 +395,7 @@ namespace arda
 			}
 		}
 		LowerBarriers(G);
-		for (const auto* Command : G.mPasses.GetEntries())
+		for (const auto& Command : G.mPasses.GetEntries())
 		{
 			for (auto Producer : Command->GetState().mProducers)
 			{
@@ -411,78 +431,34 @@ namespace arda
 	arda::IArdaRHITexture* FArdaInductorCommandProgram::ResolveTextureForPass(FArdaInductorCommandHandle Pass,
 	    FArdaInductorTexture* Texture) const
 	{
-		std::lock_guard<std::mutex> Lock(mImpl->mPassAccessMutex);
-		const FArdaInductorCommand* PassRecord = mImpl->mPasses.TryGet(Pass);
-		if (Texture == nullptr || PassRecord == nullptr ||
-		    mImpl->mActivePassAccess.find(Pass.GetIndex()) == mImpl->mActivePassAccess.end() ||
-		    mImpl->mTextures.TryGet(Texture->GetHandle()) != Texture || !Texture->GetTexture())
-		{
-			ARDA_CHECK_MSG("A pass requested an unavailable Inductor texture.");
-		}
-
-		// The native command must declare the materialized texture.
-		const bool bDeclared = eastl::any_of(PassRecord->GetState().mTextureStates.begin(),
-		    PassRecord->GetState().mTextureStates.end(),
-		    [Texture](const FArdaInductorTextureAccess& State)
-		    {
-			    return State.mTexture == Texture->GetHandle();
-		    });
-		if (!bDeclared)
-		{
-			ARDA_CHECK_MSG("A pass requested a texture absent from its declared accesses.");
-		}
-		return Texture->GetTexture().Get();
+		return ResolveResourceForPass(*mImpl,
+		    Pass,
+		    Texture,
+		    mImpl->mTextures,
+		    &FArdaInductorCommandState::mTextureStates,
+		    &FArdaInductorTextureAccess::mTexture);
 	}
 
 	arda::IArdaRHIBuffer* FArdaInductorCommandProgram::ResolveBufferForPass(FArdaInductorCommandHandle Pass,
 	    FArdaInductorBuffer* Buffer) const
 	{
-		std::lock_guard<std::mutex> Lock(mImpl->mPassAccessMutex);
-		const FArdaInductorCommand* PassRecord = mImpl->mPasses.TryGet(Pass);
-		if (Buffer == nullptr || PassRecord == nullptr ||
-		    mImpl->mActivePassAccess.find(Pass.GetIndex()) == mImpl->mActivePassAccess.end() ||
-		    mImpl->mBuffers.TryGet(Buffer->GetHandle()) != Buffer || !Buffer->GetBuffer())
-		{
-			ARDA_CHECK_MSG("A pass requested an unavailable Inductor buffer.");
-		}
-
-		// Buffer ranges affect validation but any state entry for this logical buffer
-		// establishes that its parent object was declared by the pass.
-		const bool bDeclared = eastl::any_of(PassRecord->GetState().mBufferStates.begin(),
-		    PassRecord->GetState().mBufferStates.end(),
-		    [Buffer](const FArdaInductorBufferAccess& State)
-		    {
-			    return State.mBuffer == Buffer->GetHandle();
-		    });
-		if (!bDeclared)
-		{
-			ARDA_CHECK_MSG("A pass requested a buffer absent from its declared accesses.");
-		}
-		return Buffer->GetBuffer().Get();
+		return ResolveResourceForPass(*mImpl,
+		    Pass,
+		    Buffer,
+		    mImpl->mBuffers,
+		    &FArdaInductorCommandState::mBufferStates,
+		    &FArdaInductorBufferAccess::mBuffer);
 	}
 
 	arda::IArdaRHIAccelStruct* FArdaInductorCommandProgram::ResolveAccelStructForPass(FArdaInductorCommandHandle Pass,
 	    FArdaInductorAccelerationStructure* AccelStruct) const
 	{
-		std::lock_guard<std::mutex> Lock(mImpl->mPassAccessMutex);
-		const FArdaInductorCommand* PassRecord = mImpl->mPasses.TryGet(Pass);
-		if (AccelStruct == nullptr || PassRecord == nullptr ||
-		    mImpl->mActivePassAccess.find(Pass.GetIndex()) == mImpl->mActivePassAccess.end() ||
-		    mImpl->mAccelStructs.TryGet(AccelStruct->GetHandle()) != AccelStruct || !AccelStruct->GetAccelStruct())
-		{
-			ARDA_CHECK_MSG("A pass requested an unavailable render-graph acceleration structure.");
-		}
-		const bool bDeclared = eastl::find_if(PassRecord->GetState().mAccelStructStates.begin(),
-		                           PassRecord->GetState().mAccelStructStates.end(),
-		                           [AccelStruct](const FArdaInductorAccelerationStructureAccess& State)
-		                           {
-			                           return State.mAccelStruct == AccelStruct->GetHandle();
-		                           }) != PassRecord->GetState().mAccelStructStates.end();
-		if (!bDeclared)
-		{
-			ARDA_CHECK_MSG("A pass requested an acceleration structure absent from its parameters.");
-		}
-		return AccelStruct->GetAccelStruct().Get();
+		return ResolveResourceForPass(*mImpl,
+		    Pass,
+		    AccelStruct,
+		    mImpl->mAccelStructs,
+		    &FArdaInductorCommandState::mAccelStructStates,
+		    &FArdaInductorAccelerationStructureAccess::mAccelStruct);
 	}
 
 	FArdaInductorPassContext::FArdaInductorPassContext(FArdaInductorCommandProgram& Program,

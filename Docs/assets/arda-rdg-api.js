@@ -1,4 +1,4 @@
-/* Generated public source inventory for ArdaRenderGraph; derived from all 9 public headers. */
+/* Generated public source inventory for ArdaRenderGraph; derived from all 13 public headers. */
 window.ArdaRDGApi = {
   "module": {
     "id": "arda-rdg",
@@ -6,7 +6,7 @@ window.ArdaRDGApi = {
     "namespace": "arda",
     "summary": "Persistent dependency graphs compiled by ArdaInductor for graphics, CUDA, and transfer work."
   },
-  "generatedFrom": "Source/ArdaInfra/ArdaRenderGraph/Public (all 9 unique public headers)",
+  "generatedFrom": "Source/ArdaInfra/ArdaRenderGraph/Public (all 13 unique public headers)",
   "headerProvenance": [
     "Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraph.h",
     "Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraphCuda.h",
@@ -16,7 +16,11 @@ window.ArdaRDGApi = {
     "Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyNode.h",
     "Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyRequirements.h",
     "Source/ArdaInfra/ArdaRenderGraph/Public/ArdaInductorPipeline.h",
-    "Source/ArdaInfra/ArdaRenderGraph/Public/ArdaRenderGraph.h"
+    "Source/ArdaInfra/ArdaRenderGraph/Public/ArdaRenderGraph.h",
+    "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaDependencyGraphNodeLibrary.h",
+    "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+    "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+    "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h"
   ],
   "components": [
     {
@@ -5467,6 +5471,27 @@ window.ArdaRDGApi = {
       "sourceLine": 650
     },
     {
+      "id": "api-arda-fardadependencyexecutioncontext-readbacktexture-af44189f",
+      "name": "ReadbackTexture",
+      "qualifiedName": "arda::FArdaDependencyExecutionContext::ReadbackTexture",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus ReadbackTexture(FArdaDependencyResourceHandle Resource, eastl::shared_ptr<eastl::vector<uint8_t>> Destination, const FArdaRHITextureSlice& Slice = {}) const",
+      "summary": "Records a graphics-queue texture readback with completion-safe publication. Resource must declare the selected subresource in CopySource state. Supports typed, single-sample, uncompressed color regions. Output contains tightly packed rows in increasing Y order, followed by increasing Z slices; native row padding is removed after completion. The retained destination follows ReadbackBuffer's successful-frame and failure semantics. Declare mTransientWorkspaceBytes at least GetArdaRHITextureBufferFootprint(...).mValue.mByteSize. The graph budgets and allocates this workspace per frame; its UAV state is restored after recording.",
+      "details": "Records a graphics-queue texture readback with completion-safe publication. Resource must declare the selected subresource in CopySource state. Supports typed, single-sample, uncompressed color regions. Output contains tightly packed rows in increasing Y order, followed by increasing Z slices; native row padding is removed after completion. The retained destination follows ReadbackBuffer's successful-frame and failure semantics. Declare mTransientWorkspaceBytes at least GetArdaRHITextureBufferFootprint(...).mValue.mByteSize. The graph budgets and allocates this workspace per frame; its UAV state is restored after recording.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraph.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaDependencyExecutionContext"
+      ],
+      "sourceLine": 662
+    },
+    {
       "id": "api-arda-fardadependencyexecutioncontext-gettexture-f3791576",
       "name": "GetTexture",
       "qualifiedName": "arda::FArdaDependencyExecutionContext::GetTexture",
@@ -5485,7 +5510,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 654
+      "sourceLine": 665
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getaccelerationstructure-284d9f45",
@@ -5506,7 +5531,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 656
+      "sourceLine": 667
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getpipeline-9bb1fe89",
@@ -5527,7 +5552,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 657
+      "sourceLine": 668
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getbindings-19ae5c87",
@@ -5548,7 +5573,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 659
+      "sourceLine": 670
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getshadertable-000a38d1",
@@ -5569,7 +5594,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 662
+      "sourceLine": 673
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getdescriptortable-d5e9952c",
@@ -5590,7 +5615,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 663
+      "sourceLine": 674
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-setraytracingstate-8c99445d",
@@ -5611,7 +5636,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 664
+      "sourceLine": 675
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-dispatchworkgraph-3899a17f",
@@ -5632,7 +5657,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 665
+      "sourceLine": 676
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-applyshaderparameters-293b6616",
@@ -5653,7 +5678,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 670
+      "sourceLine": 681
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-setcomputestate-bad9bb99",
@@ -5674,7 +5699,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 671
+      "sourceLine": 682
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-setgraphicsstate-b78e4bd4",
@@ -5695,7 +5720,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 673
+      "sourceLine": 684
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-setmeshletstate-db3309aa",
@@ -5716,7 +5741,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 675
+      "sourceLine": 686
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getframebuffer-2a7958e4",
@@ -5737,7 +5762,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 676
+      "sourceLine": 687
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getnode-fbb0cd7d",
@@ -5758,7 +5783,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 677
+      "sourceLine": 688
     },
     {
       "id": "api-arda-fardadependencycudabuffer-eff78550",
@@ -11030,6 +11055,2316 @@ window.ArdaRDGApi = {
         "arda"
       ],
       "sourceLine": 140
+    },
+    {
+      "id": "api-arda-fardamemorycopyaccelerationstructureparameters-365ca23b",
+      "name": "FArdaMemoryCopyAccelerationStructureParameters",
+      "qualifiedName": "arda::FArdaMemoryCopyAccelerationStructureParameters",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaMemoryCopyAccelerationStructureParameters",
+      "summary": "GPU clone of a complete BLAS or TLAS; import both objects before attachment.",
+      "details": "GPU clone of a complete BLAS or TLAS; import both objects before attachment.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 8
+    },
+    {
+      "id": "api-arda-fardamemorycopyaccelerationstructureparameters-msource-51bd792b",
+      "name": "mSource",
+      "qualifiedName": "arda::FArdaMemoryCopyAccelerationStructureParameters::mSource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mSource",
+      "summary": "Source, built before execution or by an earlier graph node.",
+      "details": "Source, built before execution or by an earlier graph node.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyAccelerationStructureParameters"
+      ],
+      "sourceLine": 11
+    },
+    {
+      "id": "api-arda-fardamemorycopyaccelerationstructureparameters-mdestination-13821a3a",
+      "name": "mDestination",
+      "qualifiedName": "arda::FArdaMemoryCopyAccelerationStructureParameters::mDestination",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mDestination",
+      "summary": "Distinct destination of the same kind and build flags, with at least the source allocation size. Create it from the source descriptor. TLAS clones keep the original BLAS addresses; retain those BLAS objects for as long as the cloned TLAS is used.",
+      "details": "Distinct destination of the same kind and build flags, with at least the source allocation size. Create it from the source descriptor. TLAS clones keep the original BLAS addresses; retain those BLAS objects for as long as the cloned TLAS is used.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyAccelerationStructureParameters"
+      ],
+      "sourceLine": 16
+    },
+    {
+      "id": "api-arda-fardamemorycompactaccelerationstructureparameters-8d365f6d",
+      "name": "FArdaMemoryCompactAccelerationStructureParameters",
+      "qualifiedName": "arda::FArdaMemoryCompactAccelerationStructureParameters",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaMemoryCompactAccelerationStructureParameters",
+      "summary": "GPU compaction of a completed BLAS or TLAS build that allowed compaction.",
+      "details": "GPU compaction of a completed BLAS or TLAS build that allowed compaction.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 20
+    },
+    {
+      "id": "api-arda-fardamemorycompactaccelerationstructureparameters-msource-f33344d7",
+      "name": "mSource",
+      "qualifiedName": "arda::FArdaMemoryCompactAccelerationStructureParameters::mSource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mSource",
+      "summary": "Source whose build was successfully submitted before attachment. Its contents must remain unchanged until compaction completes; build/update this source in a separate graph execution.",
+      "details": "Source whose build was successfully submitted before attachment. Its contents must remain unchanged until compaction completes; build/update this source in a separate graph execution.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCompactAccelerationStructureParameters"
+      ],
+      "sourceLine": 25
+    },
+    {
+      "id": "api-arda-fardamemorycompactaccelerationstructureparameters-mdestination-0fa16800",
+      "name": "mDestination",
+      "qualifiedName": "arda::FArdaMemoryCompactAccelerationStructureParameters::mDestination",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mDestination",
+      "summary": "Distinct imported destination of the same kind and build flags. Set mResultSizeOverride from GetAccelStructCompactedSize. Execution validates that size using the completed source query, which can wait for prior GPU work. TLAS BLAS references remain unchanged.",
+      "details": "Distinct imported destination of the same kind and build flags. Set mResultSizeOverride from GetAccelStructCompactedSize. Execution validates that size using the completed source query, which can wait for prior GPU work. TLAS BLAS references remain unchanged.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCompactAccelerationStructureParameters"
+      ],
+      "sourceLine": 30
+    },
+    {
+      "id": "api-arda-fardamemorycopyaccelerationstructurenode-c098d3d5",
+      "name": "FArdaMemoryCopyAccelerationStructureNode",
+      "qualifiedName": "arda::FArdaMemoryCopyAccelerationStructureNode",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaMemoryCopyAccelerationStructureNode final : public TArdaGraphicsDependencyNode<FArdaMemoryCopyAccelerationStructureNode, FArdaMemoryCopyAccelerationStructureParameters>",
+      "summary": "Clones BLAS/TLAS storage with native acceleration-structure copy commands on the graphics queue.",
+      "details": "Clones BLAS/TLAS storage with native acceleration-structure copy commands on the graphics queue.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 34
+    },
+    {
+      "id": "api-arda-fardamemorycopyaccelerationstructurenode-getmetadata-3943c083",
+      "name": "GetMetadata",
+      "qualifiedName": "arda::FArdaMemoryCopyAccelerationStructureNode::GetMetadata",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeMetadata GetMetadata()",
+      "summary": "Stable registry identity and implementation revision.",
+      "details": "Stable registry identity and implementation revision.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyAccelerationStructureNode"
+      ],
+      "sourceLine": 40
+    },
+    {
+      "id": "api-arda-fardamemorycopyaccelerationstructurenode-getrequirements-103ceae3",
+      "name": "GetRequirements",
+      "qualifiedName": "arda::FArdaMemoryCopyAccelerationStructureNode::GetRequirements",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters& Parameters)",
+      "summary": "Requires native acceleration structures before device preparation.",
+      "details": "Requires native acceleration structures before device preparation.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyAccelerationStructureNode"
+      ],
+      "sourceLine": 42
+    },
+    {
+      "id": "api-arda-fardamemorycopyaccelerationstructurenode-declareresources-98010975",
+      "name": "DeclareResources",
+      "qualifiedName": "arda::FArdaMemoryCopyAccelerationStructureNode::DeclareResources",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& Context, FArdaParameters& Parameters)",
+      "summary": "Validates imported identities, distinct objects, matching kinds and build flags.",
+      "details": "Validates imported identities, distinct objects, matching kinds and build flags.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyAccelerationStructureNode"
+      ],
+      "sourceLine": 44
+    },
+    {
+      "id": "api-arda-fardamemorycopyaccelerationstructurenode-getcanonicalkey-60d40fac",
+      "name": "GetCanonicalKey",
+      "qualifiedName": "arda::FArdaMemoryCopyAccelerationStructureNode::GetCanonicalKey",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)",
+      "summary": "Encodes both full graph resource identities.",
+      "details": "Encodes both full graph resource identities.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyAccelerationStructureNode"
+      ],
+      "sourceLine": 46
+    },
+    {
+      "id": "api-arda-fardamemorycopyaccelerationstructurenode-describe-ccb0ff2d",
+      "name": "Describe",
+      "qualifiedName": "arda::FArdaMemoryCopyAccelerationStructureNode::Describe",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)",
+      "summary": "Declares a whole-object source read and destination write.",
+      "details": "Declares a whole-object source read and destination write.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyAccelerationStructureNode"
+      ],
+      "sourceLine": 48
+    },
+    {
+      "id": "api-arda-fardamemorycopyaccelerationstructurenode-record-05861d85",
+      "name": "Record",
+      "qualifiedName": "arda::FArdaMemoryCopyAccelerationStructureNode::Record",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context, const FArdaParameters& Parameters, const FArdaState& State, FArdaInstanceState& Instance)",
+      "summary": "Validates build state/capacity and records the native clone.",
+      "details": "Validates build state/capacity and records the native clone.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyAccelerationStructureNode"
+      ],
+      "sourceLine": 50
+    },
+    {
+      "id": "api-arda-fardamemorycompactaccelerationstructurenode-5c8a8ec1",
+      "name": "FArdaMemoryCompactAccelerationStructureNode",
+      "qualifiedName": "arda::FArdaMemoryCompactAccelerationStructureNode",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaMemoryCompactAccelerationStructureNode final : public TArdaGraphicsDependencyNode<FArdaMemoryCompactAccelerationStructureNode, FArdaMemoryCompactAccelerationStructureParameters>",
+      "summary": "Compacts BLAS/TLAS storage with native commands on the graphics queue.",
+      "details": "Compacts BLAS/TLAS storage with native commands on the graphics queue.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 57
+    },
+    {
+      "id": "api-arda-fardamemorycompactaccelerationstructurenode-getmetadata-030f2a9a",
+      "name": "GetMetadata",
+      "qualifiedName": "arda::FArdaMemoryCompactAccelerationStructureNode::GetMetadata",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeMetadata GetMetadata()",
+      "summary": "Stable registry identity and implementation revision.",
+      "details": "Stable registry identity and implementation revision.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCompactAccelerationStructureNode"
+      ],
+      "sourceLine": 63
+    },
+    {
+      "id": "api-arda-fardamemorycompactaccelerationstructurenode-getrequirements-14c01a7f",
+      "name": "GetRequirements",
+      "qualifiedName": "arda::FArdaMemoryCompactAccelerationStructureNode::GetRequirements",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters& Parameters)",
+      "summary": "Requires native acceleration structures and compaction support.",
+      "details": "Requires native acceleration structures and compaction support.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCompactAccelerationStructureNode"
+      ],
+      "sourceLine": 65
+    },
+    {
+      "id": "api-arda-fardamemorycompactaccelerationstructurenode-declareresources-8a030a22",
+      "name": "DeclareResources",
+      "qualifiedName": "arda::FArdaMemoryCompactAccelerationStructureNode::DeclareResources",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& Context, FArdaParameters& Parameters)",
+      "summary": "Validates matching imported objects, completed source build and compaction descriptors.",
+      "details": "Validates matching imported objects, completed source build and compaction descriptors.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCompactAccelerationStructureNode"
+      ],
+      "sourceLine": 67
+    },
+    {
+      "id": "api-arda-fardamemorycompactaccelerationstructurenode-getcanonicalkey-3e94a170",
+      "name": "GetCanonicalKey",
+      "qualifiedName": "arda::FArdaMemoryCompactAccelerationStructureNode::GetCanonicalKey",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)",
+      "summary": "Encodes both full graph resource identities.",
+      "details": "Encodes both full graph resource identities.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCompactAccelerationStructureNode"
+      ],
+      "sourceLine": 69
+    },
+    {
+      "id": "api-arda-fardamemorycompactaccelerationstructurenode-describe-6311c607",
+      "name": "Describe",
+      "qualifiedName": "arda::FArdaMemoryCompactAccelerationStructureNode::Describe",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)",
+      "summary": "Declares a whole-object source read and destination write.",
+      "details": "Declares a whole-object source read and destination write.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCompactAccelerationStructureNode"
+      ],
+      "sourceLine": 71
+    },
+    {
+      "id": "api-arda-fardamemorycompactaccelerationstructurenode-record-ce52e8f2",
+      "name": "Record",
+      "qualifiedName": "arda::FArdaMemoryCompactAccelerationStructureNode::Record",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context, const FArdaParameters& Parameters, const FArdaState& State, FArdaInstanceState& Instance)",
+      "summary": "Validates the completed compact-size query before recording native compaction.",
+      "details": "Validates the completed compact-size query before recording native compaction.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCompactAccelerationStructureNode"
+      ],
+      "sourceLine": 73
+    },
+    {
+      "id": "api-arda-registerardamemoryaccelerationstructurenodes-b235e244",
+      "name": "RegisterArdaMemoryAccelerationStructureNodes",
+      "qualifiedName": "arda::RegisterArdaMemoryAccelerationStructureNodes",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus RegisterArdaMemoryAccelerationStructureNodes()",
+      "summary": "Registers both acceleration-structure Memory nodes; safe to repeat.",
+      "details": "Registers both acceleration-structure Memory nodes; safe to repeat.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryAccelerationStructureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 80
+    },
+    {
+      "id": "api-arda-fardamemoryuploadbufferparameters-2f55f98e",
+      "name": "FArdaMemoryUploadBufferParameters",
+      "qualifiedName": "arda::FArdaMemoryUploadBufferParameters",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaMemoryUploadBufferParameters",
+      "summary": "Host-to-device buffer upload. Attachment owns an immutable copy of the bytes.",
+      "details": "Host-to-device buffer upload. Attachment owns an immutable copy of the bytes.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 15
+    },
+    {
+      "id": "api-arda-fardamemoryuploadbufferparameters-mdestination-b61fb2c2",
+      "name": "mDestination",
+      "qualifiedName": "arda::FArdaMemoryUploadBufferParameters::mDestination",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mDestination",
+      "summary": "GPU destination, or empty to infer an output named Destination with no shader usage flags. Supply a graph buffer with the desired descriptor for vertex, structured, or shader use.",
+      "details": "GPU destination, or empty to infer an output named Destination with no shader usage flags. Supply a graph buffer with the desired descriptor for vertex, structured, or shader use.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadBufferParameters"
+      ],
+      "sourceLine": 20
+    },
+    {
+      "id": "api-arda-fardamemoryuploadbufferparameters-mbytes-5141756f",
+      "name": "mBytes",
+      "qualifiedName": "arda::FArdaMemoryUploadBufferParameters::mBytes",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<uint8_t> mBytes",
+      "summary": "Nonempty bytes copied into the node snapshot; later caller edits have no effect.",
+      "details": "Nonempty bytes copied into the node snapshot; later caller edits have no effect.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadBufferParameters"
+      ],
+      "sourceLine": 22
+    },
+    {
+      "id": "api-arda-fardamemoryuploadbufferparameters-mdestinationoffset-a3709d9b",
+      "name": "mDestinationOffset",
+      "qualifiedName": "arda::FArdaMemoryUploadBufferParameters::mDestinationOffset",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint64_t mDestinationOffset = 0",
+      "summary": "First destination byte. Bytes outside the uploaded range are preserved, not initialized.",
+      "details": "First destination byte. Bytes outside the uploaded range are preserved, not initialized.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadBufferParameters"
+      ],
+      "sourceLine": 24
+    },
+    {
+      "id": "api-arda-fardamemorycopybufferparameters-938b5459",
+      "name": "FArdaMemoryCopyBufferParameters",
+      "qualifiedName": "arda::FArdaMemoryCopyBufferParameters",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaMemoryCopyBufferParameters",
+      "summary": "Buffer-to-buffer copy; source and destination must be different resources.",
+      "details": "Buffer-to-buffer copy; source and destination must be different resources.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 28
+    },
+    {
+      "id": "api-arda-fardamemorycopybufferparameters-msource-817b03b8",
+      "name": "mSource",
+      "qualifiedName": "arda::FArdaMemoryCopyBufferParameters::mSource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mSource",
+      "summary": "Source buffer. CPU readback heaps cannot be copy sources.",
+      "details": "Source buffer. CPU readback heaps cannot be copy sources.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyBufferParameters"
+      ],
+      "sourceLine": 31
+    },
+    {
+      "id": "api-arda-fardamemorycopybufferparameters-mdestination-b115a56f",
+      "name": "mDestination",
+      "qualifiedName": "arda::FArdaMemoryCopyBufferParameters::mDestination",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mDestination",
+      "summary": "Destination, or empty to infer a GPU output named Destination from the source shape/usage excluding Volatile and without inheriting CPU access or backing-allocation policy. CPU upload heaps cannot be copy destinations. Bytes outside the copy are preserved; an inferred output's unwritten bytes remain uninitialized.",
+      "details": "Destination, or empty to infer a GPU output named Destination from the source shape/usage excluding Volatile and without inheriting CPU access or backing-allocation policy. CPU upload heaps cannot be copy destinations. Bytes outside the copy are preserved; an inferred output's unwritten bytes remain uninitialized.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyBufferParameters"
+      ],
+      "sourceLine": 37
+    },
+    {
+      "id": "api-arda-fardamemorycopybufferparameters-mbytesize-5dcc50d9",
+      "name": "mByteSize",
+      "qualifiedName": "arda::FArdaMemoryCopyBufferParameters::mByteSize",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint64_t mByteSize = ArdaRHIWholeBuffer",
+      "summary": "Nonzero byte count, or ArdaRHIWholeBuffer for the source's remaining bytes.",
+      "details": "Nonzero byte count, or ArdaRHIWholeBuffer for the source's remaining bytes.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyBufferParameters"
+      ],
+      "sourceLine": 39
+    },
+    {
+      "id": "api-arda-fardamemorycopybufferparameters-msourceoffset-1f7e072d",
+      "name": "mSourceOffset",
+      "qualifiedName": "arda::FArdaMemoryCopyBufferParameters::mSourceOffset",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint64_t mSourceOffset = 0",
+      "summary": "First byte to read in the source.",
+      "details": "First byte to read in the source.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyBufferParameters"
+      ],
+      "sourceLine": 41
+    },
+    {
+      "id": "api-arda-fardamemorycopybufferparameters-mdestinationoffset-bddc7fa8",
+      "name": "mDestinationOffset",
+      "qualifiedName": "arda::FArdaMemoryCopyBufferParameters::mDestinationOffset",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint64_t mDestinationOffset = 0",
+      "summary": "First byte to write in the destination.",
+      "details": "First byte to write in the destination.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyBufferParameters"
+      ],
+      "sourceLine": 43
+    },
+    {
+      "id": "api-arda-fardamemoryreadbackbufferparameters-b4ac26bd",
+      "name": "FArdaMemoryReadbackBufferParameters",
+      "qualifiedName": "arda::FArdaMemoryReadbackBufferParameters",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaMemoryReadbackBufferParameters",
+      "summary": "Device-to-host readback of a buffer range.",
+      "details": "Device-to-host readback of a buffer range.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 47
+    },
+    {
+      "id": "api-arda-fardamemoryreadbackbufferparameters-msource-bf30b19a",
+      "name": "mSource",
+      "qualifiedName": "arda::FArdaMemoryReadbackBufferParameters::mSource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mSource",
+      "summary": "Buffer whose bytes are read; CPU readback heaps cannot be copy sources.",
+      "details": "Buffer whose bytes are read; CPU readback heaps cannot be copy sources.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackBufferParameters"
+      ],
+      "sourceLine": 50
+    },
+    {
+      "id": "api-arda-fardamemoryreadbackbufferparameters-mdestination-4b29fdbf",
+      "name": "mDestination",
+      "qualifiedName": "arda::FArdaMemoryReadbackBufferParameters::mDestination",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<eastl::vector<uint8_t>> mDestination",
+      "summary": "Required retained output. Successful Execute/Wait replaces its bytes; failed frames clear registered outputs. Do not access it while graph completion can publish, including frame-slot recycling in Submit. Serialize executions sharing this destination and consume after Wait.",
+      "details": "Required retained output. Successful Execute/Wait replaces its bytes; failed frames clear registered outputs. Do not access it while graph completion can publish, including frame-slot recycling in Submit. Serialize executions sharing this destination and consume after Wait.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackBufferParameters"
+      ],
+      "sourceLine": 55
+    },
+    {
+      "id": "api-arda-fardamemoryreadbackbufferparameters-msourceoffset-b1989e8b",
+      "name": "mSourceOffset",
+      "qualifiedName": "arda::FArdaMemoryReadbackBufferParameters::mSourceOffset",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint64_t mSourceOffset = 0",
+      "summary": "First source byte; output bytes always start at index zero.",
+      "details": "First source byte; output bytes always start at index zero.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackBufferParameters"
+      ],
+      "sourceLine": 57
+    },
+    {
+      "id": "api-arda-fardamemoryreadbackbufferparameters-mbytesize-63b99009",
+      "name": "mByteSize",
+      "qualifiedName": "arda::FArdaMemoryReadbackBufferParameters::mByteSize",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint64_t mByteSize = ArdaRHIWholeBuffer",
+      "summary": "Nonzero byte count, or ArdaRHIWholeBuffer for the source's remaining bytes.",
+      "details": "Nonzero byte count, or ArdaRHIWholeBuffer for the source's remaining bytes.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackBufferParameters"
+      ],
+      "sourceLine": 59
+    },
+    {
+      "id": "api-arda-fardamemoryclearbufferparameters-53049d44",
+      "name": "FArdaMemoryClearBufferParameters",
+      "qualifiedName": "arda::FArdaMemoryClearBufferParameters",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaMemoryClearBufferParameters",
+      "summary": "Fill a complete GPU buffer with a repeated 32-bit unsigned value.",
+      "details": "Fill a complete GPU buffer with a repeated 32-bit unsigned value.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 63
+    },
+    {
+      "id": "api-arda-fardamemoryclearbufferparameters-mdestination-3a4cf9aa",
+      "name": "mDestination",
+      "qualifiedName": "arda::FArdaMemoryClearBufferParameters::mDestination",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mDestination",
+      "summary": "GPU buffer with UnorderedAccess usage and a byte size divisible by four.",
+      "details": "GPU buffer with UnorderedAccess usage and a byte size divisible by four.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearBufferParameters"
+      ],
+      "sourceLine": 66
+    },
+    {
+      "id": "api-arda-fardamemoryclearbufferparameters-mvalue-2aef2bf6",
+      "name": "mValue",
+      "qualifiedName": "arda::FArdaMemoryClearBufferParameters::mValue",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint32_t mValue = 0",
+      "summary": "Repeated 32-bit pattern; zero clears every byte.",
+      "details": "Repeated 32-bit pattern; zero clears every byte.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearBufferParameters"
+      ],
+      "sourceLine": 68
+    },
+    {
+      "id": "api-arda-fardamemoryuploadbuffernode-8e9c5d82",
+      "name": "FArdaMemoryUploadBufferNode",
+      "qualifiedName": "arda::FArdaMemoryUploadBufferNode",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaMemoryUploadBufferNode final : public TArdaCopyDependencyNode<FArdaMemoryUploadBufferNode, FArdaMemoryUploadBufferParameters>",
+      "summary": "Uploads owned host bytes on the graph's copy queue without blocking submission.",
+      "details": "Uploads owned host bytes on the graph's copy queue without blocking submission.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 72
+    },
+    {
+      "id": "api-arda-fardamemoryuploadbuffernode-getmetadata-397e4e44",
+      "name": "GetMetadata",
+      "qualifiedName": "arda::FArdaMemoryUploadBufferNode::GetMetadata",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeMetadata GetMetadata()",
+      "summary": "Returns the stable registry identity and implementation revision.",
+      "details": "Returns the stable registry identity and implementation revision.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadBufferNode"
+      ],
+      "sourceLine": 77
+    },
+    {
+      "id": "api-arda-fardamemoryuploadbuffernode-declareresources-d6c9d47e",
+      "name": "DeclareResources",
+      "qualifiedName": "arda::FArdaMemoryUploadBufferNode::DeclareResources",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& Context, FArdaParameters& Parameters)",
+      "summary": "Validates the upload range and supplies or infers the Destination output.",
+      "details": "Validates the upload range and supplies or infers the Destination output.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadBufferNode"
+      ],
+      "sourceLine": 79
+    },
+    {
+      "id": "api-arda-fardamemoryuploadbuffernode-getcanonicalkey-f5ec2019",
+      "name": "GetCanonicalKey",
+      "qualifiedName": "arda::FArdaMemoryUploadBufferNode::GetCanonicalKey",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)",
+      "summary": "Encodes resource identity, offset, and owned bytes for attachment deduplication.",
+      "details": "Encodes resource identity, offset, and owned bytes for attachment deduplication.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadBufferNode"
+      ],
+      "sourceLine": 81
+    },
+    {
+      "id": "api-arda-fardamemoryuploadbuffernode-describe-1cba1f78",
+      "name": "Describe",
+      "qualifiedName": "arda::FArdaMemoryUploadBufferNode::Describe",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)",
+      "summary": "Declares the precise destination byte range written by the upload.",
+      "details": "Declares the precise destination byte range written by the upload.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadBufferNode"
+      ],
+      "sourceLine": 83
+    },
+    {
+      "id": "api-arda-fardamemoryuploadbuffernode-record-3afe5d92",
+      "name": "Record",
+      "qualifiedName": "arda::FArdaMemoryUploadBufferNode::Record",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context, const FArdaParameters& Parameters, const FArdaState& State, FArdaInstanceState& Instance)",
+      "summary": "Records upload commands and returns any RHI failure.",
+      "details": "Records upload commands and returns any RHI failure.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadBufferNode"
+      ],
+      "sourceLine": 85
+    },
+    {
+      "id": "api-arda-fardamemorycopybuffernode-bd18849a",
+      "name": "FArdaMemoryCopyBufferNode",
+      "qualifiedName": "arda::FArdaMemoryCopyBufferNode",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaMemoryCopyBufferNode final : public TArdaCopyDependencyNode<FArdaMemoryCopyBufferNode, FArdaMemoryCopyBufferParameters>",
+      "summary": "Copies a byte range between distinct buffers on the graph's copy queue.",
+      "details": "Copies a byte range between distinct buffers on the graph's copy queue.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 92
+    },
+    {
+      "id": "api-arda-fardamemorycopybuffernode-getmetadata-73f3744c",
+      "name": "GetMetadata",
+      "qualifiedName": "arda::FArdaMemoryCopyBufferNode::GetMetadata",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeMetadata GetMetadata()",
+      "summary": "Returns the stable registry identity and implementation revision.",
+      "details": "Returns the stable registry identity and implementation revision.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyBufferNode"
+      ],
+      "sourceLine": 97
+    },
+    {
+      "id": "api-arda-fardamemorycopybuffernode-declareresources-bd6d362b",
+      "name": "DeclareResources",
+      "qualifiedName": "arda::FArdaMemoryCopyBufferNode::DeclareResources",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& Context, FArdaParameters& Parameters)",
+      "summary": "Resolves the byte count, validates both ranges, and declares Destination.",
+      "details": "Resolves the byte count, validates both ranges, and declares Destination.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyBufferNode"
+      ],
+      "sourceLine": 99
+    },
+    {
+      "id": "api-arda-fardamemorycopybuffernode-getcanonicalkey-d59b97d8",
+      "name": "GetCanonicalKey",
+      "qualifiedName": "arda::FArdaMemoryCopyBufferNode::GetCanonicalKey",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)",
+      "summary": "Encodes both resource identities and the resolved byte ranges.",
+      "details": "Encodes both resource identities and the resolved byte ranges.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyBufferNode"
+      ],
+      "sourceLine": 101
+    },
+    {
+      "id": "api-arda-fardamemorycopybuffernode-describe-a0d0198d",
+      "name": "Describe",
+      "qualifiedName": "arda::FArdaMemoryCopyBufferNode::Describe",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)",
+      "summary": "Declares the source read and destination write ranges.",
+      "details": "Declares the source read and destination write ranges.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyBufferNode"
+      ],
+      "sourceLine": 103
+    },
+    {
+      "id": "api-arda-fardamemorycopybuffernode-record-76479b5e",
+      "name": "Record",
+      "qualifiedName": "arda::FArdaMemoryCopyBufferNode::Record",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context, const FArdaParameters& Parameters, const FArdaState& State, FArdaInstanceState& Instance)",
+      "summary": "Records the copy and returns any RHI failure.",
+      "details": "Records the copy and returns any RHI failure.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyBufferNode"
+      ],
+      "sourceLine": 105
+    },
+    {
+      "id": "api-arda-fardamemoryreadbackbuffernode-c3fea89d",
+      "name": "FArdaMemoryReadbackBufferNode",
+      "qualifiedName": "arda::FArdaMemoryReadbackBufferNode",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaMemoryReadbackBufferNode final : public TArdaCopyDependencyNode<FArdaMemoryReadbackBufferNode, FArdaMemoryReadbackBufferParameters>",
+      "summary": "Publishes a retained CPU byte vector only after graph completion succeeds.",
+      "details": "Publishes a retained CPU byte vector only after graph completion succeeds.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 112
+    },
+    {
+      "id": "api-arda-fardamemoryreadbackbuffernode-getmetadata-670811e7",
+      "name": "GetMetadata",
+      "qualifiedName": "arda::FArdaMemoryReadbackBufferNode::GetMetadata",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeMetadata GetMetadata()",
+      "summary": "Returns the stable registry identity and implementation revision.",
+      "details": "Returns the stable registry identity and implementation revision.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackBufferNode"
+      ],
+      "sourceLine": 117
+    },
+    {
+      "id": "api-arda-fardamemoryreadbackbuffernode-declareresources-e1f2f054",
+      "name": "DeclareResources",
+      "qualifiedName": "arda::FArdaMemoryReadbackBufferNode::DeclareResources",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& Context, FArdaParameters& Parameters)",
+      "summary": "Validates the destination and resolves the source byte range during attachment.",
+      "details": "Validates the destination and resolves the source byte range during attachment.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackBufferNode"
+      ],
+      "sourceLine": 119
+    },
+    {
+      "id": "api-arda-fardamemoryreadbackbuffernode-getcanonicalkey-dee137c6",
+      "name": "GetCanonicalKey",
+      "qualifiedName": "arda::FArdaMemoryReadbackBufferNode::GetCanonicalKey",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)",
+      "summary": "Encodes source, byte range, and output vector identity.",
+      "details": "Encodes source, byte range, and output vector identity.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackBufferNode"
+      ],
+      "sourceLine": 121
+    },
+    {
+      "id": "api-arda-fardamemoryreadbackbuffernode-describe-896d6c37",
+      "name": "Describe",
+      "qualifiedName": "arda::FArdaMemoryReadbackBufferNode::Describe",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)",
+      "summary": "Declares the source range and a side effect so output is retained by graph culling.",
+      "details": "Declares the source range and a side effect so output is retained by graph culling.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackBufferNode"
+      ],
+      "sourceLine": 123
+    },
+    {
+      "id": "api-arda-fardamemoryreadbackbuffernode-record-a80d4665",
+      "name": "Record",
+      "qualifiedName": "arda::FArdaMemoryReadbackBufferNode::Record",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context, const FArdaParameters& Parameters, const FArdaState& State, FArdaInstanceState& Instance)",
+      "summary": "Registers the asynchronous copy with the graph's frame completion handling.",
+      "details": "Registers the asynchronous copy with the graph's frame completion handling.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackBufferNode"
+      ],
+      "sourceLine": 125
+    },
+    {
+      "id": "api-arda-fardamemoryclearbuffernode-d06b161a",
+      "name": "FArdaMemoryClearBufferNode",
+      "qualifiedName": "arda::FArdaMemoryClearBufferNode",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaMemoryClearBufferNode final : public TArdaComputeDependencyNode<FArdaMemoryClearBufferNode, FArdaMemoryClearBufferParameters>",
+      "summary": "Fills a complete unordered-access buffer with a 32-bit pattern on the compute queue.",
+      "details": "Fills a complete unordered-access buffer with a 32-bit pattern on the compute queue.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 132
+    },
+    {
+      "id": "api-arda-fardamemoryclearbuffernode-getmetadata-5d5e7e74",
+      "name": "GetMetadata",
+      "qualifiedName": "arda::FArdaMemoryClearBufferNode::GetMetadata",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeMetadata GetMetadata()",
+      "summary": "Returns the stable registry identity and implementation revision.",
+      "details": "Returns the stable registry identity and implementation revision.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearBufferNode"
+      ],
+      "sourceLine": 137
+    },
+    {
+      "id": "api-arda-fardamemoryclearbuffernode-declareresources-cb20745b",
+      "name": "DeclareResources",
+      "qualifiedName": "arda::FArdaMemoryClearBufferNode::DeclareResources",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& Context, FArdaParameters& Parameters)",
+      "summary": "Validates buffer identity, CPU access, usage, and four-byte size alignment.",
+      "details": "Validates buffer identity, CPU access, usage, and four-byte size alignment.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearBufferNode"
+      ],
+      "sourceLine": 139
+    },
+    {
+      "id": "api-arda-fardamemoryclearbuffernode-getcanonicalkey-dc32d1e0",
+      "name": "GetCanonicalKey",
+      "qualifiedName": "arda::FArdaMemoryClearBufferNode::GetCanonicalKey",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)",
+      "summary": "Encodes the destination resource identity and fill value.",
+      "details": "Encodes the destination resource identity and fill value.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearBufferNode"
+      ],
+      "sourceLine": 141
+    },
+    {
+      "id": "api-arda-fardamemoryclearbuffernode-describe-dfe51418",
+      "name": "Describe",
+      "qualifiedName": "arda::FArdaMemoryClearBufferNode::Describe",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)",
+      "summary": "Declares a write of the complete destination buffer.",
+      "details": "Declares a write of the complete destination buffer.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearBufferNode"
+      ],
+      "sourceLine": 143
+    },
+    {
+      "id": "api-arda-fardamemoryclearbuffernode-record-8b07b296",
+      "name": "Record",
+      "qualifiedName": "arda::FArdaMemoryClearBufferNode::Record",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context, const FArdaParameters& Parameters, const FArdaState& State, FArdaInstanceState& Instance)",
+      "summary": "Records the integer clear and returns any RHI failure.",
+      "details": "Records the integer clear and returns any RHI failure.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearBufferNode"
+      ],
+      "sourceLine": 145
+    },
+    {
+      "id": "api-arda-registerardamemorynodes-edbc358e",
+      "name": "RegisterArdaMemoryNodes",
+      "qualifiedName": "arda::RegisterArdaMemoryNodes",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus RegisterArdaMemoryNodes()",
+      "summary": "Registers all Memory node types for registry enumeration; typed attachment registers on demand. Safe to repeat, including after a node definition is unregistered. Does not create a device.",
+      "details": "Registers all Memory node types for registry enumeration; typed attachment registers on demand. Safe to repeat, including after a node definition is unregistered. Does not create a device.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 154
+    },
+    {
+      "id": "api-arda-fardamemoryuploadtextureparameters-050ec065",
+      "name": "FArdaMemoryUploadTextureParameters",
+      "qualifiedName": "arda::FArdaMemoryUploadTextureParameters",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaMemoryUploadTextureParameters",
+      "summary": "Owned upload data for a typed, single-sample, uncompressed color texture.",
+      "details": "Owned upload data for a typed, single-sample, uncompressed color texture.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 8
+    },
+    {
+      "id": "api-arda-fardamemoryuploadtextureparameters-mdestination-7dfdf8cd",
+      "name": "mDestination",
+      "qualifiedName": "arda::FArdaMemoryUploadTextureParameters::mDestination",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mDestination",
+      "summary": "Required destination texture, created or imported by this graph.",
+      "details": "Required destination texture, created or imported by this graph.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadTextureParameters"
+      ],
+      "sourceLine": 11
+    },
+    {
+      "id": "api-arda-fardamemoryuploadtextureparameters-mbytes-65c16584",
+      "name": "mBytes",
+      "qualifiedName": "arda::FArdaMemoryUploadTextureParameters::mBytes",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<uint8_t> mBytes",
+      "summary": "Exact tightly packed texel bytes, ordered by row then depth slice. Frozen at attachment.",
+      "details": "Exact tightly packed texel bytes, ordered by row then depth slice. Frozen at attachment.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadTextureParameters"
+      ],
+      "sourceLine": 13
+    },
+    {
+      "id": "api-arda-fardamemoryuploadtextureparameters-mslice-979453bd",
+      "name": "mSlice",
+      "qualifiedName": "arda::FArdaMemoryUploadTextureParameters::mSlice",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHITextureSlice mSlice",
+      "summary": "Destination mip, array layer, and region; omitted extents select its remainder.",
+      "details": "Destination mip, array layer, and region; omitted extents select its remainder.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadTextureParameters"
+      ],
+      "sourceLine": 15
+    },
+    {
+      "id": "api-arda-fardamemoryuploadtextureparameters-mfootprint-8f10842e",
+      "name": "mFootprint",
+      "qualifiedName": "arda::FArdaMemoryUploadTextureParameters::mFootprint",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHITextureBufferFootprint mFootprint",
+      "summary": "Validated copy footprint, replaced during attachment; caller values are ignored.",
+      "details": "Validated copy footprint, replaced during attachment; caller values are ignored.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadTextureParameters"
+      ],
+      "sourceLine": 17
+    },
+    {
+      "id": "api-arda-fardamemoryuploadtextureparameters-mbwholesubresource-8e678ed1",
+      "name": "mbWholeSubresource",
+      "qualifiedName": "arda::FArdaMemoryUploadTextureParameters::mbWholeSubresource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "bool mbWholeSubresource = false",
+      "summary": "Derived during attachment; partial writes require previously initialized texels.",
+      "details": "Derived during attachment; partial writes require previously initialized texels.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadTextureParameters"
+      ],
+      "sourceLine": 19
+    },
+    {
+      "id": "api-arda-fardamemoryreadbacktextureparameters-55522f07",
+      "name": "FArdaMemoryReadbackTextureParameters",
+      "qualifiedName": "arda::FArdaMemoryReadbackTextureParameters",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaMemoryReadbackTextureParameters",
+      "summary": "Readback of one typed, single-sample, uncompressed color texture region.",
+      "details": "Readback of one typed, single-sample, uncompressed color texture region.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 23
+    },
+    {
+      "id": "api-arda-fardamemoryreadbacktextureparameters-msource-f6496895",
+      "name": "mSource",
+      "qualifiedName": "arda::FArdaMemoryReadbackTextureParameters::mSource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mSource",
+      "summary": "Required source texture.",
+      "details": "Required source texture.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackTextureParameters"
+      ],
+      "sourceLine": 26
+    },
+    {
+      "id": "api-arda-fardamemoryreadbacktextureparameters-mdestination-2a0db6d7",
+      "name": "mDestination",
+      "qualifiedName": "arda::FArdaMemoryReadbackTextureParameters::mDestination",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<eastl::vector<uint8_t>> mDestination",
+      "summary": "Required retained vector, published as tightly packed rows after Execute/Wait succeeds. Serialize executions sharing it; do not access while completion may publish or clear it.",
+      "details": "Required retained vector, published as tightly packed rows after Execute/Wait succeeds. Serialize executions sharing it; do not access while completion may publish or clear it.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackTextureParameters"
+      ],
+      "sourceLine": 30
+    },
+    {
+      "id": "api-arda-fardamemoryreadbacktextureparameters-mslice-13b248b4",
+      "name": "mSlice",
+      "qualifiedName": "arda::FArdaMemoryReadbackTextureParameters::mSlice",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHITextureSlice mSlice",
+      "summary": "Source mip, array layer, and region; omitted extents select its remainder.",
+      "details": "Source mip, array layer, and region; omitted extents select its remainder.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackTextureParameters"
+      ],
+      "sourceLine": 32
+    },
+    {
+      "id": "api-arda-fardamemoryreadbacktextureparameters-mworkspacebytes-209e7a22",
+      "name": "mWorkspaceBytes",
+      "qualifiedName": "arda::FArdaMemoryReadbackTextureParameters::mWorkspaceBytes",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint64_t mWorkspaceBytes = 0",
+      "summary": "Validated transient GPU transfer capacity; replaced during attachment for memory budgeting.",
+      "details": "Validated transient GPU transfer capacity; replaced during attachment for memory budgeting.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackTextureParameters"
+      ],
+      "sourceLine": 34
+    },
+    {
+      "id": "api-arda-fardamemorycopytextureparameters-16c5cc1e",
+      "name": "FArdaMemoryCopyTextureParameters",
+      "qualifiedName": "arda::FArdaMemoryCopyTextureParameters",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaMemoryCopyTextureParameters",
+      "summary": "Copy between matching typed, single-sample color texture subresources, including BC formats.",
+      "details": "Copy between matching typed, single-sample color texture subresources, including BC formats.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 38
+    },
+    {
+      "id": "api-arda-fardamemorycopytextureparameters-msource-26bd550e",
+      "name": "mSource",
+      "qualifiedName": "arda::FArdaMemoryCopyTextureParameters::mSource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mSource",
+      "summary": "Required source texture.",
+      "details": "Required source texture.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyTextureParameters"
+      ],
+      "sourceLine": 41
+    },
+    {
+      "id": "api-arda-fardamemorycopytextureparameters-mdestination-172217e4",
+      "name": "mDestination",
+      "qualifiedName": "arda::FArdaMemoryCopyTextureParameters::mDestination",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mDestination",
+      "summary": "Required destination; must differ from the source subresource.",
+      "details": "Required destination; must differ from the source subresource.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyTextureParameters"
+      ],
+      "sourceLine": 43
+    },
+    {
+      "id": "api-arda-fardamemorycopytextureparameters-msourceslice-c8a8c0c7",
+      "name": "mSourceSlice",
+      "qualifiedName": "arda::FArdaMemoryCopyTextureParameters::mSourceSlice",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHITextureSlice mSourceSlice",
+      "summary": "Source region; explicit extents must fit without clipping.",
+      "details": "Source region; explicit extents must fit without clipping.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyTextureParameters"
+      ],
+      "sourceLine": 45
+    },
+    {
+      "id": "api-arda-fardamemorycopytextureparameters-mdestinationslice-d7ad5ca2",
+      "name": "mDestinationSlice",
+      "qualifiedName": "arda::FArdaMemoryCopyTextureParameters::mDestinationSlice",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHITextureSlice mDestinationSlice",
+      "summary": "Destination origin/subresource; explicit extents must equal the source copy extent.",
+      "details": "Destination origin/subresource; explicit extents must equal the source copy extent.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyTextureParameters"
+      ],
+      "sourceLine": 47
+    },
+    {
+      "id": "api-arda-fardamemorycopytextureparameters-mbwholesubresource-2b9777cb",
+      "name": "mbWholeSubresource",
+      "qualifiedName": "arda::FArdaMemoryCopyTextureParameters::mbWholeSubresource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "bool mbWholeSubresource = false",
+      "summary": "Replaced during attachment; partial writes preserve previously initialized destination texels.",
+      "details": "Replaced during attachment; partial writes preserve previously initialized destination texels.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyTextureParameters"
+      ],
+      "sourceLine": 49
+    },
+    {
+      "id": "api-arda-fardamemorycleartextureparameters-fe513360",
+      "name": "FArdaMemoryClearTextureParameters",
+      "qualifiedName": "arda::FArdaMemoryClearTextureParameters",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaMemoryClearTextureParameters",
+      "summary": "Floating-point or normalized color clear; integer, depth/stencil and typeless formats are rejected.",
+      "details": "Floating-point or normalized color clear; integer, depth/stencil and typeless formats are rejected.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 53
+    },
+    {
+      "id": "api-arda-fardamemorycleartextureparameters-mdestination-83607b25",
+      "name": "mDestination",
+      "qualifiedName": "arda::FArdaMemoryClearTextureParameters::mDestination",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaDependencyResourceHandle mDestination",
+      "summary": "Required texture with RenderTarget usage.",
+      "details": "Required texture with RenderTarget usage.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearTextureParameters"
+      ],
+      "sourceLine": 56
+    },
+    {
+      "id": "api-arda-fardamemorycleartextureparameters-mcolor-d55ca9cf",
+      "name": "mColor",
+      "qualifiedName": "arda::FArdaMemoryClearTextureParameters::mColor",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIColor mColor",
+      "summary": "Color to write to every texel in the selected subresources.",
+      "details": "Color to write to every texel in the selected subresources.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearTextureParameters"
+      ],
+      "sourceLine": 58
+    },
+    {
+      "id": "api-arda-fardamemorycleartextureparameters-mrange-467dcd86",
+      "name": "mRange",
+      "qualifiedName": "arda::FArdaMemoryClearTextureParameters::mRange",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHITextureSubresourceRange mRange",
+      "summary": "Nonempty mip/layer range, normalized during attachment; plane zero only.",
+      "details": "Nonempty mip/layer range, normalized during attachment; plane zero only.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearTextureParameters"
+      ],
+      "sourceLine": 60
+    },
+    {
+      "id": "api-arda-fardamemoryuploadtexturenode-dab06ef9",
+      "name": "FArdaMemoryUploadTextureNode",
+      "qualifiedName": "arda::FArdaMemoryUploadTextureNode",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaMemoryUploadTextureNode final : public TArdaGraphicsDependencyNode<FArdaMemoryUploadTextureNode, FArdaMemoryUploadTextureParameters>",
+      "summary": "Uploads tightly packed host texels into one texture region.",
+      "details": "Uploads tightly packed host texels into one texture region.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 64
+    },
+    {
+      "id": "api-arda-fardamemoryuploadtexturenode-getmetadata-d79bb85f",
+      "name": "GetMetadata",
+      "qualifiedName": "arda::FArdaMemoryUploadTextureNode::GetMetadata",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeMetadata GetMetadata()",
+      "summary": "Returns this operation's stable registry name and revision.",
+      "details": "Returns this operation's stable registry name and revision.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadTextureNode"
+      ],
+      "sourceLine": 69
+    },
+    {
+      "id": "api-arda-fardamemoryuploadtexturenode-declareresources-36545fd4",
+      "name": "DeclareResources",
+      "qualifiedName": "arda::FArdaMemoryUploadTextureNode::DeclareResources",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& Context, FArdaParameters& Parameters)",
+      "summary": "Validates resource identities and normalizes the selected region during attachment.",
+      "details": "Validates resource identities and normalizes the selected region during attachment.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadTextureNode"
+      ],
+      "sourceLine": 71
+    },
+    {
+      "id": "api-arda-fardamemoryuploadtexturenode-getcanonicalkey-26e23d82",
+      "name": "GetCanonicalKey",
+      "qualifiedName": "arda::FArdaMemoryUploadTextureNode::GetCanonicalKey",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)",
+      "summary": "Encodes the complete resource identities, region, and operation inputs.",
+      "details": "Encodes the complete resource identities, region, and operation inputs.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadTextureNode"
+      ],
+      "sourceLine": 73
+    },
+    {
+      "id": "api-arda-fardamemoryuploadtexturenode-describe-376039e5",
+      "name": "Describe",
+      "qualifiedName": "arda::FArdaMemoryUploadTextureNode::Describe",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)",
+      "summary": "Declares the affected subresources and required resource states.",
+      "details": "Declares the affected subresources and required resource states.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadTextureNode"
+      ],
+      "sourceLine": 75
+    },
+    {
+      "id": "api-arda-fardamemoryuploadtexturenode-record-30a89c35",
+      "name": "Record",
+      "qualifiedName": "arda::FArdaMemoryUploadTextureNode::Record",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context, const FArdaParameters& Parameters, const FArdaState& State, FArdaInstanceState& Instance)",
+      "summary": "Records native work and returns failures without submitting the command list.",
+      "details": "Records native work and returns failures without submitting the command list.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryUploadTextureNode"
+      ],
+      "sourceLine": 77
+    },
+    {
+      "id": "api-arda-fardamemoryreadbacktexturenode-deb46e46",
+      "name": "FArdaMemoryReadbackTextureNode",
+      "qualifiedName": "arda::FArdaMemoryReadbackTextureNode",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaMemoryReadbackTextureNode final : public TArdaGraphicsDependencyNode<FArdaMemoryReadbackTextureNode, FArdaMemoryReadbackTextureParameters>",
+      "summary": "Publishes tightly packed texture-region bytes after successful graph completion.",
+      "details": "Publishes tightly packed texture-region bytes after successful graph completion.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 84
+    },
+    {
+      "id": "api-arda-fardamemoryreadbacktexturenode-getmetadata-c3cc4745",
+      "name": "GetMetadata",
+      "qualifiedName": "arda::FArdaMemoryReadbackTextureNode::GetMetadata",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeMetadata GetMetadata()",
+      "summary": "Returns this operation's stable registry name and revision.",
+      "details": "Returns this operation's stable registry name and revision.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackTextureNode"
+      ],
+      "sourceLine": 89
+    },
+    {
+      "id": "api-arda-fardamemoryreadbacktexturenode-declareresources-ad54e823",
+      "name": "DeclareResources",
+      "qualifiedName": "arda::FArdaMemoryReadbackTextureNode::DeclareResources",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& Context, FArdaParameters& Parameters)",
+      "summary": "Validates resource identities and normalizes the selected region during attachment.",
+      "details": "Validates resource identities and normalizes the selected region during attachment.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackTextureNode"
+      ],
+      "sourceLine": 91
+    },
+    {
+      "id": "api-arda-fardamemoryreadbacktexturenode-getcanonicalkey-f725b012",
+      "name": "GetCanonicalKey",
+      "qualifiedName": "arda::FArdaMemoryReadbackTextureNode::GetCanonicalKey",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)",
+      "summary": "Encodes the complete resource identities, region, and operation inputs.",
+      "details": "Encodes the complete resource identities, region, and operation inputs.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackTextureNode"
+      ],
+      "sourceLine": 93
+    },
+    {
+      "id": "api-arda-fardamemoryreadbacktexturenode-describe-3783052c",
+      "name": "Describe",
+      "qualifiedName": "arda::FArdaMemoryReadbackTextureNode::Describe",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)",
+      "summary": "Declares the affected subresources and required resource states.",
+      "details": "Declares the affected subresources and required resource states.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackTextureNode"
+      ],
+      "sourceLine": 95
+    },
+    {
+      "id": "api-arda-fardamemoryreadbacktexturenode-record-04f8c454",
+      "name": "Record",
+      "qualifiedName": "arda::FArdaMemoryReadbackTextureNode::Record",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context, const FArdaParameters& Parameters, const FArdaState& State, FArdaInstanceState& Instance)",
+      "summary": "Records native work and returns failures without submitting the command list.",
+      "details": "Records native work and returns failures without submitting the command list.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryReadbackTextureNode"
+      ],
+      "sourceLine": 97
+    },
+    {
+      "id": "api-arda-fardamemorycopytexturenode-efcad8d7",
+      "name": "FArdaMemoryCopyTextureNode",
+      "qualifiedName": "arda::FArdaMemoryCopyTextureNode",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaMemoryCopyTextureNode final : public TArdaGraphicsDependencyNode<FArdaMemoryCopyTextureNode, FArdaMemoryCopyTextureParameters>",
+      "summary": "Copies one texture region between distinct subresources.",
+      "details": "Copies one texture region between distinct subresources.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 104
+    },
+    {
+      "id": "api-arda-fardamemorycopytexturenode-getmetadata-9ab9ab10",
+      "name": "GetMetadata",
+      "qualifiedName": "arda::FArdaMemoryCopyTextureNode::GetMetadata",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeMetadata GetMetadata()",
+      "summary": "Returns this operation's stable registry name and revision.",
+      "details": "Returns this operation's stable registry name and revision.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyTextureNode"
+      ],
+      "sourceLine": 109
+    },
+    {
+      "id": "api-arda-fardamemorycopytexturenode-declareresources-bbf43886",
+      "name": "DeclareResources",
+      "qualifiedName": "arda::FArdaMemoryCopyTextureNode::DeclareResources",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& Context, FArdaParameters& Parameters)",
+      "summary": "Validates resource identities and normalizes the selected region during attachment.",
+      "details": "Validates resource identities and normalizes the selected region during attachment.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyTextureNode"
+      ],
+      "sourceLine": 111
+    },
+    {
+      "id": "api-arda-fardamemorycopytexturenode-getcanonicalkey-b19e071c",
+      "name": "GetCanonicalKey",
+      "qualifiedName": "arda::FArdaMemoryCopyTextureNode::GetCanonicalKey",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)",
+      "summary": "Encodes the complete resource identities, region, and operation inputs.",
+      "details": "Encodes the complete resource identities, region, and operation inputs.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyTextureNode"
+      ],
+      "sourceLine": 113
+    },
+    {
+      "id": "api-arda-fardamemorycopytexturenode-describe-56c52f26",
+      "name": "Describe",
+      "qualifiedName": "arda::FArdaMemoryCopyTextureNode::Describe",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)",
+      "summary": "Declares the affected subresources and required resource states.",
+      "details": "Declares the affected subresources and required resource states.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyTextureNode"
+      ],
+      "sourceLine": 115
+    },
+    {
+      "id": "api-arda-fardamemorycopytexturenode-record-02517048",
+      "name": "Record",
+      "qualifiedName": "arda::FArdaMemoryCopyTextureNode::Record",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context, const FArdaParameters& Parameters, const FArdaState& State, FArdaInstanceState& Instance)",
+      "summary": "Records native work and returns failures without submitting the command list.",
+      "details": "Records native work and returns failures without submitting the command list.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryCopyTextureNode"
+      ],
+      "sourceLine": 117
+    },
+    {
+      "id": "api-arda-fardamemorycleartexturenode-0f74b1e1",
+      "name": "FArdaMemoryClearTextureNode",
+      "qualifiedName": "arda::FArdaMemoryClearTextureNode",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaMemoryClearTextureNode final : public TArdaGraphicsDependencyNode<FArdaMemoryClearTextureNode, FArdaMemoryClearTextureParameters>",
+      "summary": "Clears selected color render-target subresources.",
+      "details": "Clears selected color render-target subresources.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 124
+    },
+    {
+      "id": "api-arda-fardamemorycleartexturenode-getmetadata-542900c6",
+      "name": "GetMetadata",
+      "qualifiedName": "arda::FArdaMemoryClearTextureNode::GetMetadata",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeMetadata GetMetadata()",
+      "summary": "Returns this operation's stable registry name and revision.",
+      "details": "Returns this operation's stable registry name and revision.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearTextureNode"
+      ],
+      "sourceLine": 129
+    },
+    {
+      "id": "api-arda-fardamemorycleartexturenode-declareresources-e20e38f3",
+      "name": "DeclareResources",
+      "qualifiedName": "arda::FArdaMemoryClearTextureNode::DeclareResources",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& Context, FArdaParameters& Parameters)",
+      "summary": "Validates resource identities and normalizes the selected region during attachment.",
+      "details": "Validates resource identities and normalizes the selected region during attachment.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearTextureNode"
+      ],
+      "sourceLine": 131
+    },
+    {
+      "id": "api-arda-fardamemorycleartexturenode-getcanonicalkey-cae795fb",
+      "name": "GetCanonicalKey",
+      "qualifiedName": "arda::FArdaMemoryClearTextureNode::GetCanonicalKey",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)",
+      "summary": "Encodes the complete resource identities, region, and operation inputs.",
+      "details": "Encodes the complete resource identities, region, and operation inputs.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearTextureNode"
+      ],
+      "sourceLine": 133
+    },
+    {
+      "id": "api-arda-fardamemorycleartexturenode-describe-c1c289e9",
+      "name": "Describe",
+      "qualifiedName": "arda::FArdaMemoryClearTextureNode::Describe",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)",
+      "summary": "Declares the affected subresources and required resource states.",
+      "details": "Declares the affected subresources and required resource states.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearTextureNode"
+      ],
+      "sourceLine": 135
+    },
+    {
+      "id": "api-arda-fardamemorycleartexturenode-record-9c0ac726",
+      "name": "Record",
+      "qualifiedName": "arda::FArdaMemoryClearTextureNode::Record",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context, const FArdaParameters& Parameters, const FArdaState& State, FArdaInstanceState& Instance)",
+      "summary": "Records native work and returns failures without submitting the command list.",
+      "details": "Records native work and returns failures without submitting the command list.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaMemoryClearTextureNode"
+      ],
+      "sourceLine": 137
+    },
+    {
+      "id": "api-arda-registerardamemorytexturenodes-f21888a7",
+      "name": "RegisterArdaMemoryTextureNodes",
+      "qualifiedName": "arda::RegisterArdaMemoryTextureNodes",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus RegisterArdaMemoryTextureNodes()",
+      "summary": "Registers the texture Memory nodes; typed attachment also registers each node on demand.",
+      "details": "Registers the texture Memory nodes; typed attachment also registers each node on demand.",
+      "source": "Source/ArdaInfra/ArdaRenderGraph/Public/NodeLibrary/ArdaMemoryTextureNodes.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 144
     }
   ]
 };

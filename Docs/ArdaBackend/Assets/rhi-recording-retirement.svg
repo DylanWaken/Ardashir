@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="370" viewBox="0 0 1000 370" role="img" aria-labelledby="title desc">
+  <title id="title">Command admission and memory retirement</title>
+  <desc id="desc">CPU validation rejects invalid work before the driver. Accepted recording generations and replaced sparse ranges remain owned until fence completion or reported device loss. Recoverable wait errors retain ownership and retry at garbage collection.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#8db3d5"/></marker></defs>
+  <rect width="1000" height="370" rx="16" fill="#101d2b"/>
+  <g font-family="system-ui,sans-serif" fill="#e7f1ff" font-size="16">
+    <text x="24" y="32" font-size="21" font-weight="bold">Admission and retirement are separate proofs</text>
+    <g fill="#1f3549" stroke="#688aaa"><rect x="24" y="60" width="204" height="78" rx="8"/><rect x="294" y="60" width="204" height="78" rx="8"/><rect x="566" y="60" width="188" height="78" rx="8"/><rect x="807" y="60" width="168" height="78" rx="8"/></g>
+    <text x="40" y="88">Open + bind pipeline</text><text x="40" y="113">CPU validates intent</text>
+    <text x="310" y="88">Record generation A</text><text x="310" y="113">Submit to queue</text>
+    <text x="582" y="88">GPU may use A</text><text x="582" y="113">Keep storage alive</text>
+    <text x="822" y="88">Completion proof</text><text x="822" y="113">Release / reuse A</text>
+    <g fill="none" stroke="#8db3d5" stroke-width="2" marker-end="url(#arrow)"><path d="M228 99H290"/><path d="M498 99H562"/><path d="M754 99H803"/></g>
+    <g fill="#382b37" stroke="#cb91a9"><rect x="24" y="189" width="242" height="77" rx="8"/></g>
+    <text x="40" y="216">Invalid void call: latch error</text><text x="40" y="240">Close / submission reject</text>
+    <path d="M126 138V185" fill="none" stroke="#cb91a9" stroke-width="2" marker-end="url(#arrow)"/>
+    <g fill="#263c3d" stroke="#80bbb0"><rect x="335" y="189" width="302" height="77" rx="8"/><rect x="697" y="189" width="277" height="77" rx="8"/></g>
+    <text x="351" y="216">Reopen uses generation B</text><text x="351" y="240">Sparse remaps keep old ranges</text>
+    <text x="713" y="216">Recoverable wait error</text><text x="713" y="240">Retain + retry at GC / idle</text>
+    <path d="M488 189V142M838 189V144" fill="none" stroke="#80bbb0" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="24" y="316">Release storage only after completion or reported device loss. Reuse requires a healthy device.</text>
+    <text x="24" y="343" fill="#bed0e3">Zero work still validates state. GPU-written indices and indirect contents remain the caller's responsibility.</text>
+  </g>
+</svg>

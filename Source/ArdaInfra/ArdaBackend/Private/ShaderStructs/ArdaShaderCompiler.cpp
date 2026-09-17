@@ -21,6 +21,7 @@
 #include <set>
 #include <string>
 #include <system_error>
+#include <vector>
 
 #if defined(_WIN32)
 #include <Windows.h>
@@ -94,6 +95,19 @@ namespace arda
 			Result.mOutputPath = Output;
 			Result.mMessage = ToEastl(Message);
 			return Result;
+		}
+
+		FArdaShaderCompileDiagnostic MakeDiagnostic(EArdaShaderCompileError Code,
+		    const FArdaShaderCompileJob& Job,
+		    const std::string& Message)
+		{
+			return MakeDiagnostic(Code,
+			    &Job.mType,
+			    Job.mTarget.mBackendName,
+			    Job.mPermutationId,
+			    Job.mSourcePath,
+			    Job.mOutputPath,
+			    Message);
 		}
 
 		eastl::string ProfileForStage(arda::EArdaRHIShaderStage Stage)
@@ -177,22 +191,13 @@ namespace arda
 
 		void HashString(uint64_t& Hash, const std::string& Value)
 		{
-			const uint64_t Size = static_cast<uint64_t>(Value.size());
-			for (uint32_t Shift = 0; Shift < 64; Shift += 8)
-			{
-				const uint8_t Byte = static_cast<uint8_t>(Size >> Shift);
-				HashBytes(Hash, &Byte, 1);
-			}
+			AppendArdaFnv1a64LittleEndian(Hash, Value.size());
 			HashBytes(Hash, Value.data(), Value.size());
 		}
 
 		void HashUint32(uint64_t& Hash, uint32_t Value)
 		{
-			for (uint32_t Shift = 0; Shift < 32; Shift += 8)
-			{
-				const uint8_t Byte = static_cast<uint8_t>(Value >> Shift);
-				HashBytes(Hash, &Byte, 1);
-			}
+			AppendArdaFnv1a64LittleEndian(Hash, Value, sizeof(Value));
 		}
 
 		std::string ReadText(const std::filesystem::path& Path);
@@ -454,26 +459,33 @@ namespace arda
 #endif
 		}
 
+		struct FArdaTemporaryShaderFiles
+		{
+			std::vector<std::filesystem::path> mPaths;
+
+			~FArdaTemporaryShaderFiles()
+			{
+				std::error_code Error;
+				for (const auto& Path : mPaths)
+				{
+					std::filesystem::remove(Path, Error);
+				}
+			}
+		};
+
 		bool AtomicWrite(const std::filesystem::path& Path, const std::string& Contents)
 		{
 			const std::filesystem::path Temporary = TemporaryPath(Path, "write");
+			const FArdaTemporaryShaderFiles Cleanup{{Temporary}};
 			{
 				std::ofstream Stream(Temporary, std::ios::binary | std::ios::trunc);
 				Stream.write(Contents.data(), static_cast<std::streamsize>(Contents.size()));
 				if (!Stream)
 				{
-					std::error_code Error;
-					std::filesystem::remove(Temporary, Error);
 					return false;
 				}
 			}
-			if (AtomicReplace(Temporary, Path))
-			{
-				return true;
-			}
-			std::error_code Error;
-			std::filesystem::remove(Temporary, Error);
-			return false;
+			return AtomicReplace(Temporary, Path);
 		}
 
 		std::shared_ptr<std::mutex> GetOutputMutex(const std::filesystem::path& Output)
@@ -630,7 +642,12 @@ namespace arda
 		    FArdaShaderCompileJob& Job,
 		    FArdaShaderCompileDiagnostic& Diagnostic)
 		{
-			const eastl::string& BackendName = Target.mBackendName;
+
+			const auto Fail = [&](EArdaShaderCompileError Code, const std::string& Message)
+			{
+				Diagnostic = MakeDiagnostic(Code, Job, Message);
+				return false;
+			};
 			Job.mType = Type;
 			Job.mTarget = Target;
 			Job.mCompilerExecutable = Compiler;
@@ -639,48 +656,23 @@ namespace arda
 			Job.mOutputPath = OutputDirectory / (ToStd(Stem) + ToStd(Target.mArtifactExtension));
 			if (!IsContainedArtifactPath(OutputDirectory, Job.mOutputPath))
 			{
-				Diagnostic = MakeDiagnostic(EArdaShaderCompileError::InvalidPermutation,
-				    &Type,
-				    BackendName,
-				    PermutationId,
-				    {},
-				    Job.mOutputPath,
+				return Fail(EArdaShaderCompileError::InvalidPermutation,
 				    "Generated shader artifact path escapes its output directory.");
-				return false;
 			}
 			if (PermutationId >= Type.GetPermutationCount())
 			{
-				Diagnostic = MakeDiagnostic(EArdaShaderCompileError::InvalidPermutation,
-				    &Type,
-				    BackendName,
-				    PermutationId,
-				    {},
-				    Job.mOutputPath,
-				    "Invalid shader permutation identifier.");
-				return false;
+				return Fail(EArdaShaderCompileError::InvalidPermutation, "Invalid shader permutation identifier.");
 			}
 			Job.mProfile = ProfileForStage(Type.GetStage());
 			if (Job.mProfile.empty())
 			{
-				Diagnostic = MakeDiagnostic(EArdaShaderCompileError::UnsupportedStage,
-				    &Type,
-				    BackendName,
-				    PermutationId,
-				    {},
-				    Job.mOutputPath,
+				return Fail(EArdaShaderCompileError::UnsupportedStage,
 				    "Combined, empty, or unknown shader stages cannot map to one fallback compiler profile.");
-				return false;
 			}
 			if (!ResolveSource(Type, Configuration, Job.mSourcePath))
 			{
-				Diagnostic = MakeDiagnostic(EArdaShaderCompileError::SourceResolutionFailed,
-				    &Type,
-				    BackendName,
-				    PermutationId,
-				    {},
-				    Job.mOutputPath,
+				return Fail(EArdaShaderCompileError::SourceResolutionFailed,
 				    std::string("Unable to resolve registered shader source stem: ") + Type.GetSourceStem());
-				return false;
 			}
 			{
 				const std::filesystem::path Registered(Type.GetSourceStem());
@@ -706,14 +698,8 @@ namespace arda
 				const std::string Value = ToStd(Define.mValue);
 				if (!IsValidDefineName(Name) || ContainsControl(Value))
 				{
-					Diagnostic = MakeDiagnostic(EArdaShaderCompileError::InvalidPermutation,
-					    &Type,
-					    BackendName,
-					    PermutationId,
-					    Job.mSourcePath,
-					    Job.mOutputPath,
+					return Fail(EArdaShaderCompileError::InvalidPermutation,
 					    "A shader define has an unsafe name or control character.");
-					return false;
 				}
 				Job.mArguments.push_back("-D");
 				Job.mArguments.push_back(Define.mName + "=" + Define.mValue);
@@ -746,14 +732,7 @@ namespace arda
 				const arda::FArdaRHIStatus Status = BackendModule->ConfigureShaderCompileInvocation(Invocation);
 				if (!Status)
 				{
-					Diagnostic = MakeDiagnostic(EArdaShaderCompileError::UnsupportedStage,
-					    &Type,
-					    BackendName,
-					    PermutationId,
-					    Job.mSourcePath,
-					    Job.mOutputPath,
-					    ToStd(Status.mMessage));
-					return false;
+					return Fail(EArdaShaderCompileError::UnsupportedStage, ToStd(Status.mMessage));
 				}
 				Job.mSourcePath = eastl::move(Invocation.mSourcePath);
 				Job.mOutputPath = eastl::move(Invocation.mOutputPath);
@@ -762,28 +741,16 @@ namespace arda
 				Job.mArguments = eastl::move(Invocation.mArguments);
 				if (!IsContainedArtifactPath(OutputDirectory, Job.mOutputPath))
 				{
-					Diagnostic = MakeDiagnostic(EArdaShaderCompileError::InvalidPermutation,
-					    &Type,
-					    BackendName,
-					    PermutationId,
-					    Job.mSourcePath,
-					    Job.mOutputPath,
+					return Fail(EArdaShaderCompileError::InvalidPermutation,
 					    "The backend module selected an artifact outside the output directory.");
-					return false;
 				}
 			}
 			for (const auto& Argument : Job.mArguments)
 			{
 				if (ContainsControl(ToStd(Argument)))
 				{
-					Diagnostic = MakeDiagnostic(EArdaShaderCompileError::InvalidPermutation,
-					    &Type,
-					    BackendName,
-					    PermutationId,
-					    Job.mSourcePath,
-					    Job.mOutputPath,
+					return Fail(EArdaShaderCompileError::InvalidPermutation,
 					    "A custom compiler argument contains a control character.");
-					return false;
 				}
 			}
 			uint64_t Hash = arda::ArdaFnv1a64OffsetBasis;
@@ -800,27 +767,15 @@ namespace arda
 			HashString(Hash, ToStd(Job.mSourceIdentity));
 			if (!Job.mCompilerExecutable.empty() && !HashFile(Hash, Job.mCompilerExecutable))
 			{
-				Diagnostic = MakeDiagnostic(EArdaShaderCompileError::CompilerUnavailable,
-				    &Type,
-				    BackendName,
-				    PermutationId,
-				    Job.mSourcePath,
-				    Job.mOutputPath,
+				return Fail(EArdaShaderCompileError::CompilerUnavailable,
 				    "Unable to hash the configured compiler executable.");
-				return false;
 			}
 			if (Job.mCompilerExecutable.empty())
 			{
 				if (Target.mCompilerIdentity.empty())
 				{
-					Diagnostic = MakeDiagnostic(EArdaShaderCompileError::CompilerUnavailable,
-					    &Type,
-					    BackendName,
-					    PermutationId,
-					    Job.mSourcePath,
-					    Job.mOutputPath,
+					return Fail(EArdaShaderCompileError::CompilerUnavailable,
 					    "The backend module has neither a compiler executable nor a stable in-process compiler identity.");
-					return false;
 				}
 				HashString(Hash, ToStd(Target.mCompilerIdentity));
 			}
@@ -829,14 +784,8 @@ namespace arda
 				HashString(Hash, ToStd(File.mVirtualPath));
 				if (!HashFile(Hash, File.mPhysicalPath))
 				{
-					Diagnostic = MakeDiagnostic(EArdaShaderCompileError::SourceResolutionFailed,
-					    &Type,
-					    BackendName,
-					    PermutationId,
-					    Job.mSourcePath,
-					    Job.mOutputPath,
+					return Fail(EArdaShaderCompileError::SourceResolutionFailed,
 					    "Unable to hash a file in the frozen shader-source manifest.");
-					return false;
 				}
 			}
 			if (Type.GetSourceStem()[0] != '/')
@@ -851,26 +800,12 @@ namespace arda
 				        Hashed,
 				        DependencyError))
 				{
-					Diagnostic = MakeDiagnostic(EArdaShaderCompileError::SourceResolutionFailed,
-					    &Type,
-					    BackendName,
-					    PermutationId,
-					    Job.mSourcePath,
-					    Job.mOutputPath,
-					    DependencyError);
-					return false;
+					return Fail(EArdaShaderCompileError::SourceResolutionFailed, DependencyError);
 				}
 				std::set<std::string> HashedRoots;
 				if (!HashShaderSourceDirectory(Hash, Job.mSourcePath.parent_path(), HashedRoots, DependencyError))
 				{
-					Diagnostic = MakeDiagnostic(EArdaShaderCompileError::SourceResolutionFailed,
-					    &Type,
-					    BackendName,
-					    PermutationId,
-					    Job.mSourcePath,
-					    Job.mOutputPath,
-					    DependencyError);
-					return false;
+					return Fail(EArdaShaderCompileError::SourceResolutionFailed, DependencyError);
 				}
 				for (size_t ArgumentIndex = 0; ArgumentIndex < Job.mArguments.size(); ++ArgumentIndex)
 				{
@@ -901,19 +836,62 @@ namespace arda
 					        HashedRoots,
 					        DependencyError))
 					{
-						Diagnostic = MakeDiagnostic(EArdaShaderCompileError::SourceResolutionFailed,
-						    &Type,
-						    BackendName,
-						    PermutationId,
-						    Job.mSourcePath,
-						    Job.mOutputPath,
-						    DependencyError);
-						return false;
+						return Fail(EArdaShaderCompileError::SourceResolutionFailed, DependencyError);
 					}
 				}
 			}
 			Job.mInputKey = Hash;
 			Job.mArguments.push_back(ToEastl(Job.mSourcePath.string()));
+			return true;
+		}
+
+		bool PublishFilesTransaction(const std::vector<std::pair<std::filesystem::path, std::filesystem::path>>& Files)
+		{
+			std::error_code Error;
+			std::vector<std::pair<std::filesystem::path, std::filesystem::path>> Backups;
+			std::vector<std::filesystem::path> Published;
+			const auto Rollback = [&]
+			{
+				for (const auto& Destination : Published)
+				{
+					std::filesystem::remove(Destination, Error);
+				}
+				for (auto It = Backups.rbegin(); It != Backups.rend(); ++It)
+				{
+					// Keep any backup that cannot be restored for later recovery.
+					AtomicReplace(It->second, It->first);
+				}
+				return false;
+			};
+			for (const auto& File : Files)
+			{
+				const bool bExists = std::filesystem::exists(File.second, Error);
+				if (Error || (bExists && !std::filesystem::is_regular_file(File.second, Error)))
+				{
+					return Rollback();
+				}
+				if (bExists)
+				{
+					const auto Backup = TemporaryPath(File.second, "backup");
+					if (!AtomicReplace(File.second, Backup))
+					{
+						return Rollback();
+					}
+					Backups.emplace_back(File.second, Backup);
+				}
+			}
+			for (const auto& File : Files)
+			{
+				if (!AtomicReplace(File.first, File.second))
+				{
+					return Rollback();
+				}
+				Published.push_back(File.second);
+			}
+			for (const auto& Backup : Backups)
+			{
+				std::filesystem::remove(Backup.second, Error);
+			}
 			return true;
 		}
 
@@ -923,18 +901,17 @@ namespace arda
 		    bool SkipIfCurrent = false,
 		    bool* OutCacheHit = nullptr)
 		{
+			const auto Fail = [&](EArdaShaderCompileError Code, const std::string& Message)
+			{
+				Diagnostic = MakeDiagnostic(Code, Job, Message);
+				return false;
+			};
 			std::error_code Error;
 			std::filesystem::create_directories(Job.mOutputPath.parent_path(), Error);
 			if (Error)
 			{
-				Diagnostic = MakeDiagnostic(EArdaShaderCompileError::DirectoryCreationFailed,
-				    &Job.mType,
-				    Job.mTarget.mBackendName,
-				    Job.mPermutationId,
-				    Job.mSourcePath,
-				    Job.mOutputPath,
+				return Fail(EArdaShaderCompileError::DirectoryCreationFailed,
 				    "Unable to create the shader artifact directory.");
-				return false;
 			}
 			const auto Mutex = GetOutputMutex(Job.mOutputPath);
 			std::lock_guard<std::mutex> Lock(*Mutex);
@@ -954,21 +931,14 @@ namespace arda
 			const std::filesystem::path TemporaryOutput = TemporaryPath(Job.mOutputPath, "output");
 			const std::filesystem::path TemporarySidecar = TemporaryPath(Job.mOutputPath, "key");
 			const std::filesystem::path Log = TemporaryPath(Job.mOutputPath, "log");
+			const FArdaTemporaryShaderFiles Cleanup{{TemporaryOutput, TemporarySidecar, Log}};
 			{
 				std::ofstream Stream(TemporarySidecar, std::ios::binary | std::ios::trunc);
 				Stream << KeyText(Job.mInputKey);
 				if (!Stream)
 				{
-					std::error_code CleanupError;
-					std::filesystem::remove(TemporarySidecar, CleanupError);
-					Diagnostic = MakeDiagnostic(EArdaShaderCompileError::CacheWriteFailed,
-					    &Job.mType,
-					    Job.mTarget.mBackendName,
-					    Job.mPermutationId,
-					    Job.mSourcePath,
-					    Job.mOutputPath,
+					return Fail(EArdaShaderCompileError::CacheWriteFailed,
 					    "Unable to prepare the shader cache-key sidecar.");
-					return false;
 				}
 			}
 			eastl::vector<eastl::string> DirectArguments = Job.mArguments;
@@ -1004,131 +974,23 @@ namespace arda
 				ExitCode = ModuleResult == EArdaBackendShaderCompileResult::Success ? 0 : 1;
 			}
 			std::string CompilerOutput = ModuleDiagnostics.empty() ? ReadText(Log) : ToStd(ModuleDiagnostics);
-			std::filesystem::remove(Log, Error);
 			if (!bLaunched)
 			{
-				std::filesystem::remove(TemporaryOutput, Error);
-				std::filesystem::remove(TemporarySidecar, Error);
-				Diagnostic = MakeDiagnostic(EArdaShaderCompileError::ProcessLaunchFailed,
-				    &Job.mType,
-				    Job.mTarget.mBackendName,
-				    Job.mPermutationId,
-				    Job.mSourcePath,
-				    Job.mOutputPath,
+				return Fail(EArdaShaderCompileError::ProcessLaunchFailed,
 				    "Neither the backend module nor the configured fallback compiler launched the job.");
-				return false;
 			}
-			if (ExitCode != 0 || !std::filesystem::is_regular_file(TemporaryOutput, Error) || Error ||
-			    std::filesystem::file_size(TemporaryOutput, Error) == 0 || Error)
+			if (ExitCode != 0 || !IsRegularNonEmpty(TemporaryOutput))
 			{
-				std::filesystem::remove(TemporaryOutput, Error);
-				std::filesystem::remove(TemporarySidecar, Error);
-				Diagnostic = MakeDiagnostic(EArdaShaderCompileError::CompilationFailed,
-				    &Job.mType,
-				    Job.mTarget.mBackendName,
-				    Job.mPermutationId,
-				    Job.mSourcePath,
-				    Job.mOutputPath,
+				return Fail(EArdaShaderCompileError::CompilationFailed,
 				    "Shader compilation failed with exit code " + std::to_string(ExitCode) +
 				        (CompilerOutput.empty() ? "." : ":\n" + CompilerOutput));
-				return false;
 			}
 			const std::filesystem::path Sidecar = Job.mOutputPath.string() + ".arda-key";
-			const std::filesystem::path BackupOutput = TemporaryPath(Job.mOutputPath, "backup");
-			const std::filesystem::path BackupSidecar = TemporaryPath(Job.mOutputPath, "backup-key");
-			const bool HadOutput = std::filesystem::exists(Job.mOutputPath, Error);
-			const bool HadSidecar = std::filesystem::exists(Sidecar, Error);
-			if ((HadOutput && !AtomicReplace(Job.mOutputPath, BackupOutput)) ||
-			    (HadSidecar && !AtomicReplace(Sidecar, BackupSidecar)))
+			if (!PublishFilesTransaction({{TemporaryOutput, Job.mOutputPath}, {TemporarySidecar, Sidecar}}))
 			{
-				std::filesystem::remove(TemporaryOutput, Error);
-				std::filesystem::remove(TemporarySidecar, Error);
-				if (HadOutput && std::filesystem::exists(BackupOutput, Error))
-				{
-					AtomicReplace(BackupOutput, Job.mOutputPath);
-				}
-				Diagnostic = MakeDiagnostic(EArdaShaderCompileError::CacheWriteFailed,
-				    &Job.mType,
-				    Job.mTarget.mBackendName,
-				    Job.mPermutationId,
-				    Job.mSourcePath,
-				    Job.mOutputPath,
-				    "Unable to prepare rollback backups for shader publication.");
-				return false;
+				return Fail(EArdaShaderCompileError::CacheWriteFailed,
+				    "Unable to publish artifact and sidecar together; rollback was attempted.");
 			}
-			if (!AtomicReplace(TemporaryOutput, Job.mOutputPath) || !AtomicReplace(TemporarySidecar, Sidecar))
-			{
-				std::filesystem::remove(Job.mOutputPath, Error);
-				std::filesystem::remove(Sidecar, Error);
-				if (HadOutput)
-				{
-					AtomicReplace(BackupOutput, Job.mOutputPath);
-				}
-				if (HadSidecar)
-				{
-					AtomicReplace(BackupSidecar, Sidecar);
-				}
-				std::filesystem::remove(TemporaryOutput, Error);
-				std::filesystem::remove(TemporarySidecar, Error);
-				Diagnostic = MakeDiagnostic(EArdaShaderCompileError::CacheWriteFailed,
-				    &Job.mType,
-				    Job.mTarget.mBackendName,
-				    Job.mPermutationId,
-				    Job.mSourcePath,
-				    Job.mOutputPath,
-				    "Unable to publish artifact and sidecar together; previous files were restored.");
-				return false;
-			}
-			std::filesystem::remove(BackupOutput, Error);
-			std::filesystem::remove(BackupSidecar, Error);
-			return true;
-		}
-
-		bool PublishFilesTransaction(const std::vector<std::pair<std::filesystem::path, std::filesystem::path>>& Files,
-		    const std::filesystem::path& BackupDirectory)
-		{
-			std::error_code Error;
-			std::filesystem::create_directories(BackupDirectory, Error);
-			if (Error)
-			{
-				return false;
-			}
-			std::vector<std::pair<std::filesystem::path, std::filesystem::path>> Backups;
-			std::vector<std::filesystem::path> Published;
-			for (const auto& File : Files)
-			{
-				if (!std::filesystem::exists(File.second, Error))
-				{
-					continue;
-				}
-				const auto Backup = BackupDirectory / (std::to_string(Backups.size()) + ".bak");
-				if (!AtomicReplace(File.second, Backup))
-				{
-					for (auto It = Backups.rbegin(); It != Backups.rend(); ++It)
-					{
-						AtomicReplace(It->second, It->first);
-					}
-					return false;
-				}
-				Backups.emplace_back(File.second, Backup);
-			}
-			for (const auto& File : Files)
-			{
-				if (!AtomicReplace(File.first, File.second))
-				{
-					for (const auto& Destination : Published)
-					{
-						std::filesystem::remove(Destination, Error);
-					}
-					for (auto It = Backups.rbegin(); It != Backups.rend(); ++It)
-					{
-						AtomicReplace(It->second, It->first);
-					}
-					return false;
-				}
-				Published.push_back(File.second);
-			}
-			std::filesystem::remove_all(BackupDirectory, Error);
 			return true;
 		}
 
@@ -1410,18 +1272,16 @@ namespace arda
 			Files.emplace_back(StagedArtifact.string() + ".arda-key", Job.mOutputPath.string() + ".arda-key");
 		}
 		Files.emplace_back(StagedManifest, OutputDirectory / "ArdaShaderManifest.json");
-		const std::filesystem::path BackupDirectory = TemporaryPath(OutputDirectory, "rollback");
-		if (Error || !PublishFilesTransaction(Files, BackupDirectory))
+		if (Error || !PublishFilesTransaction(Files))
 		{
 			std::filesystem::remove_all(StagingDirectory, Error);
-			std::filesystem::remove_all(BackupDirectory, Error);
 			Result.mDiagnostics.push_back(MakeDiagnostic(EArdaShaderCompileError::CacheWriteFailed,
 			    nullptr,
 			    {},
 			    0,
 			    {},
 			    OutputDirectory,
-			    "Unable to publish the staged shader cook; previous outputs were restored."));
+			    "Unable to publish the staged shader cook; rollback was attempted."));
 			return Result;
 		}
 		std::filesystem::remove_all(StagingDirectory, Error);

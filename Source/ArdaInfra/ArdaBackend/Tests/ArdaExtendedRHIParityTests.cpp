@@ -1510,7 +1510,9 @@ namespace
 		EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 	}
 
-	void VerifyRasterStageCapabilityAndExecution(const char* BackendName, bool bTessellation)
+	void VerifyRasterStageCapabilityAndExecution(const char* BackendName,
+	    bool bTessellation,
+	    bool bIndirectFirstInstance = false)
 	{
 		using namespace arda;
 
@@ -1529,8 +1531,9 @@ namespace
 		FArdaRHIDeviceRef Device = GetDevice();
 		ASSERT_TRUE(Device);
 		FArdaRHIFeatureRequirements Requirements;
-		Requirements.mbRequireGeometryShaders = !bTessellation;
+		Requirements.mbRequireGeometryShaders = !bTessellation && !bIndirectFirstInstance;
 		Requirements.mbRequireTessellationShaders = bTessellation;
+		Requirements.mbRequireIndirectFirstInstance = bIndirectFirstInstance;
 		const auto Admission = Device->RequireFeatures(Requirements);
 		ASSERT_TRUE(Admission) << Admission.mMessage.c_str();
 
@@ -1574,7 +1577,7 @@ namespace
 			PipelineDesc.mTopology = EArdaRHIPrimitiveTopology::PatchList;
 			PipelineDesc.mPatchControlPoints = 3;
 		}
-		else
+		else if (!bIndirectFirstInstance)
 		{
 			auto Geometry = CreateExtendedShader(*Device,
 			    BackendName,
@@ -1614,10 +1617,30 @@ namespace
 		State.mFramebuffer = Framebuffer.mValue;
 		State.mViewports = {{0, 4, 0, 4, 0, 1}};
 		State.mScissors = {{0, 4, 0, 4}};
-		ASSERT_TRUE(Commands.mValue->SetGraphicsState(State));
 		FArdaRHIDrawArguments Draw;
 		Draw.mVertexCount = 3;
-		Commands.mValue->Draw(Draw);
+		FArdaRHIBufferRef IndirectBuffer;
+		if (bIndirectFirstInstance)
+		{
+			const uint32_t Arguments[] = {3, 1, 0, 7};
+			FArdaRHIBufferDesc Desc;
+			Desc.mByteSize = sizeof(Arguments);
+			Desc.mUsage = EArdaRHIBufferUsage::Indirect;
+			const auto Buffer = Device->CreateBuffer(Desc);
+			ASSERT_TRUE(Buffer);
+			ASSERT_TRUE(Commands.mValue->WriteBuffer(*Buffer.mValue, Arguments, sizeof(Arguments)));
+			ASSERT_TRUE(Commands.mValue->SetBufferState(*Buffer.mValue, EArdaRHIResourceState::IndirectArgument));
+			IndirectBuffer = Buffer.mValue;
+		}
+		ASSERT_TRUE(Commands.mValue->SetGraphicsState(State));
+		if (IndirectBuffer)
+		{
+			ASSERT_TRUE(Commands.mValue->DrawIndirect(*IndirectBuffer));
+		}
+		else
+		{
+			Commands.mValue->Draw(Draw);
+		}
 		ASSERT_TRUE(Commands.mValue->SetTextureState(*Target.mValue, {}, EArdaRHIResourceState::CopySource));
 		Commands.mValue->CommitBarriers();
 		FArdaRHITextureSlice Slice;
@@ -1636,9 +1659,9 @@ namespace
 			const auto* Row = static_cast<const uint8_t*>(Mapping.mValue.mData) + Y * Mapping.mValue.mRowPitch;
 			for (uint32_t X = 0; X < 4; ++X)
 			{
-				// VS emits red; GS must replace it with green, or HS+DS must produce cyan.
-				EXPECT_LE(Row[X * 4], 1u);
-				EXPECT_GE(Row[X * 4 + 1], 254u);
+				// The indirect vertex-only draw emits red; GS emits green and HS+DS emits cyan.
+				EXPECT_NEAR(Row[X * 4], bIndirectFirstInstance ? 255 : 0, 1);
+				EXPECT_NEAR(Row[X * 4 + 1], bIndirectFirstInstance ? 0 : 255, 1);
 				EXPECT_NEAR(Row[X * 4 + 2], bTessellation ? 255 : 0, 1);
 				EXPECT_EQ(Row[X * 4 + 3], 255u);
 			}
@@ -3615,9 +3638,89 @@ namespace
 #endif
 #endif
 
+	void VerifyResourceAdmissionFacts(const char* BackendName)
+	{
+		using namespace arda;
+		ShutdownBackend();
+		FArdaExtendedDiagnosticCallback Diagnostics;
+		FArdaExtendedBackendCleanup Cleanup;
+		auto Configuration = arda::MakeArdaTestBackendConfiguration();
+		Configuration.mBackendName = BackendName;
+		Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
+		Configuration.mMessageCallback = &Diagnostics;
+		Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+		ASSERT_TRUE(ConfigureBackend(Configuration));
+		ARDA_REQUIRE_BACKEND();
+		const auto Device = GetDevice();
+		ASSERT_TRUE(Device);
+		const auto& Caps = Device->GetCapabilities();
+		const auto& Limits = Caps.mLimits;
+		ASSERT_TRUE(Caps.mbFormatSupportReported);
+		EXPECT_GT(Limits.mMaxTexture1D, 0u);
+		EXPECT_GT(Limits.mMaxTexture2D, 0u);
+		EXPECT_GT(Limits.mMaxTexture3D, 0u);
+		EXPECT_GT(Limits.mMaxTextureCube, 0u);
+		EXPECT_GT(Limits.mMaxTextureArrayLayers, 0u);
+		EXPECT_GT(Limits.mMaxColorAttachments, 0u);
+		EXPECT_GT(Limits.mMaxViewports, 0u);
+		EXPECT_GT(Limits.mMaxVertexAttributes, 0u);
+		EXPECT_GT(Limits.mMaxVertexBindings, 0u);
+		EXPECT_GT(Limits.mMaxVertexStride, 0u);
+		EXPECT_GT(Limits.mMaxComputeWorkGroupInvocations, 0u);
+		EXPECT_GT(Limits.mMaxUniformBufferRange, 0u);
+		// D3D12 bounds storage views by element count and stride, so it reports no universal byte limit.
+		if (std::string(BackendName) == "native-vulkan")
+		{
+			EXPECT_GT(Limits.mMaxStorageBufferRange, 0u);
+		}
+		EXPECT_GT(Limits.mMinUniformBufferOffsetAlignment, 0u);
+		EXPECT_GT(Limits.mMinStorageBufferOffsetAlignment, 0u);
+		for (uint32_t Axis = 0; Axis < 3; ++Axis)
+		{
+			EXPECT_GT(Limits.mMaxComputeWorkGroupCount[Axis], 0u);
+			EXPECT_GT(Limits.mMaxComputeWorkGroupSize[Axis], 0u);
+		}
+		EXPECT_GT(Limits.mMaxViewportDimensions[0], 0u);
+		EXPECT_GT(Limits.mMaxViewportDimensions[1], 0u);
+		EXPECT_LT(Limits.mViewportBounds[0], Limits.mViewportBounds[1]);
+		for (const auto Format : {EArdaRHIFormat::Unknown, EArdaRHIFormat::Count, static_cast<EArdaRHIFormat>(255)})
+		{
+			const auto Support = Device->QueryFormatSupport(Format);
+			EXPECT_EQ(Support.mNativeFormat, 0u);
+			EXPECT_EQ(Support.mSampleCounts, 0u);
+			EXPECT_FALSE(Support.mbTexture1D || Support.mbTexture2D || Support.mbTexture3D || Support.mbTextureCube ||
+			    Support.mbShaderResource || Support.mbFilterable || Support.mbStorage || Support.mbStorageLoad ||
+			    Support.mbStorageStore || Support.mbColorAttachment || Support.mbDepthStencilAttachment ||
+			    Support.mbBlendable || Support.mbVertexBuffer || Support.mbBufferShaderResource ||
+			    Support.mbBufferStorage);
+		}
+		const auto Color = Device->QueryFormatSupport(EArdaRHIFormat::RGBA8UNorm);
+		ASSERT_NE(Color.mNativeFormat, 0u);
+		EXPECT_TRUE(Color.mbTexture2D && Color.mbShaderResource && Color.mbFilterable && Color.mbColorAttachment);
+		EXPECT_NE(Color.mSampleCounts & 1, 0u);
+		FArdaRHITextureDesc TextureDesc;
+		TextureDesc.mWidth = TextureDesc.mHeight = 4;
+		TextureDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+		ASSERT_TRUE(Device->CreateTexture(TextureDesc));
+		if (Limits.mMaxTexture2D != UINT32_MAX)
+		{
+			TextureDesc.mWidth = Limits.mMaxTexture2D + 1;
+			EXPECT_EQ(Device->CreateTexture(TextureDesc).mStatus.mCode, EArdaRHIResult::Unsupported);
+		}
+		if (Limits.mMaxBufferSize && Limits.mMaxBufferSize != UINT64_MAX)
+		{
+			FArdaRHIBufferDesc BufferDesc;
+			BufferDesc.mByteSize = Limits.mMaxBufferSize + 1;
+			EXPECT_EQ(Device->CreateBuffer(BufferDesc).mStatus.mCode, EArdaRHIResult::Unsupported);
+		}
+		EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+	}
+
 	enum class EArdaCapabilityProbe : uint8_t
 	{
 		Contract,
+		ResourceAdmission,
+		IndirectFirstInstance,
 		PipelineCache,
 		ExtendedCommands,
 		Resolve,
@@ -3757,6 +3860,12 @@ namespace
 		{
 		case EArdaCapabilityProbe::Contract:
 			FAIL() << "An advertised capability has no native conformance workload.";
+			return;
+		case EArdaCapabilityProbe::ResourceAdmission:
+			VerifyResourceAdmissionFacts(TestCase.mBackendName);
+			return;
+		case EArdaCapabilityProbe::IndirectFirstInstance:
+			VerifyRasterStageCapabilityAndExecution(TestCase.mBackendName, false, true);
 			return;
 		case EArdaCapabilityProbe::GeometryShader:
 			VerifyRasterStageCapabilityAndExecution(TestCase.mBackendName, false);
@@ -4010,6 +4119,16 @@ namespace
 		    ARDA_CAPABILITY("ExplicitTransitions", C.mbExplicitTransitions, ExtendedCommands),
 		    ARDA_CAPABILITY("SplitTransitions", C.mbSplitTransitions, ExtendedCommands),
 		    ARDA_CAPABILITY("IndirectCommands", C.mbIndirectCommands, ExtendedCommands),
+		    ARDA_CAPABILITY("IndirectFirstInstance", C.mbIndirectFirstInstance, IndirectFirstInstance),
+		    ARDA_CAPABILITY("FormatSupport", C.mbFormatSupportReported, ResourceAdmission),
+		    ARDA_CAPABILITY("ResourceLimits",
+		        C.mLimits.mMaxTexture1D || C.mLimits.mMaxTexture2D || C.mLimits.mMaxTexture3D ||
+		            C.mLimits.mMaxTextureCube || C.mLimits.mMaxTextureArrayLayers || C.mLimits.mMaxColorAttachments ||
+		            C.mLimits.mMaxViewports || C.mLimits.mMaxVertexAttributes || C.mLimits.mMaxVertexBindings ||
+		            C.mLimits.mMaxVertexStride || C.mLimits.mMaxComputeWorkGroupInvocations ||
+		            C.mLimits.mMaxBufferSize || C.mLimits.mMaxUniformBufferRange || C.mLimits.mMaxStorageBufferRange ||
+		            C.mLimits.mMinUniformBufferOffsetAlignment || C.mLimits.mMinStorageBufferOffsetAlignment,
+		        ResourceAdmission),
 		    ARDA_CAPABILITY("AliasingBarriers", C.mbAliasingBarriers, HeapAliasing),
 		    ARDA_CAPABILITY("Queries", C.mbQueries, Queries),
 		    ARDA_CAPABILITY("GraphicsTimestamps", C.mQueues.mGraphicsTimestampValidBits != 0, QueueTimestamps),
@@ -4053,7 +4172,8 @@ TEST(ArdaBackend, CapabilityMatrixCoversEveryPublicField)
 	std::string Source((std::istreambuf_iterator<char>(Header)), {});
 	// These are admission inputs/reports, not device capabilities. Remove their full declarations
 	// using the public header's top-level struct delimiter, including all nested method bodies.
-	for (const char* Name : {"FArdaRHIFeatureRequirements", "FArdaRHIFeatureSupportReport"})
+	// Per-format query reports are covered by ResourceAdmission rather than capability predicates.
+	for (const char* Name : {"FArdaRHIFeatureRequirements", "FArdaRHIFeatureSupportReport", "FArdaRHIFormatSupport"})
 	{
 		const auto Begin = Source.find(std::string("\tstruct ") + Name);
 		ASSERT_NE(Begin, std::string::npos) << Name;

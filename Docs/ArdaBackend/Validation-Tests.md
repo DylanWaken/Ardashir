@@ -164,3 +164,34 @@ in-place DLL replacement is part of rollback.
 References: [Khronos build instructions](https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/e4786f7ce8f1319215eff0d938f4be4651cbb85d/BUILD.md),
 [Vulkan loader discovery](https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderLayerInterface.md),
 and [Microsoft Agility deployment](https://devblogs.microsoft.com/directx/gettingstarted-dx12agility/).
+
+## RHI audit implementation validation — 2026-09-17
+
+The accepted RHI audit implementation was validated on NVIDIA RTX PRO 6000
+Blackwell Workstation Edition, driver 610.62:
+
+- Full Debug build with D3D12/Vulkan and validation enabled: **799 passed,
+  146 skipped, zero failures** across 945 CTest cases.
+- CUDA 13.4.59 Release build with D3D12 and validation enabled: **615 passed,
+  112 skipped, zero failures** across all 727 cases from the rebuilt
+  backend, RHI and graph executables. Vulkan was disabled in that configuration.
+
+Tests cover command-generation errors, required binding sets, repeated push-only
+binding reuse, descriptor/native limits, selected framebuffer views, sparse
+remapping and prefix preservation, failed retirement signals/waits, shutdown
+quarantine and later reclamation. GPU byte/pixel readbacks supplement ownership
+counters. Capability and environment skips remain distinct from passing tests.
+Configuration-specific fixtures omit/skip explicitly disabled providers and
+continue to fail on unexpected initialization errors for enabled providers.
+
+The skip audit identified unresolved coverage gaps: two symlink fixtures in each
+run reported already-existing destinations, and two CUDA Release surface tests
+in D3D12 graphics-queue mode skipped after a `CUDA_ERROR_UNKNOWN` capability
+probe. Their normal CUDA-context counterparts passed. These are not evidence of
+ordinary hardware limitations. Vulkan+CUDA was not exercised in either build;
+the audit records all skip categories and counts.
+
+Full commands, logs, documentation checks and hardware qualifications are in the
+[current audit](Unreal-RHI-Audit.md#validation-and-remaining-coverage). No physical
+GPU removal, real GPU-hang recovery, Vulkan CUDA run or separate validation-off
+run was attempted for this implementation pass.

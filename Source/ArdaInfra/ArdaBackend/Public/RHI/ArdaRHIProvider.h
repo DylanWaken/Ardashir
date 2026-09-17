@@ -541,7 +541,21 @@ namespace arda
 		}
 
 		virtual ~IArdaRHIProviderDevice() = default;
+
+		/** Captures bounded native diagnostics without GPU submission or waits. */
+		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIDiagnosticSnapshot> CaptureDiagnosticSnapshot() const
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Native diagnostics are unavailable.")};
+		}
+
 		[[nodiscard]] virtual const FArdaRHICapabilities& GetCapabilities() const noexcept = 0;
+
+		/** Queries independent native format facts; unknown/unsupported formats return an empty report. */
+		[[nodiscard]] virtual FArdaRHIFormatSupport QueryFormatSupport(EArdaRHIFormat) const noexcept
+		{
+			return {};
+		}
+
 		[[nodiscard]] virtual EArdaRHINativeResourceType GetTextureImportType() const noexcept = 0;
 		[[nodiscard]] virtual EArdaRHINativeResourceType GetBufferImportType() const noexcept = 0;
 

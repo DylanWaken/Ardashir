@@ -68,6 +68,16 @@ namespace
 		eastl::shared_ptr<FArdaAllocatorObjectCounts> mCounts;
 	};
 
+	/** Native metadata stand-in used to exercise facade ownership without a graphics driver. */
+	class FArdaAllocatorMetadataObject final : public IArdaProviderObject
+	{
+	public:
+		const void* GetIdentity() const noexcept override
+		{
+			return this;
+		}
+	};
+
 	/** Uses the real device facade and allocator, replacing only native GPU allocation. */
 	class FArdaAllocatorProvider final : public IArdaRHIProviderDevice
 	{
@@ -204,18 +214,30 @@ namespace
 		ARDA_ALLOCATOR_UNSUPPORTED_OBJECT(ImportTexture, FArdaRHINativeTextureImportDesc)
 		ARDA_ALLOCATOR_UNSUPPORTED_OBJECT(ImportBuffer, FArdaRHINativeBufferImportDesc)
 		ARDA_ALLOCATOR_UNSUPPORTED_OBJECT(CreateSampler, FArdaRHISamplerDesc)
-		ARDA_ALLOCATOR_UNSUPPORTED_OBJECT(CreateShader, FArdaRHIShaderDesc)
-		ARDA_ALLOCATOR_UNSUPPORTED_OBJECT(CreateBindingLayout, FArdaRHIBindingLayoutDesc)
 		ARDA_ALLOCATOR_UNSUPPORTED_OBJECT(CreateFramebuffer, FArdaProviderFramebufferCreateInfo)
-		ARDA_ALLOCATOR_UNSUPPORTED_OBJECT(CreateGraphicsPipeline, FArdaProviderGraphicsPipelineCreateInfo)
 		ARDA_ALLOCATOR_UNSUPPORTED_OBJECT(CreateComputePipeline, FArdaProviderComputePipelineCreateInfo)
 #undef ARDA_ALLOCATOR_UNSUPPORTED_OBJECT
+
+		FArdaProviderObjectResult CreateShader(const FArdaRHIShaderDesc&) override
+		{
+			return {eastl::make_shared<FArdaAllocatorMetadataObject>(), {}};
+		}
+
+		FArdaProviderObjectResult CreateBindingLayout(const FArdaRHIBindingLayoutDesc&) override
+		{
+			return {eastl::make_shared<FArdaAllocatorMetadataObject>(), {}};
+		}
+
+		FArdaProviderObjectResult CreateGraphicsPipeline(const FArdaProviderGraphicsPipelineCreateInfo&) override
+		{
+			return {eastl::make_shared<FArdaAllocatorMetadataObject>(), {}};
+		}
 
 		FArdaProviderObjectResult CreateBindingSet(const FArdaRHIBindingSetDesc&,
 		    const FArdaProviderObjectRef&,
 		    const eastl::vector<FArdaProviderBinding>&) override
 		{
-			return {{}, Unsupported()};
+			return {eastl::make_shared<FArdaAllocatorMetadataObject>(), {}};
 		}
 
 		TArdaRHIResult<FArdaRHIStagingTextureMapping> MapStagingTexture(const FArdaProviderObjectRef&,
@@ -527,6 +549,128 @@ namespace
 		EXPECT_EQ(OtherProvider->mBufferCreationAttempts, 1u);
 		EXPECT_EQ(OtherDevice->GetGpuAllocatorStats().mBufferCacheHits, 0u);
 		EXPECT_EQ(mDevice->GetGpuAllocatorStats().mCachedResources, 1u);
+	}
+
+	TEST_F(FArdaGpuAllocatorTest, SurvivingResourcesBelongToTheirOriginalFacadeGeneration)
+	{
+		auto OldBuffer = mDevice->CreateBuffer(BufferDesc());
+		auto OldTexture = mDevice->CreateTexture(TextureDesc());
+		auto OldHeap = mDevice->CreateHeap(HeapDesc());
+		ASSERT_TRUE(OldBuffer && OldTexture && OldHeap);
+		auto OldView = mDevice->CreateShaderResourceView(OldTexture.mValue, {});
+		auto OldReference = mDevice->CreateTextureReference(OldTexture.mValue);
+		FArdaRHIBindingLayoutDesc BindingLayoutDesc;
+		BindingLayoutDesc.mVisibility = EArdaRHIShaderStage::Pixel;
+		BindingLayoutDesc.mItems.push_back({0, 1, EArdaRHIBindingType::TextureSRV});
+		auto OldBindingLayout = mDevice->CreateBindingLayout(BindingLayoutDesc);
+		FArdaRHIVertexAttributeDesc Attribute;
+		Attribute.mSemanticName = "POSITION";
+		Attribute.mFormat = EArdaRHIFormat::RGB32Float;
+		Attribute.mElementStride = 12;
+		auto OldInputLayout = mDevice->CreateInputLayout({Attribute});
+		const uint32_t Bytecode = 1;
+		FArdaRHIShaderDesc ShaderDesc;
+		ShaderDesc.mStage = EArdaRHIShaderStage::Vertex;
+		ShaderDesc.mBytecode = &Bytecode;
+		ShaderDesc.mBytecodeSize = sizeof(Bytecode);
+		auto OldShader = mDevice->CreateShader(ShaderDesc);
+		ASSERT_TRUE(OldView && OldReference && OldBindingLayout && OldInputLayout && OldShader);
+
+		mDevice.Reset();
+		EXPECT_EQ(mProvider->mCounts->mDestroyedBuffers, 0u);
+		EXPECT_EQ(mProvider->mCounts->mDestroyedTextures, 0u);
+		EXPECT_EQ(mProvider->mCounts->mDestroyedHeaps, 0u);
+		mDevice = CreateArdaRHIDevice(mProvider);
+		auto NewBuffer = mDevice->CreateBuffer(BufferDesc());
+		auto NewTexture = mDevice->CreateTexture(TextureDesc());
+		auto NewHeap = mDevice->CreateHeap(HeapDesc());
+		auto NewBindingLayout = mDevice->CreateBindingLayout(BindingLayoutDesc);
+		auto NewInputLayout = mDevice->CreateInputLayout({Attribute});
+		auto NewShader = mDevice->CreateShader(ShaderDesc);
+		ASSERT_TRUE(NewBuffer && NewTexture && NewHeap && NewBindingLayout && NewInputLayout && NewShader);
+		auto NewView = mDevice->CreateShaderResourceView(NewTexture.mValue, {});
+		ASSERT_TRUE(NewView);
+
+		EXPECT_EQ(mDevice->GetBufferMemoryRequirements(OldBuffer.mValue).mStatus.mCode, EArdaRHIResult::WrongDevice);
+		EXPECT_EQ(mDevice->GetTextureMemoryRequirements(OldTexture.mValue).mStatus.mCode, EArdaRHIResult::WrongDevice);
+		EXPECT_EQ(mDevice->CreateShaderResourceView(OldTexture.mValue, {}).mStatus.mCode, EArdaRHIResult::WrongDevice);
+		EXPECT_EQ(mDevice->CreateTextureReference(OldTexture.mValue).mStatus.mCode, EArdaRHIResult::WrongDevice);
+		EXPECT_EQ(mDevice->SetTextureReference(OldReference.mValue, NewTexture.mValue).mCode,
+		    EArdaRHIResult::WrongDevice);
+		EXPECT_EQ(mDevice->CreatePlacedBuffer(BufferDesc(), OldHeap.mValue, 0).mStatus.mCode,
+		    EArdaRHIResult::WrongDevice);
+		EXPECT_TRUE(mDevice->GetBufferMemoryRequirements(NewBuffer.mValue));
+		EXPECT_TRUE(mDevice->GetTextureMemoryRequirements(NewTexture.mValue));
+		EXPECT_TRUE(mDevice->CreateTextureReference(NewTexture.mValue));
+
+		const auto CreateSet = [&](const FArdaRHIBindingLayoutRef& Layout, const FArdaRHIShaderResourceViewRef& View)
+		{
+			FArdaRHIBindingSetDesc Desc;
+			Desc.mLayout = Layout;
+			Desc.mItems.push_back({0, 0, EArdaRHIBindingType::TextureSRV, View, {}});
+			return mDevice->CreateBindingSet(Desc);
+		};
+		EXPECT_EQ(CreateSet(OldBindingLayout.mValue, NewView.mValue).mStatus.mCode, EArdaRHIResult::WrongDevice);
+		EXPECT_EQ(CreateSet(NewBindingLayout.mValue, OldView.mValue).mStatus.mCode, EArdaRHIResult::WrongDevice);
+		EXPECT_TRUE(CreateSet(NewBindingLayout.mValue, NewView.mValue));
+		const auto CreatePipeline = [&](const FArdaRHIInputLayoutRef& Layout, const FArdaRHIShaderRef& Shader)
+		{
+			FArdaRHIGraphicsPipelineDesc Desc;
+			Desc.mInputLayout = Layout;
+			Desc.mVertexShader = Shader;
+			return mDevice->CreateGraphicsPipeline(Desc);
+		};
+		EXPECT_EQ(CreatePipeline(OldInputLayout.mValue, NewShader.mValue).mStatus.mCode, EArdaRHIResult::WrongDevice);
+		EXPECT_EQ(CreatePipeline(NewInputLayout.mValue, OldShader.mValue).mStatus.mCode, EArdaRHIResult::WrongDevice);
+		EXPECT_TRUE(CreatePipeline(NewInputLayout.mValue, NewShader.mValue));
+
+		// Facade-only wrappers retain the old allocation until the final dependent reference is released.
+		OldBuffer.mValue.Reset();
+		OldTexture.mValue.Reset();
+		OldHeap.mValue.Reset();
+		OldReference.mValue.Reset();
+		EXPECT_EQ(mProvider->mCounts->mDestroyedBuffers, 1u);
+		EXPECT_EQ(mProvider->mCounts->mDestroyedHeaps, 1u);
+		EXPECT_EQ(mProvider->mCounts->mDestroyedTextures, 0u);
+		OldView.mValue.Reset();
+		EXPECT_EQ(mProvider->mCounts->mDestroyedTextures, 1u);
+		EXPECT_TRUE(mDevice->GetBufferMemoryRequirements(NewBuffer.mValue));
+		EXPECT_TRUE(mDevice->GetTextureMemoryRequirements(NewTexture.mValue));
+	}
+
+	TEST_F(FArdaGpuAllocatorTest, FramebufferValidationRequiresCompatibleAttachmentSets)
+	{
+		FArdaRHIFramebufferDesc Framebuffer;
+		EXPECT_FALSE(Validate(Framebuffer));
+		auto Desc = TextureDesc();
+		Desc.mUsage = EArdaRHITextureUsage::RenderTarget;
+		const auto Color = mDevice->CreateTexture(Desc);
+		ASSERT_TRUE(Color);
+		Framebuffer.mColorAttachments.push_back({Color.mValue, {}});
+		EXPECT_TRUE(Validate(Framebuffer));
+		Desc.mWidth = Desc.mHeight = 8;
+		const auto SmallerColor = mDevice->CreateTexture(Desc);
+		ASSERT_TRUE(SmallerColor);
+		Framebuffer.mColorAttachments.push_back({SmallerColor.mValue, {}});
+		EXPECT_TRUE(Validate(Framebuffer));
+		Desc.mSampleCount = 4;
+		const auto MultisampledColor = mDevice->CreateTexture(Desc);
+		ASSERT_TRUE(MultisampledColor);
+		Framebuffer.mColorAttachments.back().mTexture = MultisampledColor.mValue;
+		EXPECT_FALSE(Validate(Framebuffer));
+		Framebuffer.mColorAttachments.back().mTexture.Reset();
+		EXPECT_FALSE(Validate(Framebuffer));
+		Framebuffer.mColorAttachments.assign(ArdaRHIMaxRenderTargets + 1, {Color.mValue, {}});
+		EXPECT_FALSE(Validate(Framebuffer));
+		Framebuffer.mColorAttachments.clear();
+		Desc.mFormat = EArdaRHIFormat::D24S8;
+		Desc.mUsage = EArdaRHITextureUsage::DepthStencil;
+		const auto Depth = mDevice->CreateTexture(Desc);
+		ASSERT_TRUE(Depth);
+		Framebuffer.mDepthAttachment.mTexture = Depth.mValue;
+		EXPECT_TRUE(Validate(Framebuffer));
+		Framebuffer.mColorAttachments.push_back({Color.mValue, {}});
+		EXPECT_FALSE(Validate(Framebuffer));
 	}
 
 	TEST_F(FArdaGpuAllocatorTest, ExplicitTrimDestroysIdleResourcesAndPreservesLiveAllocations)

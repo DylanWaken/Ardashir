@@ -8,6 +8,8 @@ Start at [the overview](index.html). The backend guides include:
 - [How CUDA works with graphics](cuda-graphics.html): general concepts, shared memory, graphics/CUDA handoffs, execution modes, lifetime and performance.
 - [CUDA operands and both launch methods](cuda-interop.html#launch-methods): precompiled typed variants, registered and triple-chevron launches, runtime validation, RDG scheduling and submission lifetime.
 - [GPU validation setup](validation.html): local provisioning, discovery, unavailable-layer skips and failure diagnosis.
+- [Command validation](commands.html#command-admission), [native resource admission and sparse retirement](rhi.html#native-admission), and [bounded GPU fault snapshots](diagnostics.html#fault-snapshots): implemented audit contracts and failure handling.
+- [Unreal RHI audit](Unreal-RHI-Audit.md): current defect ledger, lifetime fixes, missing features and implementation/defer decisions against local Unreal 5.8.1.
 - [Complete examples](gpu-examples.html): compiled test helpers, shared fixtures, HLSL and artifact registrations.
 - [Canonical API reference](api-reference.html): exact symbols and contracts, readable without JavaScript; JavaScript adds search and filtering.
 

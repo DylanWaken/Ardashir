@@ -222,10 +222,9 @@ namespace
 		HostDesc.mUsage = EArdaRHIBufferUsage::UnorderedAccess;
 		HostDesc.mCpuAccess = EArdaRHICpuAccess::Write;
 		const auto Host = Graph.CreateBuffer("host", HostDesc);
-		ASSERT_TRUE(Host);
+		EXPECT_EQ(Host.mStatus.mCode, EArdaRHIResult::InvalidArgument);
 		EXPECT_FALSE(Graph.AttachOrFind<FArdaMemoryClearBufferNode>("no uav", {NoUav, 7}));
 		EXPECT_FALSE(Graph.AttachOrFind<FArdaMemoryClearBufferNode>("unaligned", {Unaligned, 7}));
-		EXPECT_FALSE(Graph.AttachOrFind<FArdaMemoryClearBufferNode>("host", {Host.mValue, 7}));
 		const auto Buffer = CreateBuffer(Graph, "gpu", 64, EArdaRHIBufferUsage::UnorderedAccess);
 		const auto Clear = Graph.AttachOrFind<FArdaMemoryClearBufferNode>("clear", {Buffer, 7});
 		ASSERT_TRUE(Clear) << Clear.mStatus.mMessage.c_str();

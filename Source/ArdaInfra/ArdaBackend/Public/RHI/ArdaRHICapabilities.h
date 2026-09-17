@@ -29,8 +29,94 @@ namespace arda
 	enum class EArdaRHIMeshShaderTier : uint8_t
 	{
 		None,
-		/** Mesh and optional amplification shader stages are available. */
-		MeshAndAmplificationShaders
+		/** Both mesh and amplification shader stages are available. */
+		MeshAndAmplificationShaders,
+		/** Mesh shaders are available without amplification shaders; numeric values are not tier ordering. */
+		MeshShadersOnly
+	};
+
+	/** Immutable device limits. Zero means unreported, rather than an unlimited or supported operation. */
+	struct FArdaRHIDeviceLimits
+	{
+		/** Maximum width of a one-dimensional texture. */
+		uint32_t mMaxTexture1D = 0;
+		/** Maximum width or height of a two-dimensional texture. */
+		uint32_t mMaxTexture2D = 0;
+		/** Maximum width, height, or depth of a volume texture. */
+		uint32_t mMaxTexture3D = 0;
+		/** Maximum width or height of a cube face. */
+		uint32_t mMaxTextureCube = 0;
+		/** Maximum array layers, counting each cube face as one layer. */
+		uint32_t mMaxTextureArrayLayers = 0;
+		/** Maximum simultaneous color attachments. */
+		uint32_t mMaxColorAttachments = 0;
+		/** Maximum simultaneous viewports and scissors. */
+		uint32_t mMaxViewports = 0;
+		/** Maximum viewport width and height; zero means unreported. */
+		uint32_t mMaxViewportDimensions[2]{};
+		/** Minimum and maximum viewport coordinates, including the far edge; a zero pair is unreported. */
+		float mViewportBounds[2]{};
+		/** Maximum vertex attributes in one input layout. */
+		uint32_t mMaxVertexAttributes = 0;
+		/** Maximum vertex buffer binding slots. */
+		uint32_t mMaxVertexBindings = 0;
+		/** Maximum vertex element stride in bytes. */
+		uint32_t mMaxVertexStride = 0;
+		/** Maximum dispatched work-group count on the X, Y, and Z axes. */
+		uint32_t mMaxComputeWorkGroupCount[3]{};
+		/** Maximum shader work-group size on the X, Y, and Z axes. */
+		uint32_t mMaxComputeWorkGroupSize[3]{};
+		/** Maximum invocations in one shader work group. */
+		uint32_t mMaxComputeWorkGroupInvocations = 0;
+		/** Maximum native buffer allocation size in bytes. */
+		uint64_t mMaxBufferSize = 0;
+		/** Maximum bytes addressed by one uniform-buffer binding. */
+		uint64_t mMaxUniformBufferRange = 0;
+		/** Maximum bytes addressed by one storage-buffer binding. */
+		uint64_t mMaxStorageBufferRange = 0;
+		/** Required uniform-buffer binding offset alignment in bytes. */
+		uint64_t mMinUniformBufferOffsetAlignment = 0;
+		/** Required storage-buffer binding offset alignment in bytes. */
+		uint64_t mMinStorageBufferOffsetAlignment = 0;
+	};
+
+	/** Device support for a typed format. Facts are independent; combined shape/usage admission remains native. */
+	struct FArdaRHIFormatSupport
+	{
+		/** Native API format identifier, or zero when the format has no supported native mapping. */
+		uint64_t mNativeFormat = 0;
+		/** One-dimensional textures can use this format. */
+		bool mbTexture1D = false;
+		/** Two-dimensional textures can use this format. */
+		bool mbTexture2D = false;
+		/** Volume textures can use this format. */
+		bool mbTexture3D = false;
+		/** Cube textures can use this format. */
+		bool mbTextureCube = false;
+		/** Texture shader-resource views and shader reads are supported. */
+		bool mbShaderResource = false;
+		/** Sampled textures support linear filtering. */
+		bool mbFilterable = false;
+		/** Typed storage-image/unordered-access texture views are supported. */
+		bool mbStorage = false;
+		/** Typed storage texture loads are supported. */
+		bool mbStorageLoad = false;
+		/** Typed storage texture stores are supported. */
+		bool mbStorageStore = false;
+		/** Color render-target attachments are supported. */
+		bool mbColorAttachment = false;
+		/** Depth/stencil attachments are supported. */
+		bool mbDepthStencilAttachment = false;
+		/** Color attachment blending is supported. */
+		bool mbBlendable = false;
+		/** Vertex input attributes are supported. */
+		bool mbVertexBuffer = false;
+		/** Typed buffer shader-resource views are supported. */
+		bool mbBufferShaderResource = false;
+		/** Typed buffer unordered-access/storage views are supported. */
+		bool mbBufferStorage = false;
+		/** Supported texture sample counts: each count is its own bit (1 | 2 | 4 ...); zero means none. */
+		uint32_t mSampleCounts = 0;
 	};
 	/** Native work-graph implementation level. */
 	enum class EArdaRHIWorkGraphTier : uint8_t
@@ -410,6 +496,8 @@ namespace arda
 		bool mbRequireSplitTransitions = false;
 		/** Draw/dispatch arguments supplied by GPU buffers must be supported. */
 		bool mbRequireIndirectCommands = false;
+		/** Indirect arguments must support a nonzero first-instance value. */
+		bool mbRequireIndirectFirstInstance = false;
 		/** Native barriers must support activating resources in overlapping heap memory. */
 		bool mbRequireAliasingBarriers = false;
 		/** Event, timer and GPU fence queries must be supported; timestamp widths are checked separately. */
@@ -494,6 +582,10 @@ namespace arda
 	/** Describes all capabilities reported by an RHI device. */
 	struct FArdaRHICapabilities
 	{
+		/** Native resource and work-dispatch limits used by common admission checks. */
+		FArdaRHIDeviceLimits mLimits;
+		/** QueryFormatSupport returns authoritative native format facts, including unsupported formats. */
+		bool mbFormatSupportReported = false;
 		/** Individual ray operations and limits; summary tier is derived from these facts. */
 		FArdaRHIRayTracingCapabilities mRayTracing;
 		/** Descriptor-array, heap/indexing and capacity facts. */
@@ -544,6 +636,8 @@ namespace arda
 		bool mbSplitTransitions = false;
 		/** Supported draw/dispatch argument buffers can drive indirect execution. */
 		bool mbIndirectCommands = false;
+		/** Indirect draw arguments may contain a nonzero first-instance value. */
+		bool mbIndirectFirstInstance = false;
 		/** Barriers can establish a new active resource in overlapping heap memory. */
 		bool mbAliasingBarriers = false;
 		/** Event, timer and GPU fence query paths are implemented. */
@@ -552,6 +646,22 @@ namespace arda
 		bool mbShaderLibraries = false;
 		/** Compatible native pipeline-cache data can be persisted between runs. */
 		bool mbPipelineCachePersistence = false;
+
+		/** Tests stage support without relying on the ABI-preserved mesh-tier numeric values. */
+		[[nodiscard]] bool SupportsMeshShaderTier(EArdaRHIMeshShaderTier Required) const noexcept
+		{
+			switch (Required)
+			{
+			case EArdaRHIMeshShaderTier::None:
+				return true;
+			case EArdaRHIMeshShaderTier::MeshShadersOnly:
+				return mMeshShaderTier == EArdaRHIMeshShaderTier::MeshShadersOnly ||
+				    mMeshShaderTier == EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+			case EArdaRHIMeshShaderTier::MeshAndAmplificationShaders:
+				return mMeshShaderTier == EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+			}
+			return false;
+		}
 
 		[[nodiscard]] bool IsQueueSupported(EArdaRHIQueueType Queue) const noexcept
 		{
@@ -583,7 +693,9 @@ namespace arda
 			    mRayTracing.mbLocalShaderTableArguments,
 			    "local shader-table arguments");
 			Need(R.mbRequireOpacityMicromaps, mRayTracing.mbOpacityMicromaps, "opacity micromaps");
-			Need(R.mbRequireMeshShaders, mMeshShaderTier != EArdaRHIMeshShaderTier::None, "mesh shaders");
+			Need(R.mbRequireMeshShaders,
+			    SupportsMeshShaderTier(EArdaRHIMeshShaderTier::MeshShadersOnly),
+			    "mesh shaders");
 			Need(R.mbRequireGeometryShaders, mbGeometryShaders, "geometry shaders");
 			Need(R.mbRequireTessellationShaders, mbTessellationShaders, "tessellation shaders");
 			Need(R.mbRequireUnboundedDescriptors, mDescriptors.mbUnboundedArrays, "unbounded descriptors");
@@ -654,6 +766,7 @@ namespace arda
 			Need(R.mbRequireExplicitTransitions, mbExplicitTransitions, "explicit transitions");
 			Need(R.mbRequireSplitTransitions, mbSplitTransitions, "split transitions");
 			Need(R.mbRequireIndirectCommands, mbIndirectCommands, "indirect commands");
+			Need(R.mbRequireIndirectFirstInstance, mbIndirectFirstInstance, "indirect first instance");
 			Need(R.mbRequireAliasingBarriers, mbAliasingBarriers, "aliasing barriers");
 			Need(R.mbRequireQueries, mbQueries, "GPU queries");
 			Need(R.mbRequireShaderLibraries, mbShaderLibraries, "shader libraries");
@@ -664,7 +777,7 @@ namespace arda
 			    mRayTracing.GetTier() >= R.mMinRayTracingTier,
 			    "ray-tracing tier");
 			Need(R.mMinMeshShaderTier != EArdaRHIMeshShaderTier::None,
-			    mMeshShaderTier >= R.mMinMeshShaderTier,
+			    SupportsMeshShaderTier(R.mMinMeshShaderTier),
 			    "mesh-shader tier");
 			Need(R.mMinWorkGraphTier != EArdaRHIWorkGraphTier::None,
 			    mWorkGraphTier >= R.mMinWorkGraphTier,
@@ -708,4 +821,14 @@ namespace arda
 			return Report;
 		}
 	};
+
+	/** Validates portable shape plus reported device limits and format uses; unreported limits are not inferred. */
+	[[nodiscard]] FArdaRHIStatus ValidateResourceCapabilities(const FArdaRHITextureDesc& Desc,
+	    const FArdaRHICapabilities& Capabilities,
+	    const FArdaRHIFormatSupport& FormatSupport) noexcept;
+
+	/** Validates allocation admission; uniform/storage binding-range limits apply to views, not whole buffers. */
+	[[nodiscard]] FArdaRHIStatus ValidateResourceCapabilities(const FArdaRHIBufferDesc& Desc,
+	    const FArdaRHICapabilities& Capabilities,
+	    const FArdaRHIFormatSupport& FormatSupport) noexcept;
 }

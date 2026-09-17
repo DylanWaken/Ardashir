@@ -1,4 +1,5 @@
 #include "../ArdaGpuTimestamp.h"
+#include "../ArdaSparseMapping.h"
 #include "../../ArdaBackend/Private/RHI/ArdaRHISubresources.h"
 #if defined(_WIN32)
 #define NOMINMAX
@@ -32,6 +33,7 @@
 #include <mutex>
 #include <functional>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -945,6 +947,13 @@ namespace arda
 
 		struct FArdaVulkanContext
 		{
+			struct FArdaRetiredFence
+			{
+				vk::Fence mFence;
+				eastl::shared_ptr<FArdaVulkanContext> mContext;
+				eastl::unique_ptr<FArdaRetiredFence> mNext;
+			};
+
 			struct FArdaDescriptorHeapRange
 			{
 				uint32_t mOffset = 0;
@@ -971,13 +980,7 @@ namespace arda
 					// watchdog reset or driver failure. Vulkan-Hpp reports it
 					// by throwing; never let that escape a destructor and
 					// turn recoverable teardown into std::terminate/abort.
-					try
-					{
-						(void)mDevice.waitIdle();
-					}
-					catch (const vk::SystemError&)
-					{
-					}
+					(void)VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle(mDevice);
 					const auto DestroyDescriptorHeap = [this](FArdaDescriptorHeapState& Heap)
 					{
 						if (Heap.mMapped && Heap.mMemory)
@@ -1182,6 +1185,7 @@ namespace arda
 			vk::DescriptorPool mDescriptorPool;
 			eastl::array<vk::Semaphore, ArdaRHIQueueTypeCount> mQueueTimelines{};
 			eastl::array<std::atomic<uint64_t>, ArdaRHIQueueTypeCount> mQueueTimelineValues{};
+			eastl::array<std::atomic<uint64_t>, ArdaRHIQueueTypeCount> mQueueLastSubmitted{};
 			uint32_t mQueueFamily = 0;
 			uint32_t mComputeQueueFamily = 0;
 			uint32_t mCopyQueueFamily = 0;
@@ -1191,6 +1195,7 @@ namespace arda
 			bool mbRayTracingPipeline = false;
 			bool mbRayQuery = false;
 			bool mbMeshShader = false;
+			uint32_t mMaxIndirectDrawCount = 1;
 			bool mbOpacityMicromap = false;
 			bool mbDescriptorIndexing = false;
 			bool mbDescriptorBuffer = false;
@@ -1198,6 +1203,7 @@ namespace arda
 			FArdaRHIMachineLearningCapabilities mMachineLearning;
 			bool mbDescriptorHeap = false;
 			bool mbMemoryBudget = false;
+			bool mbDeviceFault = false;
 			bool mbBufferDeviceAddress = false;
 			vk::PhysicalDeviceRayTracingPipelinePropertiesKHR mRayTracingPipelineProperties;
 			vk::PhysicalDeviceAccelerationStructurePropertiesKHR mAccelerationStructureProperties;
@@ -1209,11 +1215,37 @@ namespace arda
 			std::mutex mQueueMutex;
 			std::mutex mDescriptorMutex;
 			std::mutex mDescriptorHeapMutex;
+			mutable std::mutex mDiagnosticMutex;
+			eastl::vector<eastl::string> mRecentMarkers;
+			bool mbMarkersTruncated = false;
 			FArdaDescriptorHeapState mResourceDescriptorHeap;
 			FArdaDescriptorHeapState mSamplerDescriptorHeap;
 			std::atomic<IArdaDiagnosticCallback*> mDiagnosticCallback{nullptr};
 			std::atomic<size_t> mAllocatedDescriptorSets{0};
 			std::atomic<uint64_t> mSubmission{0};
+		};
+
+		bool AddSparseBindingRange(TArdaSparseMappingSet<bool>& Ranges, uint64_t Domain, uint64_t Begin, uint64_t Size)
+		{
+			if (!Size || Size > UINT64_MAX - Begin)
+			{
+				return false;
+			}
+			for (const auto& Range : Ranges.GetRanges())
+			{
+				if (Range.mDomain == Domain && Range.mBegin < Begin + Size && Begin < Range.mEnd)
+				{
+					return false;
+				}
+			}
+			return Ranges.Replace(Domain, Begin, Size, true);
+		}
+
+		struct FArdaVulkanSparseState
+		{
+			std::mutex mMutex;
+			TArdaSparseMappingSet<FArdaProviderObjectRef> mMappings;
+			bool mbOpaquePrefix = false;
 		};
 
 		class FArdaVulkanTexture final : public IArdaProviderObject
@@ -1272,8 +1304,7 @@ namespace arda
 			uint32_t mQueueFamily = 0;
 			std::mutex mLayoutMutex;
 			FArdaProviderObjectRef mHeap;
-			eastl::vector<FArdaProviderObjectRef> mSparseHeaps;
-			uint64_t mCommittedBytes = 0;
+			FArdaVulkanSparseState mSparse;
 			bool mbOwned = true;
 		};
 
@@ -1327,8 +1358,7 @@ namespace arda
 			vk::AccessFlags2 mAccessMask;
 			uint32_t mQueueFamily = 0;
 			FArdaProviderObjectRef mHeap;
-			eastl::vector<FArdaProviderObjectRef> mSparseHeaps;
-			uint64_t mCommittedBytes = 0;
+			FArdaVulkanSparseState mSparse;
 			bool mbStateKnown = false;
 			bool mbOwned = true;
 		};
@@ -1658,14 +1688,23 @@ namespace arda
 		class FArdaVulkanFramebuffer final : public IArdaProviderObject
 		{
 		public:
+			struct FArdaAttachment
+			{
+				FArdaProviderObjectRef mTexture;
+				FArdaRHIFramebufferAttachment mDesc;
+				vk::ImageAspectFlags mAspects;
+				vk::UniqueImageView mView;
+			};
+
 			const void* GetIdentity() const noexcept override
 			{
 				return this;
 			}
 
-			eastl::vector<FArdaProviderObjectRef> mColors;
-			FArdaProviderObjectRef mDepth;
+			eastl::vector<FArdaAttachment> mColors;
+			FArdaAttachment mDepth;
 			vk::Extent2D mExtent;
+			uint32_t mLayerCount = 0;
 		};
 
 		class FArdaVulkanPipeline final : public IArdaProviderObject
@@ -1746,27 +1785,14 @@ namespace arda
 			eastl::vector<FArdaExportGroup> mExportGroups;
 		};
 
-		class FArdaVulkanShaderTable final : public IArdaProviderObject
+		class FArdaVulkanShaderTableStorage final : public IArdaProviderObject
 		{
 		public:
-			struct FArdaRecord
+			~FArdaVulkanShaderTableStorage() override
 			{
-				bool mbWritten = false;
-				EArdaRHIShaderTableRecordType mType = EArdaRHIShaderTableRecordType::RayGeneration;
-				uint32_t mRecordIndex = 0;
-				eastl::string mExportName;
-				eastl::vector<uint8_t> mLocalArguments;
-				uint32_t mUserData = 0;
-				uint32_t mGeometrySegment = 0;
-				FArdaProviderObjectRef mGeometry;
-				FArdaProviderObjectRef mBindings;
-			};
-
-			~FArdaVulkanShaderTable() override
-			{
-				if (!mContext || !mContext->mDevice)
+				if (mMapped)
 				{
-					return;
+					mContext->mDevice.unmapMemory(mMemory);
 				}
 				if (mBuffer)
 				{
@@ -1784,16 +1810,43 @@ namespace arda
 			}
 
 			eastl::shared_ptr<FArdaVulkanContext> mContext;
-			FArdaProviderObjectRef mPipelineObject;
-			FArdaVulkanRayTracingPipeline* mPipeline = nullptr;
-			FArdaRHIShaderTableDesc mDesc;
-			eastl::vector<FArdaRecord> mRecords;
+			eastl::vector<FArdaProviderObjectRef> mRetainedObjects;
+			void* mMapped = nullptr;
 			vk::Buffer mBuffer;
 			vk::DeviceMemory mMemory;
 			vk::StridedDeviceAddressRegionKHR mRayGeneration;
 			vk::StridedDeviceAddressRegionKHR mMiss;
 			vk::StridedDeviceAddressRegionKHR mHit;
 			vk::StridedDeviceAddressRegionKHR mCallable;
+		};
+
+		class FArdaVulkanShaderTable final : public IArdaProviderObject
+		{
+		public:
+			struct FArdaRecord
+			{
+				bool mbWritten = false;
+				EArdaRHIShaderTableRecordType mType = EArdaRHIShaderTableRecordType::RayGeneration;
+				uint32_t mRecordIndex = 0;
+				eastl::string mExportName;
+				eastl::vector<uint8_t> mLocalArguments;
+				uint32_t mUserData = 0;
+				uint32_t mGeometrySegment = 0;
+				FArdaProviderObjectRef mGeometry;
+				FArdaProviderObjectRef mBindings;
+			};
+
+			const void* GetIdentity() const noexcept override
+			{
+				return this;
+			}
+
+			eastl::shared_ptr<FArdaVulkanContext> mContext;
+			FArdaProviderObjectRef mPipelineObject;
+			FArdaVulkanRayTracingPipeline* mPipeline = nullptr;
+			FArdaRHIShaderTableDesc mDesc;
+			eastl::vector<FArdaRecord> mRecords;
+			eastl::shared_ptr<FArdaVulkanShaderTableStorage> mStorage;
 		};
 
 		enum class EArdaVulkanTimerQueryState : uint8_t
@@ -1805,6 +1858,9 @@ namespace arda
 			Complete
 		};
 
+		void RetireVulkanFence(eastl::unique_ptr<FArdaVulkanContext::FArdaRetiredFence> Entry);
+		void CollectVulkanQuarantine();
+
 		class FArdaVulkanQueueSignal final : public IArdaProviderObject
 		{
 		public:
@@ -1814,18 +1870,19 @@ namespace arda
 				{
 					return;
 				}
-				try
+				std::lock_guard<std::mutex> Lock(mMutex);
+				if (mbArmed)
 				{
-					std::lock_guard<std::mutex> Lock(mMutex);
-					if (mbArmed)
+					const auto Result = mContext->mDevice.waitForFences(1, &mFence, true, UINT64_MAX);
+					if (Result != vk::Result::eSuccess && Result != vk::Result::eErrorDeviceLost)
 					{
-						(void)mContext->mDevice.waitForFences(mFence, true, UINT64_MAX);
+						mRetirement->mFence = mFence;
+						mRetirement->mContext = mContext;
+						RetireVulkanFence(eastl::move(mRetirement));
+						return;
 					}
-					mContext->mDevice.destroyFence(mFence);
 				}
-				catch (const vk::SystemError&)
-				{
-				}
+				mContext->mDevice.destroyFence(mFence);
 			}
 
 			const void* GetIdentity() const noexcept override
@@ -1835,6 +1892,9 @@ namespace arda
 
 			eastl::shared_ptr<FArdaVulkanContext> mContext;
 			vk::Fence mFence;
+			// Prepared before submission so an OOM wait can defer destruction without allocating.
+			eastl::unique_ptr<FArdaVulkanContext::FArdaRetiredFence> mRetirement =
+			    eastl::make_unique<FArdaVulkanContext::FArdaRetiredFence>();
 			std::mutex mMutex;
 			bool mbArmed = false;
 		};
@@ -2123,7 +2183,119 @@ namespace arda
 			vk::CommandPool mCommandPool;
 			vk::CommandBuffer mCommandBuffer;
 			eastl::vector<FArdaProviderObjectRef> mRetainedObjects;
+			eastl::vector<eastl::string> mMarkers;
+			bool mbMarkersTruncated = false;
 		};
+
+		struct FArdaPendingSparseBinding
+		{
+			vk::UniqueFence mFence;
+			FArdaProviderObjectRef mResource;
+			TArdaSparseMappingSet<FArdaProviderObjectRef> mPreviousMappings;
+			TArdaSparseMappingSet<FArdaProviderObjectRef> mAcceptedMappings;
+		};
+
+		struct FArdaPendingSubmission
+		{
+			uint64_t mValue = 0;
+			eastl::shared_ptr<FArdaVulkanQueueSignal> mFenceLease;
+			eastl::shared_ptr<FArdaVulkanCommandRecording> mRecording;
+		};
+
+		struct FArdaVulkanQuarantinedWork
+		{
+			eastl::shared_ptr<FArdaVulkanContext> mContext;
+			eastl::vector<FArdaPendingSubmission> mSubmissions;
+			eastl::vector<eastl::shared_ptr<FArdaPendingSparseBinding>> mSparseBindings;
+			eastl::unique_ptr<FArdaVulkanQuarantinedWork> mNext;
+		};
+
+		struct FArdaVulkanQuarantine
+		{
+			std::mutex mMutex;
+			eastl::unique_ptr<FArdaVulkanQuarantinedWork> mEntries;
+			eastl::unique_ptr<FArdaVulkanContext::FArdaRetiredFence> mFences;
+		};
+
+		FArdaVulkanQuarantine& GetVulkanQuarantine()
+		{
+			// Survives static destruction: unproven GPU retirement must not free pending handles.
+			static auto* Registry = new FArdaVulkanQuarantine;
+			return *Registry;
+		}
+
+		void RetireVulkanFence(eastl::unique_ptr<FArdaVulkanContext::FArdaRetiredFence> Entry)
+		{
+			auto& Registry = GetVulkanQuarantine();
+			std::lock_guard<std::mutex> Lock(Registry.mMutex);
+			Entry->mNext = eastl::move(Registry.mFences);
+			Registry.mFences = eastl::move(Entry);
+		}
+
+		void CollectVulkanQuarantine()
+		{
+			auto& Registry = GetVulkanQuarantine();
+			eastl::unique_ptr<FArdaVulkanQuarantinedWork> CompletedWork;
+			eastl::unique_ptr<FArdaVulkanContext::FArdaRetiredFence> CompletedFences;
+			{
+				std::lock_guard<std::mutex> Lock(Registry.mMutex);
+				const auto IsComplete = [](const FArdaVulkanContext& Context, vk::Fence Fence)
+				{
+					const auto Result = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetFenceStatus(Context.mDevice, Fence);
+					return Result == VK_SUCCESS || Result == VK_ERROR_DEVICE_LOST;
+				};
+				for (auto* Entry = &Registry.mFences; *Entry;)
+				{
+					if (!IsComplete(*(*Entry)->mContext, (*Entry)->mFence))
+					{
+						Entry = &(*Entry)->mNext;
+						continue;
+					}
+					auto Retired = eastl::move(*Entry);
+					*Entry = eastl::move(Retired->mNext);
+					Retired->mNext = eastl::move(CompletedFences);
+					CompletedFences = eastl::move(Retired);
+				}
+				for (auto* Entry = &Registry.mEntries; *Entry;)
+				{
+					auto& Work = **Entry;
+					bool bComplete = true;
+					for (const auto& Pending : Work.mSubmissions)
+					{
+						bComplete &= IsComplete(*Work.mContext, Pending.mFenceLease->mFence);
+					}
+					for (const auto& Pending : Work.mSparseBindings)
+					{
+						bComplete &= IsComplete(*Work.mContext, *Pending->mFence);
+					}
+					if (!bComplete)
+					{
+						Entry = &Work.mNext;
+						continue;
+					}
+					for (const auto& Pending : Work.mSubmissions)
+					{
+						Pending.mFenceLease->mbArmed = false;
+					}
+					auto Retired = eastl::move(*Entry);
+					*Entry = eastl::move(Retired->mNext);
+					Retired->mNext = eastl::move(CompletedWork);
+					CompletedWork = eastl::move(Retired);
+				}
+			}
+			// Owner destructors may enqueue other fences; release them outside the registry lock.
+			while (CompletedFences)
+			{
+				auto Retired = eastl::move(CompletedFences);
+				CompletedFences = eastl::move(Retired->mNext);
+				Retired->mContext->mDevice.destroyFence(Retired->mFence);
+			}
+			while (CompletedWork)
+			{
+				auto Retired = eastl::move(CompletedWork);
+				CompletedWork = eastl::move(Retired->mNext);
+			}
+		}
 
 		class FArdaVulkanProviderDevice;
 
@@ -2296,8 +2468,24 @@ namespace arda
 			FArdaRHIStatus BeginTimerQuery(const FArdaProviderObjectRef&) override;
 			FArdaRHIStatus EndTimerQuery(const FArdaProviderObjectRef&) override;
 
-			void BeginMarker(const char*) override
+			void BeginMarker(const char* Name) override
 			{
+				if (!mRecording || !Name)
+				{
+					return;
+				}
+				if (mRecording->mMarkers.size() == ArdaRHIMaxDiagnosticEntries)
+				{
+					mRecording->mMarkers.erase(mRecording->mMarkers.begin());
+					mRecording->mbMarkersTruncated = true;
+				}
+				size_t Length = 0;
+				while (Length < 1024 && Name[Length])
+				{
+					++Length;
+				}
+				mRecording->mMarkers.emplace_back(Name, Length);
+				mRecording->mbMarkersTruncated |= Length == 1024;
 			}
 
 			void EndMarker() override
@@ -2349,6 +2537,13 @@ namespace arda
 			std::function<FArdaRHIStatus()> mRestoreState;
 			eastl::vector<uint8_t> mPushConstants;
 			void GlobalBarrier();
+			FArdaRHIStatus CopyStagingTexture(bool bToTexture,
+			    const FArdaProviderObjectRef& TextureObject,
+			    const FArdaRHITextureDesc& TextureDesc,
+			    const FArdaRHITextureSlice& TextureSlice,
+			    const FArdaProviderObjectRef& StagingObject,
+			    const FArdaRHIStagingTextureDesc& StagingDesc,
+			    const FArdaRHITextureSlice& StagingSlice);
 			FArdaRHIStatus CopyTextureBuffer(const FArdaProviderObjectRef&,
 			    const FArdaRHITextureDesc&,
 			    const FArdaRHITextureSlice&,
@@ -2375,6 +2570,9 @@ namespace arda
 			FArdaRHIStatus BindSets(const FArdaVulkanPipeline&,
 			    const eastl::vector<FArdaProviderObjectRef>&,
 			    vk::PipelineBindPoint);
+			FArdaRHIStatus BindRayTracingState(const FArdaProviderRayTracingState&,
+			    const eastl::shared_ptr<FArdaVulkanShaderTableStorage>&);
+			FArdaRHIStatus EnsureRendering();
 			FArdaRHIStatus RecordAccelStructBuild(const FArdaProviderObjectRef&,
 			    vk::AccelerationStructureBuildGeometryInfoKHR&,
 			    const eastl::vector<vk::AccelerationStructureBuildRangeInfoKHR>&,
@@ -2409,8 +2607,10 @@ namespace arda
 			std::unordered_map<FArdaVulkanAccelStruct*, FArdaAccelStructTracking> mAccelStructStates;
 			std::unordered_map<FArdaVulkanOpacityMicromap*, FArdaAccelStructTracking> mOpacityMicromapStates;
 			class FArdaVulkanRayTracingPipeline* mBoundRayTracing = nullptr;
-			class FArdaVulkanShaderTable* mBoundShaderTable = nullptr;
+			FArdaVulkanShaderTableStorage* mBoundShaderTable = nullptr;
 			bool mbOpen = false;
+			bool mbNeedsReset = false;
+			FArdaRHIStatus mRecordingError;
 			bool mbRendering = false;
 			FArdaVulkanFramebuffer* mRenderingFramebuffer = nullptr;
 			bool mbAutomaticBarriers = true;
@@ -2431,8 +2631,23 @@ namespace arda
 
 			~FArdaVulkanProviderDevice() override
 			{
-				(void)WaitForIdle();
+				if (!WaitForIdle())
+				{
+					mQuarantine->mContext = mContext;
+					mQuarantine->mSubmissions = eastl::move(mPendingSubmissions);
+					mQuarantine->mSparseBindings = eastl::move(mPendingSparseBindings);
+					{
+						auto& Registry = GetVulkanQuarantine();
+						std::lock_guard<std::mutex> Lock(Registry.mMutex);
+						mQuarantine->mNext = eastl::move(Registry.mEntries);
+						Registry.mEntries = eastl::move(mQuarantine);
+					}
+					LogArdaPipelineCacheMessage(mDiagnosticCallback,
+					    EArdaDiagnosticSeverity::Warning,
+					    "Vulkan shutdown could not prove GPU retirement; owned work is quarantined until a later initialization/GC proves completion or the process exits.");
+				}
 				FlushPipelineCache();
+				mContext->mDiagnosticCallback.store(nullptr, std::memory_order_relaxed);
 			}
 
 			FArdaRHIStatus Initialize();
@@ -2446,6 +2661,9 @@ namespace arda
 			{
 				return mCapabilities;
 			}
+
+			FArdaRHIFormatSupport QueryFormatSupport(EArdaRHIFormat) const noexcept override;
+			TArdaRHIResult<FArdaRHIDiagnosticSnapshot> CaptureDiagnosticSnapshot() const override;
 
 			EArdaRHINativeResourceType GetTextureImportType() const noexcept override
 			{
@@ -2579,14 +2797,17 @@ namespace arda
 			}
 
 		private:
-			struct FArdaPendingSubmission
-			{
-				uint64_t mValue = 0;
-				// Waiters retain only the fence lease. GC can release recording resources
-				// after completion without destroying a fence another thread is waiting on.
-				eastl::shared_ptr<FArdaVulkanQueueSignal> mFenceLease;
-				eastl::shared_ptr<FArdaVulkanCommandRecording> mRecording;
-			};
+			template <typename PipelineInfo>
+			FArdaProviderObjectResult CreateRasterPipeline(const PipelineInfo& Info);
+			FArdaRHIStatus SubmitSparseBinding(const FArdaProviderObjectRef& Resource,
+			    FArdaVulkanSparseState& State,
+			    TArdaSparseMappingSet<FArdaProviderObjectRef> Mappings,
+			    const vk::BindSparseInfo& Info,
+			    EArdaRHIQueueType Queue,
+			    bool bOpaquePrefix = false);
+
+			eastl::unique_ptr<FArdaVulkanQuarantinedWork> mQuarantine =
+			    eastl::make_unique<FArdaVulkanQuarantinedWork>();
 
 			FArdaRHICapabilities mCapabilities;
 			vk::DeviceSize mStorageBufferOffsetAlignment = 1;
@@ -2598,16 +2819,52 @@ namespace arda
 			std::mutex mPipelineCacheMutex;
 			mutable std::mutex mSubmissionMutex;
 			eastl::vector<FArdaPendingSubmission> mPendingSubmissions;
+			std::mutex mSparseBindingMutex;
+			eastl::vector<eastl::shared_ptr<FArdaPendingSparseBinding>> mPendingSparseBindings;
 			bool mbPipelineCacheDirty = false;
 		};
 
 		FArdaRHIStatus FArdaVulkanProviderDevice::Initialize()
 		{
+			CollectVulkanQuarantine();
 			try
 			{
 				const auto Limits = mContext->mPhysicalDevice.getProperties().limits;
 				mStorageBufferOffsetAlignment = Limits.minStorageBufferOffsetAlignment;
 				mUniformBufferOffsetAlignment = Limits.minUniformBufferOffsetAlignment;
+				mContext->mMaxIndirectDrawCount =
+				    mContext->mEnabledFeatures.multiDrawIndirect ? Limits.maxDrawIndirectCount : 1u;
+				auto& Reported = mCapabilities.mLimits;
+				Reported.mMaxTexture1D = Limits.maxImageDimension1D;
+				Reported.mMaxTexture2D = Limits.maxImageDimension2D;
+				Reported.mMaxTexture3D = Limits.maxImageDimension3D;
+				Reported.mMaxTextureCube = Limits.maxImageDimensionCube;
+				Reported.mMaxTextureArrayLayers = Limits.maxImageArrayLayers;
+				Reported.mMaxColorAttachments = Limits.maxColorAttachments;
+				// Raster pipelines use one viewport/scissor with dynamic values, not dynamic counts.
+				Reported.mMaxViewports = 1u;
+				Reported.mMaxViewportDimensions[0] = Limits.maxViewportDimensions[0];
+				Reported.mMaxViewportDimensions[1] = Limits.maxViewportDimensions[1];
+				Reported.mViewportBounds[0] = Limits.viewportBoundsRange[0];
+				Reported.mViewportBounds[1] = Limits.viewportBoundsRange[1];
+				Reported.mMaxVertexAttributes = Limits.maxVertexInputAttributes;
+				Reported.mMaxVertexBindings = Limits.maxVertexInputBindings;
+				Reported.mMaxVertexStride = Limits.maxVertexInputBindingStride;
+				for (uint32_t Axis = 0; Axis < 3; ++Axis)
+				{
+					Reported.mMaxComputeWorkGroupCount[Axis] = Limits.maxComputeWorkGroupCount[Axis];
+					Reported.mMaxComputeWorkGroupSize[Axis] = Limits.maxComputeWorkGroupSize[Axis];
+				}
+				Reported.mMaxComputeWorkGroupInvocations = Limits.maxComputeWorkGroupInvocations;
+				Reported.mMaxUniformBufferRange = Limits.maxUniformBufferRange;
+				Reported.mMaxStorageBufferRange = Limits.maxStorageBufferRange;
+				Reported.mMinUniformBufferOffsetAlignment = Limits.minUniformBufferOffsetAlignment;
+				Reported.mMinStorageBufferOffsetAlignment = Limits.minStorageBufferOffsetAlignment;
+				vk::PhysicalDeviceMaintenance4Properties Maintenance;
+				vk::PhysicalDeviceProperties2 Properties;
+				Properties.pNext = &Maintenance;
+				mContext->mPhysicalDevice.getProperties2(&Properties);
+				Reported.mMaxBufferSize = Maintenance.maxBufferSize;
 
 				eastl::vector<vk::DescriptorPoolSize> Sizes = {{vk::DescriptorType::eSampler, 2048},
 				    {vk::DescriptorType::eSampledImage, 8192},
@@ -2809,6 +3066,8 @@ namespace arda
 			mCapabilities.mbExplicitTransitions = true;
 			mCapabilities.mbSplitTransitions = true;
 			mCapabilities.mbIndirectCommands = true;
+			mCapabilities.mbFormatSupportReported = true;
+			mCapabilities.mbIndirectFirstInstance = mContext->mEnabledFeatures.drawIndirectFirstInstance == VK_TRUE;
 			mCapabilities.mbAliasingBarriers = true;
 			mCapabilities.mbQueries = true;
 			mCapabilities.mbVirtualResources = true;
@@ -2853,8 +3112,9 @@ namespace arda
 			    : VulkanResourceDescriptorCapacity;
 			Descriptors.mMaxSamplerDescriptors = mContext->mbDescriptorHeap ? mContext->mSamplerDescriptorHeap.mCapacity
 			                                                                : VulkanSamplerDescriptorCapacity;
-			mCapabilities.mMeshShaderTier = mContext->mbMeshShader ? EArdaRHIMeshShaderTier::MeshAndAmplificationShaders
-			                                                       : EArdaRHIMeshShaderTier::None;
+			mCapabilities.mMeshShaderTier = !mContext->mbMeshShader ? EArdaRHIMeshShaderTier::None
+			    : mContext->mMeshShaderFeatures.taskShader ? EArdaRHIMeshShaderTier::MeshAndAmplificationShaders
+			                                               : EArdaRHIMeshShaderTier::MeshShadersOnly;
 			if (mContext->mbAccelerationStructure)
 			{
 				auto& Ray = mCapabilities.mRayTracing;
@@ -2891,6 +3151,68 @@ namespace arda
 			mCapabilities.mMachineLearning = mContext->mMachineLearning;
 			mCapabilities.mMachineLearning.mbBufferDeviceAddress = mContext->mbBufferDeviceAddress;
 			return {};
+		}
+
+		FArdaRHIFormatSupport FArdaVulkanProviderDevice::QueryFormatSupport(EArdaRHIFormat Format) const noexcept
+		{
+			FArdaRHIFormatSupport Result;
+			const VkFormat NativeFormat = static_cast<VkFormat>(ToVulkan(Format));
+			if (NativeFormat == VK_FORMAT_UNDEFINED)
+			{
+				return Result;
+			}
+			VkFormatProperties Properties{};
+			const auto& Dispatch = VULKAN_HPP_DEFAULT_DISPATCHER;
+			Dispatch.vkGetPhysicalDeviceFormatProperties(mContext->mPhysicalDevice, NativeFormat, &Properties);
+			const auto Texture = Properties.optimalTilingFeatures;
+			const auto Buffer = Properties.bufferFeatures;
+			if (!(Texture | Buffer))
+			{
+				return Result;
+			}
+			Result.mNativeFormat = static_cast<uint64_t>(NativeFormat);
+			Result.mbShaderResource = (Texture & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) != 0;
+			Result.mbFilterable = (Texture & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) != 0;
+			Result.mbStorage = (Texture & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) != 0;
+			Result.mbStorageLoad = Result.mbStorage;
+			Result.mbStorageStore = Result.mbStorage;
+			Result.mbColorAttachment = (Texture & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) != 0;
+			Result.mbDepthStencilAttachment = (Texture & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0;
+			Result.mbBlendable = (Texture & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT) != 0;
+			Result.mbVertexBuffer = (Buffer & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT) != 0;
+			Result.mbBufferShaderResource = (Buffer & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT) != 0;
+			Result.mbBufferStorage = (Buffer & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT) != 0;
+			const auto QueryShape = [&](VkImageType Type, VkImageCreateFlags Flags)
+			{
+				bool bSupported = false;
+				const VkImageUsageFlags Usages[] = {VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+				    VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+				    VK_IMAGE_USAGE_SAMPLED_BIT,
+				    VK_IMAGE_USAGE_STORAGE_BIT,
+				    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+				    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT};
+				for (const auto Usage : Usages)
+				{
+					VkImageFormatProperties ImageProperties{};
+					if (Dispatch.vkGetPhysicalDeviceImageFormatProperties(mContext->mPhysicalDevice,
+					        NativeFormat,
+					        Type,
+					        VK_IMAGE_TILING_OPTIMAL,
+					        Usage,
+					        Flags,
+					        &ImageProperties) == VK_SUCCESS)
+					{
+						bSupported = true;
+						Result.mSampleCounts |= ImageProperties.sampleCounts;
+					}
+				}
+				return bSupported;
+			};
+			Result.mbTexture1D = QueryShape(VK_IMAGE_TYPE_1D, 0);
+			Result.mbTexture2D = QueryShape(VK_IMAGE_TYPE_2D, 0);
+			Result.mbTexture3D = QueryShape(VK_IMAGE_TYPE_3D, 0);
+			Result.mbTextureCube = QueryShape(VK_IMAGE_TYPE_2D, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+			return Result;
 		}
 
 		vk::ImageCreateInfo MakeVulkanTextureCreateInfo(const FArdaRHITextureDesc& Desc,
@@ -2940,6 +3262,10 @@ namespace arda
 			if (Desc.mbVirtual)
 			{
 				Info.flags |= vk::ImageCreateFlagBits::eAlias;
+			}
+			if (HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::Typeless))
+			{
+				Info.flags |= vk::ImageCreateFlagBits::eMutableFormat;
 			}
 			Info.sharingMode = vk::SharingMode::eExclusive;
 			Info.initialLayout = vk::ImageLayout::eUndefined;
@@ -3968,24 +4294,35 @@ namespace arda
 		    EArdaRHIQueueType QueueType)
 		{
 			auto* Texture = dynamic_cast<FArdaVulkanTexture*>(Object.get());
-			const size_t SparseQueueIndex = GetArdaRHIQueueIndex(QueueType);
+			const size_t QueueIndex = GetArdaRHIQueueIndex(QueueType);
 			if (!Texture || !Texture->mImage || !Texture->mDesc.mbTiled ||
-			    !mContext->mQueueSparseBinding[SparseQueueIndex])
+			    QueueIndex >= mContext->mQueueSparseBinding.size() || !mContext->mQueueSparseBinding[QueueIndex])
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
 				    "The Vulkan resource or requested queue does not support sparse image binding.");
 			}
 			try
 			{
+				std::lock_guard<std::mutex> StateLock(Texture->mSparse.mMutex);
+				auto Updated = Texture->mSparse.mMappings;
+				TArdaSparseMappingSet<bool> SubmittedRanges;
 				const auto Sparse = mContext->mDevice.getImageSparseMemoryRequirements(Texture->mImage);
-				if (Sparse.empty())
+				const auto Aspect = ImageAspect(Texture->mDesc.mFormat);
+				const auto Requirement = eastl::find_if(Sparse.begin(),
+				    Sparse.end(),
+				    [Aspect](const auto& Entry)
+				    {
+					    return (Entry.formatProperties.aspectMask & Aspect) == Aspect;
+				    });
+				if (Requirement == Sparse.end())
 				{
 					return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
-					    "The Vulkan image has no sparse residency requirements.");
+					    "The Vulkan image has no matching sparse residency requirements.");
 				}
-				const auto& Requirement = Sparse.front();
 				const auto Memory = mContext->mDevice.getImageMemoryRequirements(Texture->mImage);
+				const auto Granularity = Requirement->formatProperties.imageGranularity;
 				eastl::vector<vk::SparseImageMemoryBind> Binds;
+				eastl::vector<vk::SparseMemoryBind> OpaqueBinds;
 				for (const auto& Mapping : Mappings)
 				{
 					auto* Heap = Mapping.mHeap ? dynamic_cast<FArdaVulkanHeap*>(Mapping.mHeap.get()) : nullptr;
@@ -3995,59 +4332,148 @@ namespace arda
 						return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
 						    "A Vulkan sparse-image heap is invalid or incompatible.");
 					}
+					if (Mapping.mCoordinates.size() != Mapping.mRegions.size() ||
+					    Mapping.mCoordinates.size() != Mapping.mByteOffsets.size())
+					{
+						return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+						    "Sparse image arrays differ in size.");
+					}
 					for (size_t Index = 0; Index < Mapping.mCoordinates.size(); ++Index)
 					{
-						if (Mapping.mByteOffsets[Index] % Memory.alignment)
-						{
-							return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-							    "Vulkan sparse-image heap offsets violate native alignment.");
-						}
 						const auto& Coordinate = Mapping.mCoordinates[Index];
 						const auto& Region = Mapping.mRegions[Index];
-						const uint32_t MipWidth =
-						    GetArdaRHITextureMipExtent(Texture->mDesc.mWidth, Coordinate.mMipLevel);
-						const uint32_t MipHeight =
+						const uint64_t Offset = Mapping.mByteOffsets[Index];
+						if (Coordinate.mMipLevel >= Texture->mDesc.mMipLevels ||
+						    Coordinate.mArrayLevel >= Texture->mDesc.mArraySize || Offset % Memory.alignment)
+						{
+							return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+							    "Sparse image subresource or heap offset is invalid.");
+						}
+						const bool bBox = Region.mWidth && Region.mHeight && Region.mDepth;
+						if (bBox && uint64_t{Region.mWidth} * Region.mHeight > UINT64_MAX / Region.mDepth)
+						{
+							return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+							    "Sparse image region tile count overflows.");
+						}
+						const uint64_t Count =
+						    bBox ? uint64_t{Region.mWidth} * Region.mHeight * Region.mDepth : Region.mTileCount;
+						if (!Count || (bBox && Region.mTileCount && Count != Region.mTileCount) ||
+						    (!bBox && (Region.mWidth || Region.mHeight || Region.mDepth)) ||
+						    (Heap &&
+						        (Offset > Heap->mDesc.mCapacity ||
+						            Count > (Heap->mDesc.mCapacity - Offset) / Memory.alignment)))
+						{
+							return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+							    "Sparse image region or heap capacity is invalid.");
+						}
+						if (Coordinate.mMipLevel >= Requirement->imageMipTailFirstLod)
+						{
+							const uint64_t TailTiles = Requirement->imageMipTailSize / Memory.alignment;
+							if (Coordinate.mY || Coordinate.mZ || Coordinate.mX > TailTiles ||
+							    Count > TailTiles - Coordinate.mX)
+							{
+								return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+								    "Sparse mip-tail range is invalid.");
+							}
+							const bool bSingleTail = bool(
+							    Requirement->formatProperties.flags & vk::SparseImageFormatFlagBits::eSingleMiptail);
+							const uint64_t Begin = Requirement->imageMipTailOffset +
+							    (bSingleTail ? 0 : uint64_t{Coordinate.mArrayLevel} * Requirement->imageMipTailStride) +
+							    uint64_t{Coordinate.mX} * Memory.alignment;
+							const uint64_t Size = Count * Memory.alignment;
+							if (!AddSparseBindingRange(SubmittedRanges, 0, Begin, Size))
+							{
+								return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+								    "Vulkan sparse image mappings in one batch must not overlap.");
+							}
+							OpaqueBinds.push_back(
+							    vk::SparseMemoryBind(Begin, Size, Heap ? Heap->mMemory : vk::DeviceMemory{}, Offset));
+							(void)Updated.Replace(0, Begin, Size, Mapping.mHeap, Offset);
+							continue;
+						}
+						if (Texture->mSparse.mbOpaquePrefix)
+						{
+							return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+							    "Unbind the Vulkan opaque image prefix before mapping spatial tiles.");
+						}
+						const uint32_t Width = GetArdaRHITextureMipExtent(Texture->mDesc.mWidth, Coordinate.mMipLevel);
+						const uint32_t Height =
 						    GetArdaRHITextureMipExtent(Texture->mDesc.mHeight, Coordinate.mMipLevel);
-						const uint32_t MipDepth =
-						    GetArdaRHITextureMipExtent(Texture->mDesc.mDepth, Coordinate.mMipLevel);
-						const vk::Extent3D Granularity = Requirement.formatProperties.imageGranularity;
-						vk::SparseImageMemoryBind Bind;
-						Bind.subresource.aspectMask = ImageAspect(Texture->mDesc.mFormat);
-						Bind.subresource.mipLevel = Coordinate.mMipLevel;
-						Bind.subresource.arrayLayer = Coordinate.mArrayLevel;
-						Bind.offset = vk::Offset3D(static_cast<int32_t>(Coordinate.mX * Granularity.width),
-						    static_cast<int32_t>(Coordinate.mY * Granularity.height),
-						    static_cast<int32_t>(Coordinate.mZ * Granularity.depth));
-						Bind.extent = vk::Extent3D(eastl::min(MipWidth - static_cast<uint32_t>(Bind.offset.x),
-						                               eastl::max(1u, Region.mWidth) * Granularity.width),
-						    eastl::min(MipHeight - static_cast<uint32_t>(Bind.offset.y),
-						        eastl::max(1u, Region.mHeight) * Granularity.height),
-						    eastl::min(MipDepth - static_cast<uint32_t>(Bind.offset.z),
-						        eastl::max(1u, Region.mDepth) * Granularity.depth));
-						Bind.memory = Heap ? Heap->mMemory : vk::DeviceMemory{};
-						Bind.memoryOffset = Mapping.mByteOffsets[Index];
-						Binds.push_back(Bind);
-					}
-					if (Heap)
-					{
-						Texture->mSparseHeaps.push_back(Mapping.mHeap);
+						const uint32_t Depth = GetArdaRHITextureMipExtent(Texture->mDesc.mDepth, Coordinate.mMipLevel);
+						const uint64_t WidthTiles = (uint64_t{Width} + Granularity.width - 1) / Granularity.width;
+						const uint64_t HeightTiles = (uint64_t{Height} + Granularity.height - 1) / Granularity.height;
+						const uint64_t DepthTiles = (uint64_t{Depth} + Granularity.depth - 1) / Granularity.depth;
+						const uint64_t Begin =
+						    (uint64_t{Coordinate.mZ} * HeightTiles + Coordinate.mY) * WidthTiles + Coordinate.mX;
+						if (Coordinate.mX >= WidthTiles || Coordinate.mY >= HeightTiles ||
+						    Coordinate.mZ >= DepthTiles ||
+						    (bBox &&
+						        (Region.mWidth > WidthTiles - Coordinate.mX ||
+						            Region.mHeight > HeightTiles - Coordinate.mY ||
+						            Region.mDepth > DepthTiles - Coordinate.mZ)) ||
+						    (!bBox && Count > WidthTiles * HeightTiles * DepthTiles - Begin))
+						{
+							return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+							    "Sparse image tile range exceeds its subresource.");
+						}
+						const uint64_t Domain =
+						    1 + uint64_t{Coordinate.mArrayLevel} * Texture->mDesc.mMipLevels + Coordinate.mMipLevel;
+						for (uint64_t Tile = 0; Tile < Count;)
+						{
+							const uint64_t Linear = bBox
+							    ? Begin + (Tile / Region.mWidth / Region.mHeight) * WidthTiles * HeightTiles +
+							        (Tile / Region.mWidth % Region.mHeight) * WidthTiles
+							    : Begin + Tile;
+							const uint64_t X = Linear % WidthTiles;
+							const uint64_t Y = Linear / WidthTiles % HeightTiles;
+							const uint64_t Z = Linear / WidthTiles / HeightTiles;
+							const uint64_t RowCount = bBox ? Region.mWidth : eastl::min(Count - Tile, WidthTiles - X);
+							if (!AddSparseBindingRange(SubmittedRanges, Domain, Linear, RowCount))
+							{
+								return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+								    "Vulkan sparse image mappings in one batch must not overlap.");
+							}
+							vk::SparseImageMemoryBind Bind;
+							Bind.subresource =
+							    vk::ImageSubresource(Aspect, Coordinate.mMipLevel, Coordinate.mArrayLevel);
+							Bind.offset = vk::Offset3D(static_cast<int32_t>(X * Granularity.width),
+							    static_cast<int32_t>(Y * Granularity.height),
+							    static_cast<int32_t>(Z * Granularity.depth));
+							Bind.extent = vk::Extent3D(
+							    static_cast<uint32_t>(
+							        eastl::min(uint64_t{Width} - X * Granularity.width, RowCount * Granularity.width)),
+							    eastl::min(Height - static_cast<uint32_t>(Y * Granularity.height), Granularity.height),
+							    eastl::min(Depth - static_cast<uint32_t>(Z * Granularity.depth), Granularity.depth));
+							Bind.memory = Heap ? Heap->mMemory : vk::DeviceMemory{};
+							Bind.memoryOffset = Heap ? Offset + Tile * Memory.alignment : 0;
+							Binds.push_back(Bind);
+							(void)Updated.Replace(Domain,
+							    Linear,
+							    RowCount,
+							    Mapping.mHeap,
+							    Offset / Memory.alignment + Tile);
+							Tile += RowCount;
+						}
 					}
 				}
-				vk::SparseImageMemoryBindInfo ImageInfo;
-				ImageInfo.image = Texture->mImage;
-				ImageInfo.bindCount = static_cast<uint32_t>(Binds.size());
-				ImageInfo.pBinds = Binds.data();
+				vk::SparseImageMemoryBindInfo ImageInfo(Texture->mImage,
+				    static_cast<uint32_t>(Binds.size()),
+				    Binds.data());
+				vk::SparseImageOpaqueMemoryBindInfo OpaqueInfo(Texture->mImage,
+				    static_cast<uint32_t>(OpaqueBinds.size()),
+				    OpaqueBinds.data());
 				vk::BindSparseInfo Info;
 				Info.imageBindCount = Binds.empty() ? 0u : 1u;
 				Info.pImageBinds = Binds.empty() ? nullptr : &ImageInfo;
-				vk::Fence Fence = mContext->mDevice.createFence({});
-				{
-					std::lock_guard<std::mutex> Lock(mContext->mQueueMutex);
-					(void)mContext->GetQueue(QueueType).bindSparse(1, &Info, Fence);
-				}
-				(void)mContext->mDevice.waitForFences(1, &Fence, VK_TRUE, UINT64_MAX);
-				mContext->mDevice.destroyFence(Fence);
-				return {};
+				Info.imageOpaqueBindCount = OpaqueBinds.empty() ? 0u : 1u;
+				Info.pImageOpaqueBinds = OpaqueBinds.empty() ? nullptr : &OpaqueInfo;
+				return Binds.empty() && OpaqueBinds.empty() ? FArdaRHIStatus{}
+				                                            : SubmitSparseBinding(Object,
+				                                                  Texture->mSparse,
+				                                                  eastl::move(Updated),
+				                                                  Info,
+				                                                  QueueType,
+				                                                  Texture->mSparse.mbOpaquePrefix);
 			}
 			catch (const vk::SystemError& Error)
 			{
@@ -4062,6 +4488,7 @@ namespace arda
 			auto* Buffer = dynamic_cast<FArdaVulkanBuffer*>(Object.get());
 			const size_t SparseQueueIndex = GetArdaRHIQueueIndex(QueueType);
 			if (!Buffer || !Buffer->mBuffer || !Buffer->mDesc.mbTiled ||
+			    SparseQueueIndex >= mContext->mQueueSparseBinding.size() ||
 			    !mContext->mQueueSparseBinding[SparseQueueIndex])
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
@@ -4069,6 +4496,9 @@ namespace arda
 			}
 			try
 			{
+				std::lock_guard<std::mutex> StateLock(Buffer->mSparse.mMutex);
+				auto UpdatedMappings = Buffer->mSparse.mMappings;
+				TArdaSparseMappingSet<bool> SubmittedRanges;
 				const auto Memory = mContext->mDevice.getBufferMemoryRequirements(Buffer->mBuffer);
 				eastl::vector<vk::SparseMemoryBind> Binds;
 				Binds.reserve(Mappings.size());
@@ -4082,10 +4512,20 @@ namespace arda
 						    "A Vulkan sparse-buffer heap is invalid or incompatible.");
 					}
 					if (!Mapping.mByteSize || Mapping.mBufferOffset % Memory.alignment ||
-					    Mapping.mByteSize % Memory.alignment || Mapping.mHeapOffset % Memory.alignment)
+					    Mapping.mByteSize % Memory.alignment || Mapping.mHeapOffset % Memory.alignment ||
+					    Mapping.mBufferOffset > Memory.size ||
+					    Mapping.mByteSize > Memory.size - Mapping.mBufferOffset ||
+					    (Mapping.mbCommit &&
+					        (Mapping.mHeapOffset > Heap->mDesc.mCapacity ||
+					            Mapping.mByteSize > Heap->mDesc.mCapacity - Mapping.mHeapOffset)))
 					{
 						return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-						    "Vulkan sparse-buffer mappings violate native alignment.");
+						    "Vulkan sparse-buffer mappings violate native alignment or bounds.");
+					}
+					if (!AddSparseBindingRange(SubmittedRanges, 0, Mapping.mBufferOffset, Mapping.mByteSize))
+					{
+						return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+						    "Vulkan sparse buffer mappings in one batch must not overlap.");
 					}
 					vk::SparseMemoryBind Bind;
 					Bind.resourceOffset = Mapping.mBufferOffset;
@@ -4093,9 +4533,14 @@ namespace arda
 					Bind.memory = Mapping.mbCommit ? Heap->mMemory : vk::DeviceMemory{};
 					Bind.memoryOffset = Mapping.mHeapOffset;
 					Binds.push_back(Bind);
-					if (Mapping.mbCommit)
+					if (!UpdatedMappings.Replace(0,
+					        Mapping.mBufferOffset,
+					        Mapping.mByteSize,
+					        Mapping.mbCommit ? Mapping.mHeap : FArdaProviderObjectRef{},
+					        Mapping.mHeapOffset))
 					{
-						Buffer->mSparseHeaps.push_back(Mapping.mHeap);
+						return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+						    "Vulkan sparse buffer range overflows.");
 					}
 				}
 				vk::SparseBufferMemoryBindInfo BufferInfo;
@@ -4105,14 +4550,9 @@ namespace arda
 				vk::BindSparseInfo Info;
 				Info.bufferBindCount = Binds.empty() ? 0u : 1u;
 				Info.pBufferBinds = Binds.empty() ? nullptr : &BufferInfo;
-				vk::Fence Fence = mContext->mDevice.createFence({});
-				{
-					std::lock_guard<std::mutex> Lock(mContext->mQueueMutex);
-					(void)mContext->GetQueue(QueueType).bindSparse(1, &Info, Fence);
-				}
-				(void)mContext->mDevice.waitForFences(1, &Fence, VK_TRUE, UINT64_MAX);
-				mContext->mDevice.destroyFence(Fence);
-				return {};
+				return Binds.empty()
+				    ? FArdaRHIStatus{}
+				    : SubmitSparseBinding(Object, Buffer->mSparse, eastl::move(UpdatedMappings), Info, QueueType);
 			}
 			catch (const vk::SystemError& Error)
 			{
@@ -4120,13 +4560,52 @@ namespace arda
 			}
 		}
 
+		FArdaRHIStatus FArdaVulkanProviderDevice::SubmitSparseBinding(const FArdaProviderObjectRef& Resource,
+		    FArdaVulkanSparseState& State,
+		    TArdaSparseMappingSet<FArdaProviderObjectRef> Mappings,
+		    const vk::BindSparseInfo& Info,
+		    EArdaRHIQueueType Queue,
+		    bool bOpaquePrefix)
+		{
+			auto Pending = eastl::make_shared<FArdaPendingSparseBinding>();
+			Pending->mFence = mContext->mDevice.createFenceUnique({});
+			Pending->mResource = Resource;
+			Pending->mAcceptedMappings = Mappings;
+			std::lock_guard<std::mutex> RetirementLock(mSparseBindingMutex);
+			// Reserve retirement ownership before submission; no allocation is needed after acceptance.
+			mPendingSparseBindings.push_back(Pending);
+			try
+			{
+				std::lock_guard<std::mutex> QueueLock(mContext->mQueueMutex);
+				mContext->GetQueue(Queue).bindSparse(Info, *Pending->mFence);
+			}
+			catch (...)
+			{
+				mPendingSparseBindings.pop_back();
+				throw;
+			}
+			Pending->mPreviousMappings = eastl::move(State.mMappings);
+			State.mMappings = eastl::move(Mappings);
+			State.mbOpaquePrefix = bOpaquePrefix;
+			const auto Fence = *Pending->mFence;
+			const auto Result = mContext->mDevice.waitForFences(1, &Fence, true, UINT64_MAX);
+			if (Result == vk::Result::eSuccess || Result == vk::Result::eErrorDeviceLost)
+			{
+				mPendingSparseBindings.pop_back();
+			}
+			return Result == vk::Result::eSuccess
+			    ? FArdaRHIStatus{}
+			    : VulkanFailure("Vulkan sparse binding completion wait failed; accepted mappings retain ownership.",
+			          Result);
+		}
+
 		FArdaRHIStatus FArdaVulkanProviderDevice::CommitReservedResource(const FArdaProviderObjectRef& Object,
 		    bool bTexture,
 		    uint64_t RequestedBytes,
 		    EArdaRHIQueueType QueueType)
 		{
-			const size_t SparseQueueIndex = GetArdaRHIQueueIndex(QueueType);
-			if (!mContext->mQueueSparseBinding[SparseQueueIndex])
+			const size_t QueueIndex = GetArdaRHIQueueIndex(QueueType);
+			if (QueueIndex >= mContext->mQueueSparseBinding.size() || !mContext->mQueueSparseBinding[QueueIndex])
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
 				    "The requested Vulkan queue cannot bind sparse memory.");
@@ -4134,8 +4613,7 @@ namespace arda
 			try
 			{
 				vk::MemoryRequirements Requirements;
-				vk::DeviceMemory* OwnedMemory = nullptr;
-				uint64_t* CommittedBytes = nullptr;
+				FArdaVulkanSparseState* State = nullptr;
 				vk::Image Image;
 				vk::Buffer BufferHandle;
 				if (bTexture)
@@ -4148,8 +4626,7 @@ namespace arda
 					}
 					Image = Texture->mImage;
 					Requirements = mContext->mDevice.getImageMemoryRequirements(Image);
-					OwnedMemory = &Texture->mMemory;
-					CommittedBytes = &Texture->mCommittedBytes;
+					State = &Texture->mSparse;
 				}
 				else
 				{
@@ -4161,70 +4638,100 @@ namespace arda
 					}
 					BufferHandle = Buffer->mBuffer;
 					Requirements = mContext->mDevice.getBufferMemoryRequirements(BufferHandle);
-					OwnedMemory = &Buffer->mMemory;
-					CommittedBytes = &Buffer->mCommittedBytes;
+					State = &Buffer->mSparse;
 				}
-				const uint64_t Bytes = eastl::min<uint64_t>(Requirements.size,
-				    (RequestedBytes + Requirements.alignment - 1) / Requirements.alignment * Requirements.alignment);
-				vk::DeviceMemory NewMemory;
-				if (Bytes)
+				std::lock_guard<std::mutex> StateLock(State->mMutex);
+				uint64_t Bytes = 0;
+				if (!CalculateArdaSparsePrefixSize(RequestedBytes, Requirements.size, Requirements.alignment, Bytes))
 				{
-					const uint32_t MemoryType =
+					return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+					    "Vulkan reported invalid sparse allocation granularity.");
+				}
+				if (bTexture && Bytes &&
+				    eastl::any_of(State->mMappings.GetRanges().begin(),
+				        State->mMappings.GetRanges().end(),
+				        [](const auto& Range)
+				        {
+					        return Range.mDomain != 0;
+				        }))
+				{
+					// Vulkan does not expose an opaque byte-offset-to-texel mapping to preserve these tiles.
+					return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+					    "Unmap Vulkan spatial image tiles before committing an opaque byte prefix.");
+				}
+				auto Mappings = State->mMappings;
+				eastl::vector<vk::SparseMemoryBind> Binds;
+				const auto AddCommit = [&](uint64_t Begin, uint64_t Size)
+				{
+					auto Heap = eastl::make_shared<FArdaVulkanHeap>();
+					Heap->mContext = mContext;
+					Heap->mDesc.mCapacity = Size;
+					Heap->mMemoryType =
 					    mContext->FindMemoryType(Requirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
-					if (MemoryType == UINT32_MAX)
+					if (Heap->mMemoryType == UINT32_MAX)
+					{
+						return false;
+					}
+					vk::MemoryAllocateFlagsInfo Flags;
+					Flags.flags = mContext->mbBufferDeviceAddress ? vk::MemoryAllocateFlagBits::eDeviceAddress
+					                                              : vk::MemoryAllocateFlags{};
+					vk::MemoryAllocateInfo Allocate(Size, Heap->mMemoryType);
+					Allocate.pNext = &Flags;
+					Heap->mMemory = mContext->mDevice.allocateMemory(Allocate);
+					Binds.push_back(vk::SparseMemoryBind(Begin, Size, Heap->mMemory, 0));
+					return Mappings.Replace(0, Begin, Size, Heap);
+				};
+				uint64_t Cursor = 0;
+				bool bHasTail = false;
+				for (const auto& Range : State->mMappings.GetRanges())
+				{
+					if (Range.mDomain != 0)
+					{
+						bHasTail |= Bytes == 0;
+						continue;
+					}
+					bHasTail |= Range.mEnd > Bytes;
+					const uint64_t Begin = eastl::min(Bytes, Range.mBegin);
+					if (Cursor < Begin && !AddCommit(Cursor, Begin - Cursor))
 					{
 						return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
-						    "No device-local Vulkan sparse memory type exists.");
+						    "No compatible Vulkan sparse allocation is available.");
 					}
-					NewMemory = mContext->mDevice.allocateMemory(vk::MemoryAllocateInfo(Bytes, MemoryType));
+					Cursor = eastl::max(Cursor, eastl::min(Bytes, Range.mEnd));
 				}
-				eastl::array<vk::SparseMemoryBind, 2> Binds{};
-				uint32_t BindCount = 0;
-				if (Bytes)
+				if (Cursor < Bytes && !AddCommit(Cursor, Bytes - Cursor))
 				{
-					Binds[BindCount].size = Bytes;
-					Binds[BindCount].memory = NewMemory;
-					++BindCount;
+					return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+					    "No compatible Vulkan sparse allocation is available.");
 				}
-				if (Bytes < Requirements.size)
+				if (bHasTail)
 				{
-					Binds[BindCount].resourceOffset = Bytes;
-					Binds[BindCount].size = Requirements.size - Bytes;
-					++BindCount;
+					Binds.push_back(vk::SparseMemoryBind(Bytes, Requirements.size - Bytes, {}, 0));
+					(void)Mappings.Replace(0, Bytes, Requirements.size - Bytes, {});
+					if (!Bytes)
+					{
+						Mappings = {};
+					}
 				}
-				vk::SparseImageOpaqueMemoryBindInfo ImageInfo;
-				vk::SparseBufferMemoryBindInfo BufferInfo;
+				if (Binds.empty())
+				{
+					return {};
+				}
+				vk::SparseImageOpaqueMemoryBindInfo ImageInfo(Image, static_cast<uint32_t>(Binds.size()), Binds.data());
+				vk::SparseBufferMemoryBindInfo BufferInfo(BufferHandle,
+				    static_cast<uint32_t>(Binds.size()),
+				    Binds.data());
 				vk::BindSparseInfo Info;
-				if (bTexture)
-				{
-					ImageInfo.image = Image;
-					ImageInfo.bindCount = BindCount;
-					ImageInfo.pBinds = Binds.data();
-					Info.imageOpaqueBindCount = 1;
-					Info.pImageOpaqueBinds = &ImageInfo;
-				}
-				else
-				{
-					BufferInfo.buffer = BufferHandle;
-					BufferInfo.bindCount = BindCount;
-					BufferInfo.pBinds = Binds.data();
-					Info.bufferBindCount = 1;
-					Info.pBufferBinds = &BufferInfo;
-				}
-				vk::Fence Fence = mContext->mDevice.createFence({});
-				{
-					std::lock_guard<std::mutex> Lock(mContext->mQueueMutex);
-					(void)mContext->GetQueue(QueueType).bindSparse(1, &Info, Fence);
-				}
-				(void)mContext->mDevice.waitForFences(1, &Fence, VK_TRUE, UINT64_MAX);
-				mContext->mDevice.destroyFence(Fence);
-				if (*OwnedMemory)
-				{
-					mContext->mDevice.freeMemory(*OwnedMemory);
-				}
-				*OwnedMemory = NewMemory;
-				*CommittedBytes = Bytes;
-				return {};
+				Info.imageOpaqueBindCount = bTexture ? 1u : 0u;
+				Info.pImageOpaqueBinds = bTexture ? &ImageInfo : nullptr;
+				Info.bufferBindCount = bTexture ? 0u : 1u;
+				Info.pBufferBinds = bTexture ? nullptr : &BufferInfo;
+				return SubmitSparseBinding(Object,
+				    *State,
+				    eastl::move(Mappings),
+				    Info,
+				    QueueType,
+				    bTexture && Bytes != 0);
 			}
 			catch (const vk::SystemError& Error)
 			{
@@ -5200,30 +5707,83 @@ namespace arda
 		FArdaProviderObjectResult FArdaVulkanProviderDevice::CreateFramebuffer(
 		    const FArdaProviderFramebufferCreateInfo& Info)
 		{
-			auto Result = eastl::make_shared<FArdaVulkanFramebuffer>();
-			for (const auto& Target : Info.mColors)
+			try
 			{
-				auto* Texture = dynamic_cast<FArdaVulkanTexture*>(Target.mTexture.get());
-				if (!Texture)
+				auto Result = eastl::make_shared<FArdaVulkanFramebuffer>();
+				const auto AddAttachment = [&](const FArdaProviderFramebufferTarget& Target,
+				                               bool bDepth,
+				                               FArdaVulkanFramebuffer::FArdaAttachment& Attachment) -> FArdaRHIStatus
 				{
-					return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-					    "Vulkan framebuffer texture has the wrong implementation."));
+					auto* Texture = dynamic_cast<FArdaVulkanTexture*>(Target.mTexture.get());
+					if (!Texture)
+					{
+						return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+						    "Vulkan framebuffer texture has the wrong implementation.");
+					}
+					if (Texture->mDesc.mDimension == EArdaRHITextureDimension::Texture3D ||
+					    Texture->mDesc.mDimension == EArdaRHITextureDimension::Texture1D ||
+					    Texture->mDesc.mDimension == EArdaRHITextureDimension::Texture1DArray)
+					{
+						return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+						    "Vulkan framebuffer attachments require two-dimensional image views.");
+					}
+					if (auto Status = ResolveArdaRHIFramebufferAttachment(Texture->mDesc,
+					        Target.mTarget.mAttachment,
+					        bDepth,
+					        Attachment.mDesc);
+					    !Status)
+					{
+						return Status;
+					}
+					const auto& Range = Attachment.mDesc.mSubresources;
+					const vk::Extent2D Extent(GetArdaRHITextureMipExtent(Texture->mDesc.mWidth, Range.mBaseMipLevel),
+					    GetArdaRHITextureMipExtent(Texture->mDesc.mHeight, Range.mBaseMipLevel));
+					if (Result->mLayerCount &&
+					    (Result->mExtent != Extent || Result->mLayerCount != Range.mArraySliceCount))
+					{
+						return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+						    "Vulkan framebuffer attachment extents or layer counts differ.");
+					}
+					Result->mExtent = Extent;
+					Result->mLayerCount = Range.mArraySliceCount;
+					vk::ImageViewCreateInfo View;
+					View.image = Texture->mImage;
+					View.viewType = Range.mArraySliceCount == 1 ? vk::ImageViewType::e2D : vk::ImageViewType::e2DArray;
+					View.format = ToVulkan(Attachment.mDesc.mFormat);
+					Attachment.mAspects = Range.mPlaneCount == 1
+					    ? ImageAspect(Attachment.mDesc.mFormat, Range.mBasePlane)
+					    : ImageAspect(Attachment.mDesc.mFormat);
+					View.subresourceRange = vk::ImageSubresourceRange(Attachment.mAspects,
+					    Range.mBaseMipLevel,
+					    1,
+					    Range.mBaseArraySlice,
+					    Range.mArraySliceCount);
+					Attachment.mTexture = Target.mTexture;
+					Attachment.mView = mContext->mDevice.createImageViewUnique(View);
+					return {};
+				};
+				Result->mColors.resize(Info.mColors.size());
+				for (size_t Index = 0; Index < Info.mColors.size(); ++Index)
+				{
+					if (auto Status = AddAttachment(Info.mColors[Index], false, Result->mColors[Index]); !Status)
+					{
+						return Fail<FArdaProviderObjectRef>(eastl::move(Status));
+					}
 				}
-				Result->mColors.push_back(Target.mTexture);
-				Result->mExtent = vk::Extent2D(Texture->mDesc.mWidth, Texture->mDesc.mHeight);
+				if (Info.mDepth.mTexture)
+				{
+					if (auto Status = AddAttachment(Info.mDepth, true, Result->mDepth); !Status)
+					{
+						return Fail<FArdaProviderObjectRef>(eastl::move(Status));
+					}
+				}
+				return {Result, {}};
 			}
-			if (Info.mDepth.mTexture)
+			catch (const vk::SystemError& Error)
 			{
-				auto* Texture = dynamic_cast<FArdaVulkanTexture*>(Info.mDepth.mTexture.get());
-				if (!Texture)
-				{
-					return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-					    "Vulkan depth texture has the wrong implementation."));
-				}
-				Result->mDepth = Info.mDepth.mTexture;
-				Result->mExtent = vk::Extent2D(Texture->mDesc.mWidth, Texture->mDesc.mHeight);
+				return Fail<FArdaProviderObjectRef>(
+				    FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what()));
 			}
-			return {Result, {}};
 		}
 
 		TArdaRHIResult<vk::PipelineLayout> FArdaVulkanProviderDevice::CreatePipelineLayout(
@@ -5489,9 +6049,18 @@ namespace arda
 			}
 		}
 
-		FArdaProviderObjectResult FArdaVulkanProviderDevice::CreateGraphicsPipeline(
-		    const FArdaProviderGraphicsPipelineCreateInfo& Info)
+		template <typename PipelineInfo>
+		FArdaProviderObjectResult FArdaVulkanProviderDevice::CreateRasterPipeline(const PipelineInfo& Info)
 		{
+			constexpr bool bMeshPipeline = std::is_same_v<PipelineInfo, FArdaProviderMeshletPipelineCreateInfo>;
+			if constexpr (bMeshPipeline)
+			{
+				if (!mContext->mbMeshShader || (Info.mAmplificationShader && !mContext->mMeshShaderFeatures.taskShader))
+				{
+					return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+					    "The requested Vulkan mesh or amplification stage is not enabled."));
+				}
+			}
 			try
 			{
 				auto Pipeline = eastl::make_shared<FArdaVulkanPipeline>();
@@ -5512,58 +6081,71 @@ namespace arda
 						    vk::PipelineShaderStageCreateInfo({}, Stage, Shader->mModule, Shader->mEntryPoint.c_str()));
 					}
 				};
-				AddStage(Info.mVertexShader, vk::ShaderStageFlagBits::eVertex);
-				AddStage(Info.mHullShader, vk::ShaderStageFlagBits::eTessellationControl);
-				AddStage(Info.mDomainShader, vk::ShaderStageFlagBits::eTessellationEvaluation);
-				AddStage(Info.mGeometryShader, vk::ShaderStageFlagBits::eGeometry);
-				AddStage(Info.mPixelShader, vk::ShaderStageFlagBits::eFragment);
-				if (Stages.empty() || !Info.mVertexShader)
+				if constexpr (bMeshPipeline)
 				{
-					return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-					    "A Vulkan graphics pipeline requires a vertex shader."));
+					AddStage(Info.mAmplificationShader, vk::ShaderStageFlagBits::eTaskEXT);
+					AddStage(Info.mMeshShader, vk::ShaderStageFlagBits::eMeshEXT);
+					AddStage(Info.mPixelShader, vk::ShaderStageFlagBits::eFragment);
+				}
+				else
+				{
+					AddStage(Info.mVertexShader, vk::ShaderStageFlagBits::eVertex);
+					AddStage(Info.mHullShader, vk::ShaderStageFlagBits::eTessellationControl);
+					AddStage(Info.mDomainShader, vk::ShaderStageFlagBits::eTessellationEvaluation);
+					AddStage(Info.mGeometryShader, vk::ShaderStageFlagBits::eGeometry);
+					AddStage(Info.mPixelShader, vk::ShaderStageFlagBits::eFragment);
+					if (Stages.empty() || !Info.mVertexShader)
+					{
+						return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+						    "A Vulkan graphics pipeline requires a vertex shader."));
+					}
 				}
 
 				eastl::vector<vk::VertexInputBindingDescription> VertexBindings;
 				eastl::vector<vk::VertexInputAttributeDescription> VertexAttributes;
-				if (Info.mInputLayout)
+				vk::PipelineVertexInputStateCreateInfo VertexInput;
+				vk::PipelineInputAssemblyStateCreateInfo InputAssembly;
+				vk::PipelineTessellationStateCreateInfo Tessellation;
+				if constexpr (!bMeshPipeline)
 				{
-					uint32_t Location = 0;
-					for (const auto& Attribute : Info.mInputLayout->mAttributes)
+					if (Info.mInputLayout)
 					{
-						bool bHasBinding = false;
-						for (const auto& Existing : VertexBindings)
+						uint32_t Location = 0;
+						for (const auto& Attribute : Info.mInputLayout->mAttributes)
 						{
-							if (Existing.binding == Attribute.mBufferIndex)
+							bool bHasBinding = false;
+							for (const auto& Existing : VertexBindings)
 							{
-								bHasBinding = true;
-								break;
+								if (Existing.binding == Attribute.mBufferIndex)
+								{
+									bHasBinding = true;
+									break;
+								}
+							}
+							if (!bHasBinding)
+							{
+								VertexBindings.push_back(vk::VertexInputBindingDescription(Attribute.mBufferIndex,
+								    Attribute.mElementStride,
+								    Attribute.mbInstanced ? vk::VertexInputRate::eInstance
+								                          : vk::VertexInputRate::eVertex));
+							}
+							for (uint32_t Element = 0; Element < eastl::max(1u, Attribute.mArraySize); ++Element)
+							{
+								VertexAttributes.push_back(vk::VertexInputAttributeDescription(Location++,
+								    Attribute.mBufferIndex,
+								    ToVulkan(Attribute.mFormat),
+								    Attribute.mOffset + Element * GetArdaRHIFormatElementSize(Attribute.mFormat)));
 							}
 						}
-						if (!bHasBinding)
-						{
-							VertexBindings.push_back(vk::VertexInputBindingDescription(Attribute.mBufferIndex,
-							    Attribute.mElementStride,
-							    Attribute.mbInstanced ? vk::VertexInputRate::eInstance : vk::VertexInputRate::eVertex));
-						}
-						for (uint32_t Element = 0; Element < eastl::max(1u, Attribute.mArraySize); ++Element)
-						{
-							VertexAttributes.push_back(vk::VertexInputAttributeDescription(Location++,
-							    Attribute.mBufferIndex,
-							    ToVulkan(Attribute.mFormat),
-							    Attribute.mOffset + Element * GetArdaRHIFormatElementSize(Attribute.mFormat)));
-						}
 					}
-				}
-				vk::PipelineVertexInputStateCreateInfo VertexInput;
-				VertexInput.vertexBindingDescriptionCount = static_cast<uint32_t>(VertexBindings.size());
-				VertexInput.pVertexBindingDescriptions = VertexBindings.data();
-				VertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(VertexAttributes.size());
-				VertexInput.pVertexAttributeDescriptions = VertexAttributes.data();
-				vk::PipelineInputAssemblyStateCreateInfo InputAssembly;
-				InputAssembly.topology = ToTopology(Info.mDesc.mTopology);
+					VertexInput.vertexBindingDescriptionCount = static_cast<uint32_t>(VertexBindings.size());
+					VertexInput.pVertexBindingDescriptions = VertexBindings.data();
+					VertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(VertexAttributes.size());
+					VertexInput.pVertexAttributeDescriptions = VertexAttributes.data();
+					InputAssembly.topology = ToTopology(Info.mDesc.mTopology);
 
-				vk::PipelineTessellationStateCreateInfo Tessellation;
-				Tessellation.patchControlPoints = eastl::max(1u, Info.mDesc.mPatchControlPoints);
+					Tessellation.patchControlPoints = eastl::max(1u, Info.mDesc.mPatchControlPoints);
+				}
 				vk::PipelineViewportStateCreateInfo Viewport;
 				Viewport.viewportCount = 1;
 				Viewport.scissorCount = 1;
@@ -5637,10 +6219,13 @@ namespace arda
 				ApplyDescriptorStoragePipelineFlags(*Pipeline, Native.pNext, HeapFlags);
 				Native.stageCount = static_cast<uint32_t>(Stages.size());
 				Native.pStages = Stages.data();
-				Native.pVertexInputState = &VertexInput;
-				Native.pInputAssemblyState = &InputAssembly;
-				Native.pTessellationState =
-				    Info.mDesc.mTopology == EArdaRHIPrimitiveTopology::PatchList ? &Tessellation : nullptr;
+				if constexpr (!bMeshPipeline)
+				{
+					Native.pVertexInputState = &VertexInput;
+					Native.pInputAssemblyState = &InputAssembly;
+					Native.pTessellationState =
+					    Info.mDesc.mTopology == EArdaRHIPrimitiveTopology::PatchList ? &Tessellation : nullptr;
+				}
 				Native.pViewportState = &Viewport;
 				Native.pRasterizationState = &Raster;
 				Native.pMultisampleState = &Multisample;
@@ -5670,6 +6255,12 @@ namespace arda
 			}
 		}
 
+		FArdaProviderObjectResult FArdaVulkanProviderDevice::CreateGraphicsPipeline(
+		    const FArdaProviderGraphicsPipelineCreateInfo& Info)
+		{
+			return CreateRasterPipeline(Info);
+		}
+
 		FArdaProviderObjectResult FArdaVulkanProviderDevice::CreateMeshletPipeline(
 		    const FArdaProviderMeshletPipelineCreateInfo& Info)
 		{
@@ -5684,129 +6275,7 @@ namespace arda
 				return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 				    "A Vulkan mesh pipeline requires a mesh shader."));
 			}
-			try
-			{
-				auto Pipeline = eastl::make_shared<FArdaVulkanPipeline>();
-				Pipeline->mContext = mContext;
-				auto Layout = CreatePipelineLayout(Info.mBindingLayouts, *Pipeline);
-				if (!Layout)
-				{
-					return Fail<FArdaProviderObjectRef>(eastl::move(Layout.mStatus));
-				}
-				Pipeline->mLayout = Layout.mValue;
-				eastl::vector<vk::PipelineShaderStageCreateInfo> Stages;
-				if (auto* Task = dynamic_cast<FArdaVulkanShader*>(Info.mAmplificationShader.get()))
-				{
-					Stages.emplace_back(vk::PipelineShaderStageCreateFlags{},
-					    vk::ShaderStageFlagBits::eTaskEXT,
-					    Task->mModule,
-					    Task->mEntryPoint.c_str());
-				}
-				Stages.emplace_back(vk::PipelineShaderStageCreateFlags{},
-				    vk::ShaderStageFlagBits::eMeshEXT,
-				    MeshShader->mModule,
-				    MeshShader->mEntryPoint.c_str());
-				if (auto* Pixel = dynamic_cast<FArdaVulkanShader*>(Info.mPixelShader.get()))
-				{
-					Stages.emplace_back(vk::PipelineShaderStageCreateFlags{},
-					    vk::ShaderStageFlagBits::eFragment,
-					    Pixel->mModule,
-					    Pixel->mEntryPoint.c_str());
-				}
-
-				vk::PipelineViewportStateCreateInfo Viewport;
-				Viewport.viewportCount = 1;
-				Viewport.scissorCount = 1;
-				vk::PipelineRasterizationStateCreateInfo Raster;
-				Raster.depthClampEnable = !Info.mDesc.mRasterState.mbDepthClip;
-				Raster.polygonMode = Info.mDesc.mRasterState.mFillMode == EArdaRHIFillMode::Wireframe
-				    ? vk::PolygonMode::eLine
-				    : vk::PolygonMode::eFill;
-				Raster.cullMode = Info.mDesc.mRasterState.mCullMode == EArdaRHICullMode::Back
-				    ? vk::CullModeFlagBits::eBack
-				    : Info.mDesc.mRasterState.mCullMode == EArdaRHICullMode::Front ? vk::CullModeFlagBits::eFront
-				                                                                   : vk::CullModeFlagBits::eNone;
-				Raster.frontFace = Info.mDesc.mRasterState.mbFrontCounterClockwise ? vk::FrontFace::eCounterClockwise
-				                                                                   : vk::FrontFace::eClockwise;
-				Raster.lineWidth = 1.f;
-				vk::PipelineMultisampleStateCreateInfo Multisample;
-				Multisample.rasterizationSamples =
-				    static_cast<vk::SampleCountFlagBits>(eastl::max(1u, Info.mDesc.mSampleCount));
-				Multisample.alphaToCoverageEnable = Info.mDesc.mBlendState.mbAlphaToCoverage;
-				vk::PipelineDepthStencilStateCreateInfo Depth;
-				Depth.depthTestEnable = Info.mDesc.mDepthStencilState.mbDepthTest;
-				Depth.depthWriteEnable = Info.mDesc.mDepthStencilState.mbDepthWrite;
-				Depth.depthCompareOp = ToCompare(Info.mDesc.mDepthStencilState.mDepthFunc);
-				eastl::vector<vk::PipelineColorBlendAttachmentState> Attachments;
-				for (size_t Index = 0; Index < Info.mDesc.mColorFormats.size(); ++Index)
-				{
-					const auto& Source = Info.mDesc.mBlendState.mTargets[Index];
-					vk::PipelineColorBlendAttachmentState Target;
-					Target.blendEnable = Source.mbEnable;
-					Target.srcColorBlendFactor = ToBlend(Source.mSourceColor);
-					Target.dstColorBlendFactor = ToBlend(Source.mDestinationColor);
-					Target.colorBlendOp = vk::BlendOp::eAdd;
-					Target.srcAlphaBlendFactor = ToBlend(Source.mSourceAlpha);
-					Target.dstAlphaBlendFactor = ToBlend(Source.mDestinationAlpha);
-					Target.alphaBlendOp = vk::BlendOp::eAdd;
-					Target.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-					    vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-					Attachments.push_back(Target);
-				}
-				vk::PipelineColorBlendStateCreateInfo Blend;
-				Blend.attachmentCount = static_cast<uint32_t>(Attachments.size());
-				Blend.pAttachments = Attachments.data();
-				const eastl::array<vk::DynamicState, 2> DynamicStates = {vk::DynamicState::eViewport,
-				    vk::DynamicState::eScissor};
-				vk::PipelineDynamicStateCreateInfo Dynamic;
-				Dynamic.dynamicStateCount = static_cast<uint32_t>(DynamicStates.size());
-				Dynamic.pDynamicStates = DynamicStates.data();
-				eastl::vector<vk::Format> ColorFormats;
-				for (auto Format : Info.mDesc.mColorFormats)
-				{
-					ColorFormats.push_back(ToVulkan(Format));
-				}
-				vk::PipelineRenderingCreateInfo Rendering;
-				Rendering.colorAttachmentCount = static_cast<uint32_t>(ColorFormats.size());
-				Rendering.pColorAttachmentFormats = ColorFormats.data();
-				const vk::Format DepthFormat = ToVulkan(Info.mDesc.mDepthFormat);
-				const auto Aspect = ImageAspect(Info.mDesc.mDepthFormat);
-				Rendering.depthAttachmentFormat =
-				    (Aspect & vk::ImageAspectFlagBits::eDepth) ? DepthFormat : vk::Format::eUndefined;
-				Rendering.stencilAttachmentFormat =
-				    (Aspect & vk::ImageAspectFlagBits::eStencil) ? DepthFormat : vk::Format::eUndefined;
-				vk::ShaderDescriptorSetAndBindingMappingInfoEXT MappingInfo;
-				ApplyDescriptorHeapShaderMappings(*Pipeline, Stages, MappingInfo);
-				vk::GraphicsPipelineCreateInfo Native;
-				Native.pNext = &Rendering;
-				vk::PipelineCreateFlags2CreateInfo HeapFlags;
-				ApplyDescriptorStoragePipelineFlags(*Pipeline, Native.pNext, HeapFlags);
-				Native.stageCount = static_cast<uint32_t>(Stages.size());
-				Native.pStages = Stages.data();
-				Native.pViewportState = &Viewport;
-				Native.pRasterizationState = &Raster;
-				Native.pMultisampleState = &Multisample;
-				Native.pDepthStencilState = &Depth;
-				Native.pColorBlendState = &Blend;
-				Native.pDynamicState = &Dynamic;
-				Native.layout = Pipeline->mbDescriptorHeapPipeline ? vk::PipelineLayout{} : Pipeline->mLayout;
-				std::unique_lock<std::mutex> CacheLock(mPipelineCacheMutex, std::defer_lock);
-				if (mPipelineCache)
-				{
-					CacheLock.lock();
-				}
-				Pipeline->mPipeline = mContext->mDevice.createGraphicsPipeline(mPipelineCache, Native).value;
-				if (mPipelineCache)
-				{
-					mbPipelineCacheDirty = true;
-				}
-				return {Pipeline, {}};
-			}
-			catch (const vk::SystemError& Error)
-			{
-				return Fail<FArdaProviderObjectRef>(
-				    FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what()));
-			}
+			return CreateRasterPipeline(Info);
 		}
 
 		FArdaProviderObjectResult FArdaVulkanProviderDevice::CreateRayTracingPipeline(
@@ -6122,19 +6591,23 @@ namespace arda
 					Cursor = CallableOffset + Callable.size() * Stride;
 				}
 
-				if (Table->mBuffer)
+				// Publish only complete generations; recorded dispatches retain their original addresses.
+				auto Storage = eastl::make_shared<FArdaVulkanShaderTableStorage>();
+				Storage->mContext = mContext;
+				for (const auto& Record : Table->mRecords)
 				{
-					mContext->mDevice.destroyBuffer(Table->mBuffer);
-					mContext->mDevice.freeMemory(Table->mMemory);
-					Table->mBuffer = nullptr;
-					Table->mMemory = nullptr;
+					if (Record.mbWritten)
+					{
+						Storage->mRetainedObjects.push_back(Record.mBindings);
+						Storage->mRetainedObjects.push_back(Record.mGeometry);
+					}
 				}
 				vk::BufferCreateInfo BufferInfo;
 				BufferInfo.size = Cursor;
 				BufferInfo.usage =
 				    vk::BufferUsageFlagBits::eShaderBindingTableKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;
-				Table->mBuffer = mContext->mDevice.createBuffer(BufferInfo);
-				const auto Requirements = mContext->mDevice.getBufferMemoryRequirements(Table->mBuffer);
+				Storage->mBuffer = mContext->mDevice.createBuffer(BufferInfo);
+				const auto Requirements = mContext->mDevice.getBufferMemoryRequirements(Storage->mBuffer);
 				const uint32_t MemoryType = mContext->FindMemoryType(Requirements.memoryTypeBits,
 				    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 				if (MemoryType == UINT32_MAX)
@@ -6145,9 +6618,10 @@ namespace arda
 				vk::MemoryAllocateFlagsInfo Flags(vk::MemoryAllocateFlagBits::eDeviceAddress);
 				vk::MemoryAllocateInfo Allocate(Requirements.size, MemoryType);
 				Allocate.pNext = &Flags;
-				Table->mMemory = mContext->mDevice.allocateMemory(Allocate);
-				mContext->mDevice.bindBufferMemory(Table->mBuffer, Table->mMemory, 0);
-				uint8_t* Mapped = static_cast<uint8_t*>(mContext->mDevice.mapMemory(Table->mMemory, 0, Cursor));
+				Storage->mMemory = mContext->mDevice.allocateMemory(Allocate);
+				mContext->mDevice.bindBufferMemory(Storage->mBuffer, Storage->mMemory, 0);
+				Storage->mMapped = mContext->mDevice.mapMemory(Storage->mMemory, 0, Cursor);
+				auto* Mapped = static_cast<uint8_t*>(Storage->mMapped);
 				std::memset(Mapped, 0, static_cast<size_t>(Cursor));
 				const uint32_t GroupCount = static_cast<uint32_t>(Table->mPipeline->mExportGroups.size());
 				const auto Handles =
@@ -6217,23 +6691,25 @@ namespace arda
 				{
 					Status = WriteSection(Callable, CallableOffset);
 				}
-				mContext->mDevice.unmapMemory(Table->mMemory);
+				mContext->mDevice.unmapMemory(Storage->mMemory);
+				Storage->mMapped = nullptr;
 				if (!Status)
 				{
 					return Status;
 				}
 				const uint64_t Address =
-				    mContext->mDevice.getBufferAddress(vk::BufferDeviceAddressInfo(Table->mBuffer));
-				Table->mRayGeneration = vk::StridedDeviceAddressRegionKHR(Address + RayOffset, Stride, Stride);
-				Table->mMiss = Miss.empty()
+				    mContext->mDevice.getBufferAddress(vk::BufferDeviceAddressInfo(Storage->mBuffer));
+				Storage->mRayGeneration = vk::StridedDeviceAddressRegionKHR(Address + RayOffset, Stride, Stride);
+				Storage->mMiss = Miss.empty()
 				    ? vk::StridedDeviceAddressRegionKHR{}
 				    : vk::StridedDeviceAddressRegionKHR{Address + MissOffset, Stride, Miss.size() * Stride};
-				Table->mHit = Hit.empty()
+				Storage->mHit = Hit.empty()
 				    ? vk::StridedDeviceAddressRegionKHR{}
 				    : vk::StridedDeviceAddressRegionKHR{Address + HitOffset, Stride, Hit.size() * Stride};
-				Table->mCallable = Callable.empty()
+				Storage->mCallable = Callable.empty()
 				    ? vk::StridedDeviceAddressRegionKHR{}
 				    : vk::StridedDeviceAddressRegionKHR{Address + CallableOffset, Stride, Callable.size() * Stride};
+				Table->mStorage = eastl::move(Storage);
 				return {};
 			}
 			catch (const vk::SystemError& Error)
@@ -6421,10 +6897,15 @@ namespace arda
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 				    "The Vulkan command list is already open.");
 			}
+			if (mbNeedsReset)
+			{
+				return Reset();
+			}
 			try
 			{
 				mCommandBuffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 				mbOpen = true;
+				mbNeedsReset = true;
 				return {};
 			}
 			catch (const vk::SystemError& Error)
@@ -6444,7 +6925,7 @@ namespace arda
 				EndRendering();
 				mCommandBuffer.end();
 				mbOpen = false;
-				return {};
+				return mRecordingError;
 			}
 			catch (const vk::SystemError& Error)
 			{
@@ -6472,10 +6953,14 @@ namespace arda
 				{
 					mDevice.GetContext()->mDevice.resetCommandPool(mRecording->mCommandPool);
 					mRecording->mRetainedObjects.clear();
+					mRecording->mMarkers.clear();
+					mRecording->mbMarkersTruncated = false;
 				}
 				CancelTimerQueries();
 				mTimerQueries.clear();
 				mbOpen = false;
+				mbNeedsReset = false;
+				mRecordingError = {};
 				mBoundGraphics = nullptr;
 				mBoundCompute = nullptr;
 				mBoundRayTracing = nullptr;
@@ -7168,71 +7653,13 @@ namespace arda
 		    const FArdaRHITextureDesc& SourceDesc,
 		    const FArdaRHITextureSlice& SourceSlice)
 		{
-			auto* Dst = dynamic_cast<FArdaVulkanStagingTexture*>(Destination.get());
-			auto* Src = dynamic_cast<FArdaVulkanTexture*>(Source.get());
-			if (!Dst || !Src || !Dst->mBuffer || !Src->mImage)
-			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-				    "Vulkan texture readback has the wrong resource type.");
-			}
-			FArdaRHITextureCopyExtent CopyExtent;
-			if (auto Status = ResolveArdaRHITextureCopyExtent(DestinationDesc.mTexture,
-			        DestinationSlice,
-			        SourceDesc,
-			        SourceSlice,
-			        CopyExtent);
-			    !Status)
-			{
-				return Status;
-			}
-			const uint32_t Width = CopyExtent.mWidth;
-			const uint32_t Height = CopyExtent.mHeight;
-			const uint32_t Depth = CopyExtent.mDepth;
-			const size_t StagingIndex = static_cast<size_t>(DestinationSlice.mPlane) *
-			        DestinationDesc.mTexture.mMipLevels * DestinationDesc.mTexture.mArraySize +
-			    static_cast<size_t>(DestinationSlice.mArraySlice) * DestinationDesc.mTexture.mMipLevels +
-			    DestinationSlice.mMipLevel;
-			const size_t SourceIndex =
-			    TextureSubresourceIndex(SourceDesc, SourceSlice.mMipLevel, SourceSlice.mArraySlice, SourceSlice.mPlane);
-			(void)GetTrackedTextureLayouts(*Src, SourceDesc);
-			const EArdaRHIResourceState Previous = mTextureAbstractStates.at(Src->GetIdentity())[SourceIndex];
-			FArdaRHITextureSubresourceRange Range{SourceSlice.mMipLevel,
-			    1,
-			    SourceSlice.mArraySlice,
-			    1,
-			    SourceSlice.mPlane,
-			    1};
-			if (mbAutomaticBarriers)
-			{
-				if (auto Status = TransitionTextureLayout(Source, SourceDesc, Range, EArdaRHIResourceState::CopySource);
-				    !Status)
-				{
-					return Status;
-				}
-			}
-			vk::BufferImageCopy Region;
-			if (auto Status = ConfigureVulkanStagingCopyRegion(Region, *Dst, StagingIndex, DestinationSlice); !Status)
-			{
-				return Status;
-			}
-			Region.imageSubresource = vk::ImageSubresourceLayers(ImageAspect(SourceDesc.mFormat, SourceSlice.mPlane),
-			    SourceSlice.mMipLevel,
-			    SourceSlice.mArraySlice,
-			    1);
-			Region.imageOffset = vk::Offset3D(SourceSlice.mX, SourceSlice.mY, SourceSlice.mZ);
-			Region.imageExtent = vk::Extent3D(Width, Height, Depth);
-			EndRendering();
-			mCommandBuffer.copyImageToBuffer(Src->mImage, vk::ImageLayout::eTransferSrcOptimal, Dst->mBuffer, Region);
-			if (mbAutomaticBarriers)
-			{
-				if (auto Status = TransitionTextureLayout(Source, SourceDesc, Range, Previous); !Status)
-				{
-					return Status;
-				}
-			}
-			Retain(Destination);
-			Retain(Source);
-			return {};
+			return CopyStagingTexture(false,
+			    Source,
+			    SourceDesc,
+			    SourceSlice,
+			    Destination,
+			    DestinationDesc,
+			    DestinationSlice);
 		}
 
 		FArdaRHIStatus FArdaVulkanCommandList::CopyTextureFromStaging(const FArdaProviderObjectRef& Destination,
@@ -7242,17 +7669,36 @@ namespace arda
 		    const FArdaRHIStagingTextureDesc& SourceDesc,
 		    const FArdaRHITextureSlice& SourceSlice)
 		{
-			auto* Dst = dynamic_cast<FArdaVulkanTexture*>(Destination.get());
-			auto* Src = dynamic_cast<FArdaVulkanStagingTexture*>(Source.get());
-			if (!Dst || !Src || !Dst->mImage || !Src->mBuffer)
+			return CopyStagingTexture(true,
+			    Destination,
+			    DestinationDesc,
+			    DestinationSlice,
+			    Source,
+			    SourceDesc,
+			    SourceSlice);
+		}
+
+		FArdaRHIStatus FArdaVulkanCommandList::CopyStagingTexture(bool bToTexture,
+		    const FArdaProviderObjectRef& TextureObject,
+		    const FArdaRHITextureDesc& TextureDesc,
+		    const FArdaRHITextureSlice& TextureSlice,
+		    const FArdaProviderObjectRef& StagingObject,
+		    const FArdaRHIStagingTextureDesc& StagingDesc,
+		    const FArdaRHITextureSlice& StagingSlice)
+		{
+			auto* Texture = dynamic_cast<FArdaVulkanTexture*>(TextureObject.get());
+			auto* Staging = dynamic_cast<FArdaVulkanStagingTexture*>(StagingObject.get());
+			if (!Texture || !Staging || !Texture->mImage || !Staging->mBuffer)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-				    "Vulkan texture upload has the wrong resource type.");
+				    "Vulkan staging texture copy has the wrong resource type.");
 			}
+			const auto& SourceSlice = bToTexture ? StagingSlice : TextureSlice;
+			const auto& DestinationSlice = bToTexture ? TextureSlice : StagingSlice;
 			FArdaRHITextureCopyExtent CopyExtent;
-			if (auto Status = ResolveArdaRHITextureCopyExtent(DestinationDesc,
+			if (auto Status = ResolveArdaRHITextureCopyExtent(bToTexture ? TextureDesc : StagingDesc.mTexture,
 			        DestinationSlice,
-			        SourceDesc.mTexture,
+			        bToTexture ? StagingDesc.mTexture : TextureDesc,
 			        SourceSlice,
 			        CopyExtent);
 			    !Status)
@@ -7262,53 +7708,68 @@ namespace arda
 			const uint32_t Width = CopyExtent.mWidth;
 			const uint32_t Height = CopyExtent.mHeight;
 			const uint32_t Depth = CopyExtent.mDepth;
-			const size_t StagingIndex = static_cast<size_t>(SourceSlice.mPlane) * SourceDesc.mTexture.mMipLevels *
-			        SourceDesc.mTexture.mArraySize +
-			    static_cast<size_t>(SourceSlice.mArraySlice) * SourceDesc.mTexture.mMipLevels + SourceSlice.mMipLevel;
-			const size_t DestinationIndex = TextureSubresourceIndex(DestinationDesc,
-			    DestinationSlice.mMipLevel,
-			    DestinationSlice.mArraySlice,
-			    DestinationSlice.mPlane);
-			(void)GetTrackedTextureLayouts(*Dst, DestinationDesc);
-			const EArdaRHIResourceState Previous = mTextureAbstractStates.at(Dst->GetIdentity())[DestinationIndex];
-			FArdaRHITextureSubresourceRange Range{DestinationSlice.mMipLevel,
+			const size_t StagingIndex = TextureSubresourceIndex(StagingDesc.mTexture,
+			    StagingSlice.mMipLevel,
+			    StagingSlice.mArraySlice,
+			    StagingSlice.mPlane);
+			const size_t TextureIndex = TextureSubresourceIndex(TextureDesc,
+			    TextureSlice.mMipLevel,
+			    TextureSlice.mArraySlice,
+			    TextureSlice.mPlane);
+			(void)GetTrackedTextureLayouts(*Texture, TextureDesc);
+			const EArdaRHIResourceState Previous = mTextureAbstractStates.at(Texture->GetIdentity())[TextureIndex];
+			FArdaRHITextureSubresourceRange Range{TextureSlice.mMipLevel,
 			    1,
-			    DestinationSlice.mArraySlice,
+			    TextureSlice.mArraySlice,
 			    1,
-			    DestinationSlice.mPlane,
+			    TextureSlice.mPlane,
 			    1};
 			if (mbAutomaticBarriers)
 			{
-				if (auto Status =
-				        TransitionTextureLayout(Destination, DestinationDesc, Range, EArdaRHIResourceState::CopyDest);
+				if (auto Status = TransitionTextureLayout(TextureObject,
+				        TextureDesc,
+				        Range,
+				        bToTexture ? EArdaRHIResourceState::CopyDest : EArdaRHIResourceState::CopySource);
 				    !Status)
 				{
 					return Status;
 				}
 			}
 			vk::BufferImageCopy Region;
-			if (auto Status = ConfigureVulkanStagingCopyRegion(Region, *Src, StagingIndex, SourceSlice); !Status)
+			if (auto Status = ConfigureVulkanStagingCopyRegion(Region, *Staging, StagingIndex, StagingSlice); !Status)
 			{
 				return Status;
 			}
-			Region.imageSubresource =
-			    vk::ImageSubresourceLayers(ImageAspect(DestinationDesc.mFormat, DestinationSlice.mPlane),
-			        DestinationSlice.mMipLevel,
-			        DestinationSlice.mArraySlice,
-			        1);
-			Region.imageOffset = vk::Offset3D(DestinationSlice.mX, DestinationSlice.mY, DestinationSlice.mZ);
+			Region.imageSubresource = vk::ImageSubresourceLayers(ImageAspect(TextureDesc.mFormat, TextureSlice.mPlane),
+			    TextureSlice.mMipLevel,
+			    TextureSlice.mArraySlice,
+			    1);
+			Region.imageOffset = vk::Offset3D(TextureSlice.mX, TextureSlice.mY, TextureSlice.mZ);
 			Region.imageExtent = vk::Extent3D(Width, Height, Depth);
 			EndRendering();
-			mCommandBuffer.copyBufferToImage(Src->mBuffer, Dst->mImage, vk::ImageLayout::eTransferDstOptimal, Region);
+			if (bToTexture)
+			{
+				mCommandBuffer.copyBufferToImage(Staging->mBuffer,
+				    Texture->mImage,
+				    vk::ImageLayout::eTransferDstOptimal,
+				    Region);
+			}
+			else
+			{
+				mCommandBuffer.copyImageToBuffer(Texture->mImage,
+				    vk::ImageLayout::eTransferSrcOptimal,
+				    Staging->mBuffer,
+				    Region);
+			}
 			if (mbAutomaticBarriers)
 			{
-				if (auto Status = TransitionTextureLayout(Destination, DestinationDesc, Range, Previous); !Status)
+				if (auto Status = TransitionTextureLayout(TextureObject, TextureDesc, Range, Previous); !Status)
 				{
 					return Status;
 				}
 			}
-			Retain(Destination);
-			Retain(Source);
+			Retain(TextureObject);
+			Retain(StagingObject);
 			return {};
 		}
 
@@ -7384,6 +7845,10 @@ namespace arda
 
 		FArdaRHIStatus FArdaVulkanCommandList::ValidateTrackedStartStates() const
 		{
+			if (!mRecordingError)
+			{
+				return mRecordingError;
+			}
 			for (const auto& Entry : mTrackedTextures)
 			{
 				FArdaVulkanTexture* Texture = Entry.second;
@@ -7663,6 +8128,29 @@ namespace arda
 					{
 						return Status;
 					}
+				}
+				if (bEnd && Transition.mStateBefore != EArdaRHIResourceState::Unknown)
+				{
+					// The matching release establishes this layout before the acquire executes,
+					// even when both command lists were recorded while the image was still new.
+					// This also applies to logical queues in the same Vulkan queue family.
+					const auto Range = Transition.mSubresources.Resolve(Desc);
+					auto& Layouts = GetTrackedTextureLayouts(*Texture, Desc);
+					auto& Stages = mTextureStageMasks.at(Texture->GetIdentity());
+					auto& Access = mTextureAccessMasks.at(Texture->GetIdentity());
+					const auto Layout = ToImageLayout(Transition.mStateBefore,
+					    ImageAspect(Desc.mFormat) != vk::ImageAspectFlagBits::eColor);
+					const auto Sync = ToVulkanSyncState(Transition.mStateBefore);
+					for (const auto [MipLevel, ArraySlice, Plane] : FArdaTextureSubresources(Range))
+					{
+						const size_t Index = TextureSubresourceIndex(Desc, MipLevel, ArraySlice, Plane);
+						Layouts[Index] = Layout;
+						Stages[Index] = Sync.mStages;
+						Access[Index] = Sync.mAccess;
+					}
+				}
+				if (SourceFamily != DestinationFamily)
+				{
 					Retain(Object);
 					EndRendering();
 					const auto Range = Transition.mSubresources.Resolve(Desc);
@@ -7821,7 +8309,11 @@ namespace arda
 				ExpectedStartStates[Index] = State;
 				AbstractStates[Index] = State;
 				Touched[Index] = 1;
-				if (Layouts[Index] != vk::ImageLayout::eUndefined)
+				// A fresh image has not yet entered its declared initial state. Keep its
+				// first real transition from UNDEFINED, but trust a different known state:
+				// a producer may establish it after this consumer has already been recorded.
+				if (Layouts[Index] != vk::ImageLayout::eUndefined ||
+				    (State != EArdaRHIResourceState::Unknown && State != Desc.mInitialState))
 				{
 					Layouts[Index] = Layout;
 					StageMasks[Index] = Sync.mStages;
@@ -8428,32 +8920,32 @@ namespace arda
 				Retain(Binding.mBuffer);
 			}
 			Retain(State.mIndexBuffer);
-			const bool bContinueRendering = mbRendering && !mbAutomaticBarriers && mRenderingFramebuffer &&
-			    mRenderingFramebuffer->mColors == Framebuffer->mColors &&
-			    mRenderingFramebuffer->mDepth == Framebuffer->mDepth &&
-			    mRenderingFramebuffer->mExtent == Framebuffer->mExtent;
+			const bool bContinueRendering = mbRendering && !mbAutomaticBarriers && mRenderingFramebuffer == Framebuffer;
 			if (!bContinueRendering)
 			{
 				EndRendering();
 				if (mbAutomaticBarriers)
 				{
-					for (const auto& Object : Framebuffer->mColors)
+					for (const auto& Target : Framebuffer->mColors)
 					{
-						auto* Texture = static_cast<FArdaVulkanTexture*>(Object.get());
-						if (auto Status =
-						        SetTextureState(Object, Texture->mDesc, {}, EArdaRHIResourceState::RenderTarget);
+						auto* Texture = static_cast<FArdaVulkanTexture*>(Target.mTexture.get());
+						if (auto Status = SetTextureState(Target.mTexture,
+						        Texture->mDesc,
+						        Target.mDesc.mSubresources,
+						        EArdaRHIResourceState::RenderTarget);
 						    !Status)
 						{
 							return Status;
 						}
 					}
-					if (Framebuffer->mDepth)
+					if (Framebuffer->mDepth.mTexture)
 					{
-						auto* Texture = static_cast<FArdaVulkanTexture*>(Framebuffer->mDepth.get());
-						if (auto Status = SetTextureState(Framebuffer->mDepth,
+						auto* Texture = static_cast<FArdaVulkanTexture*>(Framebuffer->mDepth.mTexture.get());
+						if (auto Status = SetTextureState(Framebuffer->mDepth.mTexture,
 						        Texture->mDesc,
-						        {},
-						        EArdaRHIResourceState::DepthWrite);
+						        Framebuffer->mDepth.mDesc.mSubresources,
+						        Framebuffer->mDepth.mDesc.mbReadOnly ? EArdaRHIResourceState::DepthRead
+						                                             : EArdaRHIResourceState::DepthWrite);
 						    !Status)
 						{
 							return Status;
@@ -8461,11 +8953,10 @@ namespace arda
 					}
 				}
 				eastl::vector<vk::RenderingAttachmentInfo> Colors;
-				for (const auto& Object : Framebuffer->mColors)
+				for (const auto& Target : Framebuffer->mColors)
 				{
-					auto* Texture = static_cast<FArdaVulkanTexture*>(Object.get());
 					vk::RenderingAttachmentInfo Attachment;
-					Attachment.imageView = Texture->mView;
+					Attachment.imageView = *Target.mView;
 					Attachment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
 					Attachment.loadOp = vk::AttachmentLoadOp::eLoad;
 					Attachment.storeOp = vk::AttachmentStoreOp::eStore;
@@ -8474,18 +8965,19 @@ namespace arda
 				vk::RenderingAttachmentInfo Depth;
 				vk::RenderingInfo Rendering;
 				Rendering.renderArea = vk::Rect2D({0, 0}, Framebuffer->mExtent);
-				Rendering.layerCount = 1;
+				Rendering.layerCount = Framebuffer->mLayerCount;
 				Rendering.colorAttachmentCount = static_cast<uint32_t>(Colors.size());
 				Rendering.pColorAttachments = Colors.data();
-				if (Framebuffer->mDepth)
+				if (Framebuffer->mDepth.mTexture)
 				{
-					auto* Texture = static_cast<FArdaVulkanTexture*>(Framebuffer->mDepth.get());
-					Depth.imageView = Texture->mView;
-					Depth.imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+					Depth.imageView = *Framebuffer->mDepth.mView;
+					Depth.imageLayout = Framebuffer->mDepth.mDesc.mbReadOnly
+					    ? vk::ImageLayout::eDepthStencilReadOnlyOptimal
+					    : vk::ImageLayout::eDepthStencilAttachmentOptimal;
 					Depth.loadOp = vk::AttachmentLoadOp::eLoad;
 					Depth.storeOp = vk::AttachmentStoreOp::eStore;
 					Rendering.pDepthAttachment = &Depth;
-					if (ImageAspect(Texture->mDesc.mFormat) & vk::ImageAspectFlagBits::eStencil)
+					if (Framebuffer->mDepth.mAspects & vk::ImageAspectFlagBits::eStencil)
 					{
 						Rendering.pStencilAttachment = &Depth;
 					}
@@ -8623,7 +9115,14 @@ namespace arda
 		FArdaRHIStatus FArdaVulkanCommandList::SetRayTracingState(const FArdaProviderRayTracingState& State)
 		{
 			auto* Table = dynamic_cast<FArdaVulkanShaderTable*>(State.mShaderTable.get());
-			if (!Table || !Table->mPipeline || !Table->mBuffer || !Table->mRayGeneration.deviceAddress)
+			return BindRayTracingState(State, Table ? Table->mStorage : nullptr);
+		}
+
+		FArdaRHIStatus FArdaVulkanCommandList::BindRayTracingState(const FArdaProviderRayTracingState& State,
+		    const eastl::shared_ptr<FArdaVulkanShaderTableStorage>& Storage)
+		{
+			auto* Table = dynamic_cast<FArdaVulkanShaderTable*>(State.mShaderTable.get());
+			if (!Table || !Table->mPipeline || !Storage || !Storage->mRayGeneration.deviceAddress)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 				    "The Vulkan ray-tracing shader table is incomplete.");
@@ -8637,17 +9136,18 @@ namespace arda
 				return Status;
 			}
 			Retain(State.mShaderTable);
+			Retain(Storage);
 			for (const auto& Binding : State.mBindings)
 			{
 				Retain(Binding);
 			}
 			mBoundRayTracing = Table->mPipeline;
-			mBoundShaderTable = Table;
+			mBoundShaderTable = Storage.get();
 			mBoundGraphics = nullptr;
 			mBoundCompute = nullptr;
-			mRestoreState = [this, State]
+			mRestoreState = [this, State, Storage]
 			{
-				return SetRayTracingState(State);
+				return BindRayTracingState(State, Storage);
 			};
 			return {};
 		}
@@ -8669,8 +9169,39 @@ namespace arda
 			}
 		}
 
+		FArdaRHIStatus FArdaVulkanCommandList::EnsureRendering()
+		{
+			if (!mRecordingError)
+			{
+				return mRecordingError;
+			}
+			if (mbRendering)
+			{
+				return {};
+			}
+			if (!mbOpen || !mBoundGraphics || !mRestoreState)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "Vulkan drawing requires an open list with bound graphics state.");
+			}
+			const auto Restore = mRestoreState;
+			const auto Constants = mPushConstants;
+			if (auto Status = Restore(); !Status)
+			{
+				mRecordingError = Status;
+				return Status;
+			}
+			SetPushConstants(Constants.data(), Constants.size());
+			return {};
+		}
+
 		void FArdaVulkanCommandList::Draw(const FArdaRHIDrawArguments& Arguments)
 		{
+			if (auto Status = EnsureRendering(); !Status)
+			{
+				mRecordingError = eastl::move(Status);
+				return;
+			}
 			mCommandBuffer.draw(Arguments.mVertexCount,
 			    Arguments.mInstanceCount,
 			    Arguments.mStartVertex,
@@ -8679,6 +9210,11 @@ namespace arda
 
 		void FArdaVulkanCommandList::DrawIndexed(const FArdaRHIDrawArguments& Arguments)
 		{
+			if (auto Status = EnsureRendering(); !Status)
+			{
+				mRecordingError = eastl::move(Status);
+				return;
+			}
 			mCommandBuffer.drawIndexed(Arguments.mVertexCount,
 			    Arguments.mInstanceCount,
 			    Arguments.mStartIndex,
@@ -8697,7 +9233,17 @@ namespace arda
 				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
 				    "Vulkan indirect draw has the wrong buffer type.");
 			}
-			mCommandBuffer.drawIndirect(Buffer->mBuffer, Offset, DrawCount, Stride);
+			if (auto Status = EnsureRendering(); !Status)
+			{
+				return Status;
+			}
+			const uint32_t Limit = eastl::max(1u, mDevice.GetContext()->mMaxIndirectDrawCount);
+			for (uint32_t First = 0; First < DrawCount;)
+			{
+				const uint32_t Count = eastl::min(DrawCount - First, Limit);
+				mCommandBuffer.drawIndirect(Buffer->mBuffer, Offset + uint64_t{First} * Stride, Count, Stride);
+				First += Count;
+			}
 			Retain(Arguments);
 			return {};
 		}
@@ -8713,7 +9259,17 @@ namespace arda
 				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
 				    "Vulkan indexed indirect draw has the wrong buffer type.");
 			}
-			mCommandBuffer.drawIndexedIndirect(Buffer->mBuffer, Offset, DrawCount, Stride);
+			if (auto Status = EnsureRendering(); !Status)
+			{
+				return Status;
+			}
+			const uint32_t Limit = eastl::max(1u, mDevice.GetContext()->mMaxIndirectDrawCount);
+			for (uint32_t First = 0; First < DrawCount;)
+			{
+				const uint32_t Count = eastl::min(DrawCount - First, Limit);
+				mCommandBuffer.drawIndexedIndirect(Buffer->mBuffer, Offset + uint64_t{First} * Stride, Count, Stride);
+				First += Count;
+			}
 			Retain(Arguments);
 			return {};
 		}
@@ -9168,6 +9724,10 @@ namespace arda
 
 		FArdaRHIStatus FArdaVulkanCommandList::DispatchMesh(uint32_t X, uint32_t Y, uint32_t Z)
 		{
+			if (auto Status = EnsureRendering(); !Status)
+			{
+				return Status;
+			}
 			if (!mBoundGraphics)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
@@ -9184,10 +9744,11 @@ namespace arda
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 				    "A Vulkan shader table must be bound before ray dispatch.");
 			}
-			mCommandBuffer.traceRaysKHR(&mBoundShaderTable->mRayGeneration,
-			    &mBoundShaderTable->mMiss,
-			    &mBoundShaderTable->mHit,
-			    &mBoundShaderTable->mCallable,
+			const auto* Storage = mBoundShaderTable;
+			mCommandBuffer.traceRaysKHR(&Storage->mRayGeneration,
+			    &Storage->mMiss,
+			    &Storage->mHit,
+			    &Storage->mCallable,
 			    Width,
 			    Height,
 			    Depth);
@@ -9209,10 +9770,11 @@ namespace arda
 			}
 			const uint64_t Address =
 			    mDevice.GetContext()->mDevice.getBufferAddress(vk::BufferDeviceAddressInfo(Buffer->mBuffer)) + Offset;
-			mCommandBuffer.traceRaysIndirectKHR(&mBoundShaderTable->mRayGeneration,
-			    &mBoundShaderTable->mMiss,
-			    &mBoundShaderTable->mHit,
-			    &mBoundShaderTable->mCallable,
+			const auto* Storage = mBoundShaderTable;
+			mCommandBuffer.traceRaysIndirectKHR(&Storage->mRayGeneration,
+			    &Storage->mMiss,
+			    &Storage->mHit,
+			    &Storage->mCallable,
 			    Address);
 			Retain(Arguments);
 			return {};
@@ -9572,8 +10134,7 @@ namespace arda
 				FenceLease->mFence = Fence;
 				const vk::CommandBuffer Buffer = Commands->GetCommandBuffer();
 				const size_t TimelineIndex = GetArdaRHIQueueIndex(QueueType);
-				const uint64_t TimelineValue =
-				    mContext->mQueueTimelineValues[TimelineIndex].fetch_add(1, std::memory_order_relaxed) + 1;
+				uint64_t TimelineValue = 0;
 				vk::CommandBufferSubmitInfo CommandInfo(Buffer);
 				vk::SemaphoreSubmitInfo SignalInfo(mContext->mQueueTimelines[TimelineIndex],
 				    TimelineValue,
@@ -9585,6 +10146,10 @@ namespace arda
 				Submit.pSignalSemaphoreInfos = &SignalInfo;
 				{
 					std::lock_guard<std::mutex> Lock(mContext->mQueueMutex);
+					// Values must be assigned in native submission order, including concurrent callers.
+					TimelineValue =
+					    mContext->mQueueTimelineValues[TimelineIndex].fetch_add(1, std::memory_order_relaxed) + 1;
+					SignalInfo.value = TimelineValue;
 					vk::Queue Queue = mContext->mQueue;
 					if (QueueType == EArdaRHIQueueType::Compute && mContext->mComputeQueue)
 					{
@@ -9649,6 +10214,21 @@ namespace arda
 					{
 						Queue.submit2(Submit, Fence);
 						FenceLease->mbArmed = true;
+					}
+					mContext->mQueueLastSubmitted[TimelineIndex].store(TimelineValue, std::memory_order_relaxed);
+				}
+				{
+					const auto Recording = Commands->GetRecording();
+					std::lock_guard<std::mutex> Lock(mContext->mDiagnosticMutex);
+					mContext->mbMarkersTruncated |= Recording->mbMarkersTruncated;
+					for (const auto& Marker : Recording->mMarkers)
+					{
+						if (mContext->mRecentMarkers.size() == ArdaRHIMaxDiagnosticEntries)
+						{
+							mContext->mRecentMarkers.erase(mContext->mRecentMarkers.begin());
+							mContext->mbMarkersTruncated = true;
+						}
+						mContext->mRecentMarkers.push_back(Marker);
 					}
 				}
 				Commands->MarkTimerQueriesSubmitted(QueueType, TimelineValue);
@@ -9770,24 +10350,35 @@ namespace arda
 
 		void FArdaVulkanProviderDevice::RunGarbageCollection()
 		{
+			CollectVulkanQuarantine();
+			{
+				std::lock_guard<std::mutex> Lock(mSparseBindingMutex);
+				for (size_t Index = 0; Index < mPendingSparseBindings.size();)
+				{
+					const auto Result =
+					    static_cast<vk::Result>(VULKAN_HPP_DEFAULT_DISPATCHER.vkGetFenceStatus(mContext->mDevice,
+					        *mPendingSparseBindings[Index]->mFence));
+					if (Result == vk::Result::eSuccess || Result == vk::Result::eErrorDeviceLost)
+					{
+						mPendingSparseBindings.erase(mPendingSparseBindings.begin() + Index);
+					}
+					else
+					{
+						++Index;
+					}
+				}
+			}
 			std::lock_guard<std::mutex> Lock(mSubmissionMutex);
 			for (size_t Index = 0; Index < mPendingSubmissions.size();)
 			{
-				vk::Result Status = vk::Result::eNotReady;
-				try
-				{
-					Status = mContext->mDevice.getFenceStatus(mPendingSubmissions[Index].mFenceLease->mFence);
-				}
-				catch (const vk::SystemError&)
+				const auto Status = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetFenceStatus(mContext->mDevice,
+				    mPendingSubmissions[Index].mFenceLease->mFence);
+				if (Status != VK_SUCCESS && Status != VK_ERROR_DEVICE_LOST)
 				{
 					++Index;
 					continue;
 				}
-				if (Status != vk::Result::eSuccess)
-				{
-					++Index;
-					continue;
-				}
+				mPendingSubmissions[Index].mFenceLease->mbArmed = false;
 				mPendingSubmissions.erase(mPendingSubmissions.begin() + Index);
 			}
 		}
@@ -9799,6 +10390,110 @@ namespace arda
 			std::lock_guard<std::mutex> Lock(mSubmissionMutex);
 			Stats.mPendingSubmissions = mPendingSubmissions.size();
 			return Stats;
+		}
+
+		TArdaRHIResult<FArdaRHIDiagnosticSnapshot> FArdaVulkanProviderDevice::CaptureDiagnosticSnapshot() const
+		{
+			FArdaRHIDiagnosticSnapshot Snapshot;
+			Snapshot.mBackendName = "native-vulkan";
+			const auto Properties = mContext->mPhysicalDevice.getProperties();
+			Snapshot.mAdapterName = Properties.deviceName.data();
+			Snapshot.mDriverVersion = std::to_string(Properties.driverVersion).c_str();
+			const EArdaRHIQueueType Queues[] = {EArdaRHIQueueType::Graphics,
+			    EArdaRHIQueueType::Compute,
+			    EArdaRHIQueueType::Copy};
+			for (const auto Queue : Queues)
+			{
+				if (!mCapabilities.IsQueueSupported(Queue))
+				{
+					continue;
+				}
+				const auto Index = GetArdaRHIQueueIndex(Queue);
+				FArdaRHIQueueDiagnostic Progress;
+				Progress.mQueue = Queue;
+				Progress.mLastSubmitted = mContext->mQueueLastSubmitted[Index].load(std::memory_order_relaxed);
+				const auto Status = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetSemaphoreCounterValue(mContext->mDevice,
+				    mContext->mQueueTimelines[Index],
+				    &Progress.mLastCompleted);
+				Progress.mbCompletedValueKnown = Status == VK_SUCCESS;
+				if (Status != VK_SUCCESS && Snapshot.mNativeErrorCode != VK_ERROR_DEVICE_LOST)
+				{
+					Snapshot.mDeviceStatus = EArdaRHIResult::BackendFailure;
+					Snapshot.mNativeErrorCode = Status;
+				}
+				Snapshot.mQueues.push_back(Progress);
+			}
+			{
+				std::lock_guard<std::mutex> Lock(mContext->mDiagnosticMutex);
+				Snapshot.mBreadcrumbs = mContext->mRecentMarkers;
+				Snapshot.mbTruncated = mContext->mbMarkersTruncated;
+			}
+			Snapshot.mMessages.push_back("Breadcrumbs are recent CPU-submitted markers, not GPU execution positions.");
+			const auto FaultQuery = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceFaultInfoEXT;
+			if (!mContext->mbDeviceFault || !FaultQuery)
+			{
+				Snapshot.mMessages.push_back("VK_EXT_device_fault was not enabled by this device owner.");
+			}
+			else if (Snapshot.mNativeErrorCode == VK_ERROR_DEVICE_LOST)
+			{
+				VkDeviceFaultCountsEXT Counts{VK_STRUCTURE_TYPE_DEVICE_FAULT_COUNTS_EXT};
+				const auto CountStatus = FaultQuery(mContext->mDevice, &Counts, nullptr);
+				if (CountStatus == VK_SUCCESS)
+				{
+					std::array<VkDeviceFaultAddressInfoEXT, ArdaRHIMaxDiagnosticEntries> Addresses{};
+					std::array<VkDeviceFaultVendorInfoEXT, ArdaRHIMaxDiagnosticEntries> Vendors{};
+					Snapshot.mbTruncated |= Counts.addressInfoCount > Addresses.size() ||
+					    Counts.vendorInfoCount > Vendors.size() || Counts.vendorBinarySize != 0;
+					Counts.addressInfoCount =
+					    eastl::min<uint32_t>(Counts.addressInfoCount, static_cast<uint32_t>(Addresses.size()));
+					Counts.vendorInfoCount =
+					    eastl::min<uint32_t>(Counts.vendorInfoCount, static_cast<uint32_t>(Vendors.size()));
+					Counts.vendorBinarySize = 0;
+					VkDeviceFaultInfoEXT Info{VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT};
+					Info.pAddressInfos = Addresses.data();
+					Info.pVendorInfos = Vendors.data();
+					const auto Status = FaultQuery(mContext->mDevice, &Counts, &Info);
+					if (Status == VK_SUCCESS || Status == VK_INCOMPLETE)
+					{
+						Snapshot.mbNativeFaultDataAvailable = true;
+						Snapshot.mbTruncated |= Status == VK_INCOMPLETE;
+						Snapshot.mMessages.emplace_back(Info.description,
+						    strnlen(Info.description, sizeof(Info.description)));
+						for (uint32_t Index = 0; Index <
+						    eastl::min<uint32_t>(Counts.addressInfoCount, static_cast<uint32_t>(Addresses.size()));
+						    ++Index)
+						{
+							const auto& Address = Addresses[Index];
+							FArdaRHIFaultDiagnostic Fault;
+							Fault.mAddress = Address.reportedAddress;
+							Fault.mDescription =
+							    vk::to_string(static_cast<vk::DeviceFaultAddressTypeEXT>(Address.addressType)).c_str();
+							Snapshot.mFaults.push_back(eastl::move(Fault));
+						}
+						for (uint32_t Index = 0;
+						    Index < eastl::min<uint32_t>(Counts.vendorInfoCount, static_cast<uint32_t>(Vendors.size()));
+						    ++Index)
+						{
+							if (Snapshot.mMessages.size() == ArdaRHIMaxDiagnosticEntries)
+							{
+								Snapshot.mbTruncated = true;
+								break;
+							}
+							Snapshot.mMessages.emplace_back(Vendors[Index].description,
+							    strnlen(Vendors[Index].description, sizeof(Vendors[Index].description)));
+						}
+					}
+					else
+					{
+						Snapshot.mMessages.push_back("Vulkan device-fault details could not be retrieved.");
+					}
+				}
+				else
+				{
+					Snapshot.mMessages.push_back("Vulkan device-fault counts could not be retrieved.");
+				}
+			}
+			return {eastl::move(Snapshot), {}};
 		}
 
 		FArdaRHIStatus FArdaVulkanProviderDevice::WaitForIdle()
@@ -9818,7 +10513,16 @@ namespace arda
 						mContext->mCopyQueue.waitIdle();
 					}
 				}
+				CollectVulkanQuarantine();
+				{
+					std::lock_guard<std::mutex> Lock(mSparseBindingMutex);
+					mPendingSparseBindings.clear();
+				}
 				std::lock_guard<std::mutex> Lock(mSubmissionMutex);
+				for (auto& Submission : mPendingSubmissions)
+				{
+					Submission.mFenceLease->mbArmed = false;
+				}
 				mPendingSubmissions.clear();
 				return {};
 			}
@@ -10720,6 +11424,7 @@ namespace arda
 					vk::PhysicalDeviceShaderFloat16Int8Features SupportedPrecision;
 					vk::PhysicalDeviceSeparateDepthStencilLayoutsFeatures SupportedSeparateLayouts;
 					vk::PhysicalDeviceHostQueryResetFeatures SupportedHostQueryReset;
+					vk::PhysicalDeviceFaultFeaturesEXT SupportedFault;
 					vk::PhysicalDeviceTimelineSemaphoreFeatures SupportedTimeline;
 					vk::PhysicalDeviceDescriptorIndexingFeatures SupportedIndexing;
 					vk::PhysicalDeviceBufferDeviceAddressFeatures SupportedAddress;
@@ -10745,6 +11450,7 @@ namespace arda
 					SupportedDescriptorHeap.pNext = &SupportedPrecision;
 					SupportedPrecision.pNext = &SupportedSeparateLayouts;
 					SupportedSeparateLayouts.pNext = &SupportedHostQueryReset;
+					SupportedHostQueryReset.pNext = &SupportedFault;
 					mContext->mPhysicalDevice.getFeatures2(&SupportedFeatures);
 
 					// Supported features are queried from hardware. Adopted devices may only use
@@ -10760,6 +11466,7 @@ namespace arda
 						MaskFeature(Supported13.shaderIntegerDotProduct, "shaderIntegerDotProduct");
 						MaskFeature(SupportedTimeline.timelineSemaphore, "timelineSemaphore");
 						MaskFeature(SupportedHostQueryReset.hostQueryReset, "hostQueryReset");
+						MaskFeature(SupportedFault.deviceFault, "deviceFault");
 						MaskFeature(SupportedPrecision.shaderFloat16, "shaderFloat16");
 						MaskFeature(SupportedPrecision.shaderInt8, "shaderInt8");
 						MaskFeature(SupportedSeparateLayouts.separateDepthStencilLayouts,
@@ -10800,6 +11507,8 @@ namespace arda
 						MaskFeature(SupportedFeatures.features.samplerAnisotropy, "samplerAnisotropy");
 						MaskFeature(SupportedFeatures.features.geometryShader, "geometryShader");
 						MaskFeature(SupportedFeatures.features.tessellationShader, "tessellationShader");
+						MaskFeature(SupportedFeatures.features.multiDrawIndirect, "multiDrawIndirect");
+						MaskFeature(SupportedFeatures.features.drawIndirectFirstInstance, "drawIndirectFirstInstance");
 						MaskFeature(SupportedFeatures.features.sparseBinding, "sparseBinding");
 						MaskFeature(SupportedFeatures.features.sparseResidencyBuffer, "sparseResidencyBuffer");
 						MaskFeature(SupportedFeatures.features.sparseResidencyImage2D, "sparseResidencyImage2D");
@@ -10836,6 +11545,8 @@ namespace arda
 					mContext->mbDescriptorHeap =
 					    HasExtension(VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME) && SupportedDescriptorHeap.descriptorHeap;
 					mContext->mbMemoryBudget = HasExtension(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+					mContext->mbDeviceFault =
+					    HasExtension(VK_EXT_DEVICE_FAULT_EXTENSION_NAME) && SupportedFault.deviceFault;
 					mContext->mDescriptorIndexingFeatures = SupportedIndexing;
 					mContext->mDescriptorIndexingFeatures.pNext = nullptr;
 					mContext->mRayTracingPipelineFeatures = SupportedRT;
@@ -10854,6 +11565,9 @@ namespace arda
 					SeparateLayouts.separateDepthStencilLayouts = SupportedSeparateLayouts.separateDepthStencilLayouts;
 					vk::PhysicalDeviceHostQueryResetFeatures HostQueryReset;
 					HostQueryReset.hostQueryReset = SupportedHostQueryReset.hostQueryReset;
+					vk::PhysicalDeviceFaultFeaturesEXT Fault;
+					Fault.deviceFault = mContext->mbDeviceFault;
+					HostQueryReset.pNext = mContext->mbDeviceFault ? &Fault : nullptr;
 					mContext->mbHostQueryReset = HostQueryReset.hostQueryReset;
 					mContext->mMachineLearning.mbNativeFloat16 = Precision.shaderFloat16;
 					mContext->mMachineLearning.mbNativeInt8 = Vulkan13.shaderIntegerDotProduct;
@@ -10918,6 +11632,8 @@ namespace arda
 					Enabled.samplerAnisotropy = Supported.samplerAnisotropy;
 					Enabled.geometryShader = Supported.geometryShader;
 					Enabled.tessellationShader = Supported.tessellationShader;
+					Enabled.multiDrawIndirect = Supported.multiDrawIndirect;
+					Enabled.drawIndirectFirstInstance = Supported.drawIndirectFirstInstance;
 					Enabled.sparseBinding = Supported.sparseBinding;
 					Enabled.sparseResidencyBuffer = Supported.sparseResidencyBuffer;
 					Enabled.sparseResidencyImage2D = Supported.sparseResidencyImage2D;
@@ -10974,6 +11690,10 @@ namespace arda
 					{
 						AddExtension(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
 					}
+					if (mContext->mbDeviceFault)
+					{
+						AddExtension(VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
+					}
 					if (HasExtension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME))
 					{
 						AddExtension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
@@ -11000,6 +11720,7 @@ namespace arda
 					DeviceInfo.pEnabledFeatures = &Enabled;
 					if (!bExternal)
 					{
+						mContext->mEnabledFeatures = Enabled;
 						mContext->mDevice = mContext->mPhysicalDevice.createDevice(DeviceInfo);
 					}
 					VULKAN_HPP_DEFAULT_DISPATCHER.init(mContext->mDevice);

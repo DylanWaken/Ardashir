@@ -111,6 +111,547 @@ TEST(ArdaRHI, DescriptorEqualityAndHashAreStable)
 	EXPECT_NE(HashValue(A), HashValue(C));
 }
 
+TEST(ArdaRHI, TextureDescriptorsRejectInvalidDomainsAndShapes)
+{
+	using namespace arda;
+	FArdaRHITextureDesc Base;
+	Base.mWidth = 16;
+	Base.mHeight = 8;
+	Base.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	ASSERT_TRUE(Validate(Base));
+	const auto Reject = [&Base](auto Change)
+	{
+		auto Desc = Base;
+		Change(Desc);
+		EXPECT_EQ(Validate(Desc).mCode, EArdaRHIResult::InvalidArgument);
+	};
+	Reject(
+	    [](auto& D)
+	    {
+		    D.mDimension = static_cast<EArdaRHITextureDimension>(255);
+	    });
+	Reject(
+	    [](auto& D)
+	    {
+		    D.mFormat = EArdaRHIFormat::Count;
+	    });
+	Reject(
+	    [](auto& D)
+	    {
+		    D.mUsage = static_cast<EArdaRHITextureUsage>(1u << 15);
+	    });
+	Reject(
+	    [](auto& D)
+	    {
+		    D.mInitialState = EArdaRHIResourceState::VertexBuffer;
+	    });
+	Reject(
+	    [](auto& D)
+	    {
+		    D.mWidth = 0;
+	    });
+	Reject(
+	    [](auto& D)
+	    {
+		    D.mDepth = 2;
+	    });
+	Reject(
+	    [](auto& D)
+	    {
+		    D.mArraySize = 2;
+	    });
+	Reject(
+	    [](auto& D)
+	    {
+		    D.mDimension = EArdaRHITextureDimension::Texture1D;
+	    });
+	Reject(
+	    [](auto& D)
+	    {
+		    D.mbVirtual = D.mbTiled = true;
+	    });
+
+	Base.mDimension = EArdaRHITextureDimension::Texture2DArray;
+	Base.mArraySize = 3;
+	EXPECT_TRUE(Validate(Base));
+	Base.mDimension = EArdaRHITextureDimension::Texture3D;
+	Base.mArraySize = 1;
+	Base.mDepth = 3;
+	EXPECT_TRUE(Validate(Base));
+	Base.mArraySize = 2;
+	EXPECT_FALSE(Validate(Base));
+}
+
+TEST(ArdaRHI, TextureDescriptorsBoundMipChainsAndCubeFaces)
+{
+	using namespace arda;
+	FArdaRHITextureDesc Desc;
+	Desc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	Desc.mWidth = 9;
+	Desc.mHeight = 5;
+	Desc.mMipLevels = 4;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mMipLevels = 5;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mWidth = UINT32_MAX;
+	Desc.mMipLevels = 32;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mMipLevels = 33;
+	EXPECT_FALSE(Validate(Desc));
+
+	Desc.mDimension = EArdaRHITextureDimension::TextureCube;
+	Desc.mWidth = Desc.mHeight = 8;
+	Desc.mMipLevels = 4;
+	Desc.mArraySize = 6;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mWidth = 7;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mWidth = 8;
+	Desc.mArraySize = 12;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mDimension = EArdaRHITextureDimension::TextureCubeArray;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mArraySize = 7;
+	EXPECT_FALSE(Validate(Desc));
+}
+
+TEST(ArdaRHI, TextureDescriptorsValidateMultisamplingWithoutDroppingLegacyTwoDimensionalForms)
+{
+	using namespace arda;
+	FArdaRHITextureDesc Desc;
+	Desc.mWidth = Desc.mHeight = 8;
+	Desc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	Desc.mSampleCount = 4;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mDimension = EArdaRHITextureDimension::Texture2DMS;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mSampleCount = 1;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mSampleCount = 3;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mSampleCount = 4;
+	Desc.mMipLevels = 2;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mMipLevels = 1;
+	Desc.mDimension = EArdaRHITextureDimension::Texture3D;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mDimension = EArdaRHITextureDimension::Texture2D;
+	Desc.mFormat = EArdaRHIFormat::BC1UNorm;
+	EXPECT_FALSE(Validate(Desc));
+}
+
+TEST(ArdaRHI, TextureDescriptorsValidateFormatUsage)
+{
+	using namespace arda;
+	FArdaRHITextureDesc Desc;
+	Desc.mFormat = EArdaRHIFormat::D24S8;
+	Desc.mUsage = EArdaRHITextureUsage::DepthStencil | EArdaRHITextureUsage::ShaderResource;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mUsage |= EArdaRHITextureUsage::RenderTarget;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mUsage = EArdaRHITextureUsage::UnorderedAccess;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mUsage = EArdaRHITextureUsage::DepthStencil;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mFormat = EArdaRHIFormat::BC1UNorm;
+	Desc.mUsage = EArdaRHITextureUsage::ShaderResource;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mUsage |= EArdaRHITextureUsage::RenderTarget;
+	EXPECT_FALSE(Validate(Desc));
+}
+
+TEST(ArdaRHI, BufferDescriptorsRejectInvalidDomainsAndStructuredStrides)
+{
+	using namespace arda;
+	FArdaRHIBufferDesc Desc;
+	Desc.mByteSize = 68;
+	Desc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource;
+	Desc.mStructureStride = 16;
+	EXPECT_TRUE(Validate(Desc)); // Allocation padding need not be a complete structured element.
+	for (uint32_t Stride : {0u, 3u, 72u})
+	{
+		Desc.mStructureStride = Stride;
+		EXPECT_FALSE(Validate(Desc));
+	}
+	Desc.mStructureStride = 16;
+	Desc.mUsage |= EArdaRHIBufferUsage::Raw;
+	EXPECT_TRUE(Validate(Desc)); // One allocation can back both raw and structured views.
+	Desc.mFormat = EArdaRHIFormat::Count;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mFormat = EArdaRHIFormat::D32;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mFormat = EArdaRHIFormat::BC1UNorm;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mFormat = EArdaRHIFormat::Unknown;
+	Desc.mCpuAccess = static_cast<EArdaRHICpuAccess>(255);
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mCpuAccess = EArdaRHICpuAccess::None;
+	Desc.mUsage = static_cast<EArdaRHIBufferUsage>(1u << 15);
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mUsage = EArdaRHIBufferUsage::None;
+	Desc.mInitialState = EArdaRHIResourceState::RenderTarget;
+	EXPECT_FALSE(Validate(Desc));
+}
+
+TEST(ArdaRHI, BufferDescriptorsRespectCpuHeapAndStorageContracts)
+{
+	using namespace arda;
+	FArdaRHIBufferDesc Desc;
+	Desc.mByteSize = 256;
+	Desc.mCpuAccess = EArdaRHICpuAccess::Write;
+	Desc.mUsage = EArdaRHIBufferUsage::Vertex | EArdaRHIBufferUsage::AccelStructBuildInput;
+	Desc.mInitialState = EArdaRHIResourceState::AccelStructBuildInput;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mUsage |= EArdaRHIBufferUsage::UnorderedAccess;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mUsage = EArdaRHIBufferUsage::None;
+	Desc.mInitialState = EArdaRHIResourceState::CopyDest;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mCpuAccess = EArdaRHICpuAccess::Read;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mInitialState = EArdaRHIResourceState::CopySource;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mInitialState = EArdaRHIResourceState::Common;
+	Desc.mUsage = EArdaRHIBufferUsage::Constant;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mUsage = EArdaRHIBufferUsage::None;
+	Desc.mbTiled = true;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mCpuAccess = EArdaRHICpuAccess::None;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mbVirtual = true;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mbTiled = Desc.mbVirtual = false;
+	Desc.mUsage = EArdaRHIBufferUsage::Constant | EArdaRHIBufferUsage::Volatile;
+	EXPECT_FALSE(Validate(Desc));
+	Desc.mMaxVersions = 3;
+	EXPECT_TRUE(Validate(Desc));
+}
+
+TEST(ArdaRHI, TextureAdmissionUsesDimensionSpecificLimitsAndAuthoritativeFormatFacts)
+{
+	using namespace arda;
+	FArdaRHICapabilities C;
+	C.mLimits.mMaxTexture2D = 8;
+	C.mLimits.mMaxTexture3D = 4;
+	C.mLimits.mMaxTextureArrayLayers = 6;
+	FArdaRHITextureDesc Desc;
+	Desc.mWidth = Desc.mHeight = 8;
+	Desc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	EXPECT_TRUE(ValidateResourceCapabilities(Desc, C, {}));
+	Desc.mWidth = 9;
+	EXPECT_EQ(ValidateResourceCapabilities(Desc, C, {}).mCode, EArdaRHIResult::Unsupported);
+	Desc.mWidth = 8;
+	Desc.mDimension = EArdaRHITextureDimension::Texture3D;
+	EXPECT_FALSE(ValidateResourceCapabilities(Desc, C, {}));
+	Desc.mWidth = Desc.mHeight = Desc.mDepth = 4;
+	EXPECT_TRUE(ValidateResourceCapabilities(Desc, C, {}));
+	Desc.mDimension = EArdaRHITextureDimension::Texture2DArray;
+	Desc.mDepth = 1;
+	Desc.mArraySize = 7;
+	EXPECT_FALSE(ValidateResourceCapabilities(Desc, C, {}));
+	Desc.mArraySize = 6;
+	C.mbFormatSupportReported = true;
+	EXPECT_FALSE(ValidateResourceCapabilities(Desc, C, {}));
+	FArdaRHIFormatSupport Format;
+	Format.mNativeFormat = 1;
+	Format.mbTexture2D = Format.mbShaderResource = true;
+	Format.mSampleCounts = 1 | 4;
+	EXPECT_TRUE(ValidateResourceCapabilities(Desc, C, Format));
+	Desc.mSampleCount = 2;
+	EXPECT_FALSE(ValidateResourceCapabilities(Desc, C, Format));
+	Desc.mSampleCount = 4;
+	EXPECT_TRUE(ValidateResourceCapabilities(Desc, C, Format));
+	Desc.mUsage |= EArdaRHITextureUsage::UnorderedAccess;
+	EXPECT_FALSE(ValidateResourceCapabilities(Desc, C, Format));
+	Format.mbStorage = true;
+	EXPECT_TRUE(ValidateResourceCapabilities(Desc, C, Format));
+	Desc.mWidth = 0;
+	EXPECT_EQ(ValidateResourceCapabilities(Desc, C, Format).mCode, EArdaRHIResult::InvalidArgument);
+}
+
+TEST(ArdaRHI, BufferAdmissionSeparatesAllocationLimitsFromBindingRanges)
+{
+	using namespace arda;
+	FArdaRHICapabilities C;
+	C.mLimits.mMaxBufferSize = 1024;
+	C.mLimits.mMaxUniformBufferRange = 256;
+	C.mLimits.mMaxStorageBufferRange = 256;
+	FArdaRHIBufferDesc Desc;
+	Desc.mByteSize = 1024;
+	Desc.mUsage = EArdaRHIBufferUsage::Constant;
+	EXPECT_TRUE(ValidateResourceCapabilities(Desc, C, {}));
+	Desc.mByteSize = 1025;
+	EXPECT_EQ(ValidateResourceCapabilities(Desc, C, {}).mCode, EArdaRHIResult::Unsupported);
+	Desc.mByteSize = 1024;
+	Desc.mUsage = EArdaRHIBufferUsage::ShaderResource;
+	Desc.mFormat = EArdaRHIFormat::R32UInt;
+	C.mbFormatSupportReported = true;
+	FArdaRHIFormatSupport Format;
+	EXPECT_FALSE(ValidateResourceCapabilities(Desc, C, Format));
+	Format.mNativeFormat = 1;
+	Format.mbBufferShaderResource = true;
+	EXPECT_TRUE(ValidateResourceCapabilities(Desc, C, Format));
+	Desc.mUsage |= EArdaRHIBufferUsage::UnorderedAccess;
+	EXPECT_FALSE(ValidateResourceCapabilities(Desc, C, Format));
+	Format.mbBufferStorage = true;
+	EXPECT_TRUE(ValidateResourceCapabilities(Desc, C, Format));
+	Desc.mUsage |= EArdaRHIBufferUsage::Structured;
+	Desc.mStructureStride = 16;
+	EXPECT_TRUE(ValidateResourceCapabilities(Desc, C, {}));
+}
+
+TEST(ArdaRHI, ResourceAdmissionRequiresReportedStorageFeatures)
+{
+	using namespace arda;
+	FArdaRHICapabilities C;
+	FArdaRHIBufferDesc Buffer;
+	Buffer.mByteSize = 256;
+	Buffer.mbTiled = true;
+	EXPECT_FALSE(ValidateResourceCapabilities(Buffer, C, {}));
+	C.mResidency.mbReservedBuffers = true;
+	EXPECT_TRUE(ValidateResourceCapabilities(Buffer, C, {}));
+	FArdaRHITextureDesc Texture;
+	Texture.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	Texture.mbTiled = true;
+	EXPECT_FALSE(ValidateResourceCapabilities(Texture, C, {}));
+	C.mResidency.mbReservedTexture2D = true;
+	EXPECT_TRUE(ValidateResourceCapabilities(Texture, C, {}));
+	Texture.mDimension = EArdaRHITextureDimension::Texture3D;
+	EXPECT_FALSE(ValidateResourceCapabilities(Texture, C, {}));
+	C.mResidency.mbReservedTexture3D = true;
+	EXPECT_TRUE(ValidateResourceCapabilities(Texture, C, {}));
+	Texture.mbTiled = false;
+	Texture.mbVirtual = true;
+	EXPECT_FALSE(ValidateResourceCapabilities(Texture, C, {}));
+	C.mbVirtualResources = true;
+	EXPECT_TRUE(ValidateResourceCapabilities(Texture, C, {}));
+}
+
+TEST(ArdaRHI, VertexAttributesRejectInvalidFormatsAndOverflowingRanges)
+{
+	using namespace arda;
+	FArdaRHIVertexAttributeDesc Attribute;
+	Attribute.mSemanticName = "POSITION";
+	Attribute.mFormat = EArdaRHIFormat::RGB32Float;
+	Attribute.mElementStride = 32;
+	Attribute.mOffset = 20;
+	EXPECT_TRUE(Validate(Attribute));
+	Attribute.mOffset = 21;
+	EXPECT_FALSE(Validate(Attribute));
+	Attribute.mOffset = UINT32_MAX;
+	EXPECT_FALSE(Validate(Attribute));
+	Attribute.mOffset = 0;
+	Attribute.mArraySize = UINT32_MAX;
+	EXPECT_FALSE(Validate(Attribute));
+	Attribute.mArraySize = 1;
+	for (auto Format : {EArdaRHIFormat::D32, EArdaRHIFormat::BC1UNorm, EArdaRHIFormat::Count})
+	{
+		Attribute.mFormat = Format;
+		EXPECT_FALSE(Validate(Attribute));
+	}
+}
+
+TEST(ArdaRHI, VertexAttributeAlignmentUsesComponentsAndPackedElementSizes)
+{
+	using namespace arda;
+	FArdaRHIVertexAttributeDesc Attribute;
+	Attribute.mSemanticName = "TEXCOORD";
+	for (const auto Format : {EArdaRHIFormat::RGBA8UNorm,
+	         EArdaRHIFormat::RGBA16Float,
+	         EArdaRHIFormat::RGB32Float,
+	         EArdaRHIFormat::R10G10B10A2UNorm})
+	{
+		Attribute.mFormat = Format;
+		const uint32_t Alignment = Format == EArdaRHIFormat::RGBA8UNorm ? 1
+		    : Format == EArdaRHIFormat::RGBA16Float                     ? 2
+		                                                                : 4;
+		EXPECT_EQ(GetArdaRHIVertexFormatAlignment(Format), Alignment);
+		Attribute.mOffset = Alignment;
+		Attribute.mElementStride = GetArdaRHIFormatElementSize(Format) + Alignment;
+		EXPECT_TRUE(Validate(Attribute));
+		if (Alignment > 1)
+		{
+			--Attribute.mOffset;
+			EXPECT_FALSE(Validate(Attribute));
+			++Attribute.mOffset;
+			++Attribute.mElementStride;
+			EXPECT_FALSE(Validate(Attribute));
+		}
+	}
+	for (const auto Format :
+	    {EArdaRHIFormat::Unknown, EArdaRHIFormat::D16, EArdaRHIFormat::BC1UNorm, EArdaRHIFormat::Count})
+	{
+		EXPECT_EQ(GetArdaRHIVertexFormatAlignment(Format), 0u);
+	}
+}
+
+TEST(ArdaRHI, InitialStatesRequireDeclaredUsageWithoutRestrictingCopyOnlyStorage)
+{
+	using namespace arda;
+	FArdaRHIBufferDesc Buffer;
+	Buffer.mByteSize = 64;
+	Buffer.mUsage = EArdaRHIBufferUsage::None;
+	for (const auto State : {EArdaRHIResourceState::Unknown,
+	         EArdaRHIResourceState::Common,
+	         EArdaRHIResourceState::CopySource,
+	         EArdaRHIResourceState::CopyDest})
+	{
+		Buffer.mInitialState = State;
+		EXPECT_TRUE(Validate(Buffer));
+	}
+	Buffer.mCpuAccess = EArdaRHICpuAccess::Write;
+	Buffer.mInitialState = EArdaRHIResourceState::CopySource;
+	Buffer.mbKeepInitialState = true;
+	EXPECT_TRUE(Validate(Buffer));
+	Buffer.mCpuAccess = EArdaRHICpuAccess::Read;
+	Buffer.mInitialState = EArdaRHIResourceState::CopyDest;
+	EXPECT_TRUE(Validate(Buffer));
+	Buffer.mCpuAccess = EArdaRHICpuAccess::None;
+	for (const auto State : {EArdaRHIResourceState::ShaderResource,
+	         EArdaRHIResourceState::UnorderedAccess,
+	         EArdaRHIResourceState::VertexBuffer,
+	         EArdaRHIResourceState::IndexBuffer,
+	         EArdaRHIResourceState::ConstantBuffer,
+	         EArdaRHIResourceState::IndirectArgument})
+	{
+		Buffer.mInitialState = State;
+		EXPECT_FALSE(Validate(Buffer));
+	}
+	Buffer.mInitialState = EArdaRHIResourceState::VertexBuffer | EArdaRHIResourceState::ShaderResource;
+	Buffer.mUsage = EArdaRHIBufferUsage::Vertex | EArdaRHIBufferUsage::ShaderResource;
+	EXPECT_TRUE(Validate(Buffer));
+	FArdaRHITextureDesc Texture;
+	Texture.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	Texture.mUsage = EArdaRHITextureUsage::None;
+	Texture.mInitialState = EArdaRHIResourceState::CopyDest;
+	EXPECT_TRUE(Validate(Texture));
+	for (const auto State : {EArdaRHIResourceState::ShaderResource,
+	         EArdaRHIResourceState::UnorderedAccess,
+	         EArdaRHIResourceState::RenderTarget,
+	         EArdaRHIResourceState::DepthRead,
+	         EArdaRHIResourceState::DepthWrite})
+	{
+		Texture.mInitialState = State;
+		EXPECT_FALSE(Validate(Texture));
+	}
+	Texture.mInitialState = EArdaRHIResourceState::RenderTarget;
+	Texture.mUsage = EArdaRHITextureUsage::RenderTarget;
+	EXPECT_TRUE(Validate(Texture));
+}
+
+TEST(ArdaRHI, FramebufferAttachmentResolutionPreservesDefaultMipAndDepthStencilAspects)
+{
+	using namespace arda;
+	FArdaRHITextureDesc Texture;
+	Texture.mWidth = Texture.mHeight = 16;
+	Texture.mMipLevels = 5;
+	Texture.mArraySize = 4;
+	Texture.mDimension = EArdaRHITextureDimension::Texture2DArray;
+	Texture.mFormat = EArdaRHIFormat::D24S8;
+	Texture.mUsage = EArdaRHITextureUsage::DepthStencil;
+	FArdaRHIFramebufferAttachment Attachment, Resolved;
+	Attachment.mSubresources.mBaseMipLevel = 2;
+	Attachment.mSubresources.mBaseArraySlice = 1;
+	Attachment.mbReadOnly = true;
+	ASSERT_TRUE(ResolveArdaRHIFramebufferAttachment(Texture, Attachment, true, Resolved));
+	EXPECT_EQ(Resolved.mFormat, Texture.mFormat);
+	EXPECT_EQ(Resolved.mSubresources.mBaseMipLevel, 2u);
+	EXPECT_EQ(Resolved.mSubresources.mMipLevelCount, 1u);
+	EXPECT_EQ(Resolved.mSubresources.mArraySliceCount, 3u);
+	EXPECT_EQ(Resolved.mSubresources.mPlaneCount, 2u);
+	EXPECT_TRUE(Resolved.mbReadOnly);
+	Attachment.mSubresources.mMipLevelCount = 2;
+	EXPECT_FALSE(ResolveArdaRHIFramebufferAttachment(Texture, Attachment, true, Resolved));
+	Attachment.mSubresources.mMipLevelCount = 1;
+	Attachment.mSubresources.mBasePlane = 1;
+	Attachment.mSubresources.mPlaneCount = 1;
+	EXPECT_EQ(ResolveArdaRHIFramebufferAttachment(Texture, Attachment, true, Resolved).mCode,
+	    EArdaRHIResult::Unsupported);
+	Attachment.mSubresources.mBasePlane = 0;
+	Attachment.mSubresources.mArraySliceCount = UINT32_MAX - 1;
+	EXPECT_FALSE(ResolveArdaRHIFramebufferAttachment(Texture, Attachment, true, Resolved));
+}
+
+TEST(ArdaRHI, FramebufferAttachmentFormatAndUsageAreValidatedBeforeNativeCreation)
+{
+	using namespace arda;
+	FArdaRHITextureDesc Texture;
+	Texture.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	FArdaRHIFramebufferAttachment Attachment, Resolved;
+	EXPECT_FALSE(ResolveArdaRHIFramebufferAttachment(Texture, Attachment, false, Resolved));
+	Texture.mUsage = EArdaRHITextureUsage::RenderTarget;
+	ASSERT_TRUE(ResolveArdaRHIFramebufferAttachment(Texture, Attachment, false, Resolved));
+	Attachment.mbReadOnly = true;
+	EXPECT_FALSE(ResolveArdaRHIFramebufferAttachment(Texture, Attachment, false, Resolved));
+	Attachment.mbReadOnly = false;
+	Attachment.mFormat = EArdaRHIFormat::SRGBA8UNorm;
+	EXPECT_FALSE(ResolveArdaRHIFramebufferAttachment(Texture, Attachment, false, Resolved));
+	Texture.mUsage |= EArdaRHITextureUsage::Typeless;
+	EXPECT_TRUE(ResolveArdaRHIFramebufferAttachment(Texture, Attachment, false, Resolved));
+	EXPECT_TRUE(IsArdaRHITextureViewFormatCompatible(Texture, EArdaRHIFormat::RGBA8UInt));
+	EXPECT_FALSE(IsArdaRHITextureViewFormatCompatible(Texture, EArdaRHIFormat::BGRA8UNorm));
+	EXPECT_FALSE(IsArdaRHITextureViewFormatCompatible(Texture, EArdaRHIFormat::R32Float));
+	EXPECT_FALSE(IsArdaRHITextureViewFormatCompatible(Texture, EArdaRHIFormat::Count));
+	EXPECT_FALSE(ResolveArdaRHIFramebufferAttachment(Texture, Attachment, true, Resolved));
+	Attachment.mSubresources.mMipLevelCount = 0;
+	EXPECT_FALSE(ResolveArdaRHIFramebufferAttachment(Texture, Attachment, false, Resolved));
+}
+
+TEST(ArdaRHI, InputLayoutsRequireConsistentBindingStrideAndInstanceRate)
+{
+	using namespace arda;
+	FArdaRHIVertexAttributeDesc Position;
+	Position.mSemanticName = "POSITION";
+	Position.mFormat = EArdaRHIFormat::RGB32Float;
+	Position.mElementStride = 24;
+	auto Normal = Position;
+	Normal.mSemanticName = "NORMAL";
+	Normal.mOffset = 12;
+	FArdaRHIInputLayoutDesc Layout;
+	Layout.mAttributes = {Position, Normal};
+	EXPECT_TRUE(Validate(Layout));
+	Layout.mAttributes[1].mElementStride = 28;
+	EXPECT_FALSE(Validate(Layout));
+	Layout.mAttributes[1].mElementStride = 24;
+	Layout.mAttributes[1].mbInstanced = true;
+	EXPECT_FALSE(Validate(Layout));
+	Layout.mAttributes[1].mBufferIndex = 1;
+	EXPECT_TRUE(Validate(Layout));
+}
+
+TEST(ArdaRHI, EqualDescriptorsHashSignedZeroIdentically)
+{
+	using namespace arda;
+	for (auto Channel : {&FArdaRHIColor::mR, &FArdaRHIColor::mG, &FArdaRHIColor::mB, &FArdaRHIColor::mA})
+	{
+		FArdaRHITextureDesc Positive;
+		Positive.mClearValue.*Channel = 0.0f;
+		auto Negative = Positive;
+		Negative.mClearValue.*Channel = -0.0f;
+		ASSERT_EQ(Positive, Negative);
+		EXPECT_EQ(HashValue(Positive), HashValue(Negative));
+
+		FArdaRHISamplerDesc Sampler;
+		Sampler.mBorderColor.*Channel = 0.0f;
+		auto NegativeSampler = Sampler;
+		NegativeSampler.mBorderColor.*Channel = -0.0f;
+		ASSERT_EQ(Sampler, NegativeSampler);
+		EXPECT_EQ(HashValue(Sampler), HashValue(NegativeSampler));
+	}
+	for (auto Field : {&FArdaRHISamplerDesc::mMaxAnisotropy, &FArdaRHISamplerDesc::mMipBias})
+	{
+		FArdaRHISamplerDesc Positive;
+		Positive.*Field = 0.0f;
+		auto Negative = Positive;
+		Negative.*Field = -0.0f;
+		ASSERT_EQ(Positive, Negative);
+		EXPECT_EQ(HashValue(Positive), HashValue(Negative));
+	}
+}
+
 TEST(ArdaRHI, FormatStorageMetadataCoversEveryKnownFormat)
 {
 	using namespace arda;

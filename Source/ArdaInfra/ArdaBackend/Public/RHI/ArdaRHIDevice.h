@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ArdaRHICapabilities.h"
+#include "ArdaRHIDiagnostics.h"
 #include "ArdaRHIResources.h"
 #include "ArdaRHICuda.h"
 #include "Allocator/ArdaGpuAllocator.h"
@@ -105,8 +106,8 @@ namespace arda
 		}
 
 		/**
-         * Opaque device that created this command list.
-         * @return The requested object pointer.
+         * Device retained by this command list, including after process-wide backend shutdown.
+         * @return A borrowed pointer valid for the lifetime of this command list.
          */
 		[[nodiscard]] virtual IArdaRHIDevice* GetDevice() const noexcept = 0;
 
@@ -117,20 +118,32 @@ namespace arda
 		[[nodiscard]] virtual EArdaRHIQueueType GetQueueType() const noexcept = 0;
 
 		/**
-         * Performs the open operation.
-         * @return A status describing whether the operation succeeded.
+         * Begins a new recording generation and clears prior binding state and latched errors on success.
+         * Pending native recording storage remains retained until its submission retires.
+         * @return The native open status; a failed open does not clear the facade's prior error.
+         * @ownership The command list retains its device and owns the new recording; earlier submitted storage has independent retirement ownership.
+         * @errors Native failure leaves this operation unsuccessful. Only a successful Open or Reset clears a recording error.
+         * @threading Externally synchronize access to this command list.
          */
 		virtual FArdaRHIStatus Open() = 0;
 
 		/**
-         * Performs the close operation.
-         * @return A status describing whether the operation succeeded.
+         * Finalizes an open recording and returns any retained recording error.
+         * A successful close permits submission but proves neither GPU execution nor completion.
+         * @return The first latched recording error, or the native close status.
+         * @ownership Closing preserves objects referenced by the recording; submission establishes their pending lifetime.
+         * @errors Closing a non-open list returns InvalidState. Invalid void work and native binding failures prevent successful submission until Open or Reset succeeds.
+         * @threading Externally synchronize access to this command list.
          */
 		virtual FArdaRHIStatus Close() = 0;
 
 		/**
-         * Reopens a closed command list and discards its previous recording.
-         * @return A status describing whether the operation succeeded.
+         * Discards the previous recording and opens a clean recording generation on success.
+         * All pipeline state must be rebound. Pending native storage is retained independently instead of reset while the GPU can use it.
+         * @return The native reset status; failure does not clear the prior facade error.
+         * @ownership The command list owns the fresh recording; submitted generations retain their own native storage and resources.
+         * @errors Only successful Reset or Open clears latched recording failures.
+         * @threading Externally synchronize access to this command list.
          */
 		virtual FArdaRHIStatus Reset() = 0;
 
@@ -460,30 +473,45 @@ namespace arda
 		virtual FArdaRHIStatus ClearBufferUInt(IArdaRHIBuffer& Buffer, uint32_t Value) = 0;
 
 		/**
-         * Performs the set graphics state operation.
-         * @param State The state.
-         * @return A status describing whether the operation succeeded.
+         * Binds graphics pipeline, framebuffer, descriptors, vertex/index streams and raster regions on an open graphics list.
+         * Formats, sample counts, selected attachment ranges, viewport/scissor limits and vertex/index usage, alignment and bounds must agree.
+         * Descriptor-bearing layouts require one matching binding set; sets are normalized into declared layout order. Omitted push-only sets are reused within the recording.
+         * @param State Complete graphics state for subsequent draws.
+         * @return Success after the native bind succeeds, otherwise its admission or native failure status.
+         * @ownership State handles and immutable descriptor generations are retained for the recording and accepted GPU work.
+         * @errors Facade rejection preserves the previous binding. Native bind failure latches a failed recording because partial driver state cannot be rolled back; reset before submission.
+         * @threading Externally synchronize command-list recording and mutable descriptor-table updates.
          */
 		virtual FArdaRHIStatus SetGraphicsState(const FArdaRHIGraphicsState& State) = 0;
 
 		/**
-         * Performs the set compute state operation.
-         * @param State The state.
-         * @return A status describing whether the operation succeeded.
+         * Binds a compute pipeline and its complete descriptor state on an open graphics or compute list.
+         * Each descriptor-bearing layout requires one matching set; declaration order controls native binding. Omitted push-only sets are reused within the recording.
+         * @param State Compute pipeline and binding sets for subsequent dispatches.
+         * @return Success only after native binding succeeds.
+         * @ownership Pipeline handles, binding resources and immutable descriptor generations are retained for recording and accepted GPU work.
+         * @errors Facade rejection preserves the previous binding. Native failure latches the recording as failed. A later bind cannot repair an already latched error; successful Open or Reset is required.
+         * @threading Externally synchronize command-list recording and mutable descriptor-table updates.
          */
 		virtual FArdaRHIStatus SetComputeState(const FArdaRHIComputeState& State) = 0;
 
 		/**
-         * Performs the set meshlet state operation.
-         * @param State The state.
-         * @return A status describing whether the operation succeeded.
+         * Binds a mesh pipeline, compatible framebuffer, raster regions and required descriptor sets on an open graphics list.
+         * @param State Complete mesh state for subsequent mesh dispatches.
+         * @return The facade admission or native binding status.
+         * @ownership Referenced objects and captured descriptor generations remain retained for recording and accepted GPU work.
+         * @errors Unsupported stages or incompatible state are rejected before native work. Native bind failure latches the recording until successful Open or Reset.
+         * @threading Externally synchronize command-list recording.
          */
 		virtual FArdaRHIStatus SetMeshletState(const FArdaRHIMeshletState& State) = 0;
 
 		/**
-         * Performs the set ray tracing state operation.
-         * @param State The state.
-         * @return A status describing whether the operation succeeded.
+         * Binds a committed shader-table generation and its required global descriptor sets on an open graphics or compute list.
+         * @param State Shader table and global bindings for subsequent ray dispatches.
+         * @return The facade admission or native binding status.
+         * @ownership The bound immutable shader-table and descriptor generations remain retained even if the mutable table is later recommitted.
+         * @errors Missing or incompatible state is rejected before binding; native binding failure latches the recording until successful Open or Reset.
+         * @threading Externally synchronize command-list recording and shader-table mutation.
          */
 		virtual FArdaRHIStatus SetRayTracingState(const FArdaRHIRayTracingState& State) = 0;
 
@@ -503,18 +531,31 @@ namespace arda
 		virtual void SetPushConstants(const void* Data, size_t Size) = 0;
 
 		/**
-         * Performs the draw operation.
-         * @param Arguments The arguments.
+         * Draws with the most recently bound graphics pipeline in this recording generation.
+         * Requires an open graphics list. Known vertex/instance fetch ranges are checked before recording; zero vertices or instances perform no work after validation.
+         * @param Args Vertex and instance counts plus start offsets.
+         * @return No immediate result; inspect Close before submitting the recording.
+         * @ownership Previously bound resources remain retained by the recording; this call transfers no caller storage.
+         * @errors Invalid work records no native draw and latches an error returned by Close and submission until Open or Reset succeeds.
+         * @threading Externally synchronize command-list recording.
          */
 		virtual void Draw(const FArdaRHIDrawArguments& Arguments) = 0;
 
 		/**
-         * Performs the draw indexed operation.
-         * @param Arguments The arguments.
+         * Draws indexed geometry with the most recently bound graphics pipeline on an open graphics list.
+         * Requires an aligned R16UInt or R32UInt index buffer and an in-bounds index range. GPU index values and base-vertex accesses remain the caller's responsibility.
+         * Zero indices or instances perform no work after validation.
+         * @param Args Index and instance counts plus index, base-vertex and instance offsets.
+         * @return No immediate result; inspect Close before submitting the recording.
+         * @ownership Bound index/vertex resources remain retained by the recording; this call transfers no caller storage.
+         * @errors Invalid work records no native draw and latches an error returned by Close and submission until Open or Reset succeeds.
+         * @threading Externally synchronize command-list recording.
          */
 		virtual void DrawIndexed(const FArdaRHIDrawArguments& Arguments) = 0;
 
-		/** Executes non-indexed draw arguments from a GPU buffer. */
+		/** Executes non-indexed draw arguments with a bound graphics pipeline. GPU-written firstInstance
+         * must be zero unless capabilities.mbIndirectFirstInstance is true. GPU argument values and
+         * their resulting fetch ranges are the caller's responsibility; CPU offsets/strides are checked. */
 		virtual FArdaRHIStatus DrawIndirect(IArdaRHIBuffer& Arguments,
 		    uint64_t Offset = 0,
 		    uint32_t DrawCount = 1,
@@ -527,10 +568,15 @@ namespace arda
 		    uint32_t Stride = 0) = 0;
 
 		/**
-         * Performs the dispatch operation.
-         * @param GroupsX The groups x.
-         * @param GroupsY The groups y.
-         * @param GroupsZ The groups z.
+         * Dispatches the most recently bound compute pipeline on an open graphics or compute list.
+         * Group counts must fit the reported device limits. Any zero axis performs no work after state and limit validation.
+         * @param GroupsX Number of workgroups on the X axis.
+         * @param GroupsY Number of workgroups on the Y axis.
+         * @param GroupsZ Number of workgroups on the Z axis.
+         * @return No immediate result; inspect Close before submitting the recording.
+         * @ownership Previously bound resources remain retained by the recording; no caller storage is transferred.
+         * @errors Invalid work records no native dispatch and latches an error returned by Close and submission until Open or Reset succeeds. Later binds do not repair it.
+         * @threading Externally synchronize command-list recording.
          */
 		virtual void Dispatch(uint32_t GroupsX, uint32_t GroupsY = 1, uint32_t GroupsZ = 1) = 0;
 
@@ -728,6 +774,22 @@ namespace arda
          */
 		[[nodiscard]] virtual const FArdaRHICapabilities& GetCapabilities() const noexcept = 0;
 
+		/** Returns native per-format facts without creating resources; zero facts mean unavailable/unreported. */
+		[[nodiscard]] virtual FArdaRHIFormatSupport QueryFormatSupport(EArdaRHIFormat) const noexcept
+		{
+			return {};
+		}
+
+		/**
+		 * Captures bounded native device status, queue progress, recent markers and available fault data.
+		 * Does not submit or wait for GPU work; unavailable native fault facilities are explicitly reported.
+		 * Snapshot strings and records are owned by the result. Serialize shutdown with this call.
+		 */
+		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIDiagnosticSnapshot> CaptureDiagnosticSnapshot() const
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Native diagnostics are unavailable.")};
+		}
+
 		/** Evaluates a future module's required abilities against this device. */
 		[[nodiscard]] FArdaRHIFeatureSupportReport CheckFeatureSupport(
 		    const FArdaRHIFeatureRequirements& Requirements) const
@@ -855,7 +917,11 @@ namespace arda
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "GPU allocation caching is unavailable.");
 		}
 
-		/** Releases idle cached storage. Pending GPU dependencies and active leases remain retained. */
+		/** Releases idle cached storage after polling native retirement. Active leases and unproven GPU work remain retained.
+         * @return No immediate result; query allocator and lifetime statistics to observe released storage.
+         * @ownership Only idle cache ownership is released; active and pending resource ownership is preserved.
+         * @errors This call returns no status and does not establish GPU completion. Unproven retirement remains pending.
+         * @threading Coordinate with device shutdown; allocator collection synchronizes its internal state. */
 		virtual void TrimGpuAllocator()
 		{
 		}
@@ -1452,34 +1518,63 @@ namespace arda
 		    const FArdaRHITextureRef& Texture) = 0;
 
 		/**
-         * Performs the update texture tile mappings operation.
-         * @param Texture The texture.
-         * @param Mappings The mappings.
-         * @param Queue The queue.
-         * @return A status describing whether the operation succeeded.
+         * Updates sparse texture mappings, retaining replaced backing until native retirement is proven.
+         * Synchronize other-queue accesses before remapping. Vulkan rejects overlapping ranges within one batch and spatial tiles while an opaque prefix is active. CommitReservedResource with zero bytes fully unbinds before a mode switch; explicit opaque mip-tail ranges remain interoperable.
+         * @param Texture Reserved texture whose mappings are changed.
+         * @param Mappings Tile ranges, heap offsets and optional backing heaps; an absent heap unmaps the range.
+         * @param Queue Queue on which mapping changes are ordered.
+         * @return Admission or native mapping/wait status.
+         * @ownership Live ranges retain their heaps; accepted operations retain previous and replacement backing until retirement proof.
+         * @errors Pre-submit rejection preserves prior mappings. A recoverable wait/signal failure can follow native acceptance; accepted state remains owned and GC/idle retries retirement.
+         * @threading Serialize mapping changes and order all other-queue accesses before remapping.
          */
 		virtual FArdaRHIStatus UpdateTextureTileMappings(const FArdaRHITextureRef& Texture,
 		    const eastl::vector<FArdaRHITextureTileMapping>& Mappings,
 		    EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics) = 0;
 
-		/** Updates sparse/reserved mappings for a tiled buffer. */
-		virtual FArdaRHIStatus UpdateBufferTileMappings(const FArdaRHIBufferRef&,
-		    const eastl::vector<FArdaRHIBufferTileMapping>&,
-		    EArdaRHIQueueType = EArdaRHIQueueType::Copy)
+		/**
+         * Updates sparse buffer mappings, splitting prior range ownership on partial replacement or unmap.
+         * @param Buffer Reserved buffer whose mappings are changed.
+         * @param Mappings Buffer tile ranges and optional backing heaps.
+         * @param Queue Queue on which mapping changes are ordered.
+         * @return Admission or native mapping/wait status.
+         * @ownership Live mappings and accepted pending work retain their backing heaps until retirement proof.
+         * @errors Pre-submit rejection preserves prior mappings. A recoverable wait/signal failure can follow native acceptance; GC/idle retries retirement without freeing live backing.
+         * @threading Serialize mapping changes and order all other-queue accesses before remapping.
+         */
+		virtual FArdaRHIStatus UpdateBufferTileMappings(const FArdaRHIBufferRef& Buffer,
+		    const eastl::vector<FArdaRHIBufferTileMapping>& Mappings,
+		    EArdaRHIQueueType Queue = EArdaRHIQueueType::Copy)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Sparse buffers are unsupported by this device.");
 		}
 
-		/** Grows or shrinks the committed prefix of a reserved resource. */
-		virtual FArdaRHIStatus CommitReservedResource(const FArdaRHIResourceRef&,
-		    uint64_t,
-		    EArdaRHIQueueType = EArdaRHIQueueType::Copy)
+		/**
+         * Grows or shrinks a reserved resource's committed prefix while preserving still-mapped bytes.
+         * Clamp to resource capacity before tile alignment, so UINT64_MAX requests full capacity. Growth fills only missing ranges; shrinking unmaps the suffix. Recommitted, previously unmapped bytes are undefined.
+         * Vulkan returns Unsupported for a nonzero opaque image prefix while spatial tiles remain mapped; fully unbind with zero bytes before switching modes. Buffers and explicit opaque mip tails remain interoperable.
+         * @param Resource Reserved texture or buffer to commit.
+         * @param ByteCount Desired prefix byte count; zero fully unbinds and UINT64_MAX requests full capacity.
+         * @param Queue Queue on which mapping changes are ordered.
+         * @return Admission or native mapping/wait status.
+         * @ownership Live mapped ranges retain backing; old and replacement owners survive accepted pending operations until completion or device-loss proof.
+         * @errors Pre-submit failure preserves mappings. A post-acceptance wait/signal error returns failure while retaining the accepted mapping; GC/idle retries retirement. Unproven final-shutdown work is quarantined.
+         * @threading Serialize mapping changes and synchronize all other-queue accesses before remapping.
+         */
+		virtual FArdaRHIStatus CommitReservedResource(const FArdaRHIResourceRef& Resource,
+		    uint64_t ByteCount,
+		    EArdaRHIQueueType Queue = EArdaRHIQueueType::Copy)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
 			    "Reserved-resource commit is unsupported by this device.");
 		}
 
-		/** Returns current native streaming budget telemetry. */
+		/** Returns current native streaming budget telemetry. The Boolean selects local memory when true
+         * (the default), or non-local memory when false. These observations can change immediately.
+         * @return An owned budget snapshot and its query status.
+         * @ownership The returned snapshot owns its values and retains no native allocations.
+         * @errors Unsupported providers return Unsupported; native query failures return their status.
+         * @threading Coordinate with device shutdown; this query establishes no GPU ordering. */
 		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIStreamingBudget> QueryStreamingBudget(bool = true) const
 		{
 			return {{},

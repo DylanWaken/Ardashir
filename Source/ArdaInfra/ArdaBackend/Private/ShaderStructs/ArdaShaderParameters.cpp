@@ -70,23 +70,83 @@ namespace arda
 			return Kind != EArdaShaderParameterKind::Value && Kind != EArdaShaderParameterKind::NestedStruct;
 		}
 
-		void FlattenMembers(const FArdaShaderParameterMetadata& Metadata,
+		struct FArdaShaderResourceStorage
+		{
+			size_t mSize;
+			size_t mAlignment;
+		};
+
+		FArdaShaderResourceStorage GetResourceStorage(EArdaShaderParameterKind Kind)
+		{
+			switch (Kind)
+			{
+			case EArdaShaderParameterKind::TextureSRV:
+			case EArdaShaderParameterKind::TextureUAV:
+				return {sizeof(FArdaRHITextureRef), alignof(FArdaRHITextureRef)};
+			case EArdaShaderParameterKind::BufferSRV:
+			case EArdaShaderParameterKind::BufferUAV:
+			case EArdaShaderParameterKind::ConstantBuffer:
+				return {sizeof(FArdaRHIBufferRef), alignof(FArdaRHIBufferRef)};
+			case EArdaShaderParameterKind::UniformBuffer:
+				return {sizeof(FArdaRHIUniformBufferRef), alignof(FArdaRHIUniformBufferRef)};
+			case EArdaShaderParameterKind::Sampler:
+				return {sizeof(FArdaRHISamplerRef), alignof(FArdaRHISamplerRef)};
+			case EArdaShaderParameterKind::AccelerationStructure:
+				return {sizeof(FArdaRHIAccelStructRef), alignof(FArdaRHIAccelStructRef)};
+			default:
+				return {0, 1};
+			}
+		}
+
+		FArdaShaderStructStatus FlattenMembers(const FArdaShaderParameterMetadata& Metadata,
 		    size_t BaseOffset,
 		    const eastl::string& Prefix,
 		    eastl::vector<FArdaFlattenedShaderParameterMember>& Out)
 		{
 			for (const FArdaShaderParameterMember& Member : Metadata.GetMembers())
 			{
+				if (Member.mArrayCount == 0 || uint64_t(Member.mSlot) + Member.mArrayCount > uint64_t(UINT32_MAX) + 1)
+				{
+					return {EArdaShaderStructError::MalformedArray,
+					    eastl::string("Malformed shader parameter array: ") +
+					        (Member.mName != nullptr ? Member.mName : "<unnamed>")};
+				}
+				if (Member.mName == nullptr || *Member.mName == '\0' || Member.mElementStride == 0 ||
+				    Member.mOffset > Metadata.GetSize() || Member.mSize > Metadata.GetSize() - Member.mOffset)
+				{
+					return {EArdaShaderStructError::InvalidMember,
+					    "Shader parameter member metadata exceeds its C++ struct or has an invalid name or stride."};
+				}
+				const auto Storage = GetResourceStorage(Member.mKind);
+				if (Storage.mSize &&
+				    (Member.mSize < Storage.mSize || Member.mElementStride < Storage.mSize ||
+				        (BaseOffset + Member.mOffset) % Storage.mAlignment ||
+				        (Member.mArrayCount > 1 && Member.mElementStride % Storage.mAlignment) ||
+				        Member.mArrayCount - 1 > (Member.mSize - Storage.mSize) / Member.mElementStride))
+				{
+					return {EArdaShaderStructError::MalformedArray,
+					    "Shader resource array storage is too small or misaligned for its references."};
+				}
 				const eastl::string Path = Prefix.empty() ? Member.mName : Prefix + "." + Member.mName;
 				if (Member.mKind == EArdaShaderParameterKind::NestedStruct)
 				{
-					FlattenMembers(*Member.mNestedMetadata, BaseOffset + Member.mOffset, Path, Out);
+					if (!Member.mNestedMetadata || !Member.mNestedMetadata->GetStatus() || Member.mArrayCount != 1 ||
+					    Member.mSize != Member.mNestedMetadata->GetSize())
+					{
+						return {EArdaShaderStructError::InvalidMember, "Nested shader parameter metadata is invalid."};
+					}
+					if (auto Status = FlattenMembers(*Member.mNestedMetadata, BaseOffset + Member.mOffset, Path, Out);
+					    !Status)
+					{
+						return Status;
+					}
 				}
 				else
 				{
 					Out.push_back({&Member, BaseOffset + Member.mOffset, Path});
 				}
 			}
+			return {};
 		}
 
 		FArdaShaderStructStatus MakeError(EArdaShaderStructError Code, const eastl::string& Message)
@@ -111,7 +171,7 @@ namespace arda
 	{
 		for (const FArdaShaderParameterMember& Member : mMembers)
 		{
-			if (Name == Member.mName)
+			if (Member.mName && Name == Member.mName)
 			{
 				return &Member;
 			}
@@ -142,7 +202,10 @@ namespace arda
 	    eastl::vector<FArdaFlattenedShaderParameterMember>& OutMembers) const
 	{
 		OutMembers.clear();
-		FlattenMembers(*this, 0, {}, OutMembers);
+		if (mStatus && !FlattenMembers(*this, 0, {}, OutMembers))
+		{
+			OutMembers.clear();
+		}
 	}
 
 	void FArdaShaderParameterMetadata::ValidateAndHash()
@@ -159,24 +222,14 @@ namespace arda
 		HashBytes(mLayoutHash, &mAlignment, sizeof(mAlignment));
 
 		eastl::vector<FArdaFlattenedShaderParameterMember> Flattened;
-		GetFlattenedMembers(Flattened);
+		mStatus = FlattenMembers(*this, 0, {}, Flattened);
+		if (!mStatus)
+		{
+			return;
+		}
 		for (const FArdaFlattenedShaderParameterMember& Resolved : Flattened)
 		{
 			const FArdaShaderParameterMember& Member = *Resolved.mMember;
-			if (Member.mArrayCount == 0 || uint64_t(Member.mSlot) + Member.mArrayCount > uint64_t(UINT32_MAX) + 1)
-			{
-				mStatus = MakeError(EArdaShaderStructError::MalformedArray,
-				    eastl::string("Malformed shader parameter array: ") +
-				        (Member.mName != nullptr ? Member.mName : "<unnamed>"));
-				return;
-			}
-			if (Member.mName == nullptr || *Member.mName == '\0' || Member.mElementStride == 0 ||
-			    Resolved.mAbsoluteOffset > mSize || Member.mSize > mSize - Resolved.mAbsoluteOffset)
-			{
-				mStatus = MakeError(EArdaShaderStructError::InvalidMember,
-				    "Shader parameter member metadata exceeds its C++ struct.");
-				return;
-			}
 			if (IsBindingMember(Member.mKind) && Member.mVisibility == arda::EArdaRHIShaderStage::None)
 			{
 				mStatus = MakeError(EArdaShaderStructError::IncompatibleVisibility,

@@ -141,6 +141,117 @@ namespace arda
 		}
 	}
 
+	bool IsArdaRHITextureViewFormatCompatible(const FArdaRHITextureDesc& Texture, EArdaRHIFormat ViewFormat) noexcept
+	{
+		if (!IsArdaRHIFormatKnown(Texture.mFormat))
+		{
+			return false;
+		}
+		if (ViewFormat == EArdaRHIFormat::Unknown || ViewFormat == Texture.mFormat)
+		{
+			return true;
+		}
+		if (!IsArdaRHIFormatKnown(ViewFormat) || !HasAnyFlags(Texture.mUsage, EArdaRHITextureUsage::Typeless))
+		{
+			return false;
+		}
+		const auto BaseFormat = [](EArdaRHIFormat Format)
+		{
+			switch (Format)
+			{
+			case EArdaRHIFormat::SRGBA8UNorm:
+				return EArdaRHIFormat::RGBA8UNorm;
+			case EArdaRHIFormat::SBGRA8UNorm:
+				return EArdaRHIFormat::BGRA8UNorm;
+			case EArdaRHIFormat::D16:
+				return EArdaRHIFormat::R16UNorm;
+			case EArdaRHIFormat::D32:
+				return EArdaRHIFormat::R32Float;
+			default:
+				return Format;
+			}
+		};
+		const auto ResourceFormat = BaseFormat(Texture.mFormat);
+		ViewFormat = BaseFormat(ViewFormat);
+		if (ResourceFormat == ViewFormat)
+		{
+			return true;
+		}
+		// Enum spans contain exactly the typed representations of each storage family.
+		constexpr EArdaRHIFormat Families[][2] = {{EArdaRHIFormat::R8UInt, EArdaRHIFormat::R8SNorm},
+		    {EArdaRHIFormat::RG8UInt, EArdaRHIFormat::RG8SNorm},
+		    {EArdaRHIFormat::R16UInt, EArdaRHIFormat::R16Float},
+		    {EArdaRHIFormat::RGBA8UInt, EArdaRHIFormat::RGBA8SNorm},
+		    {EArdaRHIFormat::RG16UInt, EArdaRHIFormat::RG16Float},
+		    {EArdaRHIFormat::R32UInt, EArdaRHIFormat::R32Float},
+		    {EArdaRHIFormat::RGBA16UInt, EArdaRHIFormat::RGBA16SNorm},
+		    {EArdaRHIFormat::RG32UInt, EArdaRHIFormat::RG32Float},
+		    {EArdaRHIFormat::RGB32UInt, EArdaRHIFormat::RGB32Float},
+		    {EArdaRHIFormat::RGBA32UInt, EArdaRHIFormat::RGBA32Float},
+		    {EArdaRHIFormat::BC1UNorm, EArdaRHIFormat::BC1UNormSRGB},
+		    {EArdaRHIFormat::BC2UNorm, EArdaRHIFormat::BC2UNormSRGB},
+		    {EArdaRHIFormat::BC3UNorm, EArdaRHIFormat::BC3UNormSRGB},
+		    {EArdaRHIFormat::BC4UNorm, EArdaRHIFormat::BC4SNorm},
+		    {EArdaRHIFormat::BC5UNorm, EArdaRHIFormat::BC5SNorm},
+		    {EArdaRHIFormat::BC6HUFloat, EArdaRHIFormat::BC6HSFloat},
+		    {EArdaRHIFormat::BC7UNorm, EArdaRHIFormat::BC7UNormSRGB}};
+		for (const auto& Family : Families)
+		{
+			if (ResourceFormat >= Family[0] && ResourceFormat <= Family[1] && ViewFormat >= Family[0] &&
+			    ViewFormat <= Family[1])
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	uint32_t GetArdaRHIVertexFormatAlignment(EArdaRHIFormat Format) noexcept
+	{
+		const auto& Info = GetArdaRHIFormatInfo(Format);
+		if (!IsArdaRHIFormatKnown(Format) || Info.mbDepth || Info.mBlockWidth != 1 || Info.mBlockHeight != 1)
+		{
+			return 0;
+		}
+		switch (Format)
+		{
+		case EArdaRHIFormat::R8UInt:
+		case EArdaRHIFormat::R8SInt:
+		case EArdaRHIFormat::R8UNorm:
+		case EArdaRHIFormat::R8SNorm:
+		case EArdaRHIFormat::RG8UInt:
+		case EArdaRHIFormat::RG8SInt:
+		case EArdaRHIFormat::RG8UNorm:
+		case EArdaRHIFormat::RG8SNorm:
+		case EArdaRHIFormat::RGBA8UInt:
+		case EArdaRHIFormat::RGBA8SInt:
+		case EArdaRHIFormat::RGBA8UNorm:
+		case EArdaRHIFormat::RGBA8SNorm:
+		case EArdaRHIFormat::BGRA8UNorm:
+		case EArdaRHIFormat::SRGBA8UNorm:
+		case EArdaRHIFormat::SBGRA8UNorm:
+			return 1;
+		case EArdaRHIFormat::R16UInt:
+		case EArdaRHIFormat::R16SInt:
+		case EArdaRHIFormat::R16UNorm:
+		case EArdaRHIFormat::R16SNorm:
+		case EArdaRHIFormat::R16Float:
+		case EArdaRHIFormat::RG16UInt:
+		case EArdaRHIFormat::RG16SInt:
+		case EArdaRHIFormat::RG16UNorm:
+		case EArdaRHIFormat::RG16SNorm:
+		case EArdaRHIFormat::RG16Float:
+		case EArdaRHIFormat::RGBA16UInt:
+		case EArdaRHIFormat::RGBA16SInt:
+		case EArdaRHIFormat::RGBA16Float:
+		case EArdaRHIFormat::RGBA16UNorm:
+		case EArdaRHIFormat::RGBA16SNorm:
+			return 2;
+		default:
+			return 4;
+		}
+	}
+
 	uint32_t GetArdaRHIFormatElementSize(EArdaRHIFormat Format) noexcept
 	{
 		const FArdaRHIFormatInfo& Info = GetArdaRHIFormatInfo(Format);
@@ -460,10 +571,10 @@ namespace arda
 		ArdaHashCombine(H, V.mbKeepInitialState);
 		ArdaHashCombine(H, V.mbVirtual);
 		ArdaHashCombine(H, V.mbTiled);
-		ArdaHashCombine(H, ArdaFloatBits(V.mClearValue.mR));
-		ArdaHashCombine(H, ArdaFloatBits(V.mClearValue.mG));
-		ArdaHashCombine(H, ArdaFloatBits(V.mClearValue.mB));
-		ArdaHashCombine(H, ArdaFloatBits(V.mClearValue.mA));
+		ArdaHashCombine(H, V.mClearValue.mR);
+		ArdaHashCombine(H, V.mClearValue.mG);
+		ArdaHashCombine(H, V.mClearValue.mB);
+		ArdaHashCombine(H, V.mClearValue.mA);
 		ArdaHashCombine(H, V.mbUseClearValue);
 		ArdaHashString(H, V.mDebugName);
 		return H;
@@ -489,12 +600,12 @@ namespace arda
 	size_t HashValue(const FArdaRHISamplerDesc& V) noexcept
 	{
 		size_t H = 0;
-		ArdaHashCombine(H, ArdaFloatBits(V.mBorderColor.mR));
-		ArdaHashCombine(H, ArdaFloatBits(V.mBorderColor.mG));
-		ArdaHashCombine(H, ArdaFloatBits(V.mBorderColor.mB));
-		ArdaHashCombine(H, ArdaFloatBits(V.mBorderColor.mA));
-		ArdaHashCombine(H, ArdaFloatBits(V.mMaxAnisotropy));
-		ArdaHashCombine(H, ArdaFloatBits(V.mMipBias));
+		ArdaHashCombine(H, V.mBorderColor.mR);
+		ArdaHashCombine(H, V.mBorderColor.mG);
+		ArdaHashCombine(H, V.mBorderColor.mB);
+		ArdaHashCombine(H, V.mBorderColor.mA);
+		ArdaHashCombine(H, V.mMaxAnisotropy);
+		ArdaHashCombine(H, V.mMipBias);
 		ArdaHashCombine(H, V.mbMinFilter);
 		ArdaHashCombine(H, V.mbMagFilter);
 		ArdaHashCombine(H, V.mbMipFilter);

@@ -8,6 +8,7 @@
 #include <EASTL/algorithm.h>
 #include <EASTL/sort.h>
 #include <EASTL/unordered_map.h>
+#include <EASTL/type_traits.h>
 #include <future>
 #include <thread>
 
@@ -89,11 +90,6 @@ namespace arda
 			}
 		};
 
-		EArdaRHIQueueType GetCommandQueue(EArdaRHIQueueType Queue)
-		{
-			return Queue;
-		}
-
 		[[nodiscard]] arda::EArdaRHIPipeline GetTransitionPipeline(arda::EArdaRHIQueueType Queue) noexcept
 		{
 			switch (Queue)
@@ -108,31 +104,42 @@ namespace arda
 			}
 		}
 
-		void CaptureTextureState(FArdaInductorRecordedCommand& Recorded,
+		template <class Resource>
+		void CaptureResourceState(FArdaInductorRecordedCommand& Recorded,
 		    const FArdaInductorCommand& Pass,
 		    FArdaInductorCommandHandle PassHandle,
-		    FArdaInductorTexture& Texture,
-		    FArdaInductorTextureHandle TextureHandle,
-		    const arda::FArdaRHITextureSubresourceRange& Subresources,
+		    const Resource& Value,
 		    EArdaGraphStateCheckpoint Checkpoint,
-		    arda::EArdaRHIResourceState ExpectedState,
+		    EArdaRHIResourceState ExpectedState,
+		    const FArdaRHITextureSubresourceRange& Subresources = {},
 		    bool bValidateQueueOwnership = false,
-		    arda::EArdaRHIQueueType ExpectedQueueOwner = arda::EArdaRHIQueueType::Graphics,
-		    uint32_t ExpectedQueueFamily = arda::ArdaRHIInvalidQueueFamily)
+		    EArdaRHIQueueType ExpectedQueueOwner = EArdaRHIQueueType::Graphics,
+		    uint32_t ExpectedQueueFamily = ArdaRHIInvalidQueueFamily)
 		{
+			constexpr bool bTexture = eastl::is_same_v<Resource, FArdaInductorTexture>;
 			FArdaGraphStateConformanceRecord Record;
 			Record.mPass = PassHandle.GetIndex();
 			Record.mPassName = Pass.GetName();
-			Record.mResourceType = EArdaGraphResourceType::Texture;
-			Record.mResourceIndex = TextureHandle.GetIndex();
-			Record.mResourceName = Texture.GetName();
+			Record.mResourceType = bTexture ? EArdaGraphResourceType::Texture : EArdaGraphResourceType::Buffer;
+			Record.mResourceIndex = Value.GetHandle().GetIndex();
+			Record.mResourceName = Value.GetName();
 			Record.mTextureSubresources = Subresources;
 			Record.mCheckpoint = Checkpoint;
 			Record.mExpectedState = ExpectedState;
 			Record.mbValidateQueueOwnership = bValidateQueueOwnership;
 			Record.mExpectedQueueOwner = ExpectedQueueOwner;
 			Record.mExpectedQueueFamily = ExpectedQueueFamily;
-			auto Snapshot = Recorded.mCommandList->QueryTextureState(*Texture.GetTexture(), Subresources);
+			auto Snapshot = [&]
+			{
+				if constexpr (eastl::is_same_v<Resource, FArdaInductorTexture>)
+				{
+					return Recorded.mCommandList->QueryTextureState(*Value.GetResource(), Subresources);
+				}
+				else
+				{
+					return Recorded.mCommandList->QueryBufferState(*Value.GetResource());
+				}
+			}();
 			Record.mStatus = Snapshot.mStatus;
 			if (Snapshot)
 			{
@@ -141,35 +148,84 @@ namespace arda
 			Recorded.mStateConformanceRecords.push_back(eastl::move(Record));
 		}
 
-		void CaptureBufferState(FArdaInductorRecordedCommand& Recorded,
+		template <class Transfer>
+		FArdaRHIStatus RecordQueueTransfer(FArdaInductorCommandProgram::FArdaImpl& Graph,
+		    FArdaInductorRecordedCommand& Recorded,
 		    const FArdaInductorCommand& Pass,
-		    FArdaInductorCommandHandle PassHandle,
-		    FArdaInductorBuffer& Buffer,
-		    FArdaInductorBufferHandle BufferHandle,
-		    EArdaGraphStateCheckpoint Checkpoint,
-		    arda::EArdaRHIResourceState ExpectedState,
-		    bool bValidateQueueOwnership = false,
-		    arda::EArdaRHIQueueType ExpectedQueueOwner = arda::EArdaRHIQueueType::Graphics,
-		    uint32_t ExpectedQueueFamily = arda::ArdaRHIInvalidQueueFamily)
+		    FArdaInductorCommandHandle Handle,
+		    const Transfer& Handoff,
+		    bool bAcquire,
+		    bool bValidateResourceStates)
 		{
-			FArdaGraphStateConformanceRecord Record;
-			Record.mPass = PassHandle.GetIndex();
-			Record.mPassName = Pass.GetName();
-			Record.mResourceType = EArdaGraphResourceType::Buffer;
-			Record.mResourceIndex = BufferHandle.GetIndex();
-			Record.mResourceName = Buffer.GetName();
-			Record.mCheckpoint = Checkpoint;
-			Record.mExpectedState = ExpectedState;
-			Record.mbValidateQueueOwnership = bValidateQueueOwnership;
-			Record.mExpectedQueueOwner = ExpectedQueueOwner;
-			Record.mExpectedQueueFamily = ExpectedQueueFamily;
-			auto Snapshot = Recorded.mCommandList->QueryBufferState(*Buffer.GetBuffer());
-			Record.mStatus = Snapshot.mStatus;
-			if (Snapshot)
+			constexpr bool bTexture =
+			    eastl::is_same_v<Transfer, FArdaInductorRuntimeTransitions::FArdaTextureQueueTransfer>;
+			const auto& Resource = [&]() -> const auto&
 			{
-				Record.mObserved = eastl::move(Snapshot.mValue);
+				if constexpr (eastl::is_same_v<Transfer, FArdaInductorRuntimeTransitions::FArdaTextureQueueTransfer>)
+				{
+					return Graph.mTextures.Get(Handoff.mTexture);
+				}
+				else
+				{
+					return Graph.mBuffers.Get(Handoff.mBuffer);
+				}
+			}();
+			auto& Commands = *Recorded.mCommandList;
+			eastl::conditional_t<bTexture, FArdaRHITextureTransitionDesc, FArdaRHIBufferTransitionDesc> Transition;
+			FArdaRHITextureSubresourceRange Subresources;
+			FArdaRHIStatus Status;
+			if constexpr (bTexture)
+			{
+				Subresources = Transition.mSubresources = Handoff.mSubresources;
+				Status = bAcquire
+				    ? Commands.BeginTrackingTextureState(*Resource.GetResource(),
+				          Subresources,
+				          EArdaRHIResourceState::Common)
+				    : Commands.SetTextureState(*Resource.GetResource(), Subresources, EArdaRHIResourceState::Common);
 			}
-			Recorded.mStateConformanceRecords.push_back(eastl::move(Record));
+			else
+			{
+				Status = bAcquire
+				    ? Commands.BeginTrackingBufferState(*Resource.GetResource(), EArdaRHIResourceState::Common)
+				    : Commands.SetBufferState(*Resource.GetResource(), EArdaRHIResourceState::Common);
+			}
+			if (!Status)
+			{
+				return Status;
+			}
+			if (!bAcquire)
+			{
+				Commands.CommitBarriers();
+			}
+			Transition.mStateBefore = Transition.mStateAfter = EArdaRHIResourceState::Common;
+			Transition.mSourcePipelines = GetTransitionPipeline(Handoff.mSourceQueue);
+			Transition.mDestinationPipelines = GetTransitionPipeline(Handoff.mDestinationQueue);
+			Transition.mFlags = bAcquire ? EArdaRHITransitionFlags::EndOnly : EArdaRHITransitionFlags::BeginOnly;
+			Transition.mSourceQueue = Handoff.mSourceQueue;
+			Transition.mDestinationQueue = Handoff.mDestinationQueue;
+			Transition.mbQueueOwnershipTransfer = true;
+			if constexpr (bTexture)
+			{
+				Status = Commands.TransitionTexture(*Resource.GetResource(), Transition);
+			}
+			else
+			{
+				Status = Commands.TransitionBuffer(*Resource.GetResource(), Transition);
+			}
+			if (Status && bValidateResourceStates)
+			{
+				CaptureResourceState(Recorded,
+				    Pass,
+				    Handle,
+				    Resource,
+				    bAcquire ? EArdaGraphStateCheckpoint::QueueAcquire : EArdaGraphStateCheckpoint::QueueRelease,
+				    EArdaRHIResourceState::Common,
+				    Subresources,
+				    true,
+				    Handoff.mDestinationQueue,
+				    Graph.mDevice->GetCapabilities().mQueues.GetFamily(Handoff.mDestinationQueue));
+			}
+			return Status;
 		}
 
 		void AddExecutionDependency(FArdaInductorCommandProgram::FArdaImpl& Graph,
@@ -187,8 +243,7 @@ namespace arda
 				        return Edge.mProducer == Producer.GetIndex() && Edge.mConsumer == Consumer.GetIndex();
 			        }))
 			{
-				Edges.push_back(
-				    {Producer.GetIndex(), Consumer.GetIndex(), GetCommandQueue(Source), GetCommandQueue(Destination)});
+				Edges.push_back({Producer.GetIndex(), Consumer.GetIndex(), Source, Destination});
 			}
 		}
 
@@ -220,11 +275,11 @@ namespace arda
 			{
 				const FArdaInductorCommand& Pass = Graph.mPasses.Get(Handle);
 				auto& Out = Runtime[Handle.GetIndex()];
-				const arda::EArdaRHIQueueType Queue = GetCommandQueue(Pass.GetState().mQueue);
+				const arda::EArdaRHIQueueType Queue = Pass.GetState().mQueue;
 				for (const FArdaInductorTextureTransition& Compiled : Pass.GetState().mTextureTransitions)
 				{
 					const FArdaInductorTexture& Texture = Graph.mTextures.Get(Compiled.mTexture);
-					const void* Physical = Texture.GetTexture()->GetPhysicalIdentity();
+					const void* Physical = Texture.GetResource()->GetPhysicalIdentity();
 					if (Physical == nullptr)
 					{
 						ARDA_CHECK_MSG("A live graph texture was not materialized.");
@@ -275,7 +330,7 @@ namespace arda
 				for (const FArdaInductorBufferTransition& Compiled : Pass.GetState().mBufferTransitions)
 				{
 					const FArdaInductorBuffer& Buffer = Graph.mBuffers.Get(Compiled.mBuffer);
-					const void* Physical = Buffer.GetBuffer()->GetPhysicalIdentity();
+					const void* Physical = Buffer.GetResource()->GetPhysicalIdentity();
 					if (Physical == nullptr)
 					{
 						ARDA_CHECK_MSG("A live graph buffer was not materialized.");
@@ -369,7 +424,7 @@ namespace arda
 			};
 			if (!Recorded.mCommandList)
 			{
-				Recorded.mQueue = GetCommandQueue(Pass.GetState().mQueue);
+				Recorded.mQueue = Pass.GetState().mQueue;
 				auto CommandListResult = Graph.mDevice->CreateCommandList(Recorded.mQueue);
 				if (!CommandListResult)
 				{
@@ -390,12 +445,12 @@ namespace arda
 					if (Alias.mType == EArdaGraphResourceType::Texture)
 					{
 						ResourceAfter =
-						    Graph.mTextures.Get(FArdaInductorTextureHandle(Alias.mResourceIndex)).GetTexture().Get();
+						    Graph.mTextures.Get(FArdaInductorTextureHandle(Alias.mResourceIndex)).GetResource().Get();
 					}
 					else if (Alias.mType == EArdaGraphResourceType::Buffer)
 					{
 						ResourceAfter =
-						    Graph.mBuffers.Get(FArdaInductorBufferHandle(Alias.mResourceIndex)).GetBuffer().Get();
+						    Graph.mBuffers.Get(FArdaInductorBufferHandle(Alias.mResourceIndex)).GetResource().Get();
 					}
 					if (!ResourceAfter)
 					{
@@ -411,7 +466,7 @@ namespace arda
 					{
 						Recorded.mCommandList->CommitBarriers();
 						auto& Texture = Graph.mTextures.Get(FArdaInductorTextureHandle(Alias.mResourceIndex));
-						if (!Accept(Recorded.mCommandList->BeginTrackingTextureState(*Texture.GetTexture(),
+						if (!Accept(Recorded.mCommandList->BeginTrackingTextureState(*Texture.GetResource(),
 						        {},
 						        arda::EArdaRHIResourceState::Common)))
 						{
@@ -421,7 +476,7 @@ namespace arda
 						Activate.mStateBefore = arda::EArdaRHIResourceState::Common;
 						Activate.mStateAfter = arda::EArdaRHIResourceState::Common;
 						Activate.mFlags = arda::EArdaRHITransitionFlags::Discard;
-						Recorded.mStatus = Recorded.mCommandList->TransitionTexture(*Texture.GetTexture(), Activate);
+						Recorded.mStatus = Recorded.mCommandList->TransitionTexture(*Texture.GetResource(), Activate);
 						if (!Recorded.mStatus)
 						{
 							return Recorded;
@@ -440,75 +495,28 @@ namespace arda
 				// directly to Vulkan queue-family ownership barriers.
 				for (const auto& Transfer : Transitions.mTextureAcquires)
 				{
-					FArdaInductorTexture& Texture = Graph.mTextures.Get(Transfer.mTexture);
-					if (!Accept(Recorded.mCommandList->BeginTrackingTextureState(*Texture.GetTexture(),
-					        Transfer.mSubresources,
-					        arda::EArdaRHIResourceState::Common)))
+					if (!Accept(RecordQueueTransfer(Graph,
+					        Recorded,
+					        Pass,
+					        Handle,
+					        Transfer,
+					        true,
+					        bValidateResourceStates)))
 					{
 						return Recorded;
-					}
-					arda::FArdaRHITextureTransitionDesc Acquire;
-					Acquire.mSubresources = Transfer.mSubresources;
-					Acquire.mStateBefore = arda::EArdaRHIResourceState::Common;
-					Acquire.mStateAfter = arda::EArdaRHIResourceState::Common;
-					Acquire.mSourcePipelines = GetTransitionPipeline(Transfer.mSourceQueue);
-					Acquire.mDestinationPipelines = GetTransitionPipeline(Transfer.mDestinationQueue);
-					Acquire.mFlags = arda::EArdaRHITransitionFlags::EndOnly;
-					Acquire.mSourceQueue = Transfer.mSourceQueue;
-					Acquire.mDestinationQueue = Transfer.mDestinationQueue;
-					Acquire.mbQueueOwnershipTransfer = true;
-					if (!Accept(Recorded.mCommandList->TransitionTexture(*Texture.GetTexture(), Acquire)))
-					{
-						return Recorded;
-					}
-					if (bValidateResourceStates)
-					{
-						CaptureTextureState(Recorded,
-						    Pass,
-						    Handle,
-						    Texture,
-						    Transfer.mTexture,
-						    Transfer.mSubresources,
-						    EArdaGraphStateCheckpoint::QueueAcquire,
-						    arda::EArdaRHIResourceState::Common,
-						    true,
-						    Transfer.mDestinationQueue,
-						    Graph.mDevice->GetCapabilities().mQueues.GetFamily(Transfer.mDestinationQueue));
 					}
 				}
 				for (const auto& Transfer : Transitions.mBufferAcquires)
 				{
-					FArdaInductorBuffer& Buffer = Graph.mBuffers.Get(Transfer.mBuffer);
-					if (!Accept(Recorded.mCommandList->BeginTrackingBufferState(*Buffer.GetBuffer(),
-					        arda::EArdaRHIResourceState::Common)))
+					if (!Accept(RecordQueueTransfer(Graph,
+					        Recorded,
+					        Pass,
+					        Handle,
+					        Transfer,
+					        true,
+					        bValidateResourceStates)))
 					{
 						return Recorded;
-					}
-					arda::FArdaRHIBufferTransitionDesc Acquire;
-					Acquire.mStateBefore = arda::EArdaRHIResourceState::Common;
-					Acquire.mStateAfter = arda::EArdaRHIResourceState::Common;
-					Acquire.mSourcePipelines = GetTransitionPipeline(Transfer.mSourceQueue);
-					Acquire.mDestinationPipelines = GetTransitionPipeline(Transfer.mDestinationQueue);
-					Acquire.mFlags = arda::EArdaRHITransitionFlags::EndOnly;
-					Acquire.mSourceQueue = Transfer.mSourceQueue;
-					Acquire.mDestinationQueue = Transfer.mDestinationQueue;
-					Acquire.mbQueueOwnershipTransfer = true;
-					if (!Accept(Recorded.mCommandList->TransitionBuffer(*Buffer.GetBuffer(), Acquire)))
-					{
-						return Recorded;
-					}
-					if (bValidateResourceStates)
-					{
-						CaptureBufferState(Recorded,
-						    Pass,
-						    Handle,
-						    Buffer,
-						    Transfer.mBuffer,
-						    EArdaGraphStateCheckpoint::QueueAcquire,
-						    arda::EArdaRHIResourceState::Common,
-						    true,
-						    Transfer.mDestinationQueue,
-						    Graph.mDevice->GetCapabilities().mQueues.GetFamily(Transfer.mDestinationQueue));
 					}
 				}
 
@@ -517,7 +525,7 @@ namespace arda
 				for (const FArdaInductorTextureTransition& Transition : Transitions.mTextures)
 				{
 					FArdaInductorTexture& Texture = Graph.mTextures.Get(Transition.mTexture);
-					if (!Accept(Recorded.mCommandList->BeginTrackingTextureState(*Texture.GetTexture(),
+					if (!Accept(Recorded.mCommandList->BeginTrackingTextureState(*Texture.GetResource(),
 					        Transition.mSubresources,
 					        Transition.mStateBefore)))
 					{
@@ -525,24 +533,23 @@ namespace arda
 					}
 					if (bValidateResourceStates)
 					{
-						CaptureTextureState(Recorded,
+						CaptureResourceState(Recorded,
 						    Pass,
 						    Handle,
 						    Texture,
-						    Transition.mTexture,
-						    Transition.mSubresources,
 						    EArdaGraphStateCheckpoint::BeforeTransition,
-						    Transition.mStateBefore);
+						    Transition.mStateBefore,
+						    Transition.mSubresources);
 					}
 
 					if (IsUAVState(Transition.mStateAfter))
 					{
-						if (!Accept(Recorded.mCommandList->SetUAVBarriersForTexture(*Texture.GetTexture(), true)))
+						if (!Accept(Recorded.mCommandList->SetUAVBarriersForTexture(*Texture.GetResource(), true)))
 						{
 							return Recorded;
 						}
 					}
-					if (!Accept(Recorded.mCommandList->SetTextureState(*Texture.GetTexture(),
+					if (!Accept(Recorded.mCommandList->SetTextureState(*Texture.GetResource(),
 					        Transition.mSubresources,
 					        Transition.mStateAfter)))
 					{
@@ -550,54 +557,51 @@ namespace arda
 					}
 					if (bValidateResourceStates)
 					{
-						CaptureTextureState(Recorded,
+						CaptureResourceState(Recorded,
 						    Pass,
 						    Handle,
 						    Texture,
-						    Transition.mTexture,
-						    Transition.mSubresources,
 						    EArdaGraphStateCheckpoint::AfterTransition,
-						    Transition.mStateAfter);
+						    Transition.mStateAfter,
+						    Transition.mSubresources);
 					}
 				}
 				for (const FArdaInductorBufferTransition& Transition : Transitions.mBuffers)
 				{
 					FArdaInductorBuffer& Buffer = Graph.mBuffers.Get(Transition.mBuffer);
-					if (!Accept(Recorded.mCommandList->BeginTrackingBufferState(*Buffer.GetBuffer(),
+					if (!Accept(Recorded.mCommandList->BeginTrackingBufferState(*Buffer.GetResource(),
 					        Transition.mStateBefore)))
 					{
 						return Recorded;
 					}
 					if (bValidateResourceStates)
 					{
-						CaptureBufferState(Recorded,
+						CaptureResourceState(Recorded,
 						    Pass,
 						    Handle,
 						    Buffer,
-						    Transition.mBuffer,
 						    EArdaGraphStateCheckpoint::BeforeTransition,
 						    Transition.mStateBefore);
 					}
 
 					if (IsUAVState(Transition.mStateAfter))
 					{
-						if (!Accept(Recorded.mCommandList->SetUAVBarriersForBuffer(*Buffer.GetBuffer(),
+						if (!Accept(Recorded.mCommandList->SetUAVBarriersForBuffer(*Buffer.GetResource(),
 						        Transition.mbUAVBarrier)))
 						{
 							return Recorded;
 						}
 					}
-					if (!Accept(Recorded.mCommandList->SetBufferState(*Buffer.GetBuffer(), Transition.mStateAfter)))
+					if (!Accept(Recorded.mCommandList->SetBufferState(*Buffer.GetResource(), Transition.mStateAfter)))
 					{
 						return Recorded;
 					}
 					if (bValidateResourceStates)
 					{
-						CaptureBufferState(Recorded,
+						CaptureResourceState(Recorded,
 						    Pass,
 						    Handle,
 						    Buffer,
-						    Transition.mBuffer,
 						    EArdaGraphStateCheckpoint::AfterTransition,
 						    Transition.mStateAfter);
 					}
@@ -606,7 +610,7 @@ namespace arda
 				{
 					FArdaInductorAccelerationStructure& AccelStruct = Graph.mAccelStructs.Get(Transition.mAccelStruct);
 
-					if (!Accept(Recorded.mCommandList->SetAccelStructState(*AccelStruct.GetAccelStruct(),
+					if (!Accept(Recorded.mCommandList->SetAccelStructState(*AccelStruct.GetResource(),
 					        Transition.mStateAfter)))
 					{
 						return Recorded;
@@ -635,100 +639,39 @@ namespace arda
 				for (const FArdaInductorTextureTransition& State : Transitions.mTextures)
 				{
 					FArdaInductorTexture& Texture = Graph.mTextures.Get(State.mTexture);
-					CaptureTextureState(Recorded,
+					CaptureResourceState(Recorded,
 					    Pass,
 					    Handle,
 					    Texture,
-					    State.mTexture,
-					    State.mSubresources,
 					    EArdaGraphStateCheckpoint::AfterPass,
-					    State.mStateAfter);
+					    State.mStateAfter,
+					    State.mSubresources);
 				}
 				for (const FArdaInductorBufferTransition& State : Transitions.mBuffers)
 				{
 					FArdaInductorBuffer& Buffer = Graph.mBuffers.Get(State.mBuffer);
-					CaptureBufferState(Recorded,
+					CaptureResourceState(Recorded,
 					    Pass,
 					    Handle,
 					    Buffer,
-					    State.mBuffer,
 					    EArdaGraphStateCheckpoint::AfterPass,
 					    State.mStateAfter);
 				}
 			}
 			for (const auto& Transfer : Transitions.mTextureReleases)
 			{
-				FArdaInductorTexture& Texture = Graph.mTextures.Get(Transfer.mTexture);
-				if (!Accept(Recorded.mCommandList->SetTextureState(*Texture.GetTexture(),
-				        Transfer.mSubresources,
-				        arda::EArdaRHIResourceState::Common)))
+				if (!Accept(
+				        RecordQueueTransfer(Graph, Recorded, Pass, Handle, Transfer, false, bValidateResourceStates)))
 				{
 					return Recorded;
-				}
-				Recorded.mCommandList->CommitBarriers();
-				arda::FArdaRHITextureTransitionDesc Release;
-				Release.mSubresources = Transfer.mSubresources;
-				Release.mStateBefore = arda::EArdaRHIResourceState::Common;
-				Release.mStateAfter = arda::EArdaRHIResourceState::Common;
-				Release.mSourcePipelines = GetTransitionPipeline(Transfer.mSourceQueue);
-				Release.mDestinationPipelines = GetTransitionPipeline(Transfer.mDestinationQueue);
-				Release.mFlags = arda::EArdaRHITransitionFlags::BeginOnly;
-				Release.mSourceQueue = Transfer.mSourceQueue;
-				Release.mDestinationQueue = Transfer.mDestinationQueue;
-				Release.mbQueueOwnershipTransfer = true;
-				if (!Accept(Recorded.mCommandList->TransitionTexture(*Texture.GetTexture(), Release)))
-				{
-					return Recorded;
-				}
-				if (bValidateResourceStates)
-				{
-					CaptureTextureState(Recorded,
-					    Pass,
-					    Handle,
-					    Texture,
-					    Transfer.mTexture,
-					    Transfer.mSubresources,
-					    EArdaGraphStateCheckpoint::QueueRelease,
-					    arda::EArdaRHIResourceState::Common,
-					    true,
-					    Transfer.mDestinationQueue,
-					    Graph.mDevice->GetCapabilities().mQueues.GetFamily(Transfer.mDestinationQueue));
 				}
 			}
 			for (const auto& Transfer : Transitions.mBufferReleases)
 			{
-				FArdaInductorBuffer& Buffer = Graph.mBuffers.Get(Transfer.mBuffer);
-				if (!Accept(Recorded.mCommandList->SetBufferState(*Buffer.GetBuffer(),
-				        arda::EArdaRHIResourceState::Common)))
+				if (!Accept(
+				        RecordQueueTransfer(Graph, Recorded, Pass, Handle, Transfer, false, bValidateResourceStates)))
 				{
 					return Recorded;
-				}
-				Recorded.mCommandList->CommitBarriers();
-				arda::FArdaRHIBufferTransitionDesc Release;
-				Release.mStateBefore = arda::EArdaRHIResourceState::Common;
-				Release.mStateAfter = arda::EArdaRHIResourceState::Common;
-				Release.mSourcePipelines = GetTransitionPipeline(Transfer.mSourceQueue);
-				Release.mDestinationPipelines = GetTransitionPipeline(Transfer.mDestinationQueue);
-				Release.mFlags = arda::EArdaRHITransitionFlags::BeginOnly;
-				Release.mSourceQueue = Transfer.mSourceQueue;
-				Release.mDestinationQueue = Transfer.mDestinationQueue;
-				Release.mbQueueOwnershipTransfer = true;
-				if (!Accept(Recorded.mCommandList->TransitionBuffer(*Buffer.GetBuffer(), Release)))
-				{
-					return Recorded;
-				}
-				if (bValidateResourceStates)
-				{
-					CaptureBufferState(Recorded,
-					    Pass,
-					    Handle,
-					    Buffer,
-					    Transfer.mBuffer,
-					    EArdaGraphStateCheckpoint::QueueRelease,
-					    arda::EArdaRHIResourceState::Common,
-					    true,
-					    Transfer.mDestinationQueue,
-					    Graph.mDevice->GetCapabilities().mQueues.GetFamily(Transfer.mDestinationQueue));
 				}
 			}
 			if (bClose)

@@ -1,4 +1,5 @@
 #include "../ArdaGpuTimestamp.h"
+#include "../ArdaSparseMapping.h"
 #include "../../ArdaBackend/Private/RHI/ArdaRHISubresources.h"
 #include "RHI/ArdaRHIProvider.h"
 #include "../Cuda/ArdaCudaInterop.h"
@@ -44,6 +45,15 @@ namespace arda
 	namespace
 	{
 		using Microsoft::WRL::ComPtr;
+		using FArdaD3D12SparseMappings = TArdaSparseMappingSet<FArdaProviderObjectRef>;
+
+		struct FArdaD3D12SparseUpdate
+		{
+			uint64_t mOffset = 0;
+			uint64_t mSize = 0;
+			uint64_t mHeapOffset = 0;
+			FArdaProviderObjectRef mHeap;
+		};
 
 		constexpr uint32_t D3D12ResourceDescriptorHeapCapacity = 65536;
 
@@ -667,6 +677,8 @@ namespace arda
 			{
 				FArdaRHITextureSubresourceRange mRange;
 				bool mbDepth = false;
+				bool mbReadOnly = false;
+				EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown;
 				ComPtr<ID3D12DescriptorHeap> mHeap;
 				D3D12_CPU_DESCRIPTOR_HANDLE mHandle{};
 			};
@@ -676,9 +688,8 @@ namespace arda
 			D3D12_CPU_DESCRIPTOR_HANDLE mRtv{};
 			D3D12_CPU_DESCRIPTOR_HANDLE mDsv{};
 			FArdaProviderObjectRef mHeap;
-			eastl::vector<FArdaProviderObjectRef> mSparseHeaps;
-			ComPtr<ID3D12Heap> mReservedCommitHeap;
-			uint64_t mCommittedBytes = 0;
+			std::mutex mSparseMutex;
+			FArdaD3D12SparseMappings mSparseMappings;
 		};
 
 		class FArdaD3D12Buffer final : public IArdaProviderObject
@@ -712,9 +723,8 @@ namespace arda
 			D3D12_RESOURCE_STATES mNativeState = D3D12_RESOURCE_STATE_COMMON;
 			bool mbStateKnown = false;
 			FArdaProviderObjectRef mHeap;
-			eastl::vector<FArdaProviderObjectRef> mSparseHeaps;
-			ComPtr<ID3D12Heap> mReservedCommitHeap;
-			uint64_t mCommittedBytes = 0;
+			std::mutex mSparseMutex;
+			FArdaD3D12SparseMappings mSparseMappings;
 		};
 
 		class FArdaD3D12AccelStruct final : public IArdaProviderObject
@@ -1018,11 +1028,18 @@ namespace arda
 			uint32_t mMaxEntries = 0;
 			uint32_t mMaxLocalArgumentBytes = 0;
 			eastl::vector<FArdaRecord> mRecords;
-			ComPtr<ID3D12Resource> mBuffer;
-			D3D12_GPU_VIRTUAL_ADDRESS_RANGE mRayGenerationRange{};
-			D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE mMissRange{};
-			D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE mHitGroupRange{};
-			D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE mCallableRange{};
+
+			struct FArdaGeneration
+			{
+				ComPtr<ID3D12Resource> mBuffer;
+				D3D12_GPU_VIRTUAL_ADDRESS_RANGE mRayGenerationRange{};
+				D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE mMissRange{};
+				D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE mHitGroupRange{};
+				D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE mCallableRange{};
+				eastl::vector<FArdaProviderObjectRef> mObjects;
+			};
+
+			FArdaGeneration mGeneration;
 		};
 
 		enum class EArdaD3D12TimerQueryState : uint8_t
@@ -1447,12 +1464,38 @@ namespace arda
 			FArdaRHIStatus BeginTimerQuery(const FArdaProviderObjectRef&) override;
 			FArdaRHIStatus EndTimerQuery(const FArdaProviderObjectRef&) override;
 
-			void BeginMarker(const char*) override
+			void BeginMarker(const char* Name) override
 			{
+				if (!mbOpen || !Name)
+				{
+					return;
+				}
+				size_t Length = 0;
+				while (Length < 896 && Name[Length])
+				{
+					++Length;
+				}
+				mbMarkersTruncated |= Length == 896;
+				if (mMarkers.size() == ArdaRHIMaxDiagnosticEntries)
+				{
+					mMarkers.erase(mMarkers.begin());
+					mbMarkersTruncated = true;
+				}
+				mMarkers.emplace_back(Name, Length);
 			}
 
 			void EndMarker() override
 			{
+			}
+
+			const eastl::vector<eastl::string>& GetMarkers() const noexcept
+			{
+				return mMarkers;
+			}
+
+			bool WereMarkersTruncated() const noexcept
+			{
+				return mbMarkersTruncated;
 			}
 
 			ID3D12CommandList* GetSubmitList() const noexcept
@@ -1485,6 +1528,12 @@ namespace arda
 
 			void MarkTimerQueriesSubmitted(ID3D12Fence*, uint64_t, uint64_t);
 			void CommitTrackedStates();
+
+			void TrackSubmission(ID3D12Fence* Fence, uint64_t Value)
+			{
+				mSubmissionFence = Fence;
+				mSubmissionValue = Value;
+			}
 
 		private:
 			struct FArdaTextureTracking
@@ -1520,6 +1569,13 @@ namespace arda
 				}
 			}
 
+			FArdaRHIStatus CopyStagingTexture(bool bToTexture,
+			    const FArdaProviderObjectRef& TextureObject,
+			    const FArdaRHITextureDesc& TextureDesc,
+			    const FArdaRHITextureSlice& TextureSlice,
+			    const FArdaProviderObjectRef& StagingObject,
+			    const FArdaRHIStagingTextureDesc& StagingDesc,
+			    const FArdaRHITextureSlice& StagingSlice);
 			FArdaRHIStatus CopyTextureBuffer(bool,
 			    const FArdaProviderObjectRef&,
 			    const FArdaRHITextureDesc&,
@@ -1541,6 +1597,11 @@ namespace arda
 			    const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS&,
 			    EArdaRHIAccelStructBuildFlags);
 			bool BeginAccelStructCompactedSizeWrite(FArdaD3D12AccelStruct& AccelStruct);
+			FArdaRHIStatus ExecuteIndirect(const FArdaProviderObjectRef& Arguments,
+			    uint64_t Offset,
+			    uint32_t Count,
+			    uint32_t Stride,
+			    D3D12_INDIRECT_ARGUMENT_TYPE Type);
 			void CancelTimerQueries();
 
 			void SelectPushConstantPipeline(FArdaD3D12Pipeline* Pipeline)
@@ -1558,10 +1619,14 @@ namespace arda
 			D3D12_COMMAND_LIST_TYPE mType = D3D12_COMMAND_LIST_TYPE_DIRECT;
 			ComPtr<ID3D12CommandAllocator> mAllocator;
 			ComPtr<ID3D12GraphicsCommandList> mCommandList;
+			ComPtr<ID3D12Fence> mSubmissionFence;
+			uint64_t mSubmissionValue = 0;
 			eastl::vector<ComPtr<ID3D12CommandSignature>> mCommandSignatures;
 			eastl::vector<FArdaProviderObjectRef> mRetainedObjects;
 			eastl::vector<FArdaProviderObjectRef> mTimerQueries;
 			eastl::vector<FArdaProviderObjectRef> mWorkGraphs;
+			eastl::vector<eastl::string> mMarkers;
+			bool mbMarkersTruncated = false;
 			std::unordered_map<FArdaD3D12Texture*, FArdaTextureTracking> mTextureStates;
 			std::unordered_map<FArdaD3D12Buffer*, FArdaBufferTracking> mBufferStates;
 			std::unordered_map<FArdaD3D12AccelStruct*, FArdaAccelStructTracking> mAccelStructStates;
@@ -1598,8 +1663,13 @@ namespace arda
 			{
 			}
 
-			~FArdaD3D12ProviderDevice() override;
+			~FArdaD3D12ProviderDevice() override = default;
+			[[nodiscard]] bool TryRetireForShutdown();
+			void ReportDeferredShutdown() const;
+			FArdaD3D12ProviderDevice* mNextQuarantined = nullptr;
 			FArdaRHIStatus Initialize();
+			FArdaRHIFormatSupport QueryFormatSupport(EArdaRHIFormat Format) const noexcept override;
+			TArdaRHIResult<FArdaRHIDiagnosticSnapshot> CaptureDiagnosticSnapshot() const override;
 
 			FArdaCudaCapabilities GetCudaCapabilities() const override
 			{
@@ -1775,7 +1845,9 @@ namespace arda
 			    const D3D12_UNORDERED_ACCESS_VIEW_DESC&);
 			TArdaRHIResult<D3D12_CPU_DESCRIPTOR_HANDLE> GetAttachmentView(FArdaD3D12Texture&,
 			    FArdaRHITextureSubresourceRange,
-			    bool bDepth);
+			    bool bDepth,
+			    EArdaRHIFormat Format = EArdaRHIFormat::Unknown,
+			    bool bReadOnly = false);
 
 		private:
 			TArdaRHIResult<FArdaD3D12DescriptorAllocation> AllocateDescriptors(bool bSampler, uint32_t Count);
@@ -1789,6 +1861,12 @@ namespace arda
 			void InitializePipelineCache();
 			FArdaRHIStatus RebuildShaderTable(FArdaD3D12ShaderTable&);
 			FArdaRHIStatus PrepareWorkGraphs(const eastl::vector<FArdaProviderObjectRef>&, EArdaRHIQueueType);
+			FArdaRHIStatus SubmitSparseMappings(const FArdaProviderObjectRef&,
+			    ID3D12Resource*,
+			    FArdaD3D12SparseMappings&,
+			    const eastl::vector<FArdaD3D12SparseUpdate>&,
+			    uint64_t,
+			    EArdaRHIQueueType);
 
 			FArdaRHICapabilities mCapabilities;
 			ComPtr<ID3D12Device> mD3DDevice;
@@ -1808,12 +1886,16 @@ namespace arda
 
 			eastl::array<ComPtr<ID3D12Fence>, ArdaRHIQueueTypeCount> mQueueFences;
 			eastl::array<std::atomic<uint64_t>, ArdaRHIQueueTypeCount> mQueueFenceValues{};
+			eastl::array<std::atomic<uint64_t>, ArdaRHIQueueTypeCount> mQueueLastSubmittedValues{};
 			ComPtr<IDXGIAdapter3> mDxgiAdapter;
 			eastl::shared_ptr<void> mLifetimeToken;
 			eastl::shared_ptr<FArdaD3D12DescriptorAllocator> mDescriptorAllocator;
 			uint32_t mResourceDescriptorSize = 0;
 			uint32_t mSamplerDescriptorSize = 0;
 			std::mutex mSubmissionMutex;
+			mutable std::mutex mDiagnosticMutex;
+			eastl::vector<eastl::string> mSubmittedMarkers;
+			bool mbSubmittedMarkersTruncated = false;
 			eastl::list<FArdaPendingSubmission> mPendingSubmissions;
 			ComPtr<ID3D12PipelineLibrary> mPipelineLibrary;
 			std::vector<uint8_t> mPipelineCacheSource;
@@ -1823,13 +1905,110 @@ namespace arda
 			bool mbPipelineCacheDirty = false;
 		};
 
-		FArdaD3D12ProviderDevice::~FArdaD3D12ProviderDevice()
+		struct FArdaD3D12Quarantine
 		{
-			(void)WaitForIdle();
+			std::mutex mMutex;
+			FArdaD3D12ProviderDevice* mDevices = nullptr;
+		};
+
+		FArdaD3D12Quarantine& GetD3D12Quarantine()
+		{
+			// Process lifetime: static destruction cannot prove retirement of a failed device wait.
+			static auto* Registry = new FArdaD3D12Quarantine;
+			return *Registry;
+		}
+
+		void CollectD3D12Quarantine()
+		{
+			auto& Registry = GetD3D12Quarantine();
+			FArdaD3D12ProviderDevice* Retired = nullptr;
+			{
+				std::lock_guard<std::mutex> Lock(Registry.mMutex);
+				for (auto** Entry = &Registry.mDevices; *Entry;)
+				{
+					auto* Device = *Entry;
+					if (!Device->TryRetireForShutdown())
+					{
+						Entry = &Device->mNextQuarantined;
+						continue;
+					}
+					*Entry = Device->mNextQuarantined;
+					Device->mNextQuarantined = Retired;
+					Retired = Device;
+				}
+			}
+			// Releasing imported lifetime tokens may run application code. Keep it outside the registry lock.
+			while (Retired)
+			{
+				auto* Device = Retired;
+				Retired = Device->mNextQuarantined;
+				delete Device;
+			}
+		}
+
+		void ReleaseD3D12ProviderDevice(FArdaD3D12ProviderDevice* Device)
+		{
+			if (Device->TryRetireForShutdown())
+			{
+				delete Device;
+				return;
+			}
+			Device->ReportDeferredShutdown();
+			auto& Registry = GetD3D12Quarantine();
+			std::lock_guard<std::mutex> Lock(Registry.mMutex);
+			Device->mNextQuarantined = Registry.mDevices;
+			Registry.mDevices = Device;
+		}
+
+		void FArdaD3D12ProviderDevice::ReportDeferredShutdown() const
+		{
+			constexpr const char* Message =
+			    "D3D12 shutdown could not prove GPU retirement; the device and submitted resources remain owned until a later initialization/GC proves completion or the process exits.";
+			LogArdaPipelineCacheMessage(mDiagnosticCallback, EArdaDiagnosticSeverity::Warning, Message);
+			OutputDebugStringA(Message);
+		}
+
+		bool FArdaD3D12ProviderDevice::TryRetireForShutdown()
+		{
+			if (FAILED(mD3DDevice->GetDeviceRemovedReason()))
+			{
+				return true;
+			}
+			bool bComplete = true;
+			for (uint32_t Index = 0; Index < ArdaRHIQueueTypeCount; ++Index)
+			{
+				auto* Queue = GetQueue(static_cast<EArdaRHIQueueType>(Index));
+				auto* Fence = mQueueFences[Index].Get();
+				if (!Queue || !Fence)
+				{
+					continue;
+				}
+				uint64_t Value = mQueueFenceValues[Index].load(std::memory_order_relaxed);
+				if (Fence->GetCompletedValue() >= Value)
+				{
+					continue;
+				}
+				if (mQueueLastSubmittedValues[Index].load(std::memory_order_relaxed) < Value)
+				{
+					// A failed signal reserved a value without enqueuing proof of retirement. Retry once.
+					Value = mQueueFenceValues[Index].fetch_add(1, std::memory_order_relaxed) + 1;
+					if (SUCCEEDED(Queue->Signal(Fence, Value)))
+					{
+						mQueueLastSubmittedValues[Index].store(Value, std::memory_order_relaxed);
+					}
+				}
+				bComplete &= Fence->GetCompletedValue() >= Value;
+			}
+			for (const auto& Pending : mPendingSubmissions)
+			{
+				bComplete &= !Pending.mCudaReturnFence || Pending.mCudaReturnFence->GetCompletedValue() >= 2;
+			}
+			return bComplete;
 		}
 
 		FArdaRHIStatus FArdaD3D12ProviderDevice::Initialize()
 		{
+			CollectD3D12Quarantine();
 			if (mD3DDevice->GetNodeCount() == 1)
 			{
 				const auto Luid = mD3DDevice->GetAdapterLuid();
@@ -1975,6 +2154,43 @@ namespace arda
 			mCapabilities.mbExplicitTransitions = true;
 			mCapabilities.mbSplitTransitions = true;
 			mCapabilities.mbIndirectCommands = true;
+			mCapabilities.mbIndirectFirstInstance = true;
+			mCapabilities.mbFormatSupportReported = true;
+			auto& Limits = mCapabilities.mLimits;
+			Limits.mMaxTexture1D = D3D12_REQ_TEXTURE1D_U_DIMENSION;
+			Limits.mMaxTexture2D = D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+			Limits.mMaxTexture3D = D3D12_REQ_TEXTURE3D_U_V_OR_W_DIMENSION;
+			Limits.mMaxTextureCube = D3D12_REQ_TEXTURECUBE_DIMENSION;
+			Limits.mMaxTextureArrayLayers = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
+			Limits.mMaxColorAttachments = D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT;
+			Limits.mMaxViewports = D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
+			Limits.mViewportBounds[0] = D3D12_VIEWPORT_BOUNDS_MIN;
+			Limits.mViewportBounds[1] = D3D12_VIEWPORT_BOUNDS_MAX;
+			Limits.mMaxViewportDimensions[0] = Limits.mMaxViewportDimensions[1] =
+			    D3D12_VIEWPORT_BOUNDS_MAX - D3D12_VIEWPORT_BOUNDS_MIN;
+			Limits.mMaxVertexAttributes = D3D12_IA_VERTEX_INPUT_STRUCTURE_ELEMENT_COUNT;
+			Limits.mMaxVertexBindings = D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
+			Limits.mMaxVertexStride = D3D12_REQ_MULTI_ELEMENT_STRUCTURE_SIZE_IN_BYTES;
+			Limits.mMaxComputeWorkGroupCount[0] = Limits.mMaxComputeWorkGroupCount[1] =
+			    Limits.mMaxComputeWorkGroupCount[2] = D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
+			Limits.mMaxComputeWorkGroupSize[0] = D3D12_CS_THREAD_GROUP_MAX_X;
+			Limits.mMaxComputeWorkGroupSize[1] = D3D12_CS_THREAD_GROUP_MAX_Y;
+			Limits.mMaxComputeWorkGroupSize[2] = D3D12_CS_THREAD_GROUP_MAX_Z;
+			Limits.mMaxComputeWorkGroupInvocations = D3D12_CS_THREAD_GROUP_MAX_THREADS_PER_GROUP;
+			Limits.mMaxUniformBufferRange = D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16ull;
+			Limits.mMinUniformBufferOffsetAlignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
+			// Typed/structured storage ranges depend on element size; a universal byte cap would reject legal views.
+			Limits.mMinStorageBufferOffsetAlignment =
+			    1; // Element/stride-specific alignment is checked by the binding schema.
+			D3D12_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT AddressSupport{};
+			if (SUCCEEDED(mD3DDevice->CheckFeatureSupport(D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT,
+			        &AddressSupport,
+			        sizeof(AddressSupport))) &&
+			    AddressSupport.MaxGPUVirtualAddressBitsPerResource &&
+			    AddressSupport.MaxGPUVirtualAddressBitsPerResource < 64)
+			{
+				Limits.mMaxBufferSize = uint64_t(1) << AddressSupport.MaxGPUVirtualAddressBitsPerResource;
+			}
 			mCapabilities.mbAliasingBarriers = true;
 			mCapabilities.mbQueries = true;
 			mCapabilities.mbVirtualResources = true;
@@ -2221,14 +2437,23 @@ namespace arda
 		TArdaRHIResult<D3D12_CPU_DESCRIPTOR_HANDLE> FArdaD3D12ProviderDevice::GetAttachmentView(
 		    FArdaD3D12Texture& Texture,
 		    FArdaRHITextureSubresourceRange Range,
-		    bool bDepth)
+		    bool bDepth,
+		    EArdaRHIFormat Format,
+		    bool bReadOnly)
 		{
 			Range = Range.Resolve(Texture.mDesc);
 			Range.mMipLevelCount = 1;
+			Format = Format == EArdaRHIFormat::Unknown ? Texture.mDesc.mFormat : Format;
+			if (Format != Texture.mDesc.mFormat)
+			{
+				return Fail<D3D12_CPU_DESCRIPTOR_HANDLE>(FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+				    "D3D12 framebuffer format reinterpretation is not supported by this provider."));
+			}
 			std::lock_guard<std::mutex> Lock(Texture.mAttachmentMutex);
 			for (const auto& View : Texture.mAttachmentViews)
 			{
-				if (View.mRange == Range && View.mbDepth == bDepth)
+				if (View.mRange == Range && View.mbDepth == bDepth && View.mFormat == Format &&
+				    View.mbReadOnly == bReadOnly)
 				{
 					return {View.mHandle, {}};
 				}
@@ -2243,6 +2468,8 @@ namespace arda
 			FArdaD3D12Texture::FArdaAttachmentView View;
 			View.mRange = Range;
 			View.mbDepth = bDepth;
+			View.mbReadOnly = bReadOnly;
+			View.mFormat = Format;
 			D3D12_DESCRIPTOR_HEAP_DESC HeapDesc{};
 			HeapDesc.Type = bDepth ? D3D12_DESCRIPTOR_HEAP_TYPE_DSV : D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 			HeapDesc.NumDescriptors = 1;
@@ -2259,7 +2486,15 @@ namespace arda
 			if (bDepth)
 			{
 				D3D12_DEPTH_STENCIL_VIEW_DESC Desc{};
-				Desc.Format = ToDxgi(Texture.mDesc.mFormat);
+				Desc.Format = ToDxgi(Format);
+				if (bReadOnly)
+				{
+					Desc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;
+					if (GetArdaRHIFormatInfo(Format).mbStencil)
+					{
+						Desc.Flags |= D3D12_DSV_FLAG_READ_ONLY_STENCIL;
+					}
+				}
 				if (Native.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D)
 				{
 					Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
@@ -2280,7 +2515,7 @@ namespace arda
 			else
 			{
 				D3D12_RENDER_TARGET_VIEW_DESC Desc{};
-				Desc.Format = ToDxgi(Texture.mDesc.mFormat);
+				Desc.Format = ToDxgi(Format);
 				if (Native.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
 				{
 					Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
@@ -3060,77 +3295,241 @@ namespace arda
 			return {eastl::move(Result), {}};
 		}
 
+		FArdaRHIStatus FArdaD3D12ProviderDevice::SubmitSparseMappings(const FArdaProviderObjectRef& Object,
+		    ID3D12Resource* Resource,
+		    FArdaD3D12SparseMappings& Published,
+		    const eastl::vector<FArdaD3D12SparseUpdate>& Updates,
+		    uint64_t TotalBytes,
+		    EArdaRHIQueueType QueueType)
+		{
+			ID3D12CommandQueue* Queue = GetQueue(QueueType);
+			if (!Queue)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+				    "The D3D12 sparse mapping queue is unavailable.");
+			}
+			constexpr uint64_t TileBytes = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+			auto Proposed = Published;
+			for (const auto& Update : Updates)
+			{
+				auto* Heap = dynamic_cast<FArdaD3D12Heap*>(Update.mHeap.get());
+				if (!Update.mSize || Update.mOffset > TotalBytes || Update.mSize > TotalBytes - Update.mOffset ||
+				    Update.mOffset % TileBytes || Update.mSize % TileBytes || Update.mHeapOffset % TileBytes ||
+				    Update.mHeapOffset / TileBytes > UINT32_MAX ||
+				    (Update.mHeap &&
+				        (!Heap || !Heap->mHeap || Update.mHeapOffset > Heap->mHeap->GetDesc().SizeInBytes ||
+				            Update.mSize > Heap->mHeap->GetDesc().SizeInBytes - Update.mHeapOffset)) ||
+				    !Proposed.Replace(0, Update.mOffset, Update.mSize, Update.mHeap, Update.mHeapOffset))
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+					    "D3D12 sparse mappings require aligned ranges within the resource and backing heap.");
+				}
+			}
+			if (Updates.empty())
+			{
+				return {};
+			}
+			uint64_t Value = 0;
+			{
+				std::lock_guard<std::mutex> ExecutionLock(mExecutionMutex);
+				// Order the remap after previous uses on every queue, including failed earlier signal attempts.
+				for (uint32_t Index = 0; Index < ArdaRHIQueueTypeCount; ++Index)
+				{
+					auto* Other = GetQueue(static_cast<EArdaRHIQueueType>(Index));
+					if (!Other || Other == Queue)
+					{
+						continue;
+					}
+					const uint64_t Prior = mQueueFenceValues[Index].fetch_add(1, std::memory_order_relaxed) + 1;
+					HRESULT Result = Other->Signal(mQueueFences[Index].Get(), Prior);
+					if (SUCCEEDED(Result))
+					{
+						mQueueLastSubmittedValues[Index].store(Prior, std::memory_order_relaxed);
+						Result = Queue->Wait(mQueueFences[Index].Get(), Prior);
+					}
+					if (FAILED(Result))
+					{
+						return D3D12Failure("Failed to order a D3D12 sparse mapping after prior queue uses.", Result);
+					}
+				}
+				FArdaD3D12SubmissionLifetime Lifetime;
+				Lifetime.mObjects.push_back(Object);
+				for (const auto& Range : Published.GetRanges())
+				{
+					Lifetime.mObjects.push_back(Range.mOwner);
+				}
+				for (const auto& Range : Proposed.GetRanges())
+				{
+					Lifetime.mObjects.push_back(Range.mOwner);
+				}
+				for (const auto& Update : Updates)
+				{
+					// An intermediate mapping can be superseded within this batch but still reaches the queue.
+					Lifetime.mObjects.push_back(Update.mHeap);
+				}
+				std::lock_guard<std::mutex> SubmissionLock(mSubmissionMutex);
+				mPendingSubmissions.push_back({QueueType, UINT64_MAX, eastl::move(Lifetime)});
+				for (const auto& Update : Updates)
+				{
+					D3D12_TILE_RANGE_FLAGS Flags[3]{};
+					UINT Counts[3]{};
+					UINT Offsets[3]{};
+					UINT Count = 0;
+					const auto Append = [&](D3D12_TILE_RANGE_FLAGS Flag, uint64_t Bytes, uint64_t Offset)
+					{
+						if (Bytes)
+						{
+							Flags[Count] = Flag;
+							Counts[Count] = static_cast<UINT>(Bytes / TileBytes);
+							Offsets[Count++] = static_cast<UINT>(Offset / TileBytes);
+						}
+					};
+					Append(D3D12_TILE_RANGE_FLAG_SKIP, Update.mOffset, 0);
+					Append(Update.mHeap ? D3D12_TILE_RANGE_FLAG_NONE : D3D12_TILE_RANGE_FLAG_NULL,
+					    Update.mSize,
+					    Update.mHeapOffset);
+					Append(D3D12_TILE_RANGE_FLAG_SKIP, TotalBytes - Update.mOffset - Update.mSize, 0);
+					auto* Heap = static_cast<FArdaD3D12Heap*>(Update.mHeap.get());
+					// A full-resource linear region plus SKIP ranges also handles packed mips and arrays.
+					Queue->UpdateTileMappings(Resource,
+					    1,
+					    nullptr,
+					    nullptr,
+					    Heap ? Heap->mHeap.Get() : nullptr,
+					    Count,
+					    Flags,
+					    Offsets,
+					    Counts,
+					    D3D12_TILE_MAPPING_FLAG_NONE);
+				}
+				// Native updates are accepted before their completion wait. Retain both generations on failure.
+				Published = eastl::move(Proposed);
+				const auto QueueIndex = GetArdaRHIQueueIndex(QueueType);
+				Value = mQueueFenceValues[QueueIndex].fetch_add(1, std::memory_order_relaxed) + 1;
+				mPendingSubmissions.back().mQueueValue = Value;
+				const HRESULT Result = Queue->Signal(mQueueFences[QueueIndex].Get(), Value);
+				if (FAILED(Result))
+				{
+					return D3D12Failure("Failed to signal D3D12 sparse mapping retirement.", Result);
+				}
+				mQueueLastSubmittedValues[QueueIndex].store(Value, std::memory_order_relaxed);
+			}
+			return WaitForSubmission(EncodeD3D12Submission(QueueType, Value));
+		}
+
 		FArdaRHIStatus FArdaD3D12ProviderDevice::UpdateTextureTileMappings(const FArdaProviderObjectRef& Object,
 		    const eastl::vector<FArdaProviderTextureTileMapping>& Mappings,
 		    EArdaRHIQueueType QueueType)
 		{
 			auto* Texture = dynamic_cast<FArdaD3D12Texture*>(Object.get());
-			ID3D12CommandQueue* Queue = GetQueue(QueueType);
-			if (!Texture || !Texture->mResource || !Texture->mDesc.mbTiled || !Queue)
+			auto Tiling = GetTextureTiling(Object);
+			if (!Tiling)
 			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-				    "D3D12 texture tile mapping has an invalid resource or queue.");
+				return Tiling.mStatus;
 			}
+			std::lock_guard<std::mutex> Lock(Texture->mSparseMutex);
 			constexpr uint64_t TileBytes = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+			const auto& Info = Tiling.mValue;
+			const uint64_t TilesPerLayer = Info.mTileCount / Texture->mDesc.mArraySize;
+			const bool bVolume = Texture->mDesc.mDimension == EArdaRHITextureDimension::Texture3D;
+			eastl::vector<FArdaD3D12SparseUpdate> Updates;
+			const auto InvalidMapping = []
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+				    "D3D12 texture tile coordinates, counts, or dimensions exceed the native tiling.");
+			};
 			for (const auto& Mapping : Mappings)
 			{
-				auto* Heap = Mapping.mHeap ? dynamic_cast<FArdaD3D12Heap*>(Mapping.mHeap.get()) : nullptr;
-				if (Mapping.mHeap && (!Heap || !Heap->mHeap))
+				if (Mapping.mCoordinates.size() != Mapping.mRegions.size() ||
+				    Mapping.mCoordinates.size() != Mapping.mByteOffsets.size())
 				{
-					return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-					    "D3D12 texture tile mapping has an invalid heap.");
+					return InvalidMapping();
 				}
-				eastl::vector<D3D12_TILED_RESOURCE_COORDINATE> Coordinates;
-				eastl::vector<D3D12_TILE_REGION_SIZE> Regions;
-				eastl::vector<D3D12_TILE_RANGE_FLAGS> RangeFlags;
-				eastl::vector<UINT> RangeOffsets;
-				eastl::vector<UINT> RangeCounts;
-				Coordinates.reserve(Mapping.mCoordinates.size());
-				Regions.reserve(Mapping.mRegions.size());
 				for (size_t Index = 0; Index < Mapping.mCoordinates.size(); ++Index)
 				{
-					if (Mapping.mByteOffsets[Index] % TileBytes)
+					const auto& Coordinate = Mapping.mCoordinates[Index];
+					const auto& Region = Mapping.mRegions[Index];
+					if (Coordinate.mMipLevel >= Texture->mDesc.mMipLevels ||
+					    Coordinate.mArrayLevel >= Texture->mDesc.mArraySize)
 					{
-						return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-						    "D3D12 tile heap offsets must be 64 KiB aligned.");
+						return InvalidMapping();
 					}
-					const auto& SourceCoordinate = Mapping.mCoordinates[Index];
-					const auto& SourceRegion = Mapping.mRegions[Index];
-					D3D12_TILED_RESOURCE_COORDINATE Coordinate{};
-					Coordinate.X = SourceCoordinate.mX;
-					Coordinate.Y = SourceCoordinate.mY;
-					Coordinate.Z = SourceCoordinate.mZ;
-					Coordinate.Subresource =
-					    SourceCoordinate.mMipLevel + SourceCoordinate.mArrayLevel * Texture->mDesc.mMipLevels;
-					Coordinates.push_back(Coordinate);
-					D3D12_TILE_REGION_SIZE Region{};
-					Region.UseBox = SourceRegion.mWidth && SourceRegion.mHeight && SourceRegion.mDepth;
-					Region.Width = eastl::max(1u, SourceRegion.mWidth);
-					Region.Height = static_cast<UINT16>(eastl::max(1u, SourceRegion.mHeight));
-					Region.Depth = static_cast<UINT16>(eastl::max(1u, SourceRegion.mDepth));
-					Region.NumTiles =
-					    SourceRegion.mTileCount ? SourceRegion.mTileCount : Region.Width * Region.Height * Region.Depth;
-					Regions.push_back(Region);
-					RangeFlags.push_back(Heap ? D3D12_TILE_RANGE_FLAG_NONE : D3D12_TILE_RANGE_FLAG_NULL);
-					RangeOffsets.push_back(static_cast<UINT>(Mapping.mByteOffsets[Index] / TileBytes));
-					RangeCounts.push_back(Region.NumTiles);
-				}
-				Queue->UpdateTileMappings(Texture->mResource.Get(),
-				    static_cast<UINT>(Coordinates.size()),
-				    Coordinates.data(),
-				    Regions.data(),
-				    Heap ? Heap->mHeap.Get() : nullptr,
-				    static_cast<UINT>(RangeFlags.size()),
-				    RangeFlags.data(),
-				    RangeOffsets.data(),
-				    RangeCounts.data(),
-				    D3D12_TILE_MAPPING_FLAG_NONE);
-				if (Mapping.mHeap)
-				{
-					Texture->mSparseHeaps.push_back(Mapping.mHeap);
+					const uint32_t Subresource =
+					    Coordinate.mMipLevel + Coordinate.mArrayLevel * Texture->mDesc.mMipLevels;
+					const auto& Shape = Info.mSubresources[Subresource];
+					const bool bBox = Region.mWidth && Region.mHeight && Region.mDepth;
+					const bool bPacked = Coordinate.mMipLevel >= Info.mPackedMips.mStandardMipCount;
+					uint64_t Start = 0;
+					if (bPacked)
+					{
+						if (bBox || Coordinate.mY || Coordinate.mZ ||
+						    Coordinate.mX >= Info.mPackedMips.mPackedMipTileCount)
+						{
+							return InvalidMapping();
+						}
+						Start =
+						    TilesPerLayer * Coordinate.mArrayLevel + Info.mPackedMips.mStartTileIndex + Coordinate.mX;
+					}
+					else
+					{
+						if (Coordinate.mX >= Shape.mWidthInTiles || Coordinate.mY >= Shape.mHeightInTiles ||
+						    Coordinate.mZ >= Shape.mDepthInTiles)
+						{
+							return InvalidMapping();
+						}
+						Start = Shape.mStartTileIndex + Coordinate.mX +
+						    (uint64_t(Coordinate.mZ) * Shape.mHeightInTiles + Coordinate.mY) * Shape.mWidthInTiles;
+					}
+					if (!bBox)
+					{
+						const uint64_t Plane = uint64_t(eastl::max(1u, Region.mWidth)) * eastl::max(1u, Region.mHeight);
+						const uint64_t Depth = eastl::max(1u, Region.mDepth);
+						if (!Region.mTileCount && Plane > UINT32_MAX / Depth)
+						{
+							return InvalidMapping();
+						}
+						const uint64_t Count = Region.mTileCount ? Region.mTileCount : Plane * Depth;
+						Updates.push_back(
+						    {Start * TileBytes, Count * TileBytes, Mapping.mByteOffsets[Index], Mapping.mHeap});
+						continue;
+					}
+					const uint64_t PlaneCount = uint64_t(Region.mWidth) * Region.mHeight;
+					if (Region.mWidth > Shape.mWidthInTiles - Coordinate.mX ||
+					    Region.mHeight > Shape.mHeightInTiles - Coordinate.mY ||
+					    Region.mDepth > (bVolume ? Shape.mDepthInTiles - Coordinate.mZ
+					                             : Texture->mDesc.mArraySize - Coordinate.mArrayLevel) ||
+					    PlaneCount > UINT32_MAX / Region.mDepth ||
+					    (Region.mTileCount && Region.mTileCount != PlaneCount * Region.mDepth))
+					{
+						return InvalidMapping();
+					}
+					uint64_t HeapOffset = Mapping.mByteOffsets[Index];
+					for (uint32_t Z = 0; Z < Region.mDepth; ++Z)
+					{
+						const uint64_t SliceStart = Start +
+						    Z * (bVolume ? uint64_t(Shape.mWidthInTiles) * Shape.mHeightInTiles : TilesPerLayer);
+						for (uint32_t Y = 0; Y < Region.mHeight; ++Y)
+						{
+							const uint64_t Size = uint64_t(Region.mWidth) * TileBytes;
+							if (HeapOffset > UINT64_MAX - Size)
+							{
+								return InvalidMapping();
+							}
+							Updates.push_back({(SliceStart + uint64_t(Y) * Shape.mWidthInTiles) * TileBytes,
+							    Size,
+							    HeapOffset,
+							    Mapping.mHeap});
+							HeapOffset += Size;
+						}
+					}
 				}
 			}
-			return WaitForIdle();
+			return SubmitSparseMappings(Object,
+			    Texture->mResource.Get(),
+			    Texture->mSparseMappings,
+			    Updates,
+			    uint64_t(Info.mTileCount) * TileBytes,
+			    QueueType);
 		}
 
 		FArdaRHIStatus FArdaD3D12ProviderDevice::UpdateBufferTileMappings(const FArdaProviderObjectRef& Object,
@@ -3138,50 +3537,33 @@ namespace arda
 		    EArdaRHIQueueType QueueType)
 		{
 			auto* Buffer = dynamic_cast<FArdaD3D12Buffer*>(Object.get());
-			ID3D12CommandQueue* Queue = GetQueue(QueueType);
-			if (!Buffer || !Buffer->mResource || !Buffer->mDesc.mbTiled || !Queue)
+			if (!Buffer || !Buffer->mResource || !Buffer->mDesc.mbTiled)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-				    "D3D12 buffer tile mapping has an invalid resource or queue.");
+				    "D3D12 tile mapping requires a reserved buffer.");
 			}
-			constexpr uint64_t TileBytes = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+			std::lock_guard<std::mutex> Lock(Buffer->mSparseMutex);
+			eastl::vector<FArdaD3D12SparseUpdate> Updates;
 			for (const auto& Mapping : Mappings)
 			{
-				if (!Mapping.mByteSize || Mapping.mBufferOffset % TileBytes || Mapping.mByteSize % TileBytes ||
-				    Mapping.mHeapOffset % TileBytes)
+				if (Mapping.mbCommit && !Mapping.mHeap)
 				{
 					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-					    "D3D12 buffer tile mappings must use 64 KiB-aligned non-empty ranges.");
+					    "Committed D3D12 buffer tiles require a heap.");
 				}
-				auto* Heap = Mapping.mHeap ? dynamic_cast<FArdaD3D12Heap*>(Mapping.mHeap.get()) : nullptr;
-				if (Mapping.mbCommit && (!Heap || !Heap->mHeap))
-				{
-					return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-					    "D3D12 committed buffer tiles require a valid heap.");
-				}
-				D3D12_TILED_RESOURCE_COORDINATE Coordinate{};
-				Coordinate.X = static_cast<UINT>(Mapping.mBufferOffset / TileBytes);
-				D3D12_TILE_REGION_SIZE Region{};
-				Region.NumTiles = static_cast<UINT>(Mapping.mByteSize / TileBytes);
-				D3D12_TILE_RANGE_FLAGS Flag =
-				    Mapping.mbCommit ? D3D12_TILE_RANGE_FLAG_NONE : D3D12_TILE_RANGE_FLAG_NULL;
-				const UINT HeapOffset = static_cast<UINT>(Mapping.mHeapOffset / TileBytes);
-				Queue->UpdateTileMappings(Buffer->mResource.Get(),
-				    1,
-				    &Coordinate,
-				    &Region,
-				    Mapping.mbCommit ? Heap->mHeap.Get() : nullptr,
-				    1,
-				    &Flag,
-				    &HeapOffset,
-				    &Region.NumTiles,
-				    D3D12_TILE_MAPPING_FLAG_NONE);
-				if (Mapping.mbCommit)
-				{
-					Buffer->mSparseHeaps.push_back(Mapping.mHeap);
-				}
+				Updates.push_back({Mapping.mBufferOffset,
+				    Mapping.mByteSize,
+				    Mapping.mHeapOffset,
+				    Mapping.mbCommit ? Mapping.mHeap : FArdaProviderObjectRef{}});
 			}
-			return WaitForIdle();
+			UINT TotalTiles = 0;
+			mD3DDevice->GetResourceTiling(Buffer->mResource.Get(), &TotalTiles, nullptr, nullptr, nullptr, 0, nullptr);
+			return SubmitSparseMappings(Object,
+			    Buffer->mResource.Get(),
+			    Buffer->mSparseMappings,
+			    Updates,
+			    uint64_t(TotalTiles) * D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
+			    QueueType);
 		}
 
 		FArdaRHIStatus FArdaD3D12ProviderDevice::CommitReservedResource(const FArdaProviderObjectRef& Object,
@@ -3189,109 +3571,308 @@ namespace arda
 		    uint64_t RequestedBytes,
 		    EArdaRHIQueueType QueueType)
 		{
-			ID3D12Resource* Resource = nullptr;
-			ComPtr<ID3D12Heap>* CommitHeap = nullptr;
-			uint64_t* CommittedBytes = nullptr;
-			bool bBuffer = false;
-			if (bTexture)
+			auto* Texture = bTexture ? dynamic_cast<FArdaD3D12Texture*>(Object.get()) : nullptr;
+			auto* Buffer = !bTexture ? dynamic_cast<FArdaD3D12Buffer*>(Object.get()) : nullptr;
+			if ((!Texture || !Texture->mDesc.mbTiled) && (!Buffer || !Buffer->mDesc.mbTiled))
 			{
-				auto* Texture = dynamic_cast<FArdaD3D12Texture*>(Object.get());
-				if (!Texture || !Texture->mDesc.mbTiled)
-				{
-					return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-					    "D3D12 reserved commit requires a tiled texture.");
-				}
-				Resource = Texture->mResource.Get();
-				CommitHeap = &Texture->mReservedCommitHeap;
-				CommittedBytes = &Texture->mCommittedBytes;
+				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+				    "D3D12 prefix commitment requires a reserved resource.");
 			}
-			else
-			{
-				auto* Buffer = dynamic_cast<FArdaD3D12Buffer*>(Object.get());
-				if (!Buffer || !Buffer->mDesc.mbTiled)
-				{
-					return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-					    "D3D12 reserved commit requires a tiled buffer.");
-				}
-				Resource = Buffer->mResource.Get();
-				CommitHeap = &Buffer->mReservedCommitHeap;
-				CommittedBytes = &Buffer->mCommittedBytes;
-				bBuffer = true;
-			}
+			ID3D12Resource* Resource = Texture ? Texture->mResource.Get() : Buffer->mResource.Get();
+			std::lock_guard<std::mutex> Lock(Texture ? Texture->mSparseMutex : Buffer->mSparseMutex);
+			auto& Published = Texture ? Texture->mSparseMappings : Buffer->mSparseMappings;
 			UINT TotalTiles = 0;
-			mD3DDevice->GetResourceTiling(Resource, &TotalTiles, nullptr, nullptr, nullptr, 0, nullptr);
-			const uint64_t TileBytes = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-			const uint64_t TotalBytes = static_cast<uint64_t>(TotalTiles) * TileBytes;
-			const uint64_t Bytes = eastl::min(TotalBytes, (RequestedBytes + TileBytes - 1) & ~(TileBytes - 1));
-			const uint64_t Tiles = Bytes / TileBytes;
-			ID3D12CommandQueue* Queue = GetQueue(QueueType);
-			if (!Queue)
+			D3D12_PACKED_MIP_INFO Packed{};
+			mD3DDevice->GetResourceTiling(Resource, &TotalTiles, &Packed, nullptr, nullptr, 0, nullptr);
+			constexpr uint64_t TileBytes = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+			const uint64_t TotalBytes = uint64_t(TotalTiles) * TileBytes;
+			uint64_t Bytes = 0;
+			if (!CalculateArdaSparsePrefixSize(RequestedBytes, TotalBytes, TileBytes, Bytes))
 			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
-				    "The requested D3D12 residency queue is unavailable.");
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Invalid D3D12 reserved-resource size.");
 			}
-			ComPtr<ID3D12Heap> ReplacementHeap;
-			if (Tiles)
+			if (Texture && Packed.NumPackedMips && Bytes && Bytes < TotalBytes)
 			{
-				D3D12_HEAP_DESC HeapDesc{};
-				HeapDesc.SizeInBytes = Bytes;
-				HeapDesc.Alignment = TileBytes;
-				HeapDesc.Properties.Type = D3D12_HEAP_TYPE_DEFAULT;
-				HeapDesc.Properties.CreationNodeMask = 1;
-				HeapDesc.Properties.VisibleNodeMask = 1;
-				HeapDesc.Flags = bBuffer ? D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS : D3D12_HEAP_FLAG_NONE;
-				const HRESULT Result = mD3DDevice->CreateHeap(&HeapDesc, IID_PPV_ARGS(&ReplacementHeap));
+				// Packed mip tails must remain entirely mapped or unmapped for each array slice.
+				const uint64_t LayerTiles = TotalTiles / Texture->mDesc.mArraySize;
+				const uint64_t Layer = (Bytes / TileBytes) / LayerTiles;
+				const uint64_t TailBegin = Layer * LayerTiles + Packed.StartTileIndexInOverallResource;
+				if (Bytes / TileBytes > TailBegin)
+				{
+					Bytes = (TailBegin + Packed.NumTilesForPackedMips) * TileBytes;
+				}
+			}
+			eastl::vector<FArdaD3D12SparseUpdate> Updates;
+			const auto AllocateGap = [&](uint64_t Begin, uint64_t End) -> FArdaRHIStatus
+			{
+				if (Begin == End)
+				{
+					return {};
+				}
+				auto Heap = eastl::make_shared<FArdaD3D12Heap>();
+				D3D12_HEAP_DESC Desc{};
+				Desc.SizeInBytes = End - Begin;
+				Heap->mDesc.mCapacity = Desc.SizeInBytes;
+				Desc.Alignment = TileBytes;
+				Desc.Properties.Type = D3D12_HEAP_TYPE_DEFAULT;
+				Desc.Properties.CreationNodeMask = Desc.Properties.VisibleNodeMask = 1;
+				Desc.Flags = Buffer ? D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS : D3D12_HEAP_FLAG_NONE;
+				const HRESULT Result = mD3DDevice->CreateHeap(&Desc, IID_PPV_ARGS(&Heap->mHeap));
 				if (FAILED(Result))
 				{
-					return D3D12Failure("Failed to allocate reserved-resource backing tiles.", Result);
+					return D3D12Failure("Failed to allocate incremental D3D12 reserved-resource backing.", Result);
 				}
-				D3D12_TILED_RESOURCE_COORDINATE Coordinate{};
-				D3D12_TILE_REGION_SIZE Region{};
-				Region.NumTiles = static_cast<UINT>(Tiles);
-				D3D12_TILE_RANGE_FLAGS Flag = D3D12_TILE_RANGE_FLAG_NONE;
-				UINT Offset = 0;
-				UINT Count = static_cast<UINT>(Tiles);
-				Queue->UpdateTileMappings(Resource,
-				    1,
-				    &Coordinate,
-				    &Region,
-				    ReplacementHeap.Get(),
-				    1,
-				    &Flag,
-				    &Offset,
-				    &Count,
-				    D3D12_TILE_MAPPING_FLAG_NONE);
-			}
-			if (Tiles < TotalTiles)
+				Updates.push_back({Begin, End - Begin, 0, Heap});
+				return {};
+			};
+			uint64_t Cursor = 0;
+			for (const auto& Range : Published.GetRanges())
 			{
-				D3D12_TILED_RESOURCE_COORDINATE Coordinate{};
-				Coordinate.X = static_cast<UINT>(Tiles);
-				D3D12_TILE_REGION_SIZE Region{};
-				Region.NumTiles = static_cast<UINT>(TotalTiles - Tiles);
-				D3D12_TILE_RANGE_FLAGS Flag = D3D12_TILE_RANGE_FLAG_NULL;
-				UINT Offset = 0;
-				UINT Count = Region.NumTiles;
-				Queue->UpdateTileMappings(Resource,
-				    1,
-				    &Coordinate,
-				    &Region,
-				    nullptr,
-				    1,
-				    &Flag,
-				    &Offset,
-				    &Count,
-				    D3D12_TILE_MAPPING_FLAG_NONE);
+				if (Cursor >= Bytes)
+				{
+					break;
+				}
+				if (Range.mBegin > Cursor)
+				{
+					if (auto Status = AllocateGap(Cursor, eastl::min(Bytes, Range.mBegin)); !Status)
+					{
+						return Status;
+					}
+				}
+				Cursor = eastl::min(Bytes, Range.mEnd);
 			}
-
-			// UpdateTileMappings is ordered on the queue. Complete it before
-			// replacing or releasing the heap that backed the prior mapping.
-			if (const FArdaRHIStatus Status = WaitForIdle(); !Status)
+			if (auto Status = AllocateGap(Cursor, Bytes); !Status)
 			{
 				return Status;
 			}
-			*CommitHeap = eastl::move(ReplacementHeap);
-			*CommittedBytes = Bytes;
-			return {};
+			if (Bytes < TotalBytes)
+			{
+				Updates.push_back({Bytes, TotalBytes - Bytes, 0, {}});
+			}
+			return SubmitSparseMappings(Object, Resource, Published, Updates, TotalBytes, QueueType);
+		}
+
+		FArdaRHIFormatSupport FArdaD3D12ProviderDevice::QueryFormatSupport(EArdaRHIFormat Format) const noexcept
+		{
+			FArdaRHIFormatSupport Result;
+			const DXGI_FORMAT NativeFormat = ToDxgi(Format);
+			if (NativeFormat == DXGI_FORMAT_UNKNOWN)
+			{
+				return Result;
+			}
+			Result.mNativeFormat = NativeFormat;
+			D3D12_FEATURE_DATA_FORMAT_SUPPORT Support{NativeFormat};
+			if (FAILED(mD3DDevice->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &Support, sizeof(Support))))
+			{
+				return Result;
+			}
+			Result.mbTexture1D = (Support.Support1 & D3D12_FORMAT_SUPPORT1_TEXTURE1D) != 0;
+			Result.mbTexture2D = (Support.Support1 & D3D12_FORMAT_SUPPORT1_TEXTURE2D) != 0;
+			Result.mbTexture3D = (Support.Support1 & D3D12_FORMAT_SUPPORT1_TEXTURE3D) != 0;
+			Result.mbTextureCube = (Support.Support1 & D3D12_FORMAT_SUPPORT1_TEXTURECUBE) != 0;
+			Result.mbShaderResource =
+			    (Support.Support1 & (D3D12_FORMAT_SUPPORT1_SHADER_LOAD | D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE)) != 0;
+			Result.mbFilterable = (Support.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) != 0;
+			Result.mbStorage = (Support.Support1 & D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) != 0;
+			Result.mbStorageLoad = (Support.Support2 & D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD) != 0;
+			Result.mbStorageStore = (Support.Support2 & D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE) != 0;
+			Result.mbColorAttachment = (Support.Support1 & D3D12_FORMAT_SUPPORT1_RENDER_TARGET) != 0;
+			Result.mbDepthStencilAttachment = (Support.Support1 & D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL) != 0;
+			Result.mbBlendable = (Support.Support1 & D3D12_FORMAT_SUPPORT1_BLENDABLE) != 0;
+			Result.mbVertexBuffer = (Support.Support1 & D3D12_FORMAT_SUPPORT1_IA_VERTEX_BUFFER) != 0;
+			Result.mbBufferShaderResource =
+			    (Support.Support1 & D3D12_FORMAT_SUPPORT1_BUFFER) && Result.mbShaderResource;
+			Result.mbBufferStorage = (Support.Support1 & D3D12_FORMAT_SUPPORT1_BUFFER) && Result.mbStorage;
+			for (UINT Samples = 1; Samples <= D3D12_MAX_MULTISAMPLE_SAMPLE_COUNT; Samples <<= 1)
+			{
+				D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS Quality{NativeFormat,
+				    Samples,
+				    D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE,
+				    0};
+				if (SUCCEEDED(mD3DDevice->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+				        &Quality,
+				        sizeof(Quality))) &&
+				    Quality.NumQualityLevels)
+				{
+					Result.mSampleCounts |= Samples;
+				}
+			}
+			return Result;
+		}
+
+		TArdaRHIResult<FArdaRHIDiagnosticSnapshot> FArdaD3D12ProviderDevice::CaptureDiagnosticSnapshot() const
+		{
+			FArdaRHIDiagnosticSnapshot Snapshot;
+			Snapshot.mBackendName = "native-d3d12";
+			const HRESULT Removed = mD3DDevice->GetDeviceRemovedReason();
+			Snapshot.mNativeErrorCode = Removed;
+			Snapshot.mDeviceStatus = SUCCEEDED(Removed) ? EArdaRHIResult::Success : EArdaRHIResult::BackendFailure;
+			if (mDxgiAdapter)
+			{
+				DXGI_ADAPTER_DESC1 Desc{};
+				if (SUCCEEDED(mDxgiAdapter->GetDesc1(&Desc)))
+				{
+					Snapshot.mAdapterName = DescribeD3D12Adapter(Desc).mName;
+				}
+				LARGE_INTEGER Version{};
+				if (SUCCEEDED(mDxgiAdapter->CheckInterfaceSupport(__uuidof(IDXGIDevice), &Version)))
+				{
+					char Text[64]{};
+					std::snprintf(Text,
+					    sizeof(Text),
+					    "%u.%u.%u.%u",
+					    HIWORD(Version.HighPart),
+					    LOWORD(Version.HighPart),
+					    HIWORD(Version.LowPart),
+					    LOWORD(Version.LowPart));
+					Snapshot.mDriverVersion = Text;
+				}
+			}
+			for (uint32_t Index = 0; Index < ArdaRHIQueueTypeCount; ++Index)
+			{
+				const auto Queue = static_cast<EArdaRHIQueueType>(Index);
+				if (GetQueue(Queue) && mQueueFences[Index])
+				{
+					const uint64_t Completed = mQueueFences[Index]->GetCompletedValue();
+					Snapshot.mQueues.push_back({Queue,
+					    mQueueLastSubmittedValues[Index].load(std::memory_order_relaxed),
+					    Completed == UINT64_MAX ? 0 : Completed,
+					    Completed != UINT64_MAX});
+				}
+			}
+			const auto Name = [&](const char* Narrow, const wchar_t* Wide) -> eastl::string
+			{
+				constexpr size_t Maximum = 1024;
+				size_t Length = 0;
+				if (Narrow)
+				{
+					while (Length < Maximum && Narrow[Length])
+					{
+						++Length;
+					}
+					Snapshot.mbTruncated |= Length == Maximum;
+					return eastl::string(Narrow, Length);
+				}
+				if (Wide)
+				{
+					while (Length < Maximum && Wide[Length])
+					{
+						++Length;
+					}
+					char Buffer[Maximum * 4 + 1]{};
+					const int Written = WideCharToMultiByte(CP_UTF8,
+					    0,
+					    Wide,
+					    static_cast<int>(Length),
+					    Buffer,
+					    Maximum * 4,
+					    nullptr,
+					    nullptr);
+					size_t Bytes = eastl::min(Maximum, static_cast<size_t>(eastl::max(0, Written)));
+					while (Bytes && (static_cast<unsigned char>(Buffer[Bytes]) & 0xC0) == 0x80)
+					{
+						--Bytes;
+					}
+					Snapshot.mbTruncated |= Length == Maximum || static_cast<size_t>(Written) > Bytes;
+					return eastl::string(Buffer, Bytes);
+				}
+				return "unnamed";
+			};
+			const auto LimitText = [&](eastl::string Text)
+			{
+				if (Text.size() > 1024)
+				{
+					Text.resize(1024);
+					Snapshot.mbTruncated = true;
+				}
+				return Text;
+			};
+			const auto AppendSubmittedMarkers = [&]
+			{
+				std::lock_guard<std::mutex> Lock(mDiagnosticMutex);
+				Snapshot.mbTruncated |= mbSubmittedMarkersTruncated;
+				for (const auto& Marker : mSubmittedMarkers)
+				{
+					if (Snapshot.mBreadcrumbs.size() == ArdaRHIMaxDiagnosticEntries)
+					{
+						Snapshot.mbTruncated = true;
+						break;
+					}
+					Snapshot.mBreadcrumbs.push_back(Marker);
+				}
+			};
+			ComPtr<ID3D12DeviceRemovedExtendedData1> Dred;
+			if (FAILED(mD3DDevice.As(&Dred)))
+			{
+				Snapshot.mMessages.push_back("DRED extended data is unavailable on this native device.");
+				AppendSubmittedMarkers();
+				return {eastl::move(Snapshot), {}};
+			}
+			D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 Breadcrumbs{};
+			if (SUCCEEDED(Dred->GetAutoBreadcrumbsOutput1(&Breadcrumbs)))
+			{
+				Snapshot.mbNativeFaultDataAvailable = true;
+				const auto* Node = Breadcrumbs.pHeadAutoBreadcrumbNode;
+				while (Node && Snapshot.mBreadcrumbs.size() < ArdaRHIMaxDiagnosticEntries)
+				{
+					char Progress[128]{};
+					if (Node->pLastBreadcrumbValue)
+					{
+						const UINT Completed = eastl::min(*Node->pLastBreadcrumbValue, Node->BreadcrumbCount);
+						std::snprintf(Progress,
+						    sizeof(Progress),
+						    ": completed %u/%u native operations",
+						    Completed,
+						    Node->BreadcrumbCount);
+					}
+					else
+					{
+						std::snprintf(Progress,
+						    sizeof(Progress),
+						    ": completion unavailable (%u native operations)",
+						    Node->BreadcrumbCount);
+					}
+					Snapshot.mBreadcrumbs.push_back(LimitText(eastl::string("DRED queue ") +
+					    Name(Node->pCommandQueueDebugNameA, Node->pCommandQueueDebugNameW) + ", list " +
+					    Name(Node->pCommandListDebugNameA, Node->pCommandListDebugNameW) + Progress));
+					Node = Node->pNext;
+				}
+				Snapshot.mbTruncated |= Node != nullptr;
+			}
+			D3D12_DRED_PAGE_FAULT_OUTPUT1 Fault{};
+			if (SUCCEEDED(Dred->GetPageFaultAllocationOutput1(&Fault)))
+			{
+				Snapshot.mbNativeFaultDataAvailable = true;
+				if (Fault.PageFaultVA)
+				{
+					Snapshot.mFaults.push_back({Fault.PageFaultVA, "DRED GPU page-fault virtual address"});
+				}
+				const auto AppendAllocations = [&](const D3D12_DRED_ALLOCATION_NODE1* Node, const char* Kind)
+				{
+					while (Node && Snapshot.mFaults.size() < ArdaRHIMaxDiagnosticEntries)
+					{
+						char Type[48]{};
+						std::snprintf(Type,
+						    sizeof(Type),
+						    " (D3D12 allocation type %u)",
+						    static_cast<unsigned>(Node->AllocationType));
+						Snapshot.mFaults.push_back({0,
+						    LimitText(eastl::string("DRED ") + Kind +
+						        " allocation: " + Name(Node->ObjectNameA, Node->ObjectNameW) + Type)});
+						Node = Node->pNext;
+					}
+					Snapshot.mbTruncated |= Node != nullptr;
+				};
+				AppendAllocations(Fault.pHeadExistingAllocationNode, "existing");
+				AppendAllocations(Fault.pHeadRecentFreedAllocationNode, "recently freed");
+			}
+			if (!Snapshot.mbNativeFaultDataAvailable)
+			{
+				Snapshot.mMessages.push_back(
+				    "No DRED report is available; collection must be enabled before device creation and generally requires device removal.");
+			}
+			AppendSubmittedMarkers();
+			return {eastl::move(Snapshot), {}};
 		}
 
 		TArdaRHIResult<FArdaRHIStreamingBudget> FArdaD3D12ProviderDevice::QueryStreamingBudget(bool bLocalMemory) const
@@ -3962,26 +4543,59 @@ namespace arda
 		    const FArdaProviderFramebufferCreateInfo& Info)
 		{
 			auto Framebuffer = eastl::make_shared<FArdaD3D12Framebuffer>();
-			for (const auto& Target : Info.mColors)
+			const auto ResolveView = [&](const FArdaProviderFramebufferTarget& Target,
+			                             bool bDepth) -> TArdaRHIResult<D3D12_CPU_DESCRIPTOR_HANDLE>
 			{
 				auto* Texture = dynamic_cast<FArdaD3D12Texture*>(Target.mTexture.get());
-				if (!Texture || !Texture->mRtv.ptr)
+				if (!Texture)
 				{
-					return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-					    "A D3D12 framebuffer color attachment is not render-target capable."));
+					return Fail<D3D12_CPU_DESCRIPTOR_HANDLE>(FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+					    "A D3D12 framebuffer attachment has the wrong implementation."));
 				}
-				Framebuffer->mRtvs.push_back(Texture->mRtv);
+				FArdaRHIFramebufferAttachment Attachment;
+				if (auto Status = ResolveArdaRHIFramebufferAttachment(Texture->mDesc,
+				        Target.mTarget.mAttachment,
+				        bDepth,
+				        Attachment);
+				    !Status)
+				{
+					return Fail<D3D12_CPU_DESCRIPTOR_HANDLE>(eastl::move(Status));
+				}
+				const auto Support = QueryFormatSupport(Attachment.mFormat);
+				if (bDepth && Attachment.mSubresources.mPlaneCount != GetArdaRHIFormatPlaneCount(Attachment.mFormat))
+				{
+					return Fail<D3D12_CPU_DESCRIPTOR_HANDLE>(FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+					    "D3D12 depth-stencil attachment views require all format planes."));
+				}
+				if (bDepth ? !Support.mbDepthStencilAttachment : !Support.mbColorAttachment)
+				{
+					return Fail<D3D12_CPU_DESCRIPTOR_HANDLE>(FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+					    "The native format cannot be used in this D3D12 framebuffer attachment slot."));
+				}
+				return GetAttachmentView(*Texture,
+				    Attachment.mSubresources,
+				    bDepth,
+				    Attachment.mFormat,
+				    Attachment.mbReadOnly);
+			};
+			for (const auto& Target : Info.mColors)
+			{
+				const auto View = ResolveView(Target, false);
+				if (!View)
+				{
+					return Fail<FArdaProviderObjectRef>(View.mStatus);
+				}
+				Framebuffer->mRtvs.push_back(View.mValue);
 				Framebuffer->mRetainedTextures.push_back(Target.mTexture);
 			}
 			if (Info.mDepth.mTexture)
 			{
-				auto* Texture = dynamic_cast<FArdaD3D12Texture*>(Info.mDepth.mTexture.get());
-				if (!Texture || !Texture->mDsv.ptr)
+				const auto View = ResolveView(Info.mDepth, true);
+				if (!View)
 				{
-					return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-					    "A D3D12 framebuffer depth attachment is not depth-stencil capable."));
+					return Fail<FArdaProviderObjectRef>(View.mStatus);
 				}
-				Framebuffer->mDsv = Texture->mDsv;
+				Framebuffer->mDsv = View.mValue;
 				Framebuffer->mbHasDepth = true;
 				Framebuffer->mRetainedTextures.push_back(Info.mDepth.mTexture);
 			}
@@ -4097,6 +4711,70 @@ namespace arda
 			return {Root, {}};
 		}
 
+		D3D12_BLEND_DESC ToD3D12BlendState(const FArdaRHIBlendState& State)
+		{
+			D3D12_BLEND_DESC Result{};
+			Result.AlphaToCoverageEnable = State.mbAlphaToCoverage;
+			Result.IndependentBlendEnable = TRUE;
+			for (uint32_t Index = 0; Index < ArdaRHIMaxRenderTargets; ++Index)
+			{
+				const auto& Source = State.mTargets[Index];
+				auto& Target = Result.RenderTarget[Index];
+				Target.BlendEnable = Source.mbEnable;
+				Target.LogicOpEnable = FALSE;
+				Target.SrcBlend = ToD3D12Blend(Source.mSourceColor);
+				Target.DestBlend = ToD3D12Blend(Source.mDestinationColor);
+				Target.BlendOp = D3D12_BLEND_OP_ADD;
+				Target.SrcBlendAlpha = ToD3D12Blend(Source.mSourceAlpha);
+				Target.DestBlendAlpha = ToD3D12Blend(Source.mDestinationAlpha);
+				Target.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+				Target.LogicOp = D3D12_LOGIC_OP_NOOP;
+				Target.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+			}
+			return Result;
+		}
+
+		D3D12_RASTERIZER_DESC ToD3D12RasterizerState(const FArdaRHIRasterState& State, uint32_t SampleCount)
+		{
+			D3D12_RASTERIZER_DESC Result{};
+			Result.FillMode =
+			    State.mFillMode == EArdaRHIFillMode::Wireframe ? D3D12_FILL_MODE_WIREFRAME : D3D12_FILL_MODE_SOLID;
+			switch (State.mCullMode)
+			{
+			case EArdaRHICullMode::Front:
+				Result.CullMode = D3D12_CULL_MODE_FRONT;
+				break;
+			case EArdaRHICullMode::None:
+				Result.CullMode = D3D12_CULL_MODE_NONE;
+				break;
+			default:
+				Result.CullMode = D3D12_CULL_MODE_BACK;
+				break;
+			}
+			Result.FrontCounterClockwise = State.mbFrontCounterClockwise;
+			Result.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+			Result.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+			Result.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+			Result.DepthClipEnable = State.mbDepthClip;
+			Result.MultisampleEnable = SampleCount > 1;
+			Result.AntialiasedLineEnable = FALSE;
+			Result.ForcedSampleCount = 0;
+			Result.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+			return Result;
+		}
+
+		D3D12_DEPTH_STENCIL_DESC ToD3D12DepthStencilState(const FArdaRHIDepthStencilState& State)
+		{
+			D3D12_DEPTH_STENCIL_DESC Result{};
+			Result.DepthEnable = State.mbDepthTest;
+			Result.DepthWriteMask = State.mbDepthWrite ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+			Result.DepthFunc = ToD3D12Comparison(State.mDepthFunc);
+			Result.StencilEnable = FALSE;
+			Result.StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK;
+			Result.StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
+			return Result;
+		}
+
 		FArdaProviderObjectResult FArdaD3D12ProviderDevice::CreateGraphicsPipeline(
 		    const FArdaProviderGraphicsPipelineCreateInfo& Info)
 		{
@@ -4149,55 +4827,10 @@ namespace arda
 			Desc.DS = Bytecode(Info.mDomainShader);
 			Desc.GS = Bytecode(Info.mGeometryShader);
 			Desc.PS = Bytecode(Info.mPixelShader);
-			Desc.BlendState.AlphaToCoverageEnable = Info.mDesc.mBlendState.mbAlphaToCoverage;
-			Desc.BlendState.IndependentBlendEnable = TRUE;
-			for (uint32_t Index = 0; Index < ArdaRHIMaxRenderTargets; ++Index)
-			{
-				const auto& Source = Info.mDesc.mBlendState.mTargets[Index];
-				auto& Target = Desc.BlendState.RenderTarget[Index];
-				Target.BlendEnable = Source.mbEnable;
-				Target.LogicOpEnable = FALSE;
-				Target.SrcBlend = ToD3D12Blend(Source.mSourceColor);
-				Target.DestBlend = ToD3D12Blend(Source.mDestinationColor);
-				Target.BlendOp = D3D12_BLEND_OP_ADD;
-				Target.SrcBlendAlpha = ToD3D12Blend(Source.mSourceAlpha);
-				Target.DestBlendAlpha = ToD3D12Blend(Source.mDestinationAlpha);
-				Target.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-				Target.LogicOp = D3D12_LOGIC_OP_NOOP;
-				Target.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-			}
+			Desc.BlendState = ToD3D12BlendState(Info.mDesc.mBlendState);
 			Desc.SampleMask = UINT_MAX;
-			Desc.RasterizerState.FillMode = Info.mDesc.mRasterState.mFillMode == EArdaRHIFillMode::Wireframe
-			    ? D3D12_FILL_MODE_WIREFRAME
-			    : D3D12_FILL_MODE_SOLID;
-			switch (Info.mDesc.mRasterState.mCullMode)
-			{
-			case EArdaRHICullMode::Front:
-				Desc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
-				break;
-			case EArdaRHICullMode::None:
-				Desc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-				break;
-			default:
-				Desc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
-				break;
-			}
-			Desc.RasterizerState.FrontCounterClockwise = Info.mDesc.mRasterState.mbFrontCounterClockwise;
-			Desc.RasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
-			Desc.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
-			Desc.RasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-			Desc.RasterizerState.DepthClipEnable = Info.mDesc.mRasterState.mbDepthClip;
-			Desc.RasterizerState.MultisampleEnable = Info.mDesc.mSampleCount > 1;
-			Desc.RasterizerState.AntialiasedLineEnable = FALSE;
-			Desc.RasterizerState.ForcedSampleCount = 0;
-			Desc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-			Desc.DepthStencilState.DepthEnable = Info.mDesc.mDepthStencilState.mbDepthTest;
-			Desc.DepthStencilState.DepthWriteMask =
-			    Info.mDesc.mDepthStencilState.mbDepthWrite ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-			Desc.DepthStencilState.DepthFunc = ToD3D12Comparison(Info.mDesc.mDepthStencilState.mDepthFunc);
-			Desc.DepthStencilState.StencilEnable = FALSE;
-			Desc.DepthStencilState.StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK;
-			Desc.DepthStencilState.StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
+			Desc.RasterizerState = ToD3D12RasterizerState(Info.mDesc.mRasterState, Info.mDesc.mSampleCount);
+			Desc.DepthStencilState = ToD3D12DepthStencilState(Info.mDesc.mDepthStencilState);
 			Desc.InputLayout = {InputElements.data(), static_cast<UINT>(InputElements.size())};
 			switch (Info.mDesc.mTopology)
 			{
@@ -4373,57 +5006,10 @@ namespace arda
 			Stream.mAmplificationShader.mValue = Bytecode(Amplification);
 			Stream.mMeshShader.mValue = Bytecode(Mesh);
 			Stream.mPixelShader.mValue = Bytecode(Pixel);
-			Stream.mBlend.mValue.AlphaToCoverageEnable = Info.mDesc.mBlendState.mbAlphaToCoverage;
-			Stream.mBlend.mValue.IndependentBlendEnable = TRUE;
-			for (uint32_t Index = 0; Index < ArdaRHIMaxRenderTargets; ++Index)
-			{
-				const auto& Source = Info.mDesc.mBlendState.mTargets[Index];
-				auto& Target = Stream.mBlend.mValue.RenderTarget[Index];
-				Target.BlendEnable = Source.mbEnable;
-				Target.LogicOpEnable = FALSE;
-				Target.SrcBlend = ToD3D12Blend(Source.mSourceColor);
-				Target.DestBlend = ToD3D12Blend(Source.mDestinationColor);
-				Target.BlendOp = D3D12_BLEND_OP_ADD;
-				Target.SrcBlendAlpha = ToD3D12Blend(Source.mSourceAlpha);
-				Target.DestBlendAlpha = ToD3D12Blend(Source.mDestinationAlpha);
-				Target.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-				Target.LogicOp = D3D12_LOGIC_OP_NOOP;
-				Target.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-			}
+			Stream.mBlend.mValue = ToD3D12BlendState(Info.mDesc.mBlendState);
 			Stream.mSampleMask.mValue = UINT_MAX;
-			auto& Rasterizer = Stream.mRasterizer.mValue;
-			Rasterizer.FillMode = Info.mDesc.mRasterState.mFillMode == EArdaRHIFillMode::Wireframe
-			    ? D3D12_FILL_MODE_WIREFRAME
-			    : D3D12_FILL_MODE_SOLID;
-			switch (Info.mDesc.mRasterState.mCullMode)
-			{
-			case EArdaRHICullMode::Front:
-				Rasterizer.CullMode = D3D12_CULL_MODE_FRONT;
-				break;
-			case EArdaRHICullMode::None:
-				Rasterizer.CullMode = D3D12_CULL_MODE_NONE;
-				break;
-			default:
-				Rasterizer.CullMode = D3D12_CULL_MODE_BACK;
-				break;
-			}
-			Rasterizer.FrontCounterClockwise = Info.mDesc.mRasterState.mbFrontCounterClockwise;
-			Rasterizer.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
-			Rasterizer.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
-			Rasterizer.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-			Rasterizer.DepthClipEnable = Info.mDesc.mRasterState.mbDepthClip;
-			Rasterizer.MultisampleEnable = Info.mDesc.mSampleCount > 1;
-			Rasterizer.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-
-			auto& Depth = Stream.mDepthStencil.mValue;
-			Depth.DepthEnable = Info.mDesc.mDepthStencilState.mbDepthTest;
-			Depth.DepthWriteMask =
-			    Info.mDesc.mDepthStencilState.mbDepthWrite ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-			Depth.DepthFunc = ToD3D12Comparison(Info.mDesc.mDepthStencilState.mDepthFunc);
-			Depth.StencilEnable = FALSE;
-			Depth.StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK;
-			Depth.StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
-
+			Stream.mRasterizer.mValue = ToD3D12RasterizerState(Info.mDesc.mRasterState, Info.mDesc.mSampleCount);
+			Stream.mDepthStencil.mValue = ToD3D12DepthStencilState(Info.mDesc.mDepthStencilState);
 			switch (Info.mDesc.mTopology)
 			{
 			case EArdaRHIPrimitiveTopology::PointList:
@@ -4864,13 +5450,10 @@ namespace arda
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 				    "The D3D12 shader table exceeds its entry capacity.");
 			}
-			Table.mBuffer.Reset();
-			Table.mRayGenerationRange = {};
-			Table.mMissRange = {};
-			Table.mHitGroupRange = {};
-			Table.mCallableRange = {};
+			FArdaD3D12ShaderTable::FArdaGeneration Generation;
 			if (!EntryCount)
 			{
+				Table.mGeneration = eastl::move(Generation);
 				return {};
 			}
 
@@ -4947,14 +5530,14 @@ namespace arda
 			    &Resource,
 			    D3D12_RESOURCE_STATE_GENERIC_READ,
 			    nullptr,
-			    IID_PPV_ARGS(&Table.mBuffer));
+			    IID_PPV_ARGS(&Generation.mBuffer));
 			if (FAILED(Result))
 			{
 				return D3D12Failure("Failed to allocate a D3D12 shader table.", Result);
 			}
 			void* Mapped = nullptr;
 			D3D12_RANGE ReadRange{0, 0};
-			Result = Table.mBuffer->Map(0, &ReadRange, &Mapped);
+			Result = Generation.mBuffer->Map(0, &ReadRange, &Mapped);
 			if (FAILED(Result))
 			{
 				return D3D12Failure("Failed to map a D3D12 shader table.", Result);
@@ -4977,6 +5560,7 @@ namespace arda
 					uint8_t* Payload = static_cast<uint8_t*>(Mapped) + Offset + IdentifierSize;
 					if (auto* Bindings = dynamic_cast<FArdaD3D12BindingSet*>(Record->mBindings.get()))
 					{
+						Generation.mObjects.push_back(Record->mBindings);
 						for (const auto& Descriptor : Bindings->mTables)
 						{
 							const uint64_t Handle = Descriptor.mGpu.ptr;
@@ -4991,6 +5575,7 @@ namespace arda
 					}
 					if (auto* Geometry = dynamic_cast<FArdaD3D12AccelStruct*>(Record->mGeometry.get()))
 					{
+						Generation.mObjects.push_back(Record->mGeometry);
 						const uint64_t Address = Geometry->mResource ? Geometry->mResource->GetGPUVirtualAddress() : 0;
 						std::memcpy(Payload, &Address, sizeof(Address));
 						Payload += sizeof(Address);
@@ -5036,29 +5621,30 @@ namespace arda
 			{
 				Status = WriteStructuredSection(CallableRecords, CallableOffset);
 			}
-			Table.mBuffer->Unmap(0, nullptr);
+			Generation.mBuffer->Unmap(0, nullptr);
 			if (!Status)
 			{
-				Table.mBuffer.Reset();
 				return Status;
 			}
-			const D3D12_GPU_VIRTUAL_ADDRESS Address = Table.mBuffer->GetGPUVirtualAddress();
+			const D3D12_GPU_VIRTUAL_ADDRESS Address = Generation.mBuffer->GetGPUVirtualAddress();
 			if (RayCount)
 			{
-				Table.mRayGenerationRange = {Address + RayOffset, RecordStride};
+				Generation.mRayGenerationRange = {Address + RayOffset, RecordStride};
 			}
 			if (MissCount)
 			{
-				Table.mMissRange = {Address + MissOffset, MissCount * RecordStride, RecordStride};
+				Generation.mMissRange = {Address + MissOffset, MissCount * RecordStride, RecordStride};
 			}
 			if (HitCount)
 			{
-				Table.mHitGroupRange = {Address + HitOffset, HitCount * RecordStride, RecordStride};
+				Generation.mHitGroupRange = {Address + HitOffset, HitCount * RecordStride, RecordStride};
 			}
 			if (CallableCount)
 			{
-				Table.mCallableRange = {Address + CallableOffset, CallableCount * RecordStride, RecordStride};
+				Generation.mCallableRange = {Address + CallableOffset, CallableCount * RecordStride, RecordStride};
 			}
+			// Publish only complete storage; failed commits leave the previous generation usable.
+			Table.mGeneration = eastl::move(Generation);
 			return {};
 		}
 
@@ -5160,22 +5746,25 @@ namespace arda
 
 		FArdaRHIStatus FArdaD3D12CommandList::Initialize()
 		{
-			HRESULT Result = mDevice.GetDevice().CreateCommandAllocator(mType, IID_PPV_ARGS(&mAllocator));
+			ComPtr<ID3D12CommandAllocator> Allocator;
+			ComPtr<ID3D12GraphicsCommandList> Commands;
+			HRESULT Result = mDevice.GetDevice().CreateCommandAllocator(mType, IID_PPV_ARGS(&Allocator));
 			if (FAILED(Result))
 			{
 				return D3D12Failure("Failed to create a D3D12 command allocator.", Result);
 			}
-			Result =
-			    mDevice.GetDevice().CreateCommandList(0, mType, mAllocator.Get(), nullptr, IID_PPV_ARGS(&mCommandList));
+			Result = mDevice.GetDevice().CreateCommandList(0, mType, Allocator.Get(), nullptr, IID_PPV_ARGS(&Commands));
 			if (FAILED(Result))
 			{
 				return D3D12Failure("Failed to create a D3D12 command list.", Result);
 			}
-			Result = mCommandList->Close();
+			Result = Commands->Close();
 			if (FAILED(Result))
 			{
 				return D3D12Failure("Failed to close a new D3D12 command list.", Result);
 			}
+			mAllocator = eastl::move(Allocator);
+			mCommandList = eastl::move(Commands);
 			return {};
 		}
 
@@ -5344,6 +5933,23 @@ namespace arda
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "D3D12 command list is already open.");
 			}
+			if (mSubmissionFence)
+			{
+				const uint64_t Completed = mSubmissionFence->GetCompletedValue();
+				if (Completed == UINT64_MAX)
+				{
+					return D3D12Failure("The D3D12 device was removed before command-list reuse.",
+					    mDevice.GetDevice().GetDeviceRemovedReason());
+				}
+				if (Completed < mSubmissionValue)
+				{
+					// Pending submissions retain the old allocator/list until their fence retires.
+					if (auto Status = Initialize(); !Status)
+					{
+						return Status;
+					}
+				}
+			}
 			HRESULT Result = mAllocator->Reset();
 			if (FAILED(Result))
 			{
@@ -5354,10 +5960,14 @@ namespace arda
 			{
 				return D3D12Failure("Failed to reset the D3D12 command list.", Result);
 			}
+			mSubmissionFence.Reset();
+			mSubmissionValue = 0;
 			CancelTimerQueries();
 			mCommandSignatures.clear();
 			mRetainedObjects.clear();
 			mWorkGraphs.clear();
+			mMarkers.clear();
+			mbMarkersTruncated = false;
 			mCudaBatch.reset();
 			mCudaSegments.clear();
 			mbContextSubmitted = false;
@@ -6069,81 +6679,13 @@ namespace arda
 		    const FArdaRHITextureDesc& SourceDesc,
 		    const FArdaRHITextureSlice& SourceSlice)
 		{
-			auto* Dst = dynamic_cast<FArdaD3D12StagingTexture*>(Destination.get());
-			auto* Src = dynamic_cast<FArdaD3D12Texture*>(Source.get());
-			if (!Dst || !Src || !Dst->mResource || !Src->mResource)
-			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-				    "D3D12 texture readback has the wrong resource type.");
-			}
-			FArdaRHITextureCopyExtent CopyExtent;
-			if (auto Status = ResolveArdaRHITextureCopyExtent(DestinationDesc.mTexture,
-			        DestinationSlice,
-			        SourceDesc,
-			        SourceSlice,
-			        CopyExtent);
-			    !Status)
-			{
-				return Status;
-			}
-			const uint32_t Width = CopyExtent.mWidth;
-			const uint32_t Height = CopyExtent.mHeight;
-			const uint32_t Depth = CopyExtent.mDepth;
-			const uint32_t Subresource = ArdaD3D12CalcSubresource(SourceSlice.mMipLevel,
-			    SourceSlice.mArraySlice,
-			    SourceSlice.mPlane,
-			    SourceDesc.mMipLevels,
-			    SourceDesc.mArraySize);
-			const uint32_t StagingSubresource = ArdaD3D12CalcSubresource(DestinationSlice.mMipLevel,
-			    DestinationSlice.mArraySlice,
-			    DestinationSlice.mPlane,
-			    DestinationDesc.mTexture.mMipLevels,
-			    DestinationDesc.mTexture.mArraySize);
-			const EArdaRHIResourceState Previous = GetTextureTracking(*Src).mAbstractStates[Subresource];
-			FArdaRHITextureSubresourceRange Range{SourceSlice.mMipLevel,
-			    1,
-			    SourceSlice.mArraySlice,
-			    1,
-			    SourceSlice.mPlane,
-			    1};
-			if (mbAutomaticBarriers)
-			{
-				if (auto Status = TransitionTexture(Source, SourceDesc, Range, EArdaRHIResourceState::CopySource);
-				    !Status)
-				{
-					return Status;
-				}
-			}
-			D3D12_TEXTURE_COPY_LOCATION DstLocation{};
-			DstLocation.pResource = Dst->mResource.Get();
-			DstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-			DstLocation.PlacedFootprint = Dst->mFootprints[StagingSubresource];
-			D3D12_TEXTURE_COPY_LOCATION SrcLocation{};
-			SrcLocation.pResource = Src->mResource.Get();
-			SrcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-			SrcLocation.SubresourceIndex = Subresource;
-			const D3D12_BOX Box{SourceSlice.mX,
-			    SourceSlice.mY,
-			    SourceSlice.mZ,
-			    SourceSlice.mX + Width,
-			    SourceSlice.mY + Height,
-			    SourceSlice.mZ + Depth};
-			mCommandList->CopyTextureRegion(&DstLocation,
-			    DestinationSlice.mX,
-			    DestinationSlice.mY,
-			    DestinationSlice.mZ,
-			    &SrcLocation,
-			    &Box);
-			if (mbAutomaticBarriers)
-			{
-				if (auto Status = TransitionTexture(Source, SourceDesc, Range, Previous); !Status)
-				{
-					return Status;
-				}
-			}
-			Retain(Destination);
-			Retain(Source);
-			return {};
+			return CopyStagingTexture(false,
+			    Source,
+			    SourceDesc,
+			    SourceSlice,
+			    Destination,
+			    DestinationDesc,
+			    DestinationSlice);
 		}
 
 		FArdaRHIStatus FArdaD3D12CommandList::CopyTextureFromStaging(const FArdaProviderObjectRef& Destination,
@@ -6153,17 +6695,36 @@ namespace arda
 		    const FArdaRHIStagingTextureDesc& SourceDesc,
 		    const FArdaRHITextureSlice& SourceSlice)
 		{
-			auto* Dst = dynamic_cast<FArdaD3D12Texture*>(Destination.get());
-			auto* Src = dynamic_cast<FArdaD3D12StagingTexture*>(Source.get());
-			if (!Dst || !Src || !Dst->mResource || !Src->mResource)
+			return CopyStagingTexture(true,
+			    Destination,
+			    DestinationDesc,
+			    DestinationSlice,
+			    Source,
+			    SourceDesc,
+			    SourceSlice);
+		}
+
+		FArdaRHIStatus FArdaD3D12CommandList::CopyStagingTexture(bool bToTexture,
+		    const FArdaProviderObjectRef& TextureObject,
+		    const FArdaRHITextureDesc& TextureDesc,
+		    const FArdaRHITextureSlice& TextureSlice,
+		    const FArdaProviderObjectRef& StagingObject,
+		    const FArdaRHIStagingTextureDesc& StagingDesc,
+		    const FArdaRHITextureSlice& StagingSlice)
+		{
+			auto* Texture = dynamic_cast<FArdaD3D12Texture*>(TextureObject.get());
+			auto* Staging = dynamic_cast<FArdaD3D12StagingTexture*>(StagingObject.get());
+			if (!Texture || !Staging || !Texture->mResource || !Staging->mResource)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-				    "D3D12 texture upload has the wrong resource type.");
+				    "D3D12 staging texture copy has the wrong resource type.");
 			}
+			const auto& SourceSlice = bToTexture ? StagingSlice : TextureSlice;
+			const auto& DestinationSlice = bToTexture ? TextureSlice : StagingSlice;
 			FArdaRHITextureCopyExtent CopyExtent;
-			if (auto Status = ResolveArdaRHITextureCopyExtent(DestinationDesc,
+			if (auto Status = ResolveArdaRHITextureCopyExtent(bToTexture ? TextureDesc : StagingDesc.mTexture,
 			        DestinationSlice,
-			        SourceDesc.mTexture,
+			        bToTexture ? StagingDesc.mTexture : TextureDesc,
 			        SourceSlice,
 			        CopyExtent);
 			    !Status)
@@ -6173,61 +6734,63 @@ namespace arda
 			const uint32_t Width = CopyExtent.mWidth;
 			const uint32_t Height = CopyExtent.mHeight;
 			const uint32_t Depth = CopyExtent.mDepth;
-			const uint32_t Subresource = ArdaD3D12CalcSubresource(DestinationSlice.mMipLevel,
-			    DestinationSlice.mArraySlice,
-			    DestinationSlice.mPlane,
-			    DestinationDesc.mMipLevels,
-			    DestinationDesc.mArraySize);
-			const uint32_t StagingSubresource = ArdaD3D12CalcSubresource(SourceSlice.mMipLevel,
-			    SourceSlice.mArraySlice,
-			    SourceSlice.mPlane,
-			    SourceDesc.mTexture.mMipLevels,
-			    SourceDesc.mTexture.mArraySize);
-			const EArdaRHIResourceState Previous = GetTextureTracking(*Dst).mAbstractStates[Subresource];
-			FArdaRHITextureSubresourceRange Range{DestinationSlice.mMipLevel,
+			const uint32_t Subresource = ArdaD3D12CalcSubresource(TextureSlice.mMipLevel,
+			    TextureSlice.mArraySlice,
+			    TextureSlice.mPlane,
+			    TextureDesc.mMipLevels,
+			    TextureDesc.mArraySize);
+			const uint32_t StagingSubresource = ArdaD3D12CalcSubresource(StagingSlice.mMipLevel,
+			    StagingSlice.mArraySlice,
+			    StagingSlice.mPlane,
+			    StagingDesc.mTexture.mMipLevels,
+			    StagingDesc.mTexture.mArraySize);
+			const EArdaRHIResourceState Previous = GetTextureTracking(*Texture).mAbstractStates[Subresource];
+			FArdaRHITextureSubresourceRange Range{TextureSlice.mMipLevel,
 			    1,
-			    DestinationSlice.mArraySlice,
+			    TextureSlice.mArraySlice,
 			    1,
-			    DestinationSlice.mPlane,
+			    TextureSlice.mPlane,
 			    1};
 			if (mbAutomaticBarriers)
 			{
-				if (auto Status =
-				        TransitionTexture(Destination, DestinationDesc, Range, EArdaRHIResourceState::CopyDest);
+				if (auto Status = TransitionTexture(TextureObject,
+				        TextureDesc,
+				        Range,
+				        bToTexture ? EArdaRHIResourceState::CopyDest : EArdaRHIResourceState::CopySource);
 				    !Status)
 				{
 					return Status;
 				}
 			}
-			D3D12_TEXTURE_COPY_LOCATION DstLocation{};
-			DstLocation.pResource = Dst->mResource.Get();
-			DstLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-			DstLocation.SubresourceIndex = Subresource;
-			D3D12_TEXTURE_COPY_LOCATION SrcLocation{};
-			SrcLocation.pResource = Src->mResource.Get();
-			SrcLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-			SrcLocation.PlacedFootprint = Src->mFootprints[StagingSubresource];
+			D3D12_TEXTURE_COPY_LOCATION TextureLocation{};
+			TextureLocation.pResource = Texture->mResource.Get();
+			TextureLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+			TextureLocation.SubresourceIndex = Subresource;
+			D3D12_TEXTURE_COPY_LOCATION StagingLocation{};
+			StagingLocation.pResource = Staging->mResource.Get();
+			StagingLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+			StagingLocation.PlacedFootprint = Staging->mFootprints[StagingSubresource];
 			const D3D12_BOX Box{SourceSlice.mX,
 			    SourceSlice.mY,
 			    SourceSlice.mZ,
 			    SourceSlice.mX + Width,
 			    SourceSlice.mY + Height,
 			    SourceSlice.mZ + Depth};
-			mCommandList->CopyTextureRegion(&DstLocation,
+			mCommandList->CopyTextureRegion(bToTexture ? &TextureLocation : &StagingLocation,
 			    DestinationSlice.mX,
 			    DestinationSlice.mY,
 			    DestinationSlice.mZ,
-			    &SrcLocation,
+			    bToTexture ? &StagingLocation : &TextureLocation,
 			    &Box);
 			if (mbAutomaticBarriers)
 			{
-				if (auto Status = TransitionTexture(Destination, DestinationDesc, Range, Previous); !Status)
+				if (auto Status = TransitionTexture(TextureObject, TextureDesc, Range, Previous); !Status)
 				{
 					return Status;
 				}
 			}
-			Retain(Destination);
-			Retain(Source);
+			Retain(TextureObject);
+			Retain(StagingObject);
 			return {};
 		}
 
@@ -7058,7 +7621,8 @@ namespace arda
 		FArdaRHIStatus FArdaD3D12CommandList::SetRayTracingState(const FArdaProviderRayTracingState& State)
 		{
 			auto* Table = dynamic_cast<FArdaD3D12ShaderTable*>(State.mShaderTable.get());
-			if (!Table || !Table->mPipeline || !Table->mBuffer || !Table->mRayGenerationRange.StartAddress)
+			if (!Table || !Table->mPipeline || !Table->mGeneration.mBuffer ||
+			    !Table->mGeneration.mRayGenerationRange.StartAddress)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 				    "The D3D12 ray-tracing shader table is incomplete.");
@@ -7069,7 +7633,13 @@ namespace arda
 			{
 				return D3D12Failure("The D3D12 command list does not support ray tracing.", Result);
 			}
-			Retain(State.mShaderTable);
+			// Recorded GPU addresses and local descriptors belong to this committed generation.
+			auto Snapshot = eastl::make_shared<FArdaD3D12ShaderTable>();
+			Snapshot->mPipelineObject = Table->mPipelineObject;
+			Snapshot->mPipeline = Table->mPipeline;
+			Snapshot->mGeneration = Table->mGeneration;
+			Table = Snapshot.get();
+			Retain(Snapshot);
 			for (const auto& Binding : State.mBindings)
 			{
 				Retain(Binding);
@@ -7083,9 +7653,11 @@ namespace arda
 			if (Status)
 			{
 				SelectPushConstantPipeline(&Table->mPipeline->mGlobalBindings);
-				mRestoreState = [this, State]
+				auto BoundState = State;
+				BoundState.mShaderTable = Snapshot;
+				mRestoreState = [this, BoundState]
 				{
-					return SetRayTracingState(State);
+					return SetRayTracingState(BoundState);
 				};
 			}
 			return Status;
@@ -7138,19 +7710,20 @@ namespace arda
 			    Arguments.mStartInstance);
 		}
 
-		FArdaRHIStatus FArdaD3D12CommandList::DrawIndirect(const FArdaProviderObjectRef& Arguments,
+		FArdaRHIStatus FArdaD3D12CommandList::ExecuteIndirect(const FArdaProviderObjectRef& Arguments,
 		    uint64_t Offset,
-		    uint32_t DrawCount,
-		    uint32_t Stride)
+		    uint32_t Count,
+		    uint32_t Stride,
+		    D3D12_INDIRECT_ARGUMENT_TYPE Type)
 		{
 			auto* Buffer = dynamic_cast<FArdaD3D12Buffer*>(Arguments.get());
 			if (!Buffer || !Buffer->mResource)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-				    "D3D12 indirect draw has the wrong buffer type.");
+				    "D3D12 indirect command has the wrong buffer type.");
 			}
 			D3D12_INDIRECT_ARGUMENT_DESC Argument{};
-			Argument.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
+			Argument.Type = Type;
 			D3D12_COMMAND_SIGNATURE_DESC Desc{};
 			Desc.ByteStride = Stride;
 			Desc.NumArgumentDescs = 1;
@@ -7159,12 +7732,20 @@ namespace arda
 			const HRESULT Result = mDevice.GetDevice().CreateCommandSignature(&Desc, nullptr, IID_PPV_ARGS(&Signature));
 			if (FAILED(Result))
 			{
-				return D3D12Failure("Failed to create a D3D12 indirect draw signature.", Result);
+				return D3D12Failure("Failed to create a D3D12 indirect command signature.", Result);
 			}
-			mCommandList->ExecuteIndirect(Signature.Get(), DrawCount, Buffer->mResource.Get(), Offset, nullptr, 0);
+			mCommandList->ExecuteIndirect(Signature.Get(), Count, Buffer->mResource.Get(), Offset, nullptr, 0);
 			mCommandSignatures.push_back(eastl::move(Signature));
 			Retain(Arguments);
 			return {};
+		}
+
+		FArdaRHIStatus FArdaD3D12CommandList::DrawIndirect(const FArdaProviderObjectRef& Arguments,
+		    uint64_t Offset,
+		    uint32_t DrawCount,
+		    uint32_t Stride)
+		{
+			return ExecuteIndirect(Arguments, Offset, DrawCount, Stride, D3D12_INDIRECT_ARGUMENT_TYPE_DRAW);
 		}
 
 		FArdaRHIStatus FArdaD3D12CommandList::DrawIndexedIndirect(const FArdaProviderObjectRef& Arguments,
@@ -7172,28 +7753,7 @@ namespace arda
 		    uint32_t DrawCount,
 		    uint32_t Stride)
 		{
-			auto* Buffer = dynamic_cast<FArdaD3D12Buffer*>(Arguments.get());
-			if (!Buffer || !Buffer->mResource)
-			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-				    "D3D12 indexed indirect draw has the wrong buffer type.");
-			}
-			D3D12_INDIRECT_ARGUMENT_DESC Argument{};
-			Argument.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
-			D3D12_COMMAND_SIGNATURE_DESC Desc{};
-			Desc.ByteStride = Stride;
-			Desc.NumArgumentDescs = 1;
-			Desc.pArgumentDescs = &Argument;
-			ComPtr<ID3D12CommandSignature> Signature;
-			const HRESULT Result = mDevice.GetDevice().CreateCommandSignature(&Desc, nullptr, IID_PPV_ARGS(&Signature));
-			if (FAILED(Result))
-			{
-				return D3D12Failure("Failed to create a D3D12 indexed indirect draw signature.", Result);
-			}
-			mCommandList->ExecuteIndirect(Signature.Get(), DrawCount, Buffer->mResource.Get(), Offset, nullptr, 0);
-			mCommandSignatures.push_back(eastl::move(Signature));
-			Retain(Arguments);
-			return {};
+			return ExecuteIndirect(Arguments, Offset, DrawCount, Stride, D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED);
 		}
 
 		void FArdaD3D12CommandList::Dispatch(uint32_t X, uint32_t Y, uint32_t Z)
@@ -7203,28 +7763,11 @@ namespace arda
 
 		FArdaRHIStatus FArdaD3D12CommandList::DispatchIndirect(const FArdaProviderObjectRef& Arguments, uint64_t Offset)
 		{
-			auto* Buffer = dynamic_cast<FArdaD3D12Buffer*>(Arguments.get());
-			if (!Buffer || !Buffer->mResource)
-			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-				    "D3D12 indirect dispatch has the wrong buffer type.");
-			}
-			D3D12_INDIRECT_ARGUMENT_DESC Argument{};
-			Argument.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
-			D3D12_COMMAND_SIGNATURE_DESC Desc{};
-			Desc.ByteStride = sizeof(D3D12_DISPATCH_ARGUMENTS);
-			Desc.NumArgumentDescs = 1;
-			Desc.pArgumentDescs = &Argument;
-			ComPtr<ID3D12CommandSignature> Signature;
-			const HRESULT Result = mDevice.GetDevice().CreateCommandSignature(&Desc, nullptr, IID_PPV_ARGS(&Signature));
-			if (FAILED(Result))
-			{
-				return D3D12Failure("Failed to create a D3D12 indirect dispatch signature.", Result);
-			}
-			mCommandList->ExecuteIndirect(Signature.Get(), 1, Buffer->mResource.Get(), Offset, nullptr, 0);
-			mCommandSignatures.push_back(eastl::move(Signature));
-			Retain(Arguments);
-			return {};
+			return ExecuteIndirect(Arguments,
+			    Offset,
+			    1,
+			    sizeof(D3D12_DISPATCH_ARGUMENTS),
+			    D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH);
 		}
 
 		FArdaRHIStatus FArdaD3D12CommandList::DispatchMesh(uint32_t X, uint32_t Y, uint32_t Z)
@@ -7541,10 +8084,10 @@ namespace arda
 				return D3D12Failure("The D3D12 command list does not support ray tracing.", Result);
 			}
 			D3D12_DISPATCH_RAYS_DESC Desc{};
-			Desc.RayGenerationShaderRecord = mBoundShaderTable->mRayGenerationRange;
-			Desc.MissShaderTable = mBoundShaderTable->mMissRange;
-			Desc.HitGroupTable = mBoundShaderTable->mHitGroupRange;
-			Desc.CallableShaderTable = mBoundShaderTable->mCallableRange;
+			Desc.RayGenerationShaderRecord = mBoundShaderTable->mGeneration.mRayGenerationRange;
+			Desc.MissShaderTable = mBoundShaderTable->mGeneration.mMissRange;
+			Desc.HitGroupTable = mBoundShaderTable->mGeneration.mHitGroupRange;
+			Desc.CallableShaderTable = mBoundShaderTable->mGeneration.mCallableRange;
 			Desc.Width = Width;
 			Desc.Height = Height;
 			Desc.Depth = Depth;
@@ -7569,10 +8112,10 @@ namespace arda
 			}
 
 			D3D12_DISPATCH_RAYS_DESC Dispatch{};
-			Dispatch.RayGenerationShaderRecord = mBoundShaderTable->mRayGenerationRange;
-			Dispatch.MissShaderTable = mBoundShaderTable->mMissRange;
-			Dispatch.HitGroupTable = mBoundShaderTable->mHitGroupRange;
-			Dispatch.CallableShaderTable = mBoundShaderTable->mCallableRange;
+			Dispatch.RayGenerationShaderRecord = mBoundShaderTable->mGeneration.mRayGenerationRange;
+			Dispatch.MissShaderTable = mBoundShaderTable->mGeneration.mMissRange;
+			Dispatch.HitGroupTable = mBoundShaderTable->mGeneration.mHitGroupRange;
+			Dispatch.CallableShaderTable = mBoundShaderTable->mGeneration.mCallableRange;
 			FArdaRHIBufferDesc UploadDesc;
 			UploadDesc.mByteSize = sizeof(Dispatch);
 			UploadDesc.mCpuAccess = EArdaRHICpuAccess::Write;
@@ -8233,6 +8776,7 @@ namespace arda
 				}
 				return D3D12Failure("Failed to signal D3D12 work-graph initialization completion.", Result);
 			}
+			mQueueLastSubmittedValues[QueueIndex].store(Value, std::memory_order_relaxed);
 			for (const auto& Object : Uninitialized)
 			{
 				auto* Pipeline = static_cast<FArdaD3D12WorkGraph*>(Object.get());
@@ -8315,13 +8859,33 @@ namespace arda
 			const auto FinishSubmission = [&](FArdaRHIStatus Status,
 			                                  ID3D12Fence* CudaReturnFence = nullptr) -> TArdaRHIResult<uint64_t>
 			{
+				{
+					std::lock_guard<std::mutex> Lock(mDiagnosticMutex);
+					mbSubmittedMarkersTruncated |= Native->WereMarkersTruncated();
+					for (const auto& Marker : Native->GetMarkers())
+					{
+						if (mSubmittedMarkers.size() == ArdaRHIMaxDiagnosticEntries)
+						{
+							mSubmittedMarkers.erase(mSubmittedMarkers.begin());
+							mbSubmittedMarkersTruncated = true;
+						}
+						mSubmittedMarkers.push_back(
+						    eastl::string("Submitted D3D12 command-list marker (GPU execution unconfirmed): ") +
+						    Marker);
+					}
+				}
 				std::lock_guard<std::mutex> Lock(mSubmissionMutex);
 				Pending->mCudaReturnFence = CudaReturnFence;
 				// Reserve after the last enqueued segment. Even on failure, a later completed value
 				// proves graphics retirement; CUDA batches additionally drain their stream at destruction.
 				QueueValue = mQueueFenceValues[QueueIndex].fetch_add(1, std::memory_order_relaxed) + 1;
 				Pending->mQueueValue = QueueValue;
+				Native->TrackSubmission(mQueueFences[QueueIndex].Get(), QueueValue);
 				const HRESULT Result = Queue->Signal(mQueueFences[QueueIndex].Get(), QueueValue);
+				if (SUCCEEDED(Result))
+				{
+					mQueueLastSubmittedValues[QueueIndex].store(QueueValue, std::memory_order_relaxed);
+				}
 				if (Status && FAILED(Result))
 				{
 					Status = D3D12Failure("Failed to signal the D3D12 submission fence.", Result);
@@ -8507,13 +9071,24 @@ namespace arda
 			for (uint32_t QueueIndex = 0; QueueIndex < eastl::size(Queues); ++QueueIndex)
 			{
 				ID3D12CommandQueue* Queue = Queues[QueueIndex];
-				if (!Queue)
+				ID3D12Fence* Fence = mQueueFences[QueueIndex].Get();
+				// Initialization can fail before every queue has a retirement fence.
+				if (!Queue || !Fence)
 				{
 					continue;
 				}
-				const uint64_t Value = mQueueFenceValues[QueueIndex].fetch_add(1, std::memory_order_relaxed) + 1;
-				ID3D12Fence* Fence = mQueueFences[QueueIndex].Get();
-				HRESULT Result = Queue->Signal(Fence, Value);
+				uint64_t Value = 0;
+				HRESULT Result;
+				{
+					// Reserve and enqueue in the same order as submissions; fence signals may not regress.
+					std::lock_guard<std::mutex> Lock(mExecutionMutex);
+					Value = mQueueFenceValues[QueueIndex].fetch_add(1, std::memory_order_relaxed) + 1;
+					Result = Queue->Signal(Fence, Value);
+					if (SUCCEEDED(Result))
+					{
+						mQueueLastSubmittedValues[QueueIndex].store(Value, std::memory_order_relaxed);
+					}
+				}
 				if (FAILED(Result))
 				{
 					return D3D12Failure("Failed to signal the D3D12 idle fence.", Result);
@@ -8531,6 +9106,7 @@ namespace arda
 
 		void FArdaD3D12ProviderDevice::RunGarbageCollection()
 		{
+			CollectD3D12Quarantine();
 			std::lock_guard<std::mutex> Lock(mSubmissionMutex);
 			mPendingSubmissions.remove_if(
 			    [this](const FArdaPendingSubmission& Submission)
@@ -8968,14 +9544,15 @@ namespace arda
 				}
 				mAdapter = DescribeD3D12Adapter(AdapterDesc);
 
-				mProviderDevice = eastl::make_shared<FArdaD3D12ProviderDevice>(mD3DDevice,
-				    mQueue,
-				    mComputeQueue,
-				    mCopyQueue,
-				    Configuration.mPipelineCacheDirectory,
-				    Configuration.mMessageCallback,
-				    mLifetimeToken,
-				    Configuration.mCudaExecutionMode);
+				mProviderDevice = eastl::shared_ptr<FArdaD3D12ProviderDevice>(new FArdaD3D12ProviderDevice(mD3DDevice,
+				                                                                  mQueue,
+				                                                                  mComputeQueue,
+				                                                                  mCopyQueue,
+				                                                                  Configuration.mPipelineCacheDirectory,
+				                                                                  Configuration.mMessageCallback,
+				                                                                  mLifetimeToken,
+				                                                                  Configuration.mCudaExecutionMode),
+				    ReleaseD3D12ProviderDevice);
 				if (auto Status = mProviderDevice->Initialize(); !Status)
 				{
 					mError = Status.mMessage;
@@ -9005,6 +9582,12 @@ namespace arda
 						return EArdaInitializeResult::ValidationUnavailable;
 					}
 					Debug->EnableDebugLayer();
+					ComPtr<ID3D12DeviceRemovedExtendedDataSettings> DredSettings;
+					if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&DredSettings))))
+					{
+						DredSettings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+						DredSettings->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+					}
 					char GpuValidation[2]{};
 					if (GetEnvironmentVariableA("ARDA_D3D12_GPU_VALIDATION", GpuValidation, 2) == 1 &&
 					    GpuValidation[0] == '1')

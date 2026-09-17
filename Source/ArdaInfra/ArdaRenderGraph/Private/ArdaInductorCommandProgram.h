@@ -64,13 +64,31 @@ namespace arda
 	using FArdaInductorAccelerationStructureHandle = TArdaInductorIndex<FArdaInductorAccelerationStructureTag>;
 
 	/** Pool objects are already materialized; this record stores only entry/exit state and diagnostics. */
-	class FArdaInductorResourceState
+	template <class Handle, class ResourceRef>
+	class TArdaInductorResource final
 	{
 	public:
-		FArdaInductorResourceState(eastl::string Name, EArdaRHIResourceState State)
-		    : mName(eastl::move(Name)),
+		TArdaInductorResource(Handle Identity, ResourceRef Resource, EArdaRHIResourceState State, eastl::string Name)
+		    : mHandle(Identity),
+		      mResource(eastl::move(Resource)),
+		      mName(eastl::move(Name)),
 		      mState(State)
 		{
+		}
+
+		Handle GetHandle() const
+		{
+			return mHandle;
+		}
+
+		const auto& GetDesc() const
+		{
+			return mResource->GetDesc();
+		}
+
+		const ResourceRef& GetResource() const
+		{
+			return mResource;
 		}
 
 		const eastl::string& GetName() const
@@ -102,109 +120,17 @@ namespace arda
 		}
 
 	private:
+		Handle mHandle;
+		ResourceRef mResource;
 		eastl::string mName;
 		EArdaRHIResourceState mState;
 		FArdaInductorCommandHandle mFirstUse;
 	};
 
-	class FArdaInductorTexture final : public FArdaInductorResourceState
-	{
-	public:
-		FArdaInductorTexture(FArdaInductorTextureHandle Handle,
-		    FArdaRHITextureRef Resource,
-		    EArdaRHIResourceState EntryState,
-		    eastl::string Name)
-		    : FArdaInductorResourceState(eastl::move(Name), EntryState),
-		      mHandle(Handle),
-		      mResource(eastl::move(Resource))
-		{
-		}
-
-		FArdaInductorTextureHandle GetHandle() const
-		{
-			return mHandle;
-		}
-
-		const FArdaRHITextureDesc& GetDesc() const
-		{
-			return mResource->GetDesc();
-		}
-
-		const FArdaRHITextureRef& GetTexture() const
-		{
-			return mResource;
-		}
-
-	private:
-		FArdaInductorTextureHandle mHandle;
-		FArdaRHITextureRef mResource;
-	};
-
-	class FArdaInductorBuffer final : public FArdaInductorResourceState
-	{
-	public:
-		FArdaInductorBuffer(FArdaInductorBufferHandle Handle,
-		    FArdaRHIBufferRef Resource,
-		    EArdaRHIResourceState EntryState,
-		    eastl::string Name)
-		    : FArdaInductorResourceState(eastl::move(Name), EntryState),
-		      mHandle(Handle),
-		      mResource(eastl::move(Resource))
-		{
-		}
-
-		FArdaInductorBufferHandle GetHandle() const
-		{
-			return mHandle;
-		}
-
-		const FArdaRHIBufferDesc& GetDesc() const
-		{
-			return mResource->GetDesc();
-		}
-
-		const FArdaRHIBufferRef& GetBuffer() const
-		{
-			return mResource;
-		}
-
-	private:
-		FArdaInductorBufferHandle mHandle;
-		FArdaRHIBufferRef mResource;
-	};
-
-	class FArdaInductorAccelerationStructure final : public FArdaInductorResourceState
-	{
-	public:
-		FArdaInductorAccelerationStructure(FArdaInductorAccelerationStructureHandle Handle,
-		    FArdaRHIAccelStructRef Resource,
-		    EArdaRHIResourceState EntryState,
-		    eastl::string Name)
-		    : FArdaInductorResourceState(eastl::move(Name), EntryState),
-		      mHandle(Handle),
-		      mResource(eastl::move(Resource))
-		{
-		}
-
-		FArdaInductorAccelerationStructureHandle GetHandle() const
-		{
-			return mHandle;
-		}
-
-		const FArdaRHIAccelStructDesc& GetDesc() const
-		{
-			return mResource->GetDesc();
-		}
-
-		const FArdaRHIAccelStructRef& GetAccelStruct() const
-		{
-			return mResource;
-		}
-
-	private:
-		FArdaInductorAccelerationStructureHandle mHandle;
-		FArdaRHIAccelStructRef mResource;
-	};
+	using FArdaInductorTexture = TArdaInductorResource<FArdaInductorTextureHandle, FArdaRHITextureRef>;
+	using FArdaInductorBuffer = TArdaInductorResource<FArdaInductorBufferHandle, FArdaRHIBufferRef>;
+	using FArdaInductorAccelerationStructure =
+	    TArdaInductorResource<FArdaInductorAccelerationStructureHandle, FArdaRHIAccelStructRef>;
 
 	/** Records one texture-state requirement contributed by a pass. */
 	struct FArdaInductorTextureAccess

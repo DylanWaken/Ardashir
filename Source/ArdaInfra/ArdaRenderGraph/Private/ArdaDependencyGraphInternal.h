@@ -97,6 +97,17 @@ namespace arda
 		bool mbComplete = false;
 	};
 
+	/** Native objects resolved together for one node, indexed by authored slot/name. */
+	struct FArdaInductorNodeBindings
+	{
+		eastl::unordered_map<eastl::string, FArdaInductorResolvedPipeline> mPipelines;
+		FArdaRHIFramebufferRef mFramebuffer;
+		eastl::unordered_map<eastl::string, eastl::vector<FArdaRHIBindingSetRef>> mBindings;
+		eastl::unordered_map<eastl::string, FArdaRHIDescriptorTableRef> mDescriptorTables;
+		eastl::unordered_map<eastl::string, FArdaRHIShaderTableRef> mShaderTables;
+		eastl::unordered_map<eastl::string, eastl::vector<uint8_t>> mShaderParameters;
+	};
+
 	/** One independently reusable physical pool and cached native lowering. */
 	struct FArdaInductorFrame
 	{
@@ -105,14 +116,7 @@ namespace arda
 		eastl::vector<FArdaInductorBuffer*> mBuffers;
 		eastl::vector<FArdaInductorTexture*> mTextures;
 		eastl::vector<FArdaInductorAccelerationStructure*> mAccelerationStructures;
-		eastl::unordered_map<uint32_t, eastl::unordered_map<eastl::string, FArdaInductorResolvedPipeline>> mPipelines;
-		eastl::unordered_map<uint32_t, FArdaRHIFramebufferRef> mFramebuffers;
-		eastl::unordered_map<uint32_t, eastl::unordered_map<eastl::string, eastl::vector<FArdaRHIBindingSetRef>>>
-		    mBindings;
-		eastl::unordered_map<uint32_t, eastl::unordered_map<eastl::string, FArdaRHIDescriptorTableRef>>
-		    mDescriptorTables;
-		eastl::unordered_map<uint32_t, eastl::unordered_map<eastl::string, FArdaRHIShaderTableRef>> mShaderTables;
-		eastl::unordered_map<uint32_t, eastl::unordered_map<eastl::string, eastl::vector<uint8_t>>> mShaderParameters;
+		eastl::unordered_map<uint32_t, FArdaInductorNodeBindings> mNodeBindings;
 		eastl::shared_ptr<FArdaDependencyFrameTicket::FArdaState> mActive;
 		/** At most one outstanding timing generation; busy queries skip subsequent instrumentation. */
 		eastl::shared_ptr<FArdaDependencyFrameTicket::FArdaState> mTimingState;
@@ -127,14 +131,7 @@ namespace arda
 	{
 		FArdaMemoryResources mMemory;
 		eastl::vector<EArdaRHIResourceState> mBufferStates, mTextureStates;
-		eastl::unordered_map<uint32_t, eastl::unordered_map<eastl::string, FArdaInductorResolvedPipeline>> mPipelines;
-		eastl::unordered_map<uint32_t, FArdaRHIFramebufferRef> mFramebuffers;
-		eastl::unordered_map<uint32_t, eastl::unordered_map<eastl::string, eastl::vector<FArdaRHIBindingSetRef>>>
-		    mBindings;
-		eastl::unordered_map<uint32_t, eastl::unordered_map<eastl::string, FArdaRHIDescriptorTableRef>>
-		    mDescriptorTables;
-		eastl::unordered_map<uint32_t, eastl::unordered_map<eastl::string, FArdaRHIShaderTableRef>> mShaderTables;
-		eastl::unordered_map<uint32_t, eastl::unordered_map<eastl::string, eastl::vector<uint8_t>>> mShaderParameters;
+		eastl::unordered_map<uint32_t, FArdaInductorNodeBindings> mNodeBindings;
 		eastl::vector<FArdaInductorFrameTimer> mTimers;
 		eastl::vector<FArdaInductorCudaFrameTimer> mCudaTimers;
 		eastl::unordered_map<uint32_t, eastl::shared_ptr<FArdaCudaGraphCache>> mCudaCaches;

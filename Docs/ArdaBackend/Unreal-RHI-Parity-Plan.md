@@ -1,5 +1,10 @@
 # ArdaBackend and Unreal RHI/RDG parity review
 
+> Current findings and feature decisions live in the
+> [2026-09-17 RHI audit](Unreal-RHI-Audit.md). This document records the earlier
+> implementation tranche. Its "implemented" labels identify executable feature
+> paths, not complete invalid-input, concurrency or failure-path coverage.
+
 > [ArdaRHI feature guide](rhi-feature-guide.html) is the feature-by-feature user
 > guide with diagrams. This document is the research record, comparison,
 > implementation plan, as-built status, and acceptance contract.
@@ -166,6 +171,9 @@ Like Unreal, Arda separates abstract access from pipeline/queue context and
 tracks mip/array/format-plane ranges. It supports explicit before/after
 descriptors, read-only combinations, split begin/end transitions, discard,
 UAV ordering, alias barriers, and persistent submitted-state validation.
+Full command-state and shader-binding validation remain narrower than Unreal;
+state snapshots do not replace the open-list, PSO and dispatch-limit checks
+tracked in the current audit.
 
 The key acceptance improvement is independent evidence. Tests compare:
 
@@ -183,8 +191,11 @@ encoding and validation output.
 
 Both backends execute buffer/texture regions, multisample resolve, pitched
 staging upload/readback, direct draw/dispatch, indirect draw/indexed draw,
-indirect compute, mesh dispatch, and indirect ray dispatch with range, usage,
-format, sample, state, and native-output checks. Unreal remains broader in
+indirect compute, mesh dispatch, and indirect ray dispatch. Copy paths have
+range, format and sample checks; indirect paths validate usage, bounds, state
+and, following the current audit, DWORD alignment. Direct draw/dispatch still
+need a complete shared command-state/PSO/device-limit gate. Successful native
+output tests cover supported workloads rather than every misuse. Unreal remains broader in
 multi-draw/count variants, conversion/reallocation policy, and platform copy
 specializations.
 
@@ -216,12 +227,15 @@ pipeline stage, binds both heaps, and pushes each layout's allocation base.
 Execution tests sample a texture through both a resource heap and sampler heap,
 so nonzero base remapping is verified rather than inferred.
 
-### Mesh and full ray-tracing pipelines — implemented and gated
+### Mesh and ray-tracing pipeline subset — implemented and gated
 
 D3D12 and Vulkan create and execute native mesh pipelines on capable adapters.
 Both create ray pipelines with library exports, hit groups, payload/attribute
 limits, recursion depth, global layouts, local export associations, shader-table
 records, inline local bytes, and direct/indirect trace dispatch.
+The current audit additionally tracks immutable bound shader-table generations:
+recommitting a mutable table must not release storage already referenced by
+recorded or submitted dispatches, and failed commits must preserve published storage.
 
 BLAS/TLAS creation, build/update, GPU instance-buffer build with a CPU-supplied count, native
 compacted-size query, compact destination creation, and compact copy execute on
@@ -240,6 +254,9 @@ waits. Vulkan selects dedicated compute and transfer families when available,
 creates family-specific pools, submits timeline-semaphore wait edges, and
 lowers release/acquire ownership transfer. Sparse binds share the same ordering
 model. RDG uses queue fallback only when compilation policy permits it.
+The current audit found that these feature paths needed additional protection
+for in-flight command storage reuse and concurrent timeline signaling. Refer to
+its overlapping-submission and failure-injection regressions for those guarantees.
 
 Physical RDG replay now performs a complete resource handoff whenever adjacent
 uses select different queues: the producer transitions to `Common`, emits the
@@ -308,6 +325,11 @@ tests skip only when the adapter reports the named feature unavailable. When a
 feature is true, tests must create native objects, execute native commands,
 validate output or lifecycle evidence, compare all available state authorities,
 and produce no D3D12 debug-layer or Vulkan validation error.
+Inventory coverage of every public capability field is distinct from complete
+boundary/lifecycle coverage. Hardware skips do not establish execution on that
+adapter. Missing stencil/blend/depth-bias controls, dynamic uniform offsets,
+occlusion queries and other partial/deferred features are explicitly listed in
+the current audit.
 
 Required focused coverage includes:
 

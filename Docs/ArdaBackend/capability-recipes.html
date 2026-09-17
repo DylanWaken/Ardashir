@@ -56,7 +56,7 @@
         ArdaBackend
       </nav>
       <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>Capability recipes</h1><p>Admit every capability in the native conformance matrix and follow its executable usage example.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#feature-raytracingpipeline">Dispatch ray-tracing stages</a><a href="#feature-accelerationstructure">Build, update and compact acceleration structures</a><a href="#feature-inlinerayquery">Trace rays from an ordinary compute shader</a><a href="#feature-raytracingscene">Use hit groups, local arguments and indirect rays</a><a href="#feature-opacitymicromap">Build Vulkan opacity micromaps</a><a href="#feature-bindless">Address descriptors by array index</a><a href="#feature-runtimedescriptors">Update descriptors without rewriting recorded work</a><a href="#feature-expandeddescriptors">Use resource collections</a><a href="#feature-directresourceheap">Index the resource descriptor heap</a><a href="#feature-directresourceandsamplerheaps">Index resource and sampler heaps together</a><a href="#feature-descriptorbuffer">Use native descriptor-buffer storage</a><a href="#feature-queuebreadth">Order work across queue families</a><a href="#feature-sparseresidency">Map reserved buffers and textures</a><a href="#feature-streamingbudget">Observe and reserve a streaming budget</a><a href="#feature-subgroup">Use subgroup arithmetic</a><a href="#feature-float16">Select native half-precision arithmetic</a><a href="#feature-int8">Select packed integer dot products</a><a href="#feature-instancebuffer">Build a TLAS from instance data</a><a href="#feature-meshshader">Rasterize mesh-shader output</a><a href="#feature-workgraph">Dispatch a D3D12 work graph</a><a href="#feature-samplerfeedback">Decode native sampler feedback</a><a href="#feature-shaderbundle">Dispatch a shader bundle</a><a href="#feature-custompresent">Integrate a custom presentation callback</a><a href="#feature-contract">Unsupported raster policy</a><a href="#feature-heapaliasing">Reuse explicit GPU memory</a><a href="#feature-extendedcommands">Copy, stage, transition and dispatch indirectly</a><a href="#feature-geometryshader">Generate geometry before rasterization</a><a href="#feature-tessellationshaders">Evaluate tessellated patches</a><a href="#feature-resolve">Resolve multisampling and select planes</a><a href="#feature-queries">Measure and observe submitted work</a><a href="#feature-queuetimestamps">Poll per-queue GPU execution times</a><a href="#feature-shaderlibrary">Execute an entry point from a library</a><a href="#feature-pipelinecache">Persist native pipeline compilation</a><a href="#summary">Checkpoints</a></nav>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#feature-raytracingpipeline">Dispatch ray-tracing stages</a><a href="#feature-accelerationstructure">Build, update and compact acceleration structures</a><a href="#feature-inlinerayquery">Trace rays from an ordinary compute shader</a><a href="#feature-raytracingscene">Use hit groups, local arguments and indirect rays</a><a href="#feature-opacitymicromap">Build Vulkan opacity micromaps</a><a href="#feature-bindless">Address descriptors by array index</a><a href="#feature-runtimedescriptors">Update descriptors without rewriting recorded work</a><a href="#feature-expandeddescriptors">Use resource collections</a><a href="#feature-directresourceheap">Index the resource descriptor heap</a><a href="#feature-directresourceandsamplerheaps">Index resource and sampler heaps together</a><a href="#feature-descriptorbuffer">Use native descriptor-buffer storage</a><a href="#feature-queuebreadth">Order work across queue families</a><a href="#feature-sparseresidency">Map reserved buffers and textures</a><a href="#feature-streamingbudget">Observe and reserve a streaming budget</a><a href="#feature-subgroup">Use subgroup arithmetic</a><a href="#feature-float16">Select native half-precision arithmetic</a><a href="#feature-int8">Select packed integer dot products</a><a href="#feature-instancebuffer">Build a TLAS from instance data</a><a href="#feature-meshshader">Rasterize mesh-shader output</a><a href="#feature-workgraph">Dispatch a D3D12 work graph</a><a href="#feature-samplerfeedback">Decode native sampler feedback</a><a href="#feature-shaderbundle">Dispatch a shader bundle</a><a href="#feature-custompresent">Integrate a custom presentation callback</a><a href="#feature-contract">Unsupported raster policy</a><a href="#feature-heapaliasing">Reuse explicit GPU memory</a><a href="#feature-extendedcommands">Copy, stage, transition and dispatch indirectly</a><a href="#feature-geometryshader">Generate geometry before rasterization</a><a href="#feature-tessellationshaders">Evaluate tessellated patches</a><a href="#feature-resolve">Resolve multisampling and select planes</a><a href="#feature-indirectfirstinstance">Draw indirect instances with a nonzero first instance</a><a href="#feature-resourceadmission">Admit resources using native limits and format facts</a><a href="#feature-queries">Measure and observe submitted work</a><a href="#feature-queuetimestamps">Poll per-queue GPU execution times</a><a href="#feature-shaderlibrary">Execute an entry point from a library</a><a href="#feature-pipelinecache">Persist native pipeline compilation</a><a href="#summary">Checkpoints</a></nav>
 <section id="objectives"><h2>How to use these examples</h2>
 <p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
 <p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
@@ -906,7 +906,7 @@ if (bTessellation)
 	PipelineDesc.mTopology = EArdaRHIPrimitiveTopology::PatchList;
 	PipelineDesc.mPatchControlPoints = 3;
 }
-else
+else if (!bIndirectFirstInstance)
 {
 	auto Geometry = CreateExtendedShader(*Device,
 	    BackendName,
@@ -959,7 +959,7 @@ if (bTessellation)
 	PipelineDesc.mTopology = EArdaRHIPrimitiveTopology::PatchList;
 	PipelineDesc.mPatchControlPoints = 3;
 }
-else
+else if (!bIndirectFirstInstance)
 {
 	auto Geometry = CreateExtendedShader(*Device,
 	    BackendName,
@@ -988,6 +988,138 @@ DestinationDesc.mSampleCount = 1;
 DestinationDesc.mUsage = EArdaRHITextureUsage::ShaderResource;
 auto Destination = Device-&gt;CreateTexture(DestinationDesc);
 ASSERT_TRUE(Destination);</code></pre><p><a href="gpu-examples.html#VerifyResolveAndPlaneTracking">Complete usage and output checks: VerifyResolveAndPlaneTracking</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
+<section id="feature-indirectfirstinstance"><h2>Draw indirect instances with a nonzero first instance</h2><p>Require mbIndirectFirstInstance when GPU indirect argument records may contain nonzero firstInstance values. The conformance branch uploads a draw record with firstInstance seven, records DrawIndirect and checks the rendered pixels. Capability admission does not inspect arbitrary GPU-written argument contents; the producer must honor this contract.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
+const bool IndirectFirstInstance = C.mbIndirectFirstInstance;</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
+    BackendName,
+    &quot;ArdaRasterStageVS&quot;,
+    &quot;RasterStageVS&quot;,
+    EArdaRHIShaderStage::Vertex);
+auto Pixel = CreateExtendedShader(*Device,
+    BackendName,
+    &quot;ArdaRasterStagePS&quot;,
+    &quot;RasterStagePS&quot;,
+    EArdaRHIShaderStage::Pixel);
+ASSERT_TRUE(Vertex) &lt;&lt; Vertex.mStatus.mMessage.c_str();
+ASSERT_TRUE(Pixel) &lt;&lt; Pixel.mStatus.mMessage.c_str();
+FArdaRHIGraphicsPipelineDesc PipelineDesc;
+PipelineDesc.mDebugName =
+    bTessellation ? &quot;Hull/domain capability conformance&quot; : &quot;Geometry capability conformance&quot;;
+PipelineDesc.mVertexShader = Vertex.mValue;
+PipelineDesc.mPixelShader = Pixel.mValue;
+PipelineDesc.mColorFormats = {EArdaRHIFormat::RGBA8UNorm};
+PipelineDesc.mRasterState.mCullMode = EArdaRHICullMode::None;
+PipelineDesc.mDepthStencilState.mbDepthTest = false;
+PipelineDesc.mDepthStencilState.mbDepthWrite = false;
+if (bTessellation)
+{
+	auto Hull = CreateExtendedShader(*Device,
+	    BackendName,
+	    &quot;ArdaRasterStageHS&quot;,
+	    &quot;RasterStageHS&quot;,
+	    EArdaRHIShaderStage::Hull);
+	auto Domain = CreateExtendedShader(*Device,
+	    BackendName,
+	    &quot;ArdaRasterStageDS&quot;,
+	    &quot;RasterStageDS&quot;,
+	    EArdaRHIShaderStage::Domain);
+	ASSERT_TRUE(Hull) &lt;&lt; Hull.mStatus.mMessage.c_str();
+	ASSERT_TRUE(Domain) &lt;&lt; Domain.mStatus.mMessage.c_str();
+	PipelineDesc.mHullShader = Hull.mValue;
+	PipelineDesc.mDomainShader = Domain.mValue;
+	PipelineDesc.mTopology = EArdaRHIPrimitiveTopology::PatchList;
+	PipelineDesc.mPatchControlPoints = 3;
+}
+else if (!bIndirectFirstInstance)
+{
+	auto Geometry = CreateExtendedShader(*Device,
+	    BackendName,
+	    &quot;ArdaRasterStageGS&quot;,
+	    &quot;RasterStageGS&quot;,
+	    EArdaRHIShaderStage::Geometry);
+	ASSERT_TRUE(Geometry) &lt;&lt; Geometry.mStatus.mMessage.c_str();
+	PipelineDesc.mGeometryShader = Geometry.mValue;
+}
+auto Pipeline = Device-&gt;CreateGraphicsPipeline(PipelineDesc);
+ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyRasterStageCapabilityAndExecution">Complete usage and output checks: VerifyRasterStageCapabilityAndExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
+<section id="feature-resourceadmission"><h2>Admit resources using native limits and format facts</h2><p>Read mLimits before choosing resource dimensions and binding ranges. A zero limit is unreported. When mbFormatSupportReported is true, QueryFormatSupport supplies independent texture, filtering, storage, attachment, vertex and sample-count facts; unsupported formats report no native format. The probe creates a supported texture and verifies that oversized requests are rejected before native allocation.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
+const bool FormatSupport = C.mbFormatSupportReported;
+const bool ResourceLimits = C.mLimits.mMaxTexture1D || C.mLimits.mMaxTexture2D || C.mLimits.mMaxTexture3D || C.mLimits.mMaxTextureCube || C.mLimits.mMaxTextureArrayLayers || C.mLimits.mMaxColorAttachments || C.mLimits.mMaxViewports || C.mLimits.mMaxVertexAttributes || C.mLimits.mMaxVertexBindings || C.mLimits.mMaxVertexStride || C.mLimits.mMaxComputeWorkGroupInvocations || C.mLimits.mMaxBufferSize || C.mLimits.mMaxUniformBufferRange || C.mLimits.mMaxStorageBufferRange || C.mLimits.mMinUniformBufferOffsetAlignment || C.mLimits.mMinStorageBufferOffsetAlignment;</code></pre><pre><code class="language-cpp">void VerifyResourceAdmissionFacts(const char* BackendName)
+{
+	using namespace arda;
+	ShutdownBackend();
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	auto Configuration = arda::MakeArdaTestBackendConfiguration();
+	Configuration.mBackendName = BackendName;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
+	Configuration.mMessageCallback = &amp;Diagnostics;
+	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+	ASSERT_TRUE(ConfigureBackend(Configuration));
+	ARDA_REQUIRE_BACKEND();
+	const auto Device = GetDevice();
+	ASSERT_TRUE(Device);
+	const auto&amp; Caps = Device-&gt;GetCapabilities();
+	const auto&amp; Limits = Caps.mLimits;
+	ASSERT_TRUE(Caps.mbFormatSupportReported);
+	EXPECT_GT(Limits.mMaxTexture1D, 0u);
+	EXPECT_GT(Limits.mMaxTexture2D, 0u);
+	EXPECT_GT(Limits.mMaxTexture3D, 0u);
+	EXPECT_GT(Limits.mMaxTextureCube, 0u);
+	EXPECT_GT(Limits.mMaxTextureArrayLayers, 0u);
+	EXPECT_GT(Limits.mMaxColorAttachments, 0u);
+	EXPECT_GT(Limits.mMaxViewports, 0u);
+	EXPECT_GT(Limits.mMaxVertexAttributes, 0u);
+	EXPECT_GT(Limits.mMaxVertexBindings, 0u);
+	EXPECT_GT(Limits.mMaxVertexStride, 0u);
+	EXPECT_GT(Limits.mMaxComputeWorkGroupInvocations, 0u);
+	EXPECT_GT(Limits.mMaxUniformBufferRange, 0u);
+	// D3D12 bounds storage views by element count and stride, so it reports no universal byte limit.
+	if (std::string(BackendName) == &quot;native-vulkan&quot;)
+	{
+		EXPECT_GT(Limits.mMaxStorageBufferRange, 0u);
+	}
+	EXPECT_GT(Limits.mMinUniformBufferOffsetAlignment, 0u);
+	EXPECT_GT(Limits.mMinStorageBufferOffsetAlignment, 0u);
+	for (uint32_t Axis = 0; Axis &lt; 3; ++Axis)
+	{
+		EXPECT_GT(Limits.mMaxComputeWorkGroupCount[Axis], 0u);
+		EXPECT_GT(Limits.mMaxComputeWorkGroupSize[Axis], 0u);
+	}
+	EXPECT_GT(Limits.mMaxViewportDimensions[0], 0u);
+	EXPECT_GT(Limits.mMaxViewportDimensions[1], 0u);
+	EXPECT_LT(Limits.mViewportBounds[0], Limits.mViewportBounds[1]);
+	for (const auto Format : {EArdaRHIFormat::Unknown, EArdaRHIFormat::Count, static_cast&lt;EArdaRHIFormat&gt;(255)})
+	{
+		const auto Support = Device-&gt;QueryFormatSupport(Format);
+		EXPECT_EQ(Support.mNativeFormat, 0u);
+		EXPECT_EQ(Support.mSampleCounts, 0u);
+		EXPECT_FALSE(Support.mbTexture1D || Support.mbTexture2D || Support.mbTexture3D || Support.mbTextureCube ||
+		    Support.mbShaderResource || Support.mbFilterable || Support.mbStorage || Support.mbStorageLoad ||
+		    Support.mbStorageStore || Support.mbColorAttachment || Support.mbDepthStencilAttachment ||
+		    Support.mbBlendable || Support.mbVertexBuffer || Support.mbBufferShaderResource ||
+		    Support.mbBufferStorage);
+	}
+	const auto Color = Device-&gt;QueryFormatSupport(EArdaRHIFormat::RGBA8UNorm);
+	ASSERT_NE(Color.mNativeFormat, 0u);
+	EXPECT_TRUE(Color.mbTexture2D &amp;&amp; Color.mbShaderResource &amp;&amp; Color.mbFilterable &amp;&amp; Color.mbColorAttachment);
+	EXPECT_NE(Color.mSampleCounts &amp; 1, 0u);
+	FArdaRHITextureDesc TextureDesc;
+	TextureDesc.mWidth = TextureDesc.mHeight = 4;
+	TextureDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	ASSERT_TRUE(Device-&gt;CreateTexture(TextureDesc));
+	if (Limits.mMaxTexture2D != UINT32_MAX)
+	{
+		TextureDesc.mWidth = Limits.mMaxTexture2D + 1;
+		EXPECT_EQ(Device-&gt;CreateTexture(TextureDesc).mStatus.mCode, EArdaRHIResult::Unsupported);
+	}
+	if (Limits.mMaxBufferSize &amp;&amp; Limits.mMaxBufferSize != UINT64_MAX)
+	{
+		FArdaRHIBufferDesc BufferDesc;
+		BufferDesc.mByteSize = Limits.mMaxBufferSize + 1;
+		EXPECT_EQ(Device-&gt;CreateBuffer(BufferDesc).mStatus.mCode, EArdaRHIResult::Unsupported);
+	}
+	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+}</code></pre><p><a href="gpu-examples.html#VerifyResourceAdmissionFacts">Complete usage and output checks: VerifyResourceAdmissionFacts</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
 <section id="feature-queries"><h2>Measure and observe submitted work</h2><p>Event/fence objects track completion; timer queries measure elapsed GPU time. Polling an unsignaled/reset object differs from waiting for submitted work. Reset only after the corresponding completion and keep queue provenance clear.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
 const bool Queries = C.mbQueries;</code></pre><pre><code class="language-cpp">auto Device = GetDevice();
 ASSERT_TRUE(Device);

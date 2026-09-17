@@ -9,10 +9,12 @@
 #include <EASTL/vector.h>
 
 #include <atomic>
+#include <cmath>
 #include <cstring>
 #include <mutex>
 #include <optional>
 #include <thread>
+#include <type_traits>
 #include <unordered_map>
 
 namespace arda
@@ -134,7 +136,8 @@ namespace arda
 
 			const void* GetOwner() const noexcept
 			{
-				return mOwner;
+				// The retained tracker uniquely identifies a device generation even after facade-address reuse.
+				return mLifetimeTracker ? mLifetimeTracker.get() : mOwner;
 			}
 
 		protected:
@@ -360,25 +363,23 @@ namespace arda
 		    FArdaRHIRayTracingPipelineDesc,
 		    EArdaRHIResourceType::RayTracingPipeline>;
 
-		class FArdaOpacityMicromap final : public FArdaResource, public IArdaRHIOpacityMicromap
+		template <typename Interface, typename Desc, EArdaRHIResourceType Type, EArdaRHIResourceState InitialState>
+		class TArdaAccelerationResource : public FArdaResource, public Interface
 		{
 		public:
-			FArdaOpacityMicromap(FArdaRHIOpacityMicromapDesc Desc,
+			TArdaAccelerationResource(Desc Descriptor,
 			    FArdaProviderObjectRef Native,
 			    uint64_t DeviceAddress,
 			    const void* Owner,
 			    eastl::shared_ptr<FArdaLifetimeTracker> LifetimeTracker)
-			    : FArdaResource(EArdaRHIResourceType::OpacityMicromap,
-			          Desc.mDebugName,
-			          Owner,
-			          eastl::move(LifetimeTracker)),
-			      mDesc(eastl::move(Desc)),
+			    : FArdaResource(Type, Descriptor.mDebugName, Owner, eastl::move(LifetimeTracker)),
+			      mDesc(eastl::move(Descriptor)),
 			      mNative(eastl::move(Native)),
 			      mDeviceAddress(DeviceAddress)
 			{
 			}
 
-			const FArdaRHIOpacityMicromapDesc& GetDesc() const noexcept override
+			const Desc& GetDesc() const noexcept override
 			{
 				return mDesc;
 			}
@@ -405,15 +406,24 @@ namespace arda
 				return mBuildState;
 			}
 
-			FArdaRHIOpacityMicromapDesc mDesc;
+			Desc mDesc;
 			FArdaProviderObjectRef mNative;
 			uint64_t mDeviceAddress = 0;
 			mutable std::mutex mStateMutex;
-			EArdaRHIResourceState mFacadeState = EArdaRHIResourceState::OpacityMicromapWrite;
+			EArdaRHIResourceState mFacadeState = InitialState;
 			EArdaRHIAccelStructBuildState mBuildState = EArdaRHIAccelStructBuildState::Unbuilt;
 		};
 
-		class FArdaAccelStruct final : public FArdaResource, public IArdaRHIAccelStruct
+		using FArdaOpacityMicromap = TArdaAccelerationResource<IArdaRHIOpacityMicromap,
+		    FArdaRHIOpacityMicromapDesc,
+		    EArdaRHIResourceType::OpacityMicromap,
+		    EArdaRHIResourceState::OpacityMicromapWrite>;
+		using FArdaAccelStructBase = TArdaAccelerationResource<IArdaRHIAccelStruct,
+		    FArdaRHIAccelStructDesc,
+		    EArdaRHIResourceType::AccelStruct,
+		    EArdaRHIResourceState::AccelStructRead>;
+
+		class FArdaAccelStruct final : public FArdaAccelStructBase
 		{
 		public:
 			FArdaAccelStruct(FArdaRHIAccelStructDesc Desc,
@@ -422,36 +432,13 @@ namespace arda
 			    uint64_t DeviceAddress,
 			    const void* Owner,
 			    eastl::shared_ptr<FArdaLifetimeTracker> LifetimeTracker)
-			    : FArdaResource(EArdaRHIResourceType::AccelStruct,
-			          Desc.mDebugName,
+			    : FArdaAccelStructBase(eastl::move(Desc),
+			          eastl::move(Native),
+			          DeviceAddress,
 			          Owner,
 			          eastl::move(LifetimeTracker)),
-			      mDesc(eastl::move(Desc)),
-			      mRequirements(Requirements),
-			      mNative(eastl::move(Native)),
-			      mDeviceAddress(DeviceAddress)
+			      mRequirements(Requirements)
 			{
-			}
-
-			const FArdaRHIAccelStructDesc& GetDesc() const noexcept override
-			{
-				return mDesc;
-			}
-
-			bool IsCompacted() const noexcept override
-			{
-				std::lock_guard<std::mutex> Lock(mStateMutex);
-				return mBuildState == EArdaRHIAccelStructBuildState::Compacted;
-			}
-
-			uint64_t GetDeviceAddress() const noexcept override
-			{
-				return mDeviceAddress;
-			}
-
-			const void* GetPhysicalIdentity() const noexcept override
-			{
-				return mNative ? mNative->GetIdentity() : nullptr;
 			}
 
 			FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept override
@@ -461,19 +448,7 @@ namespace arda
 				              : FArdaRHIMemoryAllocationInfo{};
 			}
 
-			EArdaRHIAccelStructBuildState GetBuildState() const noexcept override
-			{
-				std::lock_guard<std::mutex> Lock(mStateMutex);
-				return mBuildState;
-			}
-
-			FArdaRHIAccelStructDesc mDesc;
 			FArdaRHIAccelStructMemoryRequirements mRequirements;
-			FArdaProviderObjectRef mNative;
-			uint64_t mDeviceAddress = 0;
-			mutable std::mutex mStateMutex;
-			EArdaRHIResourceState mFacadeState = EArdaRHIResourceState::AccelStructRead;
-			EArdaRHIAccelStructBuildState mBuildState = EArdaRHIAccelStructBuildState::Unbuilt;
 			FArdaRHIHeapRef mHeap;
 			uint64_t mHeapOffset = 0;
 		};
@@ -998,7 +973,9 @@ namespace arda
 			return {};
 		}
 
-		FArdaRHIStatus ResolveBindingItem(const FArdaRHIBindingLayoutDesc& Layout, FArdaRHIBindingItem& Item)
+		FArdaRHIStatus ResolveBindingItem(const FArdaRHIBindingLayoutDesc& Layout,
+		    FArdaRHIBindingItem& Item,
+		    const FArdaRHIDeviceLimits& Limits)
 		{
 			// Validate the descriptor address before either provider writes native descriptor storage.
 			const auto Declared = eastl::find_if(Layout.mItems.begin(),
@@ -1093,6 +1070,24 @@ namespace arda
 				        Range.mByteSize > Buffer->mDesc.mByteSize - Range.mByteOffset))
 				{
 					return Invalid("Binding buffer view exceeds its resource or is empty.");
+				}
+				const bool bUniform = Item.mType == EArdaRHIBindingType::ConstantBuffer ||
+				    Item.mType == EArdaRHIBindingType::VolatileConstantBuffer;
+				const bool bStorage = Item.mType == EArdaRHIBindingType::StructuredBufferSRV ||
+				    Item.mType == EArdaRHIBindingType::StructuredBufferUAV ||
+				    Item.mType == EArdaRHIBindingType::RawBufferSRV || Item.mType == EArdaRHIBindingType::RawBufferUAV;
+				const uint64_t Size = Range.mByteSize == ArdaRHIWholeBuffer
+				    ? Buffer->mDesc.mByteSize - Range.mByteOffset
+				    : Range.mByteSize;
+				const uint64_t Limit = bUniform ? Limits.mMaxUniformBufferRange
+				    : bStorage                  ? Limits.mMaxStorageBufferRange
+				                                : 0;
+				const uint64_t Alignment = bUniform ? Limits.mMinUniformBufferOffsetAlignment
+				    : bStorage                      ? Limits.mMinStorageBufferOffsetAlignment
+				                                    : 0;
+				if ((Limit && Size > Limit) || (Alignment && Range.mByteOffset % Alignment))
+				{
+					return Invalid("Buffer binding exceeds the device range or offset-alignment limit.");
 				}
 			}
 			else if (const auto* Texture = Cast<FArdaTexture>(Resource))
@@ -1305,7 +1300,16 @@ namespace arda
 
 			FArdaRHIStatus Close() override
 			{
+				if (!mbRecordingOpen)
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Command list is not open.");
+				}
 				const auto Status = mNative->Close();
+				LatchError(Status);
+				if (Status)
+				{
+					mbRecordingOpen = false;
+				}
 				if (!mRecordingStatus)
 				{
 					return mRecordingStatus;
@@ -1406,6 +1410,11 @@ namespace arda
 
 			void SetPushConstants(const void* Data, size_t Size) override
 			{
+				if (auto Status = ValidateRecording(false); !Status)
+				{
+					LatchError(Status);
+					return;
+				}
 				// Defer void-call errors to Close without reading invalid caller storage or recording native work.
 				if (!Data || !Size || Size % sizeof(uint32_t) || Size > mPushConstantCapacity)
 				{
@@ -1416,23 +1425,13 @@ namespace arda
 				mNative->SetPushConstants(Data, Size);
 			}
 
-			void Draw(const FArdaRHIDrawArguments& Arguments) override
-			{
-				mNative->Draw(Arguments);
-			}
-
-			void DrawIndexed(const FArdaRHIDrawArguments& Arguments) override
-			{
-				mNative->DrawIndexed(Arguments);
-			}
+			void Draw(const FArdaRHIDrawArguments& Arguments) override;
+			void DrawIndexed(const FArdaRHIDrawArguments& Arguments) override;
 
 			FArdaRHIStatus DrawIndirect(IArdaRHIBuffer&, uint64_t, uint32_t, uint32_t) override;
 			FArdaRHIStatus DrawIndexedIndirect(IArdaRHIBuffer&, uint64_t, uint32_t, uint32_t) override;
 
-			void Dispatch(uint32_t X, uint32_t Y, uint32_t Z) override
-			{
-				mNative->Dispatch(X, Y, Z);
-			}
+			void Dispatch(uint32_t X, uint32_t Y, uint32_t Z) override;
 
 			FArdaRHIStatus DispatchIndirect(IArdaRHIBuffer&, uint64_t) override;
 			FArdaRHIStatus DispatchMesh(uint32_t, uint32_t, uint32_t) override;
@@ -1494,6 +1493,26 @@ namespace arda
 			}
 
 		private:
+			enum class EArdaPipelineKind : uint8_t
+			{
+				None,
+				Graphics,
+				Compute,
+				Mesh,
+				RayTracing
+			};
+			FArdaRHIStatus ValidateRecording(bool bGraphics) const;
+			FArdaRHIStatus ValidateWork(EArdaPipelineKind Kind) const;
+			FArdaRHIStatus ValidateDraw(const FArdaRHIDrawArguments& Arguments, bool bIndexed) const;
+
+			void LatchError(const FArdaRHIStatus& Status)
+			{
+				if (mRecordingStatus && !Status)
+				{
+					mRecordingStatus = Status;
+				}
+			}
+
 			FArdaRHIStatus QueueBufferReadback(IArdaRHIBuffer& Source,
 			    uint64_t SourceOffset,
 			    uint64_t Size,
@@ -1501,20 +1520,25 @@ namespace arda
 			void ClearRecordingState();
 			bool RetainOwned(const FArdaResource* Resource) const;
 			FArdaRHIStatus ResolveBindings(const eastl::vector<FArdaRHIBindingSetRef>& Bindings,
-			    eastl::vector<FArdaProviderObjectRef>& OutBindings) const;
+			    eastl::vector<FArdaProviderObjectRef>& OutBindings,
+			    const eastl::vector<FArdaRHIBindingLayoutRef>& Layouts) const;
 			eastl::vector<EArdaRHIResourceState>& GetFacadeTextureStates(FArdaTexture& Texture) const;
 			void StoreTextureState(FArdaTexture& Texture,
 			    const FArdaRHITextureSubresourceRange& Range,
 			    EArdaRHIResourceState State);
-			FArdaRHIDeviceImpl* mDevice = nullptr;
+			TArdaRHIRef<FArdaRHIDeviceImpl> mDevice;
 			EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics;
 			eastl::unique_ptr<IArdaProviderCommandList> mNative;
 			FArdaRHIMeshletState mMeshletState;
+			FArdaRHIGraphicsState mGraphicsState;
+			EArdaPipelineKind mPipelineKind = EArdaPipelineKind::None;
+			bool mbRecordingOpen = false;
 			size_t mPushConstantCapacity = 0;
 			FArdaRHIStatus mRecordingStatus;
 
 			// State maps use facade identities until submission commits them.
 			mutable std::unordered_map<const FArdaResource*, FArdaRHIResourceRef> mRetainedResources;
+			mutable std::unordered_map<const IArdaRHIBindingLayout*, FArdaRHIBindingSetRef> mEmptyBindingSets;
 			eastl::vector<FArdaPendingBufferCopyCompletion> mCopyCompletions;
 			mutable std::unordered_map<FArdaTexture*, eastl::vector<EArdaRHIResourceState>> mFacadeTextureStates;
 			std::unordered_map<FArdaTexture*, eastl::vector<uint8_t>> mTouchedTextureStates;
@@ -1566,6 +1590,16 @@ namespace arda
 			const FArdaRHICapabilities& GetCapabilities() const noexcept override
 			{
 				return mDevice->GetCapabilities();
+			}
+
+			FArdaRHIFormatSupport QueryFormatSupport(EArdaRHIFormat Format) const noexcept override
+			{
+				return mDevice->QueryFormatSupport(Format);
+			}
+
+			TArdaRHIResult<FArdaRHIDiagnosticSnapshot> CaptureDiagnosticSnapshot() const override
+			{
+				return mDevice->CaptureDiagnosticSnapshot();
 			}
 
 			TArdaRHIResult<FArdaRHITextureRef> CreateTexture(const FArdaRHITextureDesc&) override;
@@ -1784,7 +1818,7 @@ namespace arda
 
 			bool Owns(const FArdaResource* Resource) const noexcept
 			{
-				return Resource && Resource->GetOwner() == this;
+				return Resource && Resource->GetOwner() == mLifetimeTracker.get();
 			}
 
 			IArdaRHIProviderDevice& GetProviderDevice() const noexcept
@@ -1800,6 +1834,126 @@ namespace arda
 			bool IsOwned(const TArdaRHIRef<Resource>& Ref) const noexcept
 			{
 				return !Ref || Owns(Cast<FArdaResource>(Ref.Get()));
+			}
+
+			bool ResolveShader(const FArdaRHIShaderRef& Shader, FArdaProviderObjectRef& Out) const
+			{
+				if (!Shader)
+				{
+					return true;
+				}
+				auto* Native = Cast<FArdaShader>(Shader.Get());
+				if (!Native || !Owns(Native))
+				{
+					return false;
+				}
+				Out = Native->mNative;
+				return true;
+			}
+
+			FArdaRHIStatus ResolveBindingLayouts(const eastl::vector<FArdaRHIBindingLayoutRef>& Layouts,
+			    eastl::vector<FArdaProviderObjectRef>& OutLayouts) const
+			{
+				OutLayouts.reserve(Layouts.size());
+				for (const auto& Ref : Layouts)
+				{
+					auto* Layout = Cast<FArdaBindingLayout>(Ref.Get());
+					if (!Owns(Layout))
+					{
+						return WrongDevice();
+					}
+					OutLayouts.push_back(Layout->mNative);
+				}
+				return {};
+			}
+
+			template <typename Resource,
+			    typename ImportDesc,
+			    typename Descriptor,
+			    typename Ref,
+			    typename ImportOperation,
+			    typename QueryOperation>
+			TArdaRHIResult<Ref> ImportNativeResource(const ImportDesc& Desc,
+			    const Descriptor& ResourceDescriptor,
+			    TArdaDescriptorCache<ImportDesc, Ref>& Cache,
+			    EArdaRHINativeResourceType NativeType,
+			    ImportOperation Import,
+			    QueryOperation GetRequirements)
+			{
+				constexpr bool bTexture = std::is_same_v<Resource, FArdaTexture>;
+				if (Desc.mMemoryAllocationInfo.mbKnown &&
+				    (!Desc.mMemoryAllocationInfo.mIdentity || !Desc.mMemoryAllocationInfo.mByteSize))
+				{
+					return Failure<Ref>(Invalid("Known native allocation metadata requires identity and capacity."));
+				}
+				if (ResourceDescriptor.mbCudaInterop)
+				{
+					return UnsupportedResult<Ref>("CUDA sharing requires a backend-created allocation.");
+				}
+				if (!Desc.mNativeObject)
+				{
+					return Failure<Ref>(
+					    Invalid(bTexture ? "Native texture object is null." : "Native buffer object is null."));
+				}
+				if (Desc.mOwnership == EArdaRHINativeOwnership::Transferred)
+				{
+					return UnsupportedResult<Ref>(
+					    "Transferred native resource ownership is not portable; provide a lifetime token and Borrowed ownership.");
+				}
+				if (auto Status = ValidateResourceCapabilities(ResourceDescriptor,
+				        GetCapabilities(),
+				        QueryFormatSupport(ResourceDescriptor.mFormat));
+				    !Status)
+				{
+					return Failure<Ref>(eastl::move(Status));
+				}
+				if (Desc.mNativeType != NativeType)
+				{
+					return UnsupportedResult<Ref>(bTexture
+					        ? "Native texture type does not match the selected backend module."
+					        : "Native buffer type does not match the selected backend module.");
+				}
+				std::lock_guard<std::mutex> Lock(mCacheMutex);
+				if (auto Existing = Cache.Find(Desc))
+				{
+					return {Existing, {}};
+				}
+				auto Native = (mDevice.get()->*Import)(Desc);
+				if (!Native)
+				{
+					return Failure<Ref>(eastl::move(Native.mStatus));
+				}
+				if (Desc.mMemoryAllocationInfo.mbKnown)
+				{
+					const auto ProviderInfo = Native.mValue->GetMemoryAllocationInfo();
+					if (ProviderInfo.mbKnown && !(ProviderInfo == Desc.mMemoryAllocationInfo))
+					{
+						return Failure<Ref>(Invalid("Native allocation hint disagrees with provider-owned storage."));
+					}
+					const auto Requirements = (mDevice.get()->*GetRequirements)(Native.mValue, ResourceDescriptor);
+					if (!Requirements)
+					{
+						return Failure<Ref>(Requirements.mStatus);
+					}
+					if (Desc.mMemoryAllocationInfo.mByteSize < Requirements.mValue.mSize)
+					{
+						return Failure<Ref>(
+						    Invalid(bTexture ? "Native allocation capacity is smaller than its texture requirements."
+						                     : "Native allocation capacity is smaller than its buffer requirements."));
+					}
+				}
+				auto ResourceDesc = ResourceDescriptor;
+				ResourceDesc.mInitialState = Desc.mInitialState == EArdaRHIResourceState::Unknown
+				    ? ResourceDesc.mInitialState
+				    : Desc.mInitialState;
+				Ref Result(new Resource(eastl::move(ResourceDesc),
+				    eastl::move(Native.mValue),
+				    this,
+				    mLifetimeTracker,
+				    Desc.mLifetimeToken,
+				    Desc.mMemoryAllocationInfo));
+				Cache.Insert(Desc, Result);
+				return {Result, {}};
 			}
 
 			mutable std::mutex mCacheMutex;
@@ -1844,7 +1998,8 @@ namespace arda
 					return Failure<FArdaRHITextureRef>(Status);
 				}
 			}
-			if (auto Status = Validate(Desc); !Status)
+			if (auto Status = ValidateResourceCapabilities(Desc, GetCapabilities(), QueryFormatSupport(Desc.mFormat));
+			    !Status)
 			{
 				return Failure<FArdaRHITextureRef>(eastl::move(Status));
 			}
@@ -1898,7 +2053,8 @@ namespace arda
 					return Failure<FArdaRHIBufferRef>(Status);
 				}
 			}
-			if (auto Status = Validate(Desc); !Status)
+			if (auto Status = ValidateResourceCapabilities(Desc, GetCapabilities(), QueryFormatSupport(Desc.mFormat));
+			    !Status)
 			{
 				return Failure<FArdaRHIBufferRef>(eastl::move(Status));
 			}
@@ -2010,7 +2166,8 @@ namespace arda
 		TArdaRHIResult<FArdaRHIMemoryRequirements> FArdaRHIDeviceImpl::QueryTextureMemoryRequirements(
 		    const FArdaRHITextureDesc& Desc)
 		{
-			if (auto Status = Validate(Desc); !Status)
+			if (auto Status = ValidateResourceCapabilities(Desc, GetCapabilities(), QueryFormatSupport(Desc.mFormat));
+			    !Status)
 			{
 				return Failure<FArdaRHIMemoryRequirements>(eastl::move(Status));
 			}
@@ -2053,7 +2210,8 @@ namespace arda
 		TArdaRHIResult<FArdaRHIMemoryRequirements> FArdaRHIDeviceImpl::QueryBufferMemoryRequirements(
 		    const FArdaRHIBufferDesc& Desc)
 		{
-			if (auto Status = Validate(Desc); !Status)
+			if (auto Status = ValidateResourceCapabilities(Desc, GetCapabilities(), QueryFormatSupport(Desc.mFormat));
+			    !Status)
 			{
 				return Failure<FArdaRHIMemoryRequirements>(eastl::move(Status));
 			}
@@ -2284,6 +2442,10 @@ namespace arda
 		    uint64_t CommittedBytes,
 		    EArdaRHIQueueType Queue)
 		{
+			if (!GetCapabilities().IsQueueSupported(Queue))
+			{
+				return Unsupported("The requested sparse-binding queue is unavailable.");
+			}
 			auto* Base = Cast<FArdaResource>(Resource.Get());
 			if (!Base || !Owns(Base))
 			{
@@ -2369,147 +2531,23 @@ namespace arda
 		TArdaRHIResult<FArdaRHITextureRef> FArdaRHIDeviceImpl::ImportNativeTexture(
 		    const FArdaRHINativeTextureImportDesc& Desc)
 		{
-			if (Desc.mMemoryAllocationInfo.mbKnown &&
-			    (!Desc.mMemoryAllocationInfo.mIdentity || !Desc.mMemoryAllocationInfo.mByteSize))
-			{
-				return Failure<FArdaRHITextureRef>(
-				    Invalid("Known native allocation metadata requires identity and capacity."));
-			}
-			if (Desc.mTexture.mbCudaInterop)
-			{
-				return UnsupportedResult<FArdaRHITextureRef>("CUDA sharing requires a backend-created allocation.");
-			}
-			if (!Desc.mNativeObject)
-			{
-				return Failure<FArdaRHITextureRef>(Invalid("Native texture object is null."));
-			}
-			if (Desc.mOwnership == EArdaRHINativeOwnership::Transferred)
-			{
-				return UnsupportedResult<FArdaRHITextureRef>(
-				    "Transferred native resource ownership is not portable; provide a lifetime token and Borrowed ownership.");
-			}
-			if (auto Status = Validate(Desc.mTexture); !Status)
-			{
-				return Failure<FArdaRHITextureRef>(eastl::move(Status));
-			}
-			if (Desc.mNativeType != mDevice->GetTextureImportType())
-			{
-				return UnsupportedResult<FArdaRHITextureRef>(
-				    "Native texture type does not match the selected backend module.");
-			}
-			std::lock_guard<std::mutex> Lock(mCacheMutex);
-			if (auto Existing = mTextureImportCache.Find(Desc))
-			{
-				return {Existing, {}};
-			}
-			auto Native = mDevice->ImportTexture(Desc);
-			if (!Native)
-			{
-				return Failure<FArdaRHITextureRef>(eastl::move(Native.mStatus));
-			}
-			if (Desc.mMemoryAllocationInfo.mbKnown)
-			{
-				const auto ProviderInfo = Native.mValue->GetMemoryAllocationInfo();
-				if (ProviderInfo.mbKnown && !(ProviderInfo == Desc.mMemoryAllocationInfo))
-				{
-					return Failure<FArdaRHITextureRef>(
-					    Invalid("Native allocation hint disagrees with provider-owned storage."));
-				}
-				const auto Requirements = mDevice->GetTextureMemoryRequirements(Native.mValue, Desc.mTexture);
-				if (!Requirements)
-				{
-					return Failure<FArdaRHITextureRef>(Requirements.mStatus);
-				}
-				if (Desc.mMemoryAllocationInfo.mByteSize < Requirements.mValue.mSize)
-				{
-					return Failure<FArdaRHITextureRef>(
-					    Invalid("Native allocation capacity is smaller than its texture requirements."));
-				}
-			}
-			FArdaRHITextureDesc TextureDesc = Desc.mTexture;
-			TextureDesc.mInitialState =
-			    Desc.mInitialState == EArdaRHIResourceState::Unknown ? TextureDesc.mInitialState : Desc.mInitialState;
-			FArdaRHITextureRef Result(new FArdaTexture(eastl::move(TextureDesc),
-			    eastl::move(Native.mValue),
-			    this,
-			    mLifetimeTracker,
-			    Desc.mLifetimeToken,
-			    Desc.mMemoryAllocationInfo));
-			mTextureImportCache.Insert(Desc, Result);
-			return {Result, {}};
+			return ImportNativeResource<FArdaTexture>(Desc,
+			    Desc.mTexture,
+			    mTextureImportCache,
+			    mDevice->GetTextureImportType(),
+			    &IArdaRHIProviderDevice::ImportTexture,
+			    &IArdaRHIProviderDevice::GetTextureMemoryRequirements);
 		}
 
 		TArdaRHIResult<FArdaRHIBufferRef> FArdaRHIDeviceImpl::ImportNativeBuffer(
 		    const FArdaRHINativeBufferImportDesc& Desc)
 		{
-			if (Desc.mMemoryAllocationInfo.mbKnown &&
-			    (!Desc.mMemoryAllocationInfo.mIdentity || !Desc.mMemoryAllocationInfo.mByteSize))
-			{
-				return Failure<FArdaRHIBufferRef>(
-				    Invalid("Known native allocation metadata requires identity and capacity."));
-			}
-			if (Desc.mBuffer.mbCudaInterop)
-			{
-				return UnsupportedResult<FArdaRHIBufferRef>("CUDA sharing requires a backend-created allocation.");
-			}
-			if (!Desc.mNativeObject)
-			{
-				return Failure<FArdaRHIBufferRef>(Invalid("Native buffer object is null."));
-			}
-			if (Desc.mOwnership == EArdaRHINativeOwnership::Transferred)
-			{
-				return UnsupportedResult<FArdaRHIBufferRef>(
-				    "Transferred native resource ownership is not portable; provide a lifetime token and Borrowed ownership.");
-			}
-			if (auto Status = Validate(Desc.mBuffer); !Status)
-			{
-				return Failure<FArdaRHIBufferRef>(eastl::move(Status));
-			}
-			if (Desc.mNativeType != mDevice->GetBufferImportType())
-			{
-				return UnsupportedResult<FArdaRHIBufferRef>(
-				    "Native buffer type does not match the selected backend module.");
-			}
-			std::lock_guard<std::mutex> Lock(mCacheMutex);
-			if (auto Existing = mBufferImportCache.Find(Desc))
-			{
-				return {Existing, {}};
-			}
-			auto Native = mDevice->ImportBuffer(Desc);
-			if (!Native)
-			{
-				return Failure<FArdaRHIBufferRef>(eastl::move(Native.mStatus));
-			}
-			if (Desc.mMemoryAllocationInfo.mbKnown)
-			{
-				const auto ProviderInfo = Native.mValue->GetMemoryAllocationInfo();
-				if (ProviderInfo.mbKnown && !(ProviderInfo == Desc.mMemoryAllocationInfo))
-				{
-					return Failure<FArdaRHIBufferRef>(
-					    Invalid("Native allocation hint disagrees with provider-owned storage."));
-				}
-				const auto Requirements = mDevice->GetBufferMemoryRequirements(Native.mValue, Desc.mBuffer);
-				if (!Requirements)
-				{
-					return Failure<FArdaRHIBufferRef>(Requirements.mStatus);
-				}
-				if (Desc.mMemoryAllocationInfo.mByteSize < Requirements.mValue.mSize)
-				{
-					return Failure<FArdaRHIBufferRef>(
-					    Invalid("Native allocation capacity is smaller than its buffer requirements."));
-				}
-			}
-			FArdaRHIBufferDesc BufferDesc = Desc.mBuffer;
-			BufferDesc.mInitialState =
-			    Desc.mInitialState == EArdaRHIResourceState::Unknown ? BufferDesc.mInitialState : Desc.mInitialState;
-			FArdaRHIBufferRef Result(new FArdaBuffer(eastl::move(BufferDesc),
-			    eastl::move(Native.mValue),
-			    this,
-			    mLifetimeTracker,
-			    Desc.mLifetimeToken,
-			    Desc.mMemoryAllocationInfo));
-			mBufferImportCache.Insert(Desc, Result);
-			return {Result, {}};
+			return ImportNativeResource<FArdaBuffer>(Desc,
+			    Desc.mBuffer,
+			    mBufferImportCache,
+			    mDevice->GetBufferImportType(),
+			    &IArdaRHIProviderDevice::ImportBuffer,
+			    &IArdaRHIProviderDevice::GetBufferMemoryRequirements);
 		}
 
 		TArdaRHIResult<FArdaRHIStagingTextureRef> FArdaRHIDeviceImpl::CreateStagingTexture(
@@ -2675,6 +2713,25 @@ namespace arda
 			if (auto Status = Validate(Desc); !Status)
 			{
 				return Failure<FArdaRHIInputLayoutRef>(eastl::move(Status));
+			}
+			const auto& Limits = GetCapabilities().mLimits;
+			uint64_t AttributeCount = 0;
+			for (const auto& Attribute : Attributes)
+			{
+				AttributeCount += Attribute.mArraySize;
+				if ((Limits.mMaxVertexBindings && Attribute.mBufferIndex >= Limits.mMaxVertexBindings) ||
+				    (Limits.mMaxVertexStride && Attribute.mElementStride > Limits.mMaxVertexStride) ||
+				    (GetCapabilities().mbFormatSupportReported &&
+				        !QueryFormatSupport(Attribute.mFormat).mbVertexBuffer))
+				{
+					return Failure<FArdaRHIInputLayoutRef>(
+					    Invalid("Vertex attribute exceeds native binding, stride, or format support."));
+				}
+			}
+			if (Limits.mMaxVertexAttributes && AttributeCount > Limits.mMaxVertexAttributes)
+			{
+				return Failure<FArdaRHIInputLayoutRef>(
+				    Invalid("Input layout exceeds the native vertex-attribute limit."));
 			}
 			std::lock_guard<std::mutex> Lock(mCacheMutex);
 			if (auto Existing = mInputLayoutCache.Find(Desc))
@@ -3048,7 +3105,7 @@ namespace arda
 				return Invalid("Descriptor table array element is out of range.");
 			}
 			FArdaRHIBindingItem ResolvedItem = Item;
-			if (auto Status = ResolveBindingItem(Layout->mDesc, ResolvedItem); !Status)
+			if (auto Status = ResolveBindingItem(Layout->mDesc, ResolvedItem, GetCapabilities().mLimits); !Status)
 			{
 				return Status;
 			}
@@ -3113,7 +3170,7 @@ namespace arda
 				{
 					return Failure<FArdaRHIBindingSetRef>(WrongDevice());
 				}
-				if (auto Status = ResolveBindingItem(Layout->mDesc, Item); !Status)
+				if (auto Status = ResolveBindingItem(Layout->mDesc, Item, GetCapabilities().mLimits); !Status)
 				{
 					return Failure<FArdaRHIBindingSetRef>(eastl::move(Status));
 				}
@@ -3200,6 +3257,16 @@ namespace arda
 				}
 				Info.mDepth = {Desc.mDepthAttachment, Texture->mNative};
 			}
+			if (auto Status = Validate(Desc); !Status)
+			{
+				return Failure<FArdaRHIFramebufferRef>(Status);
+			}
+			const uint32_t MaxAttachments = GetCapabilities().mLimits.mMaxColorAttachments;
+			if (MaxAttachments && Desc.mColorAttachments.size() > MaxAttachments)
+			{
+				return Failure<FArdaRHIFramebufferRef>(
+				    Unsupported("Framebuffer exceeds the device color-attachment limit."));
+			}
 			auto Native = mDevice->CreateFramebuffer(Info);
 			if (!Native)
 			{
@@ -3210,6 +3277,43 @@ namespace arda
 			    {}};
 		}
 
+		template <typename TDesc>
+		FArdaRHIStatus ValidatePipelineAttachments(const TDesc& Desc, const IArdaRHIDevice& Device)
+		{
+			const auto& Capabilities = Device.GetCapabilities();
+			if (Capabilities.mLimits.mMaxColorAttachments &&
+			    Desc.mColorFormats.size() > Capabilities.mLimits.mMaxColorAttachments)
+			{
+				return Unsupported("Pipeline exceeds the device color-attachment limit.");
+			}
+			const auto ValidateFormat = [&](EArdaRHIFormat Format, bool bDepth, bool bBlend)
+			{
+				FArdaRHITextureDesc Texture;
+				Texture.mFormat = Format;
+				Texture.mSampleCount = Desc.mSampleCount;
+				Texture.mUsage = bDepth ? EArdaRHITextureUsage::DepthStencil : EArdaRHITextureUsage::RenderTarget;
+				const auto Support = Device.QueryFormatSupport(Format);
+				if (auto Status = ValidateResourceCapabilities(Texture, Capabilities, Support); !Status)
+				{
+					return Status;
+				}
+				return Capabilities.mbFormatSupportReported && bBlend && !Support.mbBlendable
+				    ? Unsupported("Blending is unsupported for a pipeline attachment format.")
+				    : FArdaRHIStatus{};
+			};
+			for (size_t Index = 0; Index < Desc.mColorFormats.size(); ++Index)
+			{
+				if (auto Status =
+				        ValidateFormat(Desc.mColorFormats[Index], false, Desc.mBlendState.mTargets[Index].mbEnable);
+				    !Status)
+				{
+					return Status;
+				}
+			}
+			return Desc.mDepthFormat == EArdaRHIFormat::Unknown ? FArdaRHIStatus{}
+			                                                    : ValidateFormat(Desc.mDepthFormat, true, false);
+		}
+
 		TArdaRHIResult<FArdaRHIGraphicsPipelineRef> FArdaRHIDeviceImpl::CreateGraphicsPipeline(
 		    const FArdaRHIGraphicsPipelineDesc& Desc)
 		{
@@ -3218,6 +3322,10 @@ namespace arda
 				return Failure<FArdaRHIGraphicsPipelineRef>(eastl::move(Status));
 			}
 			FArdaProviderGraphicsPipelineCreateInfo Info{Desc};
+			if (auto Status = ValidatePipelineAttachments(Desc, *this); !Status)
+			{
+				return Failure<FArdaRHIGraphicsPipelineRef>(Status);
+			}
 			if (Desc.mInputLayout)
 			{
 				auto* Layout = Cast<FArdaInputLayout>(Desc.mInputLayout.Get());
@@ -3227,35 +3335,17 @@ namespace arda
 				}
 				Info.mInputLayout = &Layout->mDesc;
 			}
-			const auto SetShader = [this](const FArdaRHIShaderRef& Shader, FArdaProviderObjectRef& Out)
-			{
-				if (!Shader)
-				{
-					return true;
-				}
-				auto* Native = Cast<FArdaShader>(Shader.Get());
-				if (!Native || !Owns(Native))
-				{
-					return false;
-				}
-				Out = Native->mNative;
-				return true;
-			};
-			if (!SetShader(Desc.mVertexShader, Info.mVertexShader) || !SetShader(Desc.mHullShader, Info.mHullShader) ||
-			    !SetShader(Desc.mDomainShader, Info.mDomainShader) ||
-			    !SetShader(Desc.mGeometryShader, Info.mGeometryShader) ||
-			    !SetShader(Desc.mPixelShader, Info.mPixelShader))
+			if (!ResolveShader(Desc.mVertexShader, Info.mVertexShader) ||
+			    !ResolveShader(Desc.mHullShader, Info.mHullShader) ||
+			    !ResolveShader(Desc.mDomainShader, Info.mDomainShader) ||
+			    !ResolveShader(Desc.mGeometryShader, Info.mGeometryShader) ||
+			    !ResolveShader(Desc.mPixelShader, Info.mPixelShader))
 			{
 				return Failure<FArdaRHIGraphicsPipelineRef>(WrongDevice());
 			}
-			for (const auto& LayoutRef : Desc.mBindingLayouts)
+			if (auto Status = ResolveBindingLayouts(Desc.mBindingLayouts, Info.mBindingLayouts); !Status)
 			{
-				auto* Layout = Cast<FArdaBindingLayout>(LayoutRef.Get());
-				if (!Layout || !Owns(Layout))
-				{
-					return Failure<FArdaRHIGraphicsPipelineRef>(WrongDevice());
-				}
-				Info.mBindingLayouts.push_back(Layout->mNative);
+				return Failure<FArdaRHIGraphicsPipelineRef>(eastl::move(Status));
 			}
 			auto Native = mDevice->CreateGraphicsPipeline(Info);
 			if (!Native)
@@ -3280,14 +3370,9 @@ namespace arda
 				return Failure<FArdaRHIComputePipelineRef>(WrongDevice());
 			}
 			FArdaProviderComputePipelineCreateInfo Info{Desc, Shader->mNative};
-			for (const auto& LayoutRef : Desc.mBindingLayouts)
+			if (auto Status = ResolveBindingLayouts(Desc.mBindingLayouts, Info.mBindingLayouts); !Status)
 			{
-				auto* Layout = Cast<FArdaBindingLayout>(LayoutRef.Get());
-				if (!Layout || !Owns(Layout))
-				{
-					return Failure<FArdaRHIComputePipelineRef>(WrongDevice());
-				}
-				Info.mBindingLayouts.push_back(Layout->mNative);
+				return Failure<FArdaRHIComputePipelineRef>(eastl::move(Status));
 			}
 			auto Native = mDevice->CreateComputePipeline(Info);
 			if (!Native)
@@ -3302,7 +3387,9 @@ namespace arda
 		TArdaRHIResult<FArdaRHIMeshletPipelineRef> FArdaRHIDeviceImpl::CreateMeshletPipeline(
 		    const FArdaRHIMeshletPipelineDesc& Desc)
 		{
-			if (mDevice->GetCapabilities().mMeshShaderTier == EArdaRHIMeshShaderTier::None)
+			if (!GetCapabilities().SupportsMeshShaderTier(Desc.mAmplificationShader
+			            ? EArdaRHIMeshShaderTier::MeshAndAmplificationShaders
+			            : EArdaRHIMeshShaderTier::MeshShadersOnly))
 			{
 				return UnsupportedResult<FArdaRHIMeshletPipelineRef>("Mesh shaders are unsupported by this device.");
 			}
@@ -3312,33 +3399,19 @@ namespace arda
 			}
 
 			FArdaProviderMeshletPipelineCreateInfo Info{Desc};
-			const auto SetShader = [this](const FArdaRHIShaderRef& Shader, FArdaProviderObjectRef& Out)
+			if (auto Status = ValidatePipelineAttachments(Desc, *this); !Status)
 			{
-				if (!Shader)
-				{
-					return true;
-				}
-				auto* Native = Cast<FArdaShader>(Shader.Get());
-				if (!Native || !Owns(Native))
-				{
-					return false;
-				}
-				Out = Native->mNative;
-				return true;
-			};
-			if (!SetShader(Desc.mAmplificationShader, Info.mAmplificationShader) ||
-			    !SetShader(Desc.mMeshShader, Info.mMeshShader) || !SetShader(Desc.mPixelShader, Info.mPixelShader))
+				return Failure<FArdaRHIMeshletPipelineRef>(Status);
+			}
+			if (!ResolveShader(Desc.mAmplificationShader, Info.mAmplificationShader) ||
+			    !ResolveShader(Desc.mMeshShader, Info.mMeshShader) ||
+			    !ResolveShader(Desc.mPixelShader, Info.mPixelShader))
 			{
 				return Failure<FArdaRHIMeshletPipelineRef>(WrongDevice());
 			}
-			for (const auto& LayoutRef : Desc.mBindingLayouts)
+			if (auto Status = ResolveBindingLayouts(Desc.mBindingLayouts, Info.mBindingLayouts); !Status)
 			{
-				auto* Layout = Cast<FArdaBindingLayout>(LayoutRef.Get());
-				if (!Layout || !Owns(Layout))
-				{
-					return Failure<FArdaRHIMeshletPipelineRef>(WrongDevice());
-				}
-				Info.mBindingLayouts.push_back(Layout->mNative);
+				return Failure<FArdaRHIMeshletPipelineRef>(eastl::move(Status));
 			}
 			auto Native = mDevice->CreateMeshletPipeline(Info);
 			if (!Native)
@@ -3376,14 +3449,9 @@ namespace arda
 				}
 				Info.mShaders.push_back(Shader->mNative);
 			}
-			for (const auto& LayoutRef : Desc.mGlobalBindingLayouts)
+			if (auto Status = ResolveBindingLayouts(Desc.mGlobalBindingLayouts, Info.mBindingLayouts); !Status)
 			{
-				auto* Layout = Cast<FArdaBindingLayout>(LayoutRef.Get());
-				if (!Layout || !Owns(Layout))
-				{
-					return Failure<FArdaRHIWorkGraphPipelineRef>(WrongDevice());
-				}
-				Info.mBindingLayouts.push_back(Layout->mNative);
+				return Failure<FArdaRHIWorkGraphPipelineRef>(eastl::move(Status));
 			}
 			auto Native = mDevice->CreateWorkGraphPipeline(Info);
 			if (!Native)
@@ -4363,16 +4431,7 @@ namespace arda
 				{
 					return Failure<uint64_t>(WrongDevice());
 				}
-				if (const FArdaRHIStatus Status = Native->ValidateFacadeStartStates(); !Status)
-				{
-					return Failure<uint64_t>(Status);
-				}
-				auto Submitted = mDevice->ExecuteCommandList(Native->GetNative(), Queue);
-				if (Submitted)
-				{
-					Native->CommitFacadeStates();
-				}
-				Submitted = FinishCommandListSubmission(*Native, eastl::move(Submitted));
+				auto Submitted = ExecuteCommandList(CommandList);
 				if (!Submitted)
 				{
 					return Submitted;
@@ -4447,12 +4506,12 @@ namespace arda
 
 		IArdaRHIDevice* FArdaCommandList::GetDevice() const noexcept
 		{
-			return mDevice;
+			return mDevice.Get();
 		}
 
 		bool FArdaCommandList::RetainOwned(const FArdaResource* Resource) const
 		{
-			if (!Resource || Resource->GetOwner() != mDevice)
+			if (!Resource || Resource->GetOwner() != GetOwner())
 			{
 				return false;
 			}
@@ -4463,7 +4522,11 @@ namespace arda
 		void FArdaCommandList::ClearRecordingState()
 		{
 			mRetainedResources.clear();
+			mEmptyBindingSets.clear();
 			mMeshletState = {};
+			mGraphicsState = {};
+			mPipelineKind = EArdaPipelineKind::None;
+			mbRecordingOpen = true;
 			mPushConstantCapacity = 0;
 			mRecordingStatus = {};
 			mCopyCompletions.clear();
@@ -5608,9 +5671,11 @@ namespace arda
 		}
 
 		FArdaRHIStatus FArdaCommandList::ResolveBindings(const eastl::vector<FArdaRHIBindingSetRef>& Bindings,
-		    eastl::vector<FArdaProviderObjectRef>& OutBindings) const
+		    eastl::vector<FArdaProviderObjectRef>& OutBindings,
+		    const eastl::vector<FArdaRHIBindingLayoutRef>& Layouts) const
 		{
-			OutBindings.reserve(Bindings.size());
+			eastl::vector<FArdaRHIBindingLayoutRef> SuppliedLayouts;
+			eastl::vector<FArdaProviderObjectRef> SuppliedBindings;
 			for (const auto& Binding : Bindings)
 			{
 				auto* Resource = Cast<FArdaResource>(Binding.Get());
@@ -5618,18 +5683,281 @@ namespace arda
 				{
 					return WrongDevice();
 				}
-				auto Native = CaptureNativeBindings(Resource);
+				FArdaProviderObjectRef Native;
+				FArdaRHIBindingLayoutRef Layout;
+				if (const auto* Table = Cast<FArdaDescriptorTable>(Resource))
+				{
+					std::lock_guard<std::mutex> Lock(Table->mMutex);
+					Layout = Table->mDesc.mLayout;
+					Native = Table->mNative;
+				}
+				else if (const auto* Set = Cast<FArdaBindingSet>(Resource))
+				{
+					Layout = Set->mDesc.mLayout;
+					Native = Set->mNative;
+				}
 				if (!Native)
 				{
 					return WrongDevice();
 				}
-				OutBindings.push_back(eastl::move(Native));
+				if (eastl::find(Layouts.begin(), Layouts.end(), Layout) == Layouts.end() ||
+				    eastl::find(SuppliedLayouts.begin(), SuppliedLayouts.end(), Layout) != SuppliedLayouts.end())
+				{
+					return Invalid("Binding sets require distinct layouts declared by the active pipeline.");
+				}
+				SuppliedLayouts.push_back(Layout);
+				SuppliedBindings.push_back(eastl::move(Native));
+			}
+			OutBindings.reserve(Layouts.size());
+			for (const auto& Layout : Layouts)
+			{
+				const auto Found = eastl::find(SuppliedLayouts.begin(), SuppliedLayouts.end(), Layout);
+				if (Found != SuppliedLayouts.end())
+				{
+					OutBindings.push_back(SuppliedBindings[Found - SuppliedLayouts.begin()]);
+					continue;
+				}
+				if (eastl::any_of(Layout->GetDesc().mItems.begin(),
+				        Layout->GetDesc().mItems.end(),
+				        [](const FArdaRHIBindingLayoutItem& Item)
+				        {
+					        return Item.mType != EArdaRHIBindingType::PushConstants;
+				        }))
+				{
+					return Invalid("Every descriptor-bearing pipeline layout requires a matching binding set.");
+				}
+				// Push-only layouts need no caller set; preserve native positional layout order on both providers.
+				auto Empty = mEmptyBindingSets.find(Layout.Get());
+				if (Empty == mEmptyBindingSets.end())
+				{
+					FArdaRHIBindingSetDesc EmptyDesc;
+					EmptyDesc.mLayout = Layout;
+					auto Created = mDevice->CreateBindingSet(EmptyDesc);
+					if (!Created)
+					{
+						return Created.mStatus;
+					}
+					Empty = mEmptyBindingSets.emplace(Layout.Get(), eastl::move(Created.mValue)).first;
+				}
+				auto* Resource = Cast<FArdaResource>(Empty->second.Get());
+				RetainOwned(Resource);
+				OutBindings.push_back(CaptureNativeBindings(Resource));
+			}
+			return {};
+		}
+
+		FArdaRHIStatus FArdaCommandList::ValidateRecording(bool bGraphics) const
+		{
+			if (!mRecordingStatus)
+			{
+				return mRecordingStatus;
+			}
+			if (!mbRecordingOpen || mQueue == EArdaRHIQueueType::Copy ||
+			    (bGraphics && mQueue != EArdaRHIQueueType::Graphics))
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "Shader commands require an open command list on a compatible queue.");
+			}
+			return {};
+		}
+
+		FArdaRHIStatus FArdaCommandList::ValidateWork(EArdaPipelineKind Kind) const
+		{
+			if (auto Status = ValidateRecording(Kind == EArdaPipelineKind::Graphics || Kind == EArdaPipelineKind::Mesh);
+			    !Status)
+			{
+				return Status;
+			}
+			if (mPipelineKind != Kind)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "The command requires its pipeline state to be bound in this recording generation.");
+			}
+			return {};
+		}
+
+		FArdaRHIStatus FArdaCommandList::ValidateDraw(const FArdaRHIDrawArguments& Arguments, bool bIndexed) const
+		{
+			if (auto Status = ValidateWork(EArdaPipelineKind::Graphics); !Status)
+			{
+				return Status;
+			}
+			if (bIndexed && !mGraphicsState.mIndexBuffer)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Indexed draws require an index buffer.");
+			}
+			// Zero-work draws still require valid state, but never fetch vertex or index data.
+			if (!Arguments.mVertexCount || !Arguments.mInstanceCount)
+			{
+				return {};
+			}
+			if (bIndexed)
+			{
+				const uint64_t IndexSize = mGraphicsState.mIndexFormat == EArdaRHIFormat::R16UInt ? 2u : 4u;
+				const uint64_t Available =
+				    mGraphicsState.mIndexBuffer->GetDesc().mByteSize - mGraphicsState.mIndexOffset;
+				if ((uint64_t(Arguments.mStartIndex) + Arguments.mVertexCount) > Available / IndexSize)
+				{
+					return Invalid("Indexed draw exceeds the bound index-buffer range.");
+				}
+			}
+			const auto& Layout = mGraphicsState.mPipeline->GetDesc().mInputLayout;
+			if (Layout)
+			{
+				for (const auto& Attribute : Layout->GetDesc().mAttributes)
+				{
+					// Index values reside on the GPU; their vertex-buffer bounds remain the caller's responsibility.
+					if (bIndexed && !Attribute.mbInstanced)
+					{
+						continue;
+					}
+					const auto Binding = eastl::find_if(mGraphicsState.mVertexBuffers.begin(),
+					    mGraphicsState.mVertexBuffers.end(),
+					    [&](const FArdaRHIVertexBufferBinding& Value)
+					    {
+						    return Value.mSlot == Attribute.mBufferIndex;
+					    });
+					const uint64_t Last = Attribute.mbInstanced
+					    ? uint64_t(Arguments.mStartInstance) + Arguments.mInstanceCount - 1
+					    : uint64_t(Arguments.mStartVertex) + Arguments.mVertexCount - 1;
+					const uint64_t ElementEnd = uint64_t(Attribute.mOffset) +
+					    uint64_t(GetArdaRHIFormatElementSize(Attribute.mFormat)) * Attribute.mArraySize;
+					const uint64_t Available = Binding->mBuffer->GetDesc().mByteSize - Binding->mOffset;
+					if (ElementEnd > Available ||
+					    (Attribute.mElementStride && Last > (Available - ElementEnd) / Attribute.mElementStride))
+					{
+						return Invalid("Draw exceeds a bound vertex-buffer range.");
+					}
+				}
+			}
+			return {};
+		}
+
+		void FArdaCommandList::Draw(const FArdaRHIDrawArguments& Arguments)
+		{
+			const auto Status = ValidateDraw(Arguments, false);
+			LatchError(Status);
+			if (Status && Arguments.mVertexCount && Arguments.mInstanceCount)
+			{
+				mNative->Draw(Arguments);
+			}
+		}
+
+		void FArdaCommandList::DrawIndexed(const FArdaRHIDrawArguments& Arguments)
+		{
+			const auto Status = ValidateDraw(Arguments, true);
+			LatchError(Status);
+			if (Status && Arguments.mVertexCount && Arguments.mInstanceCount)
+			{
+				mNative->DrawIndexed(Arguments);
+			}
+		}
+
+		void FArdaCommandList::Dispatch(uint32_t X, uint32_t Y, uint32_t Z)
+		{
+			if (auto Status = ValidateWork(EArdaPipelineKind::Compute); !Status)
+			{
+				LatchError(Status);
+				return;
+			}
+			const uint32_t Groups[] = {X, Y, Z};
+			const auto& Limits = mDevice->GetCapabilities().mLimits;
+			for (uint32_t Axis = 0; Axis < 3; ++Axis)
+			{
+				if (Limits.mMaxComputeWorkGroupCount[Axis] && Groups[Axis] > Limits.mMaxComputeWorkGroupCount[Axis])
+				{
+					LatchError(Invalid("Dispatch exceeds the device work-group count limit."));
+					return;
+				}
+			}
+			if (X && Y && Z)
+			{
+				mNative->Dispatch(X, Y, Z);
+			}
+		}
+
+		template <typename TPipeline, typename TState>
+		FArdaRHIStatus ValidateRasterState(const TPipeline& Pipeline,
+		    const TState& State,
+		    const FArdaRHIDeviceLimits& Limits)
+		{
+			const auto& Framebuffer = State.mFramebuffer->GetDesc();
+			const auto Format = [](const FArdaRHIFramebufferTarget& Target)
+			{
+				return !Target.mTexture                                     ? EArdaRHIFormat::Unknown
+				    : Target.mAttachment.mFormat == EArdaRHIFormat::Unknown ? Target.mTexture->GetDesc().mFormat
+				                                                            : Target.mAttachment.mFormat;
+			};
+			if (Pipeline.mColorFormats.size() != Framebuffer.mColorAttachments.size() ||
+			    Pipeline.mDepthFormat != Format(Framebuffer.mDepthAttachment))
+			{
+				return Invalid("Pipeline attachment formats must match the framebuffer.");
+			}
+			for (size_t Index = 0; Index < Framebuffer.mColorAttachments.size(); ++Index)
+			{
+				const auto& Target = Framebuffer.mColorAttachments[Index];
+				if (Pipeline.mColorFormats[Index] != Format(Target) ||
+				    Pipeline.mSampleCount != Target.mTexture->GetDesc().mSampleCount)
+				{
+					return Invalid("Pipeline attachment formats and sample counts must match the framebuffer.");
+				}
+			}
+			if (Framebuffer.mDepthAttachment.mTexture &&
+			    Pipeline.mSampleCount != Framebuffer.mDepthAttachment.mTexture->GetDesc().mSampleCount)
+			{
+				return Invalid("Pipeline depth sample count must match the framebuffer.");
+			}
+			if (Framebuffer.mDepthAttachment.mAttachment.mbReadOnly && Pipeline.mDepthStencilState.mbDepthTest &&
+			    Pipeline.mDepthStencilState.mbDepthWrite)
+			{
+				return Invalid("A depth-writing pipeline cannot bind a read-only depth attachment.");
+			}
+			const size_t ViewportCount = eastl::max<size_t>(1, State.mViewports.size());
+			const size_t ScissorCount = eastl::max<size_t>(1, State.mScissors.size());
+			if (ViewportCount != ScissorCount || (Limits.mMaxViewports && ViewportCount > Limits.mMaxViewports))
+			{
+				return Invalid("Viewport and scissor counts must match and fit the device limit.");
+			}
+			for (const auto& Viewport : State.mViewports)
+			{
+				if (!std::isfinite(Viewport.mMinX) || !std::isfinite(Viewport.mMaxX) ||
+				    !std::isfinite(Viewport.mMinY) || !std::isfinite(Viewport.mMaxY) ||
+				    !std::isfinite(Viewport.mMinZ) || !std::isfinite(Viewport.mMaxZ) ||
+				    Viewport.mMinX >= Viewport.mMaxX || Viewport.mMinY >= Viewport.mMaxY || Viewport.mMinZ < 0.f ||
+				    Viewport.mMinZ > 1.f || Viewport.mMaxZ < 0.f || Viewport.mMaxZ > 1.f)
+				{
+					return Invalid("Viewports require finite positive extents and depth endpoints in [0, 1].");
+				}
+				const float Minimum[] = {Viewport.mMinX, Viewport.mMinY};
+				const float Maximum[] = {Viewport.mMaxX, Viewport.mMaxY};
+				for (uint32_t Axis = 0; Axis < 2; ++Axis)
+				{
+					if ((Limits.mMaxViewportDimensions[Axis] &&
+					        double(Maximum[Axis]) - Minimum[Axis] > Limits.mMaxViewportDimensions[Axis]) ||
+					    (Limits.mViewportBounds[0] < Limits.mViewportBounds[1] &&
+					        (Minimum[Axis] < Limits.mViewportBounds[0] || Maximum[Axis] > Limits.mViewportBounds[1])))
+					{
+						return Invalid("Viewport exceeds native dimensions or coordinate bounds.");
+					}
+				}
+			}
+			for (const auto& Scissor : State.mScissors)
+			{
+				if (Scissor.mMinX < 0 || Scissor.mMinY < 0 || Scissor.mMaxX < Scissor.mMinX ||
+				    Scissor.mMaxY < Scissor.mMinY)
+				{
+					return Invalid("Scissors require nonnegative ordered coordinates.");
+				}
 			}
 			return {};
 		}
 
 		FArdaRHIStatus FArdaCommandList::SetGraphicsState(const FArdaRHIGraphicsState& State)
 		{
+			if (auto Status = ValidateRecording(true); !Status)
+			{
+				return Status;
+			}
 			auto* Pipeline = Cast<FArdaGraphicsPipeline>(State.mPipeline.Get());
 			auto* Framebuffer = Cast<FArdaFramebuffer>(State.mFramebuffer.Get());
 			if (!Pipeline || !Framebuffer || !RetainOwned(Pipeline) || !RetainOwned(Framebuffer))
@@ -5637,13 +5965,48 @@ namespace arda
 				return WrongDevice();
 			}
 			FArdaProviderGraphicsState Native;
+			const auto& Limits = mDevice->GetCapabilities().mLimits;
+			if (auto Status = ValidateRasterState(Pipeline->mDesc, State, Limits); !Status)
+			{
+				return Status;
+			}
+			for (size_t Index = 0; Index < State.mVertexBuffers.size(); ++Index)
+			{
+				const auto& Binding = State.mVertexBuffers[Index];
+				if ((Limits.mMaxVertexBindings && Binding.mSlot >= Limits.mMaxVertexBindings) ||
+				    eastl::find_if(State.mVertexBuffers.begin(),
+				        State.mVertexBuffers.begin() + Index,
+				        [&](const FArdaRHIVertexBufferBinding& Other)
+				        {
+					        return Other.mSlot == Binding.mSlot;
+				        }) != State.mVertexBuffers.begin() + Index)
+				{
+					return Invalid("Vertex-buffer slots must be unique and fit the device limit.");
+				}
+			}
+			if (Pipeline->mDesc.mInputLayout)
+			{
+				for (const auto& Attribute : Pipeline->mDesc.mInputLayout->GetDesc().mAttributes)
+				{
+					if (eastl::find_if(State.mVertexBuffers.begin(),
+					        State.mVertexBuffers.end(),
+					        [&](const FArdaRHIVertexBufferBinding& Binding)
+					        {
+						        return Binding.mSlot == Attribute.mBufferIndex;
+					        }) == State.mVertexBuffers.end())
+					{
+						return Invalid("Every input-layout slot requires a vertex-buffer binding.");
+					}
+				}
+			}
 			Native.mPipeline = Pipeline->mNative;
 			Native.mFramebuffer = Framebuffer->mNative;
 			Native.mIndexFormat = State.mIndexFormat;
 			Native.mIndexOffset = State.mIndexOffset;
 			Native.mViewports = State.mViewports;
 			Native.mScissors = State.mScissors;
-			if (auto Status = ResolveBindings(State.mBindings, Native.mBindings); !Status)
+			if (auto Status = ResolveBindings(State.mBindings, Native.mBindings, Pipeline->mDesc.mBindingLayouts);
+			    !Status)
 			{
 				return Status;
 			}
@@ -5655,6 +6018,11 @@ namespace arda
 					return WrongDevice();
 				}
 				uint32_t Stride = 0;
+				if (!HasAnyFlags(Buffer->mDesc.mUsage, EArdaRHIBufferUsage::Vertex) ||
+				    Binding.mOffset >= Buffer->mDesc.mByteSize)
+				{
+					return Invalid("Vertex bindings require Vertex usage and an offset within the buffer.");
+				}
 				if (Pipeline->mDesc.mInputLayout)
 				{
 					const auto& Attributes = Pipeline->mDesc.mInputLayout->GetDesc().mAttributes;
@@ -5662,6 +6030,17 @@ namespace arda
 					{
 						if (Attribute.mBufferIndex == Binding.mSlot)
 						{
+							const uint32_t Alignment = GetArdaRHIVertexFormatAlignment(Attribute.mFormat);
+							if (!Alignment || Binding.mOffset % Alignment)
+							{
+								return Invalid("Vertex-buffer offset is not aligned for its attribute format.");
+							}
+							const uint64_t ElementEnd = uint64_t(Attribute.mOffset) +
+							    uint64_t(GetArdaRHIFormatElementSize(Attribute.mFormat)) * Attribute.mArraySize;
+							if (ElementEnd > Buffer->mDesc.mByteSize - Binding.mOffset)
+							{
+								return Invalid("Vertex attribute exceeds the bound buffer range.");
+							}
 							Stride = eastl::max(Stride, Attribute.mElementStride);
 						}
 					}
@@ -5677,10 +6056,22 @@ namespace arda
 					return WrongDevice();
 				}
 				Native.mIndexBuffer = Buffer->mNative;
+				const uint32_t IndexSize = State.mIndexFormat == EArdaRHIFormat::R16UInt ? 2u
+				    : State.mIndexFormat == EArdaRHIFormat::R32UInt                      ? 4u
+				                                                                         : 0u;
+				if (!IndexSize || State.mIndexOffset % IndexSize || State.mIndexOffset >= Buffer->mDesc.mByteSize ||
+				    IndexSize > Buffer->mDesc.mByteSize - State.mIndexOffset ||
+				    !HasAnyFlags(Buffer->mDesc.mUsage, EArdaRHIBufferUsage::Index))
+				{
+					return Invalid("Index bindings require Index usage, R16_UINT or R32_UINT, and an aligned range.");
+				}
 			}
 			const auto Status = mNative->SetGraphicsState(Native);
+			LatchError(Status);
 			if (Status)
 			{
+				mGraphicsState = State;
+				mPipelineKind = EArdaPipelineKind::Graphics;
 				mPushConstantCapacity = PushConstantCapacity(Pipeline->mDesc.mBindingLayouts);
 			}
 			return Status;
@@ -5688,6 +6079,10 @@ namespace arda
 
 		FArdaRHIStatus FArdaCommandList::SetComputeState(const FArdaRHIComputeState& State)
 		{
+			if (auto Status = ValidateRecording(false); !Status)
+			{
+				return Status;
+			}
 			auto* Pipeline = Cast<FArdaComputePipeline>(State.mPipeline.Get());
 			if (!Pipeline || !RetainOwned(Pipeline))
 			{
@@ -5695,13 +6090,16 @@ namespace arda
 			}
 			FArdaProviderComputeState Native;
 			Native.mPipeline = Pipeline->mNative;
-			if (auto Status = ResolveBindings(State.mBindings, Native.mBindings); !Status)
+			if (auto Status = ResolveBindings(State.mBindings, Native.mBindings, Pipeline->mDesc.mBindingLayouts);
+			    !Status)
 			{
 				return Status;
 			}
 			const auto Status = mNative->SetComputeState(Native);
+			LatchError(Status);
 			if (Status)
 			{
+				mPipelineKind = EArdaPipelineKind::Compute;
 				mPushConstantCapacity = PushConstantCapacity(Pipeline->mDesc.mBindingLayouts);
 			}
 			return Status;
@@ -5720,10 +6118,11 @@ namespace arda
 				return WrongDevice();
 			}
 			if (!HasAnyFlags(Buffer->mDesc.mUsage, EArdaRHIBufferUsage::Indirect) || DrawCount == 0 ||
-			    ResolvedStride < ArgumentSize || Offset > Buffer->mDesc.mByteSize ||
+			    Offset % sizeof(uint32_t) || ResolvedStride % sizeof(uint32_t) || ResolvedStride < ArgumentSize ||
+			    Offset > Buffer->mDesc.mByteSize ||
 			    static_cast<uint64_t>(DrawCount - 1) * ResolvedStride + ArgumentSize > Buffer->mDesc.mByteSize - Offset)
 			{
-				return Invalid("Indirect draw arguments are out of range or lack Indirect usage.");
+				return Invalid("Indirect draw arguments require DWORD alignment, valid ranges, and Indirect usage.");
 			}
 			const auto State = QueryBufferState(*Buffer);
 			if (!State)
@@ -5735,6 +6134,10 @@ namespace arda
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 				    "Indirect draw arguments must be in IndirectArgument state across facade, backend, and native tracking.");
+			}
+			if (auto Status = ValidateWork(EArdaPipelineKind::Graphics); !Status)
+			{
+				return Status;
 			}
 			return mNative->DrawIndirect(Buffer->mNative, Offset, DrawCount, ResolvedStride);
 		}
@@ -5752,10 +6155,12 @@ namespace arda
 				return WrongDevice();
 			}
 			if (!HasAnyFlags(Buffer->mDesc.mUsage, EArdaRHIBufferUsage::Indirect) || DrawCount == 0 ||
-			    ResolvedStride < ArgumentSize || Offset > Buffer->mDesc.mByteSize ||
+			    Offset % sizeof(uint32_t) || ResolvedStride % sizeof(uint32_t) || ResolvedStride < ArgumentSize ||
+			    Offset > Buffer->mDesc.mByteSize ||
 			    static_cast<uint64_t>(DrawCount - 1) * ResolvedStride + ArgumentSize > Buffer->mDesc.mByteSize - Offset)
 			{
-				return Invalid("Indexed indirect draw arguments are out of range or lack Indirect usage.");
+				return Invalid(
+				    "Indexed indirect draw arguments require DWORD alignment, valid ranges, and Indirect usage.");
 			}
 			const auto State = QueryBufferState(*Buffer);
 			if (!State)
@@ -5768,6 +6173,14 @@ namespace arda
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 				    "Indexed indirect draw arguments must be in IndirectArgument state across facade, backend, and native tracking.");
 			}
+			if (auto Status = ValidateWork(EArdaPipelineKind::Graphics); !Status)
+			{
+				return Status;
+			}
+			if (!mGraphicsState.mIndexBuffer)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Indexed draws require an index buffer.");
+			}
 			return mNative->DrawIndexedIndirect(Buffer->mNative, Offset, DrawCount, ResolvedStride);
 		}
 
@@ -5779,10 +6192,11 @@ namespace arda
 			{
 				return WrongDevice();
 			}
-			if (!HasAnyFlags(Buffer->mDesc.mUsage, EArdaRHIBufferUsage::Indirect) || Offset > Buffer->mDesc.mByteSize ||
-			    ArgumentSize > Buffer->mDesc.mByteSize - Offset)
+			if (!HasAnyFlags(Buffer->mDesc.mUsage, EArdaRHIBufferUsage::Indirect) || Offset % sizeof(uint32_t) ||
+			    Offset > Buffer->mDesc.mByteSize || ArgumentSize > Buffer->mDesc.mByteSize - Offset)
 			{
-				return Invalid("Indirect dispatch arguments are out of range or lack Indirect usage.");
+				return Invalid(
+				    "Indirect dispatch arguments require DWORD alignment, a valid range, and Indirect usage.");
 			}
 			const auto State = QueryBufferState(*Buffer);
 			if (!State)
@@ -5795,11 +6209,19 @@ namespace arda
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 				    "Indirect dispatch arguments must be in IndirectArgument state across facade, backend, and native tracking.");
 			}
+			if (auto Status = ValidateWork(EArdaPipelineKind::Compute); !Status)
+			{
+				return Status;
+			}
 			return mNative->DispatchIndirect(Buffer->mNative, Offset);
 		}
 
 		FArdaRHIStatus FArdaCommandList::SetMeshletState(const FArdaRHIMeshletState& State)
 		{
+			if (auto Status = ValidateRecording(true); !Status)
+			{
+				return Status;
+			}
 			if (mDevice->GetCapabilities().mMeshShaderTier == EArdaRHIMeshShaderTier::None)
 			{
 				return Unsupported("Mesh shaders are unsupported by this device.");
@@ -5811,18 +6233,25 @@ namespace arda
 				return WrongDevice();
 			}
 			FArdaProviderMeshletState Native;
+			if (auto Status = ValidateRasterState(Pipeline->mDesc, State, mDevice->GetCapabilities().mLimits); !Status)
+			{
+				return Status;
+			}
 			Native.mPipeline = Pipeline->mNative;
 			Native.mFramebuffer = Framebuffer->mNative;
 			Native.mViewports = State.mViewports;
 			Native.mScissors = State.mScissors;
-			if (auto Status = ResolveBindings(State.mBindings, Native.mBindings); !Status)
+			if (auto Status = ResolveBindings(State.mBindings, Native.mBindings, Pipeline->mDesc.mBindingLayouts);
+			    !Status)
 			{
 				return Status;
 			}
 			const auto Status = mNative->SetMeshletState(Native);
+			LatchError(Status);
 			if (Status)
 			{
 				mMeshletState = State;
+				mPipelineKind = EArdaPipelineKind::Mesh;
 				mPushConstantCapacity = PushConstantCapacity(Pipeline->mDesc.mBindingLayouts);
 			}
 			return Status;
@@ -5838,11 +6267,19 @@ namespace arda
 			{
 				return Invalid("Mesh dispatch group counts must be non-zero.");
 			}
+			if (auto Status = ValidateWork(EArdaPipelineKind::Mesh); !Status)
+			{
+				return Status;
+			}
 			return mNative->DispatchMesh(GroupsX, GroupsY, GroupsZ);
 		}
 
 		FArdaRHIStatus FArdaCommandList::SetRayTracingState(const FArdaRHIRayTracingState& State)
 		{
+			if (auto Status = ValidateRecording(false); !Status)
+			{
+				return Status;
+			}
 			if (!mDevice->GetCapabilities().mRayTracing.mbPipelineShaders)
 			{
 				return Unsupported("Ray tracing is unsupported by this device.");
@@ -5862,13 +6299,18 @@ namespace arda
 				}
 				Native.mShaderTable = Table->mNative;
 			}
-			if (auto Status = ResolveBindings(State.mBindings, Native.mBindings); !Status)
+			if (auto Status = ResolveBindings(State.mBindings,
+			        Native.mBindings,
+			        Table->mPipeline->GetDesc().mGlobalBindingLayouts);
+			    !Status)
 			{
 				return Status;
 			}
 			const auto Status = mNative->SetRayTracingState(Native);
+			LatchError(Status);
 			if (Status)
 			{
+				mPipelineKind = EArdaPipelineKind::RayTracing;
 				mPushConstantCapacity = PushConstantCapacity(Table->mPipeline->GetDesc().mGlobalBindingLayouts);
 			}
 			return Status;
@@ -5884,11 +6326,20 @@ namespace arda
 			{
 				return Invalid("Ray dispatch dimensions must be non-zero.");
 			}
-			const uint64_t InvocationCount = uint64_t(Width) * uint64_t(Height) * uint64_t(Depth);
+			const uint64_t PlaneInvocations = uint64_t(Width) * uint64_t(Height);
+			if (PlaneInvocations > UINT64_MAX / Depth)
+			{
+				return Invalid("Ray dispatch invocation count overflows the supported range.");
+			}
+			const uint64_t InvocationCount = PlaneInvocations * Depth;
 			const uint32_t MaxInvocations = mDevice->GetCapabilities().mRayTracing.mMaxRayDispatchInvocations;
 			if (MaxInvocations != 0 && InvocationCount > MaxInvocations)
 			{
 				return Invalid("Ray dispatch exceeds the device invocation-count limit.");
+			}
+			if (auto Status = ValidateWork(EArdaPipelineKind::RayTracing); !Status)
+			{
+				return Status;
 			}
 			return mNative->DispatchRays(Width, Height, Depth);
 		}
@@ -5904,8 +6355,8 @@ namespace arda
 			{
 				return WrongDevice();
 			}
-			if (!HasAnyFlags(Buffer->mDesc.mUsage, EArdaRHIBufferUsage::Indirect) || Offset > Buffer->mDesc.mByteSize ||
-			    sizeof(uint32_t) * 3 > Buffer->mDesc.mByteSize - Offset)
+			if (!HasAnyFlags(Buffer->mDesc.mUsage, EArdaRHIBufferUsage::Indirect) || Offset % sizeof(uint32_t) ||
+			    Offset > Buffer->mDesc.mByteSize || sizeof(uint32_t) * 3 > Buffer->mDesc.mByteSize - Offset)
 			{
 				return Invalid("Indirect ray-dispatch arguments are invalid.");
 			}
@@ -5919,6 +6370,10 @@ namespace arda
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 				    "Indirect ray-dispatch arguments must be in IndirectArgument state across facade, backend, and native tracking.");
+			}
+			if (auto Status = ValidateWork(EArdaPipelineKind::RayTracing); !Status)
+			{
+				return Status;
 			}
 			return mNative->DispatchRaysIndirect(Buffer->mNative, Offset);
 		}
@@ -6251,6 +6706,10 @@ namespace arda
 		    uint32_t RecordStride,
 		    const eastl::vector<FArdaRHIBindingSetRef>& BindingRefs)
 		{
+			if (auto Status = ValidateRecording(false); !Status)
+			{
+				return Status;
+			}
 			auto* Pipeline = Cast<FArdaWorkGraphPipeline>(&Resource);
 			if (!Pipeline || !RetainOwned(Pipeline))
 			{
@@ -6265,7 +6724,7 @@ namespace arda
 				return Invalid("Work-graph CPU input records are invalid or exceed capacity.");
 			}
 			eastl::vector<FArdaProviderObjectRef> Bindings;
-			if (auto Status = ResolveBindings(BindingRefs, Bindings); !Status)
+			if (auto Status = ResolveBindings(BindingRefs, Bindings, Pipeline->mDesc.mGlobalBindingLayouts); !Status)
 			{
 				return Status;
 			}
@@ -6273,6 +6732,7 @@ namespace arda
 			    mNative->DispatchWorkGraph(Pipeline->mNative, Records, RecordCount, RecordStride, Bindings);
 			if (Status)
 			{
+				mPipelineKind = EArdaPipelineKind::None;
 				mPushConstantCapacity = 0;
 			}
 			return Status;

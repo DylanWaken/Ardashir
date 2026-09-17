@@ -4,11 +4,20 @@
 #include <gtest/gtest.h>
 
 #if defined(ARDA_TEST_NATIVE_VULKAN)
+#if defined(_WIN32)
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
+#define VK_ENABLE_BETA_EXTENSIONS
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include <vulkan/vulkan.hpp>
 #include <EASTL/weak_ptr.h>
 #include <atomic>
 #include <cstring>
+#include <fstream>
+#include <iterator>
 
 namespace
 {
@@ -27,6 +36,7 @@ namespace
 		uint32_t mFamily = 0;
 		std::atomic<uint32_t> mErrors{0};
 		eastl::string mError;
+		bool mbMeshEnabled = false;
 
 		static VKAPI_ATTR VkBool32 VKAPI_CALL Diagnostic(VkDebugUtilsMessageSeverityFlagBitsEXT Severity,
 		    VkDebugUtilsMessageTypeFlagsEXT,
@@ -41,7 +51,7 @@ namespace
 			return VK_FALSE;
 		}
 
-		bool Initialize()
+		bool Initialize(bool bMeshOnly = false)
 		{
 			auto GetProc = mLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
 			if (!GetProc)
@@ -137,6 +147,37 @@ namespace
 			DeviceInfo.pNext = &Features13;
 			DeviceInfo.queueCreateInfoCount = 1;
 			DeviceInfo.pQueueCreateInfos = &QueueInfo;
+			VkPhysicalDeviceMeshShaderFeaturesEXT Mesh{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT};
+			const char* MeshExtension = VK_EXT_MESH_SHADER_EXTENSION_NAME;
+			if (bMeshOnly)
+			{
+				uint32_t ExtensionCount = 0;
+				mDispatch.vkEnumerateDeviceExtensionProperties(mPhysicalDevice, nullptr, &ExtensionCount, nullptr);
+				std::vector<VkExtensionProperties> Extensions(ExtensionCount);
+				mDispatch.vkEnumerateDeviceExtensionProperties(mPhysicalDevice,
+				    nullptr,
+				    &ExtensionCount,
+				    Extensions.data());
+				bool bExtension = false;
+				for (const auto& Extension : Extensions)
+				{
+					bExtension |= std::strcmp(Extension.extensionName, MeshExtension) == 0;
+				}
+				VkPhysicalDeviceFeatures2 Features{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+				Features.pNext = &Mesh;
+				mDispatch.vkGetPhysicalDeviceFeatures2(mPhysicalDevice, &Features);
+				if (!bExtension || !Mesh.meshShader)
+				{
+					mError = "Mesh shaders are unavailable on the host device.";
+					return false;
+				}
+				Mesh = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT};
+				Mesh.meshShader = VK_TRUE;
+				Timeline.pNext = &Mesh;
+				DeviceInfo.enabledExtensionCount = 1;
+				DeviceInfo.ppEnabledExtensionNames = &MeshExtension;
+				mbMeshEnabled = true;
+			}
 			if (mDispatch.vkCreateDevice(mPhysicalDevice, &DeviceInfo, nullptr, &mDevice) != VK_SUCCESS)
 			{
 				return false;
@@ -192,11 +233,16 @@ namespace
 	protected:
 		FArdaVulkanHostProvider mProvider;
 
+		virtual bool EnableMeshStage() const
+		{
+			return false;
+		}
+
 		void SetUp() override
 		{
 			ShutdownBackend();
 			mProvider.mHost = eastl::make_shared<FArdaVulkanHost>();
-			if (!mProvider.mHost->Initialize())
+			if (!mProvider.mHost->Initialize(EnableMeshStage()))
 			{
 				GTEST_SKIP() << mProvider.mHost->mError.c_str();
 			}
@@ -215,6 +261,11 @@ namespace
 			    {"vulkan.enabled-feature", "dynamicRendering"},
 			    {"vulkan.enabled-feature", "synchronization2"},
 			    {"vulkan.enabled-feature", "timelineSemaphore"}};
+			if (mProvider.mHost->mbMeshEnabled)
+			{
+				D.mProperties.push_back({"vulkan.device-extension", VK_EXT_MESH_SHADER_EXTENSION_NAME});
+				D.mProperties.push_back({"vulkan.enabled-feature", "meshShader"});
+			}
 			ASSERT_TRUE(RegisterExternalDeviceProvider(mProvider));
 			FArdaBackendConfiguration C = arda::MakeArdaTestBackendConfiguration();
 			C.mBackendName = "native-vulkan";
@@ -230,6 +281,214 @@ namespace
 			EXPECT_TRUE(ConfigureBackend(arda::MakeArdaTestBackendConfiguration()));
 		}
 	};
+
+	class FArdaVulkanExternalAuditHooks
+	{
+	public:
+		FArdaVulkanExternalAuditHooks()
+		    : mOriginal(VULKAN_HPP_DEFAULT_DISPATCHER)
+		{
+			mActive = this;
+			VULKAN_HPP_DEFAULT_DISPATCHER.vkQueueWaitIdle = QueueWaitIdle;
+			VULKAN_HPP_DEFAULT_DISPATCHER.vkDeviceWaitIdle = DeviceWaitIdle;
+			VULKAN_HPP_DEFAULT_DISPATCHER.vkGetFenceStatus = GetFenceStatus;
+			VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdDrawIndirect = DrawIndirect;
+		}
+
+		~FArdaVulkanExternalAuditHooks()
+		{
+			VULKAN_HPP_DEFAULT_DISPATCHER = mOriginal;
+			mActive = nullptr;
+		}
+
+		bool mbBlockRetirement = false;
+		std::vector<uint32_t> mDrawCounts;
+		std::vector<uint64_t> mDrawOffsets;
+		vk::detail::DispatchLoaderDynamic mOriginal;
+
+	private:
+		static inline FArdaVulkanExternalAuditHooks* mActive = nullptr;
+
+		static VKAPI_ATTR VkResult VKAPI_CALL QueueWaitIdle(VkQueue Queue)
+		{
+			return mActive->mbBlockRetirement ? VK_ERROR_OUT_OF_HOST_MEMORY : mActive->mOriginal.vkQueueWaitIdle(Queue);
+		}
+
+		static VKAPI_ATTR VkResult VKAPI_CALL DeviceWaitIdle(VkDevice Device)
+		{
+			return mActive->mbBlockRetirement ? VK_ERROR_OUT_OF_HOST_MEMORY
+			                                  : mActive->mOriginal.vkDeviceWaitIdle(Device);
+		}
+
+		static VKAPI_ATTR VkResult VKAPI_CALL GetFenceStatus(VkDevice Device, VkFence Fence)
+		{
+			return mActive->mbBlockRetirement ? VK_ERROR_OUT_OF_HOST_MEMORY
+			                                  : mActive->mOriginal.vkGetFenceStatus(Device, Fence);
+		}
+
+		static VKAPI_ATTR void VKAPI_CALL
+		DrawIndirect(VkCommandBuffer Commands, VkBuffer Buffer, VkDeviceSize Offset, uint32_t Count, uint32_t Stride)
+		{
+			mActive->mDrawCounts.push_back(Count);
+			mActive->mDrawOffsets.push_back(Offset);
+			mActive->mOriginal.vkCmdDrawIndirect(Commands, Buffer, Offset, Count, Stride);
+		}
+	};
+
+	class FArdaVulkanMeshOnlyExternal : public FArdaVulkanExternal
+	{
+		bool EnableMeshStage() const override
+		{
+			return true;
+		}
+	};
+
+	TEST_F(FArdaVulkanMeshOnlyExternal, ReportsMeshWithoutDisabledAmplification)
+	{
+		ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+		EXPECT_EQ(GetDevice()->GetCapabilities().mMeshShaderTier, EArdaRHIMeshShaderTier::MeshShadersOnly);
+		EXPECT_FALSE(GetDevice()->GetCapabilities().mbIndirectFirstInstance);
+	}
+
+	TEST_F(FArdaVulkanExternal, LowersMultiDrawAndResumesRenderingAfterTransfer)
+	{
+		ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+		auto Device = GetDevice();
+		EXPECT_FALSE(Device->GetCapabilities().mbIndirectFirstInstance);
+		const auto LoadShader = [&](const char* File, const char* Entry, EArdaRHIShaderStage Stage)
+		{
+			std::ifstream Stream(std::string(ARDA_BACKEND_TEST_SHADER_DIR) + "/" + File + ".spv", std::ios::binary);
+			std::vector<uint8_t> Bytes{std::istreambuf_iterator<char>(Stream), std::istreambuf_iterator<char>()};
+			FArdaRHIShaderDesc Desc;
+			Desc.mStage = Stage;
+			Desc.mEntryPoint = Entry;
+			Desc.mBytecode = Bytes.data();
+			Desc.mBytecodeSize = Bytes.size();
+			return Device->CreateShader(Desc);
+		};
+		auto Vertex = LoadShader("ArdaRasterStageVS", "RasterStageVS", EArdaRHIShaderStage::Vertex);
+		auto Pixel = LoadShader("ArdaRasterStagePS", "RasterStagePS", EArdaRHIShaderStage::Pixel);
+		ASSERT_TRUE(Vertex);
+		ASSERT_TRUE(Pixel);
+		FArdaRHIGraphicsPipelineDesc PipelineDesc;
+		PipelineDesc.mVertexShader = Vertex.mValue;
+		PipelineDesc.mPixelShader = Pixel.mValue;
+		PipelineDesc.mColorFormats = {EArdaRHIFormat::RGBA8UNorm};
+		PipelineDesc.mRasterState.mCullMode = EArdaRHICullMode::None;
+		PipelineDesc.mDepthStencilState.mbDepthTest = false;
+		PipelineDesc.mDepthStencilState.mbDepthWrite = false;
+		auto Pipeline = Device->CreateGraphicsPipeline(PipelineDesc);
+		ASSERT_TRUE(Pipeline);
+		FArdaRHITextureDesc TargetDesc;
+		TargetDesc.mWidth = TargetDesc.mHeight = 8;
+		TargetDesc.mDimension = EArdaRHITextureDimension::Texture2DArray;
+		TargetDesc.mArraySize = 2;
+		TargetDesc.mMipLevels = 2;
+		TargetDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+		TargetDesc.mUsage = EArdaRHITextureUsage::RenderTarget;
+		auto Target = Device->CreateTexture(TargetDesc);
+		ASSERT_TRUE(Target);
+		FArdaRHIStagingTextureDesc ReadbackDesc;
+		ReadbackDesc.mTexture = TargetDesc;
+		ReadbackDesc.mTexture.mWidth = ReadbackDesc.mTexture.mHeight = 4;
+		ReadbackDesc.mTexture.mDimension = EArdaRHITextureDimension::Texture2D;
+		ReadbackDesc.mTexture.mArraySize = ReadbackDesc.mTexture.mMipLevels = 1;
+		ReadbackDesc.mCpuAccess = EArdaRHICpuAccess::Read;
+		auto Readback = Device->CreateStagingTexture(ReadbackDesc);
+		ASSERT_TRUE(Readback);
+		FArdaRHIFramebufferDesc FramebufferDesc;
+		FArdaRHIFramebufferAttachment Attachment;
+		Attachment.mSubresources.mBaseMipLevel = 1;
+		Attachment.mSubresources.mMipLevelCount = 1;
+		Attachment.mSubresources.mBaseArraySlice = 1;
+		Attachment.mSubresources.mArraySliceCount = 1;
+		FramebufferDesc.mColorAttachments.push_back({Target.mValue, Attachment});
+		auto Framebuffer = Device->CreateFramebuffer(FramebufferDesc);
+		ASSERT_TRUE(Framebuffer);
+		const uint32_t Arguments[] = {3, 1, 0, 0, 3, 1, 0, 0, 3, 1, 0, 0};
+		FArdaRHIBufferDesc BufferDesc;
+		BufferDesc.mByteSize = sizeof(Arguments);
+		BufferDesc.mUsage = EArdaRHIBufferUsage::Indirect;
+		auto Buffer = Device->CreateBuffer(BufferDesc);
+		ASSERT_TRUE(Buffer);
+		FArdaRHIBufferDesc ScratchDesc;
+		ScratchDesc.mByteSize = sizeof(uint32_t);
+		auto Scratch = Device->CreateBuffer(ScratchDesc);
+		ASSERT_TRUE(Scratch);
+		auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+		ASSERT_TRUE(Commands);
+		ASSERT_TRUE(Commands.mValue->Open());
+		ASSERT_TRUE(Commands.mValue->WriteBuffer(*Buffer.mValue, Arguments, sizeof(Arguments)));
+		ASSERT_TRUE(Commands.mValue->SetBufferState(*Buffer.mValue, EArdaRHIResourceState::IndirectArgument));
+		FArdaRHIGraphicsState State;
+		State.mPipeline = Pipeline.mValue;
+		State.mFramebuffer = Framebuffer.mValue;
+		ASSERT_TRUE(Commands.mValue->ClearTexture(*Target.mValue, {}, {0, 0, 1, 1}));
+		ASSERT_TRUE(Commands.mValue->SetGraphicsState(State));
+		FArdaVulkanExternalAuditHooks Hooks;
+		ASSERT_TRUE(Commands.mValue->DrawIndirect(*Buffer.mValue, 0, 3, 16));
+		const uint32_t Value = 42;
+		ASSERT_TRUE(Commands.mValue->WriteBuffer(*Scratch.mValue, &Value, sizeof(Value)));
+		ASSERT_TRUE(Commands.mValue->DrawIndirect(*Buffer.mValue, 0, 3, 16));
+		EXPECT_EQ(Hooks.mDrawCounts, (std::vector<uint32_t>{1, 1, 1, 1, 1, 1}));
+		EXPECT_EQ(Hooks.mDrawOffsets, (std::vector<uint64_t>{0, 16, 32, 0, 16, 32}));
+		FArdaRHITextureSlice Slice;
+		Slice.mWidth = Slice.mHeight = 4;
+		Slice.mDepth = 1;
+		auto SourceSlice = Slice;
+		SourceSlice.mMipLevel = SourceSlice.mArraySlice = 1;
+		ASSERT_TRUE(Commands.mValue->CopyTextureToStaging(*Readback.mValue, Slice, *Target.mValue, SourceSlice));
+		ASSERT_TRUE(Commands.mValue->Close());
+		const auto Submitted = Device->ExecuteCommandList(Commands.mValue);
+		ASSERT_TRUE(Submitted);
+		ASSERT_TRUE(Device->WaitForSubmission(Submitted.mValue));
+		auto Mapping = Device->MapStagingTexture(Readback.mValue, Slice, EArdaRHICpuAccess::Read);
+		ASSERT_TRUE(Mapping);
+		for (uint32_t Y = 0; Y < 4; ++Y)
+		{
+			const auto* Row = static_cast<const uint8_t*>(Mapping.mValue.mData) + Y * Mapping.mValue.mRowPitch;
+			for (uint32_t X = 0; X < 4; ++X)
+			{
+				EXPECT_EQ(Row[X * 4], 255u);
+				EXPECT_EQ(Row[X * 4 + 1], 0u);
+				EXPECT_EQ(Row[X * 4 + 2], 0u);
+				EXPECT_EQ(Row[X * 4 + 3], 255u);
+			}
+		}
+		ASSERT_TRUE(Device->UnmapStagingTexture(Readback.mValue));
+	}
+
+	TEST_F(FArdaVulkanExternal, ShutdownQuarantineRetainsHostUntilLaterInitializationProvesCompletion)
+	{
+		ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+		auto Device = GetDevice();
+		auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+		ASSERT_TRUE(Commands);
+		ASSERT_TRUE(Commands.mValue->Open());
+		ASSERT_TRUE(Commands.mValue->Close());
+		ASSERT_TRUE(Device->ExecuteCommandList(Commands.mValue));
+		// Actual work is drained, but the injected failures withhold completion proof from Arda.
+		ASSERT_EQ(mProvider.mHost->mDispatch.vkDeviceWaitIdle(mProvider.mHost->mDevice), VK_SUCCESS);
+		eastl::weak_ptr<FArdaVulkanHost> Previous = mProvider.mHost;
+		{
+			FArdaVulkanExternalAuditHooks Hooks;
+			Hooks.mbBlockRetirement = true;
+			Commands.mValue = {};
+			Device = {};
+			ShutdownBackend();
+			mProvider.mHost.reset();
+			EXPECT_FALSE(Previous.expired());
+		}
+		mProvider.mHost = eastl::make_shared<FArdaVulkanHost>();
+		ASSERT_TRUE(mProvider.mHost->Initialize());
+		mProvider.mDesc.mInstance = FArdaNativeObject(mProvider.mHost->mInstance);
+		mProvider.mDesc.mAdapter = FArdaNativeObject(mProvider.mHost->mPhysicalDevice);
+		mProvider.mDesc.mDevice = FArdaNativeObject(mProvider.mHost->mDevice);
+		mProvider.mDesc.mQueues = {
+		    {EArdaRHIQueueType::Graphics, FArdaNativeObject(mProvider.mHost->mQueue), mProvider.mHost->mFamily, 0}};
+		ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+		EXPECT_TRUE(Previous.expired());
+	}
 
 	TEST_F(FArdaVulkanExternal, ExecutesAndRetainsHostBeyondShutdown)
 	{

@@ -61,6 +61,8 @@ RESOURCES = [
 # Probe names come from the existing executable capability matrix. Every advertised
 # fact gets its exact guard and the same workload the conformance suite dispatches.
 PROBES = {
+    "ResourceAdmission": ("Admit resources using native limits and format facts", "VerifyResourceAdmissionFacts", "Read mLimits before choosing resource dimensions and binding ranges. A zero limit is unreported. When mbFormatSupportReported is true, QueryFormatSupport supplies independent texture, filtering, storage, attachment, vertex and sample-count facts; unsupported formats report no native format. The probe creates a supported texture and verifies that oversized requests are rejected before native allocation."),
+    "IndirectFirstInstance": ("Draw indirect instances with a nonzero first instance", "VerifyRasterStageCapabilityAndExecution", "Require mbIndirectFirstInstance when GPU indirect argument records may contain nonzero firstInstance values. The conformance branch uploads a draw record with firstInstance seven, records DrawIndirect and checks the rendered pixels. Capability admission does not inspect arbitrary GPU-written argument contents; the producer must honor this contract."),
     "GeometryShader": ("Generate geometry before rasterization", "VerifyRasterStageCapabilityAndExecution", "Require geometry shaders and supply mGeometryShader in the graphics pipeline. The executable probe renders a full-screen triangle: its geometry stage changes the vertex color from red to green, and every readback pixel must be green. A successful vertex/pixel pipeline alone does not qualify this feature."),
     "TessellationShaders": ("Evaluate tessellated patches", "VerifyRasterStageCapabilityAndExecution", "Require tessellation shaders, provide both hull and domain stages, and use PatchList topology with matching mPatchControlPoints. The probe tessellates a three-control-point patch; its hull stage supplies green and its domain stage adds blue. Every readback pixel must be cyan, proving the selected stages execute."),
     "Contract": ("Unsupported raster policy", "VerifyCapabilityInvariants", "These portable flags currently remain false: no executable variable-rate or conservative-raster path is advertised. Query the flag and select an ordinary raster pipeline. A true flag without a workload is deliberately a conformance failure."),
@@ -140,7 +142,7 @@ def capabilities() -> list[dict]:
     # declaration rather than relying on a boolean naming convention: numeric/tier
     # constraints intentionally use mMin/mMax names also found in capability models.
     from validate_docs import Validator
-    for declaration in ("FArdaRHIFeatureRequirements", "FArdaRHIFeatureSupportReport"):
+    for declaration in ("FArdaRHIFeatureRequirements", "FArdaRHIFeatureSupportReport", "FArdaRHIFormatSupport"):
         header = header.replace(Validator.balanced(header, "struct " + declaration, "{"), "")
     fields = set(re.findall(r"\b(?:bool|uint32_t|uint64_t|EArdaRHI\w+Tier)\s+(m\w+)\s*=", header))
     expressions = "\n".join(c["expression"] for c in cases)

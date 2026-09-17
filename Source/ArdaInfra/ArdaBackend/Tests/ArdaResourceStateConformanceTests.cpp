@@ -60,6 +60,7 @@ namespace
 		TextureDesc.mWidth = 8;
 		TextureDesc.mHeight = 8;
 		TextureDesc.mArraySize = 2;
+		TextureDesc.mDimension = EArdaRHITextureDimension::Texture2DArray;
 		TextureDesc.mMipLevels = 2;
 		TextureDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
 		TextureDesc.mUsage = EArdaRHITextureUsage::ShaderResource | EArdaRHITextureUsage::UnorderedAccess;

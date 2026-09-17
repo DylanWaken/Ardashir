@@ -985,10 +985,7 @@ namespace
 
 		ShutdownBackend();
 		ASSERT_TRUE(ConfigureBackend(BackendName));
-		if (!InitializeBackend())
-		{
-			GTEST_SKIP() << GetBackendError().c_str();
-		}
+		ARDA_REQUIRE_BACKEND();
 
 		EXPECT_TRUE(IsBackendInitialized());
 		EXPECT_NE(GetDevice(), nullptr);
@@ -1657,5 +1654,9 @@ TEST(ArdaBackend, InitializesD3D12Device)
 
 TEST(ArdaBackend, InitializesVulkanDevice)
 {
+#if !defined(ARDA_TEST_NATIVE_VULKAN)
+	GTEST_SKIP() << "The native Vulkan backend is disabled in this build.";
+#else
 	VerifyDeviceInitialization("native-vulkan", false);
+#endif
 }

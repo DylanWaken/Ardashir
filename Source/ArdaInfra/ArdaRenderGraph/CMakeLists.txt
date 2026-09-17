@@ -49,7 +49,11 @@ if(ARDASHIR_BUILD_TESTS)
         Ardashir::ArdaBackend
         GTest::gtest_main
     )
+    if(ARDASHIR_BACKEND_VULKAN)
+        target_compile_definitions(ArdaGraphTests PRIVATE ARDA_TEST_NATIVE_VULKAN)
+    endif()
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)
+        target_compile_definitions(ArdaGraphTests PRIVATE ARDA_TEST_NATIVE_D3D12)
         ardashir_deploy_d3d12_agility(ArdaGraphTests)
     endif()
     set_target_properties(ArdaGraphTests PROPERTIES FOLDER "Ardashir/Tests")

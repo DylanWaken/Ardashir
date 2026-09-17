@@ -14,20 +14,18 @@ namespace arda
 		template <class... A>
 		H Append(A&&... Args)
 		{
-			if (mEntries.size() >= UINT32_MAX)
+			if (mStorage.size() >= UINT32_MAX)
 			{
 				ARDA_CHECK_MSG("Inductor native program exceeds its index domain.");
 			}
-			H Handle(static_cast<uint32_t>(mEntries.size()));
-			auto Record = eastl::make_unique<T>(Handle, eastl::forward<A>(Args)...);
-			mEntries.push_back(Record.get());
-			mStorage.push_back(eastl::move(Record));
+			H Handle(static_cast<uint32_t>(mStorage.size()));
+			mStorage.push_back(eastl::make_unique<T>(Handle, eastl::forward<A>(Args)...));
 			return Handle;
 		}
 
 		T* TryGet(H Handle) const
 		{
-			return Handle && Handle.GetIndex() < mEntries.size() ? mEntries[Handle.GetIndex()] : nullptr;
+			return Handle && Handle.GetIndex() < mStorage.size() ? mStorage[Handle.GetIndex()].get() : nullptr;
 		}
 
 		T& Get(H Handle) const
@@ -40,19 +38,18 @@ namespace arda
 			return *R;
 		}
 
-		const eastl::vector<T*>& GetEntries() const
+		const eastl::vector<eastl::unique_ptr<T>>& GetEntries() const
 		{
-			return mEntries;
+			return mStorage;
 		}
 
 		size_t GetCount() const
 		{
-			return mEntries.size();
+			return mStorage.size();
 		}
 
 	private:
 		eastl::vector<eastl::unique_ptr<T>> mStorage;
-		eastl::vector<T*> mEntries;
 	};
 
 	struct FArdaInductorCommandProgram::FArdaImpl final

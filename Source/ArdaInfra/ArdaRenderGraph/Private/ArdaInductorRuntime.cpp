@@ -22,9 +22,23 @@ namespace arda
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, Message);
 		}
 
-		EArdaRHIResourceState EntryState(EArdaRHIResourceState State)
+		const FArdaInductorNodeBindings& GetNodeBindings(const FArdaInductorFrame* Frame, FArdaGraphNodeHandle Node)
 		{
-			return State == EArdaRHIResourceState::Unknown ? EArdaRHIResourceState::Common : State;
+			static const FArdaInductorNodeBindings Empty;
+			if (!Frame)
+			{
+				return Empty;
+			}
+			const auto Found = Frame->mNodeBindings.find(Node.GetIndex());
+			return Found == Frame->mNodeBindings.end() ? Empty : Found->second;
+		}
+
+		template <class Value>
+		const Value& GetSlot(const eastl::unordered_map<eastl::string, Value>& Slots, const eastl::string& Name)
+		{
+			static const Value Empty;
+			const auto Found = Slots.find(Name);
+			return Found == Slots.end() ? Empty : Found->second;
 		}
 
 		bool DeclaresResource(const FArdaDependencyGraph::FArdaImpl& Graph,
@@ -341,77 +355,31 @@ namespace arda
 
 	const FArdaInductorResolvedPipeline* FArdaDependencyExecutionContext::GetPipeline(const eastl::string& Slot) const
 	{
-		if (!mGraph || !mFrame)
-		{
-			return nullptr;
-		}
-		const auto Node = mFrame->mPipelines.find(mNode.GetIndex());
-		if (Node == mFrame->mPipelines.end())
-		{
-			return nullptr;
-		}
-		const auto Pipeline = Node->second.find(Slot);
-		return Pipeline == Node->second.end() ? nullptr : &Pipeline->second;
+		const auto& Pipelines = GetNodeBindings(mGraph ? mFrame : nullptr, mNode).mPipelines;
+		const auto Found = Pipelines.find(Slot);
+		return Found == Pipelines.end() ? nullptr : &Found->second;
 	}
 
 	FArdaRHIFramebufferRef FArdaDependencyExecutionContext::GetFramebuffer() const
 	{
-		if (!mGraph || !mFrame)
-		{
-			return {};
-		}
-		const auto Found = mFrame->mFramebuffers.find(mNode.GetIndex());
-		return Found == mFrame->mFramebuffers.end() ? FArdaRHIFramebufferRef{} : Found->second;
+		return GetNodeBindings(mGraph ? mFrame : nullptr, mNode).mFramebuffer;
 	}
 
 	const eastl::vector<FArdaRHIBindingSetRef>& FArdaDependencyExecutionContext::GetBindings(
 	    const eastl::string& Slot) const
 	{
-		static const eastl::vector<FArdaRHIBindingSetRef> Empty;
-		if (!mFrame)
-		{
-			return Empty;
-		}
-		const auto Node = mFrame->mBindings.find(mNode.GetIndex());
-		if (Node == mFrame->mBindings.end())
-		{
-			return Empty;
-		}
-		const auto Sets = Node->second.find(Slot);
-		return Sets == Node->second.end() ? Empty : Sets->second;
+		return GetSlot(GetNodeBindings(mFrame, mNode).mBindings, Slot);
 	}
 
 	const FArdaRHIShaderTableRef& FArdaDependencyExecutionContext::GetShaderTable(const eastl::string& Slot) const
 	{
-		static const FArdaRHIShaderTableRef Empty;
-		if (!mFrame)
-		{
-			return Empty;
-		}
-		const auto N = mFrame->mShaderTables.find(mNode.GetIndex());
-		if (N == mFrame->mShaderTables.end())
-		{
-			return Empty;
-		}
-		const auto T = N->second.find(Slot);
-		return T == N->second.end() ? Empty : T->second;
+		return GetSlot(GetNodeBindings(mFrame, mNode).mShaderTables, Slot);
 	}
 
 	const FArdaRHIDescriptorTableRef& FArdaDependencyExecutionContext::GetDescriptorTable(
 	    const eastl::string& Name) const
 	{
-		static const FArdaRHIDescriptorTableRef Empty;
-		if (!mFrame)
-		{
-			return Empty;
-		}
-		const auto N = mFrame->mDescriptorTables.find(mNode.GetIndex());
-		if (N == mFrame->mDescriptorTables.end())
-		{
-			return Empty;
-		}
-		const auto T = N->second.find(Name);
-		return T == N->second.end() ? Empty : T->second;
+		return GetSlot(GetNodeBindings(mFrame, mNode).mDescriptorTables, Name);
 	}
 
 	FArdaRHIStatus FArdaDependencyExecutionContext::ApplyShaderParameters(const eastl::string& Slot) const
@@ -421,14 +389,10 @@ namespace arda
 		{
 			return RuntimeError("Missing compiled shader parameter slot.");
 		}
-		const auto Params = mFrame->mShaderParameters.find(mNode.GetIndex());
-		if (Params != mFrame->mShaderParameters.end())
+		const auto& Bytes = GetSlot(GetNodeBindings(mFrame, mNode).mShaderParameters, Slot);
+		if (!Bytes.empty())
 		{
-			const auto Bytes = Params->second.find(Slot);
-			if (Bytes != Params->second.end() && !Bytes->second.empty())
-			{
-				GetCommands().SetPushConstants(Bytes->second.data(), Bytes->second.size());
-			}
+			GetCommands().SetPushConstants(Bytes.data(), Bytes.size());
 		}
 		return {};
 	}
@@ -619,7 +583,7 @@ namespace arda
 					// state on the graphics queue. Owned/persistent pool storage declares Common.
 					Frame->mBuffers[Index] = Frame->mLowered->BindBuffer(Frame->mMemory.mBuffers[Index],
 					    Reuse ? (*Reuse)[FrameIndex].mBufferStates[Index]
-					          : EntryState(Frame->mMemory.mBuffers[Index]->GetDesc().mInitialState),
+					          : NormalizeInitialState(Frame->mMemory.mBuffers[Index]->GetDesc().mInitialState),
 					    Name);
 				}
 				if (Frame->mMemory.mAccelerationStructures[Index])
@@ -632,8 +596,9 @@ namespace arda
 
 				if (Frame->mMemory.mTextures[Index])
 				{
-					auto State = Reuse ? (*Reuse)[FrameIndex].mTextureStates[Index]
-					                   : EntryState(Frame->mMemory.mTextures[Index]->GetDesc().mInitialState);
+					auto State = Reuse
+					    ? (*Reuse)[FrameIndex].mTextureStates[Index]
+					    : NormalizeInitialState(Frame->mMemory.mTextures[Index]->GetDesc().mInitialState);
 					if (!Reuse && Plan.mRequests[Index].mExternalTexture)
 					{
 						// Creation descriptors can retain Discard after WSI acquisition has
@@ -674,12 +639,7 @@ namespace arda
 
 			if (Reuse)
 			{
-				Frame->mPipelines = (*Reuse)[FrameIndex].mPipelines;
-				Frame->mFramebuffers = (*Reuse)[FrameIndex].mFramebuffers;
-				Frame->mBindings = (*Reuse)[FrameIndex].mBindings;
-				Frame->mDescriptorTables = (*Reuse)[FrameIndex].mDescriptorTables;
-				Frame->mShaderTables = (*Reuse)[FrameIndex].mShaderTables;
-				Frame->mShaderParameters = (*Reuse)[FrameIndex].mShaderParameters;
+				Frame->mNodeBindings = (*Reuse)[FrameIndex].mNodeBindings;
 			}
 			else
 			{
@@ -761,7 +721,7 @@ namespace arda
 							return Created.mStatus;
 						}
 						Framebuffer = Created.mValue;
-						Frame->mFramebuffers.emplace(Handle.GetIndex(), Framebuffer);
+						Frame->mNodeBindings[Handle.GetIndex()].mFramebuffer = Framebuffer;
 					}
 					for (auto Request : Node.mDesc.mPipelines)
 					{
@@ -770,7 +730,7 @@ namespace arda
 						{
 							Request.mSlot = "default";
 						}
-						auto& Slots = Frame->mPipelines[Handle.GetIndex()];
+						auto& Slots = Frame->mNodeBindings[Handle.GetIndex()].mPipelines;
 						if (Slots.count(Request.mSlot))
 						{
 							return RuntimeError("A node requests duplicate pipeline slots.");
@@ -1224,12 +1184,12 @@ namespace arda
 				                                                  Transition.mTexture.GetIndex()) != 0;
 			                                       }),
 			    Epilogue.mTextureTransitions.end());
-			for (const auto* Buffer : Lowered.mBuffers.GetEntries())
+			for (const auto& Buffer : Lowered.mBuffers.GetEntries())
 			{
 				if (Buffer->GetFirstUse().IsValid() && Buffer->GetFirstUse() != Lowered.mPlan.mEpilogue &&
 				    eastl::none_of(Epilogue.mBufferTransitions.begin(),
 				        Epilogue.mBufferTransitions.end(),
-				        [Buffer](const auto& Transition)
+				        [&Buffer](const auto& Transition)
 				        {
 					        return Transition.mBuffer == Buffer->GetHandle();
 				        }))
@@ -1238,7 +1198,7 @@ namespace arda
 					    {Buffer->GetHandle(), Buffer->GetFinalState(), Buffer->GetFinalState()});
 				}
 			}
-			for (const auto* Texture : Lowered.mTextures.GetEntries())
+			for (const auto& Texture : Lowered.mTextures.GetEntries())
 			{
 				if (RetiredTextureHandles.count(Texture->GetHandle().GetIndex()))
 				{
@@ -1255,7 +1215,7 @@ namespace arda
 				    {
 					    const bool Present = eastl::any_of(Epilogue.mTextureTransitions.begin(),
 					        Epilogue.mTextureTransitions.end(),
-					        [Texture, &Cell](const auto& Transition)
+					        [&Texture, &Cell](const auto& Transition)
 					        {
 						        return Transition.mTexture == Texture->GetHandle() && Transition.mSubresources == Cell;
 					        });
@@ -1276,12 +1236,8 @@ namespace arda
 			{
 				FArdaInductorReuseFrame R;
 				R.mMemory = Frame->mMemory;
-				R.mPipelines = Frame->mPipelines;
-				R.mFramebuffers = Frame->mFramebuffers;
-				R.mBindings = Frame->mBindings;
-				R.mDescriptorTables = Frame->mDescriptorTables;
-				R.mShaderTables = Frame->mShaderTables;
-				R.mShaderParameters = Frame->mShaderParameters;
+				R.mNodeBindings = Frame->mNodeBindings;
+
 				R.mTimers = Frame->mTimers;
 				R.mCudaTimers = Frame->mCudaTimers;
 				R.mCudaCaches = Frame->mCudaCaches;

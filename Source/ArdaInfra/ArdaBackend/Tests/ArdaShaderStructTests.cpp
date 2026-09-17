@@ -478,6 +478,77 @@ TEST(ArdaShaderStructs, EnumeratesMetadataAndGeneratesStableLayout)
 	EXPECT_EQ(Flattened[1].mPath, "mResources.mNestedTexture");
 }
 
+TEST(ArdaShaderStructs, RejectsInvalidMembersBeforeFlattening)
+{
+	using namespace arda;
+	FArdaShaderParameterMember Member;
+	Member.mSize = sizeof(uint32_t);
+	Member.mElementStride = sizeof(uint32_t);
+	FArdaShaderParameterMetadata Unnamed("Unnamed", sizeof(uint32_t), alignof(uint32_t), {Member});
+	EXPECT_EQ(Unnamed.GetStatus().mCode, EArdaShaderStructError::InvalidMember);
+	EXPECT_EQ(Unnamed.FindMember("Missing"), nullptr);
+
+	Member.mName = "Nested";
+	Member.mKind = EArdaShaderParameterKind::NestedStruct;
+	FArdaShaderParameterMetadata MissingNested("MissingNested", sizeof(uint32_t), alignof(uint32_t), {Member});
+	EXPECT_EQ(MissingNested.GetStatus().mCode, EArdaShaderStructError::InvalidMember);
+	EXPECT_EQ(MissingNested.FindFlattenedMember("Nested.Value"), nullptr);
+
+	Member.mNestedMetadata = &Unnamed;
+	FArdaShaderParameterMetadata InvalidNested("InvalidNested", sizeof(uint32_t), alignof(uint32_t), {Member});
+	EXPECT_EQ(InvalidNested.GetStatus().mCode, EArdaShaderStructError::InvalidMember);
+
+	FArdaShaderParameterMetadata EmptyNested("EmptyNested", 16, alignof(uint32_t), {});
+	Member.mNestedMetadata = &EmptyNested;
+	Member.mSize = EmptyNested.GetSize();
+	Member.mElementStride = EmptyNested.GetSize();
+	FArdaShaderParameterMetadata OutOfBounds("OutOfBounds", sizeof(uint32_t), alignof(uint32_t), {Member});
+	EXPECT_EQ(OutOfBounds.GetStatus().mCode, EArdaShaderStructError::InvalidMember);
+	eastl::vector<FArdaFlattenedShaderParameterMember> Flattened(1);
+	OutOfBounds.GetFlattenedMembers(Flattened);
+	EXPECT_TRUE(Flattened.empty());
+}
+
+TEST(ArdaShaderStructs, ValidatesResourceArrayStorageWithoutOverflow)
+{
+	using namespace arda;
+	FArdaShaderParameterMember Member;
+	Member.mName = "Textures";
+	Member.mKind = EArdaShaderParameterKind::TextureSRV;
+	Member.mBindingType = EArdaRHIBindingType::TextureSRV;
+	Member.mVisibility = EArdaRHIShaderStage::Compute;
+	Member.mArrayCount = 2;
+	Member.mElementStride = sizeof(FArdaRHITextureRef);
+	Member.mSize = sizeof(FArdaRHITextureRef);
+	const auto Status = [&]
+	{
+		return FArdaShaderParameterMetadata("ResourceArray", Member.mSize, alignof(FArdaRHITextureRef), {Member})
+		    .GetStatus()
+		    .mCode;
+	};
+	EXPECT_EQ(Status(), EArdaShaderStructError::MalformedArray);
+	Member.mSize = 2 * sizeof(FArdaRHITextureRef);
+	EXPECT_EQ(Status(), EArdaShaderStructError::None);
+	Member.mElementStride = sizeof(FArdaRHITextureRef) - 1;
+	EXPECT_EQ(Status(), EArdaShaderStructError::MalformedArray);
+	Member.mElementStride = sizeof(FArdaRHITextureRef) + 1;
+	Member.mSize = Member.mElementStride + sizeof(FArdaRHITextureRef);
+	EXPECT_EQ(Status(), EArdaShaderStructError::MalformedArray);
+	Member.mArrayCount = 3;
+	Member.mElementStride = SIZE_MAX / 2 + 1;
+	Member.mSize = SIZE_MAX;
+	EXPECT_EQ(Status(), EArdaShaderStructError::MalformedArray);
+	// Only the last reference must fit; trailing padding after it is optional.
+	Member.mArrayCount = 2;
+	Member.mElementStride = 2 * sizeof(FArdaRHITextureRef);
+	Member.mSize = Member.mElementStride + sizeof(FArdaRHITextureRef);
+	EXPECT_EQ(Status(), EArdaShaderStructError::None);
+	Member.mArrayCount = 1;
+	Member.mElementStride = sizeof(FArdaRHITextureRef);
+	Member.mSize = sizeof(FArdaRHITextureRef) - 1;
+	EXPECT_EQ(Status(), EArdaShaderStructError::MalformedArray);
+}
+
 TEST(ArdaShaderStructs, ValidatesRegistersVisibilityAndPushConstants)
 {
 	using namespace arda;
@@ -920,10 +991,44 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
 
 	const std::string ArtifactBeforeFailure = ReadTestFile(Artifact);
 	const std::string ManifestBeforeFailure = ReadTestFile(Manifest);
+	const std::filesystem::path Sidecar = Artifact.string() + ".arda-key";
+	const std::string SidecarBeforeFailure = ReadTestFile(Sidecar);
+	// Publication must restore already-backed-up files and leave an obstructing directory intact.
+	ASSERT_TRUE(std::filesystem::remove(Manifest, Error));
+	ASSERT_TRUE(std::filesystem::create_directory(Manifest, Error));
+	const auto Marker = Manifest / "Keep.txt";
+	{
+		std::ofstream Stream(Marker);
+		Stream << "Keep this directory";
+	}
+	const auto BlockedCook = CompileRegisteredShaderArtifacts(Output, Backends);
+	ASSERT_FALSE(BlockedCook);
+	EXPECT_EQ(BlockedCook.mDiagnostics.front().mCode, EArdaShaderCompileError::CacheWriteFailed);
+	EXPECT_EQ(ReadTestFile(Artifact), ArtifactBeforeFailure);
+	EXPECT_EQ(ReadTestFile(Sidecar), SidecarBeforeFailure);
+	EXPECT_EQ(ReadTestFile(Marker), "Keep this directory");
+	ASSERT_TRUE(std::filesystem::remove(Marker, Error));
+	ASSERT_TRUE(std::filesystem::remove(Manifest, Error));
+	{
+		std::ofstream Stream(Manifest, std::ios::binary);
+		Stream << ManifestBeforeFailure;
+	}
 	{
 		std::ofstream Stream(Source, std::ios::app);
 		Stream << "\n// force another stale key\n";
 	}
+#if defined(_WIN32)
+	// Denying rename of the sidecar forces rollback after the artifact backup has succeeded.
+	const HANDLE LockedSidecar =
+	    CreateFileW(Sidecar.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+	ASSERT_NE(LockedSidecar, INVALID_HANDLE_VALUE);
+	const auto BlockedRebuild = EnsureRegisteredShaderArtifact(Registration.GetType(), PrimaryBackend, 0, Output);
+	CloseHandle(LockedSidecar);
+	ASSERT_FALSE(BlockedRebuild);
+	EXPECT_EQ(BlockedRebuild.mDiagnostics.front().mCode, EArdaShaderCompileError::CacheWriteFailed);
+	EXPECT_EQ(ReadTestFile(Artifact), ArtifactBeforeFailure);
+	EXPECT_EQ(ReadTestFile(Sidecar), SidecarBeforeFailure);
+#endif
 	FArdaShaderCompilerConfiguration Configuration = GetShaderCompilerConfiguration();
 	Configuration.mCompilerExecutable = Source;
 	ConfigureShaderCompiler(Configuration);

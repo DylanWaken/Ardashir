@@ -490,7 +490,7 @@ namespace arda
 			{
 				return S;
 			}
-			Frame.mShaderTables[NodeId][Slot] = eastl::move(Created.mValue);
+			Frame.mNodeBindings[NodeId].mShaderTables[Slot] = eastl::move(Created.mValue);
 			return {};
 		}
 	}
@@ -689,8 +689,8 @@ namespace arda
 		for (auto Handle : G.mCompile.mExecutionOrder)
 		{
 			const auto& Node = G.mTopology.TryGetNode(Handle)->mPayload;
-			const auto Slots = Frame.mPipelines.find(Handle.GetIndex());
-			if (Slots == Frame.mPipelines.end())
+			const auto Slots = Frame.mNodeBindings.find(Handle.GetIndex());
+			if (Slots == Frame.mNodeBindings.end() || Slots->second.mPipelines.empty())
 			{
 				if (!Node.mDesc.mShaderBindings.empty() || !Node.mDesc.mBindlessTables.empty() ||
 				    !Node.mDesc.mShaderTables.empty())
@@ -701,7 +701,7 @@ namespace arda
 			}
 
 			// Prepare each resolved pipeline slot independently for this retained frame allocation.
-			for (const auto& Slot : Slots->second)
+			for (const auto& Slot : Slots->second.mPipelines)
 			{
 				const auto& Layouts = PipelineLayouts(Slot.second);
 				const bool Automatic = eastl::any_of(Node.mDesc.mShaderBindings.begin(),
@@ -744,7 +744,7 @@ namespace arda
 					}
 
 					// Materialize fixed sets and bindless table entries from this frame's physical resources.
-					auto& Sets = Frame.mBindings[Handle.GetIndex()][Slot.first];
+					auto& Sets = Slots->second.mBindings[Slot.first];
 					for (const auto& Layout : Layouts)
 					{
 						if (!Layout)
@@ -787,7 +787,7 @@ namespace arda
 								}
 							}
 							Sets.push_back(FArdaRHIBindingSetRef(Table.mValue.Get()));
-							Frame.mDescriptorTables[Handle.GetIndex()][B->mName] = eastl::move(Table.mValue);
+							Slots->second.mDescriptorTables[B->mName] = eastl::move(Table.mValue);
 							continue;
 						}
 						FArdaRHIBindingSetDesc Set;
@@ -822,7 +822,7 @@ namespace arda
 
 				// Relocate logical descriptor references only after table storage and heap indices are known.
 				bool HavePush = false;
-				auto& Push = Frame.mShaderParameters[Handle.GetIndex()][Slot.first];
+				auto& Push = Slots->second.mShaderParameters[Slot.first];
 				for (const auto& B : Node.mDesc.mShaderBindings)
 				{
 					if (B.mPipelineSlot != Slot.first)
@@ -873,9 +873,8 @@ namespace arda
 									return BindingError(
 									    "Absolute indices require a direct-heap table with exactly one descriptor bank.");
 								}
-								Value += Frame.mDescriptorTables.at(Handle.GetIndex())
-								             .at(Table->mName)
-								             ->GetFirstDescriptorIndexInHeap();
+								Value +=
+								    Slots->second.mDescriptorTables.at(Table->mName)->GetFirstDescriptorIndexInHeap();
 							}
 							if (Value > UINT32_MAX)
 							{

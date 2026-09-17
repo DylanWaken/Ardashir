@@ -201,8 +201,6 @@ namespace arda
 		std::filesystem::path mDirectory;
 		/** Initialized global shader instances. */
 		mutable eastl::vector<FArdaGlobalShaderInstance> mShaders;
-		/** Per-slot state: zero unloaded, one loaded, two permanently failed. */
-		mutable eastl::vector<uint8_t> mLoadStates;
 		/** Diagnostics from the most recent initialization. */
 		mutable eastl::vector<FArdaGlobalShaderMapDiagnostic> mDiagnostics;
 		/** Serializes first-use loading and diagnostics without growing slots. */

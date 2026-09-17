@@ -150,7 +150,7 @@ namespace arda
 	}
 
 	/** Mutable simple directed graph; self-edges are allowed and duplicate endpoint pairs are idempotent.
-     * Nodes and edges own arbitrary payloads. Hashes index incoming/outgoing neighbors and endpoint pairs;
+	 * Nodes and edges own arbitrary payloads. One outgoing-neighbor index identifies every endpoint pair;
      * dense live lists and adjacency lists avoid reconstructing topology on every query. Edge removal is
      * constant expected time, node removal is proportional to its incident edges. Removal may reorder dense
      * lists; algorithm outputs use handle order and never depend on hash iteration. Payload addresses remain
@@ -183,7 +183,7 @@ namespace arda
 		private:
 			friend class TArdaDirectedGraph;
 			eastl::vector<FArdaGraphEdgeHandle> mIncomingEdges, mOutgoingEdges;
-			eastl::unordered_map<FArdaGraphNodeHandle, FArdaGraphEdgeHandle, NodeHasher> mIncoming, mOutgoing;
+			eastl::unordered_map<FArdaGraphNodeHandle, FArdaGraphEdgeHandle, NodeHasher> mOutgoing;
 		};
 
 		/** Edge data with immutable endpoints. */
@@ -259,7 +259,6 @@ namespace arda
 			mFreeEdges.swap(Other.mFreeEdges);
 			mNodes.swap(Other.mNodes);
 			mEdges.swap(Other.mEdges);
-			mPairs.swap(Other.mPairs);
 		}
 
 		/** Deep-copies an edit snapshot while deliberately preserving graph identity and handles.
@@ -279,7 +278,6 @@ namespace arda
 			Copy.mLineage = mLineage;
 			Copy.mNodes = mNodes;
 			Copy.mEdges = mEdges;
-			Copy.mPairs = mPairs;
 			Copy.mFreeNodes = mFreeNodes;
 			Copy.mFreeEdges = mFreeEdges;
 			Copy.mNodeSlots.resize(mNodeSlots.size());
@@ -412,24 +410,13 @@ namespace arda
 		/** Finds an endpoint pair using its hash index, without creating a missing edge. */
 		[[nodiscard]] FArdaGraphEdgeHandle FindEdge(FArdaGraphNodeHandle From, FArdaGraphNodeHandle To) const
 		{
-			if (!ContainsNode(From) || !ContainsNode(To))
-			{
-				return {};
-			}
-			const auto Found = mPairs.find({From, To});
-			return Found == mPairs.end() ? FArdaGraphEdgeHandle{} : Found->second;
+			return FindOutgoingEdge(From, To);
 		}
 
-		/** Finds an incoming edge through the destination's neighbor index. */
+		/** Finds an incoming edge through the source's endpoint index. */
 		[[nodiscard]] FArdaGraphEdgeHandle FindIncomingEdge(FArdaGraphNodeHandle Node, FArdaGraphNodeHandle From) const
 		{
-			const auto* Record = TryGetNode(Node);
-			if (!Record)
-			{
-				return {};
-			}
-			const auto Found = Record->mIncoming.find(From);
-			return Found == Record->mIncoming.end() ? FArdaGraphEdgeHandle{} : Found->second;
+			return FindOutgoingEdge(From, Node);
 		}
 
 		/** Finds an outgoing edge through the source's neighbor index. */
@@ -494,13 +481,11 @@ namespace arda
 			Source.mOutgoingEdges.push_back(Handle);
 			Destination.mIncomingEdges.push_back(Handle);
 			Source.mOutgoing.emplace(To, Handle);
-			Destination.mIncoming.emplace(From, Handle);
-			mPairs.emplace(FArdaEdgeKey{From, To}, Handle);
 			mEdges.push_back(Handle);
 			return {Handle, true};
 		}
 
-		/** Removes one live edge and all three hash indexes in expected constant time. */
+		/** Removes one live edge, its endpoint index, and both adjacency entries in expected constant time. */
 		bool RemoveEdge(FArdaGraphEdgeHandle Handle)
 		{
 			auto* Edge = TryGetEdge(Handle);
@@ -519,8 +504,6 @@ namespace arda
 			Destination.mIncomingEdges[Edge->mIncomingIndex] = LastIncoming;
 			mEdgeSlots[LastIncoming.GetIndex()].mValue->mIncomingIndex = Edge->mIncomingIndex;
 			Destination.mIncomingEdges.pop_back();
-			Destination.mIncoming.erase(Edge->mFrom);
-			mPairs.erase(FArdaEdgeKey{Edge->mFrom, Edge->mTo});
 			auto& Slot = mEdgeSlots[Handle.GetIndex()];
 			const auto Last = mEdges.back();
 			mEdges[Slot.mLiveIndex] = Last;
@@ -693,25 +676,6 @@ namespace arda
 			size_t mLiveIndex = 0;
 		};
 
-		struct FArdaEdgeKey
-		{
-			FArdaGraphNodeHandle mFrom, mTo;
-
-			bool operator==(const FArdaEdgeKey& Other) const noexcept
-			{
-				return mFrom == Other.mFrom && mTo == Other.mTo;
-			}
-		};
-
-		struct FArdaEdgeKeyHash
-		{
-			size_t operator()(const FArdaEdgeKey& Key) const
-			{
-				const size_t From = NodeHasher{}(Key.mFrom), To = NodeHasher{}(Key.mTo);
-				return From ^ (To + size_t(0x9e3779b9u) + (From << 6) + (From >> 2));
-			}
-		};
-
 		template <typename Record>
 		static uint32_t AcquireSlot(eastl::vector<TArdaSlot<Record>>& Slots, eastl::vector<uint32_t>& Free)
 		{
@@ -814,6 +778,5 @@ namespace arda
 		eastl::vector<uint32_t> mFreeNodes, mFreeEdges;
 		eastl::vector<FArdaGraphNodeHandle> mNodes;
 		eastl::vector<FArdaGraphEdgeHandle> mEdges;
-		eastl::unordered_map<FArdaEdgeKey, FArdaGraphEdgeHandle, FArdaEdgeKeyHash> mPairs;
 	};
 }

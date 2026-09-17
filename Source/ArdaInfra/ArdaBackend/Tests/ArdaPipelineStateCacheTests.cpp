@@ -405,6 +405,9 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
 
 TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
 {
+#if !defined(ARDA_TEST_NATIVE_VULKAN)
+	GTEST_SKIP() << "The native Vulkan backend is disabled in this build.";
+#else
 	using namespace arda;
 
 	ShutdownBackend();
@@ -421,11 +424,7 @@ TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
 	Configuration.mPipelineCacheDirectory = Directory;
 	Configuration.mMessageCallback = &Diagnostics;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
-	if (!InitializeBackend())
-	{
-		std::filesystem::remove_all(Directory, Error);
-		GTEST_SKIP() << GetBackendError().c_str();
-	}
+	ARDA_REQUIRE_BACKEND();
 	if (!GetDevice()->GetCapabilities().mbPipelineCachePersistence)
 	{
 		ShutdownBackend();
@@ -461,6 +460,7 @@ TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
 	ShutdownBackend();
 
 	std::filesystem::remove_all(Directory, Error);
+#endif
 }
 
 TEST(ArdaPipelineStateCache, CachesPrecachesEvictsAndReportsFailures)
@@ -535,7 +535,24 @@ TEST(ArdaPipelineStateCache, CachesPrecachesEvictsAndReportsFailures)
 		auto CommandList = Device->CreateCommandList(EArdaRHIQueueType::Compute);
 		ASSERT_TRUE(CommandList);
 		ASSERT_TRUE(CommandList.mValue->Open());
-		EXPECT_TRUE(Cache.SetComputePipelineState(*CommandList.mValue, Relabeled, {}));
+		EXPECT_EQ(Cache.SetComputePipelineState(*CommandList.mValue, Relabeled, {}).mCode,
+		    EArdaRHIResult::InvalidArgument);
+		FArdaRHIBufferDesc OutputDesc;
+		OutputDesc.mByteSize = OutputDesc.mStructureStride = sizeof(uint32_t);
+		OutputDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess;
+		auto Output = Device->CreateBuffer(OutputDesc);
+		ASSERT_TRUE(Output);
+		FArdaRHIBindingSetDesc SetDesc;
+		SetDesc.mLayout = Layout.mValue;
+		FArdaRHIBindingItem OutputBinding;
+		OutputBinding.mType = EArdaRHIBindingType::StructuredBufferUAV;
+		OutputBinding.mResource = FArdaRHIResourceRef(Output.mValue.Get());
+		SetDesc.mItems = {OutputBinding};
+		auto Set = Device->CreateBindingSet(SetDesc);
+		ASSERT_TRUE(Set);
+		FArdaRHIComputeState State;
+		State.mBindings = {Set.mValue};
+		EXPECT_TRUE(Cache.SetComputePipelineState(*CommandList.mValue, Relabeled, State));
 		EXPECT_TRUE(CommandList.mValue->Close());
 
 		FArdaComputePipelineStateInitializer B;

@@ -56,6 +56,7 @@ COMPLETE_BACKEND_SOURCES = {
     "Source/ArdaInfra/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "Source/ArdaInfra/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
     "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
     "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h",
     "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
@@ -614,15 +615,24 @@ def main() -> int:
     # Rich header contracts supersede older authored boilerplate while preserving
     # canonical IDs and related links. Generic one-line comments do not replace prose.
     authored = evaluate_api(backend_base, "ArdaBackendApi")["symbols"]
+    declaration_counts = collections.Counter(
+        (item["qualifiedName"], item["kind"]) for item in backend_declarations
+    )
     contracts = []
     for declaration in backend_declarations:
         if declaration["ownership"].startswith("Owning handles retain"):
             continue
         existing = next((s for s in authored if s["qualifiedName"] == declaration["qualifiedName"]
             and signature_identity(s["signature"]) == signature_identity(declaration["signature"])), None)
+        if existing is None and declaration_counts[(declaration["qualifiedName"], declaration["kind"])] == 1:
+            # Parameter names/defaults may improve while an unambiguous API keeps its canonical anchor.
+            candidates = [s for s in authored if s["qualifiedName"] == declaration["qualifiedName"]
+                and s["kind"] == declaration["kind"]]
+            if len(candidates) == 1:
+                existing = candidates[0]
         if existing:
             contracts.append({"id": existing["id"], **{field: declaration[field] for field in
-                ("summary", "details", "params", "returns", "ownership", "errors", "threading", "sourceLine")}})
+                ("signature", "summary", "details", "params", "returns", "ownership", "errors", "threading", "sourceLine")}})
     backend_block = generated_block(
         backend_symbols, "ArdaBackendApi", BACKEND_BEGIN, BACKEND_END, contracts
     )

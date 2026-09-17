@@ -93,5 +93,17 @@ namespace
 		ASSERT_TRUE(S) << S.mMessage.c_str();
 	}
 
-	INSTANTIATE_TEST_SUITE_P(Native, FArdaGraphRecipes, testing::Values("native-d3d12", "native-vulkan"));
+#if defined(ARDA_TEST_NATIVE_D3D12) || defined(ARDA_TEST_NATIVE_VULKAN)
+	const char* const NativeBackends[] = {
+#if defined(ARDA_TEST_NATIVE_D3D12)
+	    "native-d3d12",
+#endif
+#if defined(ARDA_TEST_NATIVE_VULKAN)
+	    "native-vulkan",
+#endif
+	};
+	INSTANTIATE_TEST_SUITE_P(Native, FArdaGraphRecipes, testing::ValuesIn(NativeBackends));
+#else
+	GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(FArdaGraphRecipes);
+#endif
 }

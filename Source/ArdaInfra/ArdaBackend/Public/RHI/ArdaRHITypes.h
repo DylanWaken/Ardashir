@@ -682,15 +682,15 @@ namespace arda
 	{
 		/** Texture width in texels. */
 		uint32_t mWidth = 1;
-		/** Texture height in texels. */
+		/** Texture height in texels; one for 1D textures. */
 		uint32_t mHeight = 1;
-		/** Texture depth in texels. */
+		/** Texture depth in texels; one except for 3D textures. */
 		uint32_t mDepth = 1;
-		/** Number of array slices. */
+		/** Array layers; six per cube, exactly six for TextureCube, and one for non-array/3D textures. */
 		uint32_t mArraySize = 1;
-		/** Number of mip levels. */
+		/** Mip levels, at most floor(log2(maximum extent)) + 1; multisampled textures require one. */
 		uint32_t mMipLevels = 1;
-		/** Multisample count. */
+		/** Power-of-two sample count; 2D/2DArray may also request MSAA without explicit MS dimensions. */
 		uint32_t mSampleCount = 1;
 		/** Stores the format. */
 		EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown;
@@ -728,7 +728,7 @@ namespace arda
 	{
 		/** Stores the byte size. */
 		uint64_t mByteSize = 0;
-		/** Structured-buffer element stride in bytes. */
+		/** Structured element stride in bytes; DWORD-aligned and no larger than the allocation when Structured. */
 		uint32_t mStructureStride = 0;
 		/** Maximum number of backing-buffer versions. */
 		uint32_t mMaxVersions = 0;
@@ -736,7 +736,7 @@ namespace arda
 		EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown;
 		/** Stores the usage. */
 		EArdaRHIBufferUsage mUsage = EArdaRHIBufferUsage::None;
-		/** Stores the CPU access. */
+		/** Portable heap access: Write permits GPU reads; Read permits copy destinations and CPU reads. */
 		EArdaRHICpuAccess mCpuAccess = EArdaRHICpuAccess::None;
 		/** Stores the initial state. */
 		EArdaRHIResourceState mInitialState = EArdaRHIResourceState::Common;
@@ -1340,6 +1340,25 @@ namespace arda
 
 	/** @return The byte size of one uncompressed format element, or zero for compressed/unknown formats. */
 	[[nodiscard]] uint32_t GetArdaRHIFormatElementSize(EArdaRHIFormat Format) noexcept;
+
+	/** Vertex element/stride byte alignment: component size, or packed element size.
+	 * Returns zero for unknown, depth/stencil, and compressed formats. Native vertex-format
+	 * support remains a separate per-device query.
+	 */
+	[[nodiscard]] uint32_t GetArdaRHIVertexFormatAlignment(EArdaRHIFormat Format) noexcept;
+
+	/** Unknown inherits the texture format; other reinterpretations require Typeless and the same format family. */
+	[[nodiscard]] bool IsArdaRHITextureViewFormatCompatible(const FArdaRHITextureDesc& Texture,
+	    EArdaRHIFormat ViewFormat) noexcept;
+
+	/** Validates and resolves an attachment's format and subresource selection. The default mip sentinel
+	 * selects one mip at the base; default array and plane counts select all remaining layers/aspects.
+	 * Explicit stencil-only attachments are unsupported. Ownership and device limits are checked by the facade.
+	 */
+	[[nodiscard]] FArdaRHIStatus ResolveArdaRHIFramebufferAttachment(const FArdaRHITextureDesc& Texture,
+	    const FArdaRHIFramebufferAttachment& Attachment,
+	    bool bDepthAttachment,
+	    FArdaRHIFramebufferAttachment& Out) noexcept;
 
 	/** @return The number of independently addressable format planes. */
 	[[nodiscard]] uint32_t GetArdaRHIFormatPlaneCount(EArdaRHIFormat Format) noexcept;

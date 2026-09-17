@@ -186,7 +186,6 @@ namespace arda
 		mMode = GetBackendConfiguration().mShaderCompilationMode;
 		mDirectory = ResolvedDirectory;
 		mShaders = eastl::move(Slots);
-		mLoadStates.assign(mShaders.size(), 0);
 		mbInitialized = true;
 		if (mMode != EArdaShaderCompilationMode::OnDemand)
 		{
@@ -195,7 +194,6 @@ namespace arda
 				if (!EnsureSlotLoadedLocked(Index))
 				{
 					mShaders.clear();
-					mLoadStates.clear();
 					mDevice = nullptr;
 					mbInitialized = false;
 					return false;
@@ -222,13 +220,9 @@ namespace arda
 		{
 			return false;
 		}
-		if (mLoadStates[Index] == 1)
+		if (mShaders[Index].mShader)
 		{
 			return true;
-		}
-		if (mLoadStates[Index] == 2)
-		{
-			return false;
 		}
 
 		FArdaGlobalShaderInstance& Shader = mShaders[Index];
@@ -258,7 +252,6 @@ namespace arda
 				}
 				AttachSource(Diagnostic, Type);
 				mDiagnostics.push_back(eastl::move(Diagnostic));
-				mLoadStates[Index] = 0;
 				return false;
 			}
 		}
@@ -269,7 +262,6 @@ namespace arda
 			Bytecode.mDiagnostic.mShaderType = Type.GetName();
 			AttachSource(Bytecode.mDiagnostic, Type);
 			mDiagnostics.push_back(eastl::move(Bytecode.mDiagnostic));
-			mLoadStates[Index] = 0;
 			return false;
 		}
 
@@ -288,7 +280,6 @@ namespace arda
 			    ShaderResult.mStatus.mMessage);
 			AttachSource(Diagnostic, Type);
 			mDiagnostics.push_back(eastl::move(Diagnostic));
-			mLoadStates[Index] = 0;
 			return false;
 		}
 
@@ -305,7 +296,6 @@ namespace arda
 				    LayoutStatus.mMessage);
 				AttachSource(Diagnostic, Type);
 				mDiagnostics.push_back(eastl::move(Diagnostic));
-				mLoadStates[Index] = 0;
 				return false;
 			}
 			for (const auto& LayoutDesc : LayoutDescs)
@@ -319,7 +309,6 @@ namespace arda
 					    LayoutResult.mStatus.mMessage);
 					AttachSource(Diagnostic, Type);
 					mDiagnostics.push_back(eastl::move(Diagnostic));
-					mLoadStates[Index] = 0;
 					return false;
 				}
 				Layouts.push_back(eastl::move(LayoutResult.mValue));
@@ -327,7 +316,6 @@ namespace arda
 		}
 		Shader.mShader = eastl::move(ShaderResult.mValue);
 		Shader.mBindingLayouts = eastl::move(Layouts);
-		mLoadStates[Index] = 1;
 		return true;
 	}
 
@@ -388,7 +376,6 @@ namespace arda
 	{
 		std::lock_guard<std::mutex> Lock(mLoadMutex);
 		mShaders.clear();
-		mLoadStates.clear();
 		mDiagnostics.clear();
 		mDevice = nullptr;
 		mTarget = {};
