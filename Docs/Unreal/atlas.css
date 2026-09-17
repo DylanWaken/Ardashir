@@ -12,3 +12,4 @@
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{scroll-behavior:auto!important}}
 @media(max-width:720px){.timeline-scroll{scroll-padding-inline-start:120px}.stage-card{scroll-margin-inline-start:120px}}
 @media print{.topbar,.tree-controls,.pipeline-controls,.toolbar,.stage-tabs,.stage-index,.tree,.source-item button{display:none}.type-layout,.stage-layout{display:block}.detail-panel,.stage-detail{position:static;max-height:none;overflow:visible}.timeline-scroll{display:none}.contract-grid,.roadmap-grid{grid-template-columns:1fr 1fr}.panel{break-inside:avoid}body{background:white}}
+.topbar nav{flex-wrap:wrap}
