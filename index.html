@@ -59,7 +59,7 @@
 
     <section aria-labelledby="unreal-heading">
       <h2 id="unreal-heading">Explore Unreal's rendering architecture</h2>
-      <p class="section-intro">Source-pinned guides to Unreal Engine 5.8.1. Define the scene data your renderer must ingest, then walk a deferred frame with Nanite, Lumen and virtual shadow maps. Each stage includes selected function references and a key-operation flowchart.</p>
+      <p class="section-intro">Source-pinned guides to Unreal Engine 5.8.1. Define the scene data your renderer must ingest, walk a deferred frame with Nanite, Lumen and virtual shadow maps, and plan material graph compilation for Ardashir.</p>
       <div class="card-grid">
         <article class="card card--featured">
           <p class="eyebrow">Scene input guide</p>
@@ -70,6 +70,11 @@
           <p class="eyebrow">Interactive rendering timeline</p>
           <h3><a href="Unreal/deferred-pipeline.html">Deferred rendering with Nanite &amp; Lumen</a></h3>
           <p>Follow stages from left to right, compare tracing and shadow alternatives, and inspect algorithms, implementation operations and correctness criteria.</p>
+        </article>
+        <article class="card card--featured">
+          <p class="eyebrow">Research &amp; implementation plan</p>
+          <h3><a href="Unreal/material-compiler.html">Unreal material graph compiler</a></h3>
+          <p>How Unreal compiles materials, how to adapt its graph semantics to Ardashir, and 24 proposed implementation tasks with dependencies, acceptance criteria and source references.</p>
         </article>
       </div>
     </section>
