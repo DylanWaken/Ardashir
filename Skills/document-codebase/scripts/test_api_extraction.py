@@ -1,9 +1,43 @@
 """Regression checks for public declaration extraction and Doxygen contracts."""
+import builtins
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from unittest.mock import patch
 
-from sync_api_inventories import make_symbols, preserve_symbol_ids, reconcile_backend_sources, select_missing
+from sync_api_inventories import backend_specs, make_symbols, preserve_symbol_ids, rdg_specs, reconcile_backend_sources, select_missing
+
+
+class HeaderOrderingTest(unittest.TestCase):
+    def test_header_inventory_order_is_independent_of_path_flavour(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            cases = (
+                (backend_specs, "Source/ArdaInfra/ArdaBackend/Public", (
+                    "RHI/Config/ArdaConfig.h", "RHI/CUDA/ArdaKernel.cuh",
+                    "RHI/Context/ArdaContext.h", "ArdaBackend.h",
+                )),
+                (rdg_specs, "Source/ArdaInfra/ArdaRenderGraph/Public", (
+                    "ArdaGraph.h", "ArdaGPU.h", "ArdaGraph/ArdaNode.h",
+                )),
+            )
+            for discover, public_root, names in cases:
+                for name in names:
+                    header = repo / public_root / name
+                    header.parent.mkdir(parents=True, exist_ok=True)
+                    header.write_text("#pragma once\n", encoding="utf-8")
+                expected = sorted(f"{public_root}/{name}" for name in names)
+                for flavour in (PureWindowsPath, PurePosixPath):
+                    def platform_sorted(items, *, key=None, reverse=False):
+                        values = list(items)
+                        if key is None and values and isinstance(values[0], Path):
+                            key = lambda path: flavour(path.as_posix())
+                        return builtins.sorted(values, key=key, reverse=reverse)
+
+                    with self.subTest(module=public_root, platform=flavour.__name__):
+                        # Simulate both pathlib comparison rules on every CI host.
+                        with patch("sync_api_inventories.sorted", platform_sorted, create=True):
+                            self.assertEqual([source for source, _, _ in discover(repo)], expected)
 
 
 class MacroExtractionTest(unittest.TestCase):

@@ -35,6 +35,13 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
+      - name: Test API inventory generation
+        run: >-
+          python3 -m unittest discover
+          -s Skills/document-codebase/scripts
+          -p test_api_extraction.py
+          -v
+
       - name: Check generated API inventories
         run: >-
           python3 Skills/document-codebase/scripts/sync_api_inventories.py

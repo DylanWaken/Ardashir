@@ -294,7 +294,14 @@ def description(name: str, kind: str, domain: str) -> Tuple[str, str]:
 def backend_specs(repo: Path) -> List[Tuple[str, str, str]]:
     overrides = {item[0]: item for item in CONTRACT_HEADERS}
     specs: List[Tuple[str, str, str]] = []
-    for header in sorted(p for p in (repo / "Source/ArdaInfra/ArdaBackend/Public").rglob("*") if p.suffix in {".h", ".cuh"}):
+    # pathlib compares Windows paths without case, unlike POSIX. Use the exact
+    # repository-relative spelling so generated order and duplicate ownership
+    # remain the same on developer machines and Linux CI.
+    for header in sorted(
+        (p for p in (repo / "Source/ArdaInfra/ArdaBackend/Public").rglob("*")
+         if p.suffix in {".h", ".cuh"}),
+        key=lambda path: path.relative_to(repo).as_posix(),
+    ):
         source = header.relative_to(repo).as_posix()
         if source in overrides:
             specs.append(overrides[source])
@@ -357,7 +364,10 @@ def source_contract(raw: str, line: int) -> Dict[str, object]:
 def rdg_specs(repo: Path) -> List[Tuple[str, str, str]]:
     return [
         (header.relative_to(repo).as_posix(), "arda", "core")
-        for header in sorted((repo / "Source/ArdaInfra/ArdaRenderGraph/Public").rglob("*.h"))
+        for header in sorted(
+            (repo / "Source/ArdaInfra/ArdaRenderGraph/Public").rglob("*.h"),
+            key=lambda path: path.relative_to(repo).as_posix(),
+        )
     ]
 
 
