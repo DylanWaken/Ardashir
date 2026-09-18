@@ -2,7 +2,7 @@
 #include "RHI/Pipelines/ArdaRHIRayTracingPipeline.h"
 #include "RHI/Shaders/ArdaRHIShader.h"
 
-#include "ArdaHash.h"
+#include "RHI/Resources/ArdaHash.h"
 
 #include <EASTL/algorithm.h>
 

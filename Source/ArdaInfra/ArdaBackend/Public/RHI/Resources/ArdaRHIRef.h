@@ -3,12 +3,12 @@
  */
 
 #pragma once
+#include <EASTL/type_traits.h>
+#include <EASTL/utility.h>
 
 #include "RHI/Resources/ArdaRHIFwd.h"
 
 #include <cstddef>
-#include <type_traits>
-#include <utility>
 
 namespace arda
 {
@@ -49,7 +49,7 @@ namespace arda
          * Constructs an empty or retained RHI object reference.
          * @param Other The other.
          */
-		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+		template <typename U, typename = eastl::enable_if_t<eastl::is_convertible_v<U*, T*>>>
 		TArdaRHIRef(const TArdaRHIRef<U>& Other) noexcept
 		    : mPointer(Other.Get())
 		{
@@ -69,7 +69,7 @@ namespace arda
          * Constructs an empty or retained RHI object reference.
          * @param Other The other.
          */
-		template <typename U, typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+		template <typename U, typename = eastl::enable_if_t<eastl::is_convertible_v<U*, T*>>>
 		TArdaRHIRef(TArdaRHIRef<U>&& Other) noexcept
 		    : mPointer(Other.Detach())
 		{
@@ -100,7 +100,7 @@ namespace arda
          */
 		TArdaRHIRef& operator=(TArdaRHIRef&& Other) noexcept
 		{
-			TArdaRHIRef Moved(std::move(Other));
+			TArdaRHIRef Moved(eastl::move(Other));
 			Swap(Moved);
 			return *this;
 		}
@@ -178,7 +178,7 @@ namespace arda
          */
 		void Swap(TArdaRHIRef& Other) noexcept
 		{
-			std::swap(mPointer, Other.mPointer);
+			eastl::swap(mPointer, Other.mPointer);
 		}
 
 		/**

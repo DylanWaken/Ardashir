@@ -1,12 +1,13 @@
 #include "../ArdaGpuTimestamp.h"
 #include "../ArdaSparseMapping.h"
 #include "RHI/Resources/ArdaRHISubresources.h"
-#include "RHI/Providers/ArdaRHIProvider.h"
-#include "../Cuda/ArdaCudaInterop.h"
+#include "RHI/Providers/ArdaRHIProviderDevice.h"
+#include "RHI/Providers/ArdaCudaContextProvider.h"
 #include "RHI/Pipelines/ArdaRHIProviderPipelineCache.h"
 #include "RHI/Providers/ArdaBackendProvider.h"
 #include "../ArdaBackendRequirements.h"
 #include "RHI/Interop/ArdaExternalInterop.h"
+#include "RHI/Providers/ArdaExternalDeviceProvider.h"
 #include "RHI/Scheduling/ArdaSwapChain.h"
 
 #if !defined(_WIN32)
@@ -1898,7 +1899,7 @@ namespace arda
 			bool mbSubmittedMarkersTruncated = false;
 			eastl::list<FArdaPendingSubmission> mPendingSubmissions;
 			ComPtr<ID3D12PipelineLibrary> mPipelineLibrary;
-			std::vector<uint8_t> mPipelineCacheSource;
+			eastl::vector<uint8_t> mPipelineCacheSource;
 			std::filesystem::path mPipelineCacheDirectory;
 			IArdaDiagnosticCallback* mDiagnosticCallback = nullptr;
 			std::mutex mPipelineCacheMutex;
@@ -9153,11 +9154,11 @@ namespace arda
 				const SIZE_T Size = mPipelineLibrary->GetSerializedSize();
 				if (Size <= ArdaProviderPipelineCacheMaxPayloadSize)
 				{
-					std::vector<uint8_t> Payload(Size);
+					eastl::vector<uint8_t> Payload(Size);
 					if (SUCCEEDED(mPipelineLibrary->Serialize(Payload.data(), Payload.size())) &&
 					    !WriteArdaPipelineCacheBlob(MakeArdaPipelineCachePath(mPipelineCacheDirectory, "native-d3d12"),
 					        "native-d3d12",
-					        Payload))
+					        Payload.data(), Payload.size()))
 					{
 						LogArdaPipelineCacheMessage(mDiagnosticCallback,
 						    EArdaDiagnosticSeverity::Warning,

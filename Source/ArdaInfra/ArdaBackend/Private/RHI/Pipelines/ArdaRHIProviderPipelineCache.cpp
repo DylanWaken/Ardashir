@@ -1,12 +1,13 @@
+#include <EASTL/string.h>
+#include <EASTL/vector.h>
 #include "RHI/Pipelines/ArdaRHIProviderPipelineCache.h"
 
-#include "ArdaHash.h"
+#include "RHI/Resources/ArdaHash.h"
 #include "RHI/Providers/ArdaBackendProvider.h"
 #include "FileOperations/ArdaFileOperations.h"
 
 #include <cctype>
 #include <fstream>
-#include <string>
 
 namespace arda
 {
@@ -48,7 +49,7 @@ namespace arda
 	std::filesystem::path MakeArdaPipelineCachePath(const std::filesystem::path& Directory,
 	    const eastl::string& BackendName)
 	{
-		std::string Filename;
+		eastl::string Filename;
 		Filename.reserve(BackendName.size() + 10);
 		for (const unsigned char Character : BackendName)
 		{
@@ -60,12 +61,12 @@ namespace arda
 			Filename = "unnamed-backend";
 		}
 		Filename += ".pso-cache";
-		return Directory / Filename;
+		return Directory / Filename.c_str();
 	}
 
 	bool ReadArdaPipelineCacheBlob(const std::filesystem::path& Path,
 	    const eastl::string& BackendName,
-	    std::vector<uint8_t>& Payload)
+	    eastl::vector<uint8_t>& Payload)
 	{
 		Payload.clear();
 		std::error_code Error;
@@ -102,9 +103,9 @@ namespace arda
 
 	bool WriteArdaPipelineCacheBlob(const std::filesystem::path& Path,
 	    const eastl::string& BackendName,
-	    const std::vector<uint8_t>& Payload)
+	    const uint8_t* Payload, size_t PayloadSize)
 	{
-		if (Payload.size() > ArdaProviderPipelineCacheMaxPayloadSize || Path.empty())
+		if (PayloadSize > ArdaProviderPipelineCacheMaxPayloadSize || Path.empty() || (!Payload && PayloadSize))
 		{
 			return false;
 		}
@@ -122,12 +123,12 @@ namespace arda
 			std::ofstream Output(Temporary, std::ios::binary | std::ios::trunc);
 			FArdaBlobHeader Header;
 			Header.mBackendHash = StableNameHash(BackendName);
-			Header.mPayloadSize = Payload.size();
+			Header.mPayloadSize = PayloadSize;
 			Output.write(reinterpret_cast<const char*>(&Header), sizeof(Header));
-			if (!Payload.empty())
+			if (!(PayloadSize == 0))
 			{
-				Output.write(reinterpret_cast<const char*>(Payload.data()),
-				    static_cast<std::streamsize>(Payload.size()));
+				Output.write(reinterpret_cast<const char*>(Payload),
+				    static_cast<std::streamsize>(PayloadSize));
 			}
 			Output.close();
 			if (!Output)

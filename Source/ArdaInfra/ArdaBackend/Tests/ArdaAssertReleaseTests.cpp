@@ -6,7 +6,7 @@
 #define NDEBUG
 #endif
 
-#include "ArdaAssert.h"
+#include "RHI/Config/ArdaAssert.h"
 
 #include <gtest/gtest.h>
 

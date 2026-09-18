@@ -1,3 +1,4 @@
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
 #include "RHI/Pipelines/ArdaPipelineStateInitializer.h"
 
 namespace arda

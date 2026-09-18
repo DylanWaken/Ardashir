@@ -1,7 +1,7 @@
 #include "ArdaCornellBoxPch.h"
 
 #include "ArdaCornellBoxWindow.h"
-#include "ArdaLog.h"
+#include "RHI/Config/ArdaLog.h"
 
 ARDA_DECLARE_LOG_CATEGORY_EXTERN(LogCornellBox);
 

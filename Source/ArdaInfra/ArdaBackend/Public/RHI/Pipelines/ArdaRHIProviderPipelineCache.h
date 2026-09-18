@@ -1,14 +1,14 @@
-/** @file RHI/ArdaRHIProviderPipelineCache.h
+/** @file ArdaRHIProviderPipelineCache.h
  * Shared provider-contract persistence helpers implemented by ArdaBackend.
  */
 #pragma once
+#include <EASTL/vector.h>
 
 #include "RHI/Config/ArdaBackendDiagnostics.h"
 
 #include <EASTL/string.h>
 
 #include <filesystem>
-#include <vector>
 
 namespace arda
 {
@@ -44,7 +44,7 @@ namespace arda
      */
 	[[nodiscard]] bool ReadArdaPipelineCacheBlob(const std::filesystem::path& Path,
 	    const eastl::string& BackendName,
-	    std::vector<uint8_t>& Payload);
+	    eastl::vector<uint8_t>& Payload);
 
 	/** Writes and flushes a temporary cache file, then replaces the destination.
      * @return True only when the complete cache file replaced the destination.
@@ -54,5 +54,5 @@ namespace arda
      */
 	[[nodiscard]] bool WriteArdaPipelineCacheBlob(const std::filesystem::path& Path,
 	    const eastl::string& BackendName,
-	    const std::vector<uint8_t>& Payload);
+	    const uint8_t* Payload, size_t PayloadSize);
 }

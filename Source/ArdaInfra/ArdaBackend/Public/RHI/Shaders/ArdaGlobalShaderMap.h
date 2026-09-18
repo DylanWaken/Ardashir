@@ -3,7 +3,8 @@
  */
 #pragma once
 
-#include "RHI/Device/ArdaBackendDevice.h"
+#include "RHI/Config/ArdaBackendConfiguration.h"
+#include "RHI/Device/ArdaRHIDevice.h"
 #include "RHI/Shaders/ArdaShaderType.h"
 
 #include <EASTL/string.h>

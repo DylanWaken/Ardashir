@@ -2,11 +2,11 @@
  * Host parameter metadata independent of shader registers and kernel argument ABIs.
  */
 #pragma once
+#include <EASTL/type_traits.h>
 #include "RHI/CUDA/ArdaRHICuda.h"
 #include <EASTL/array.h>
 #include <EASTL/functional.h>
 #include <cstddef>
-#include <type_traits>
 
 namespace arda
 {
@@ -227,7 +227,7 @@ private:                                                                        
 public:                                                                                                                \
 	static const ::arda::FArdaComputeParameterMetadata& GetStaticMetadata()                                            \
 	{                                                                                                                  \
-		static_assert(std::is_standard_layout_v<FArdaComputeThisStruct>,                                               \
+		static_assert(eastl::is_standard_layout_v<FArdaComputeThisStruct>,                                               \
 		    "Compute parameter structs must have standard layout.");                                                   \
 		static const ::arda::FArdaComputeParameterMetadata Metadata = []                                               \
 		{                                                                                                              \

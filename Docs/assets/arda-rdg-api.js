@@ -137,10 +137,10 @@ window.ArdaRDGApi = {
       "sourceLine": 25
     },
     {
-      "id": "api-arda-fardadependencyresourcehandle-operator-d731cfc1",
+      "id": "api-arda-fardadependencyresourcehandle-operator-33378ee1",
       "name": "operator==",
       "qualifiedName": "arda::FArdaDependencyResourceHandle::operator==",
-      "kind": "conversion operator",
+      "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
       "signature": "bool operator==(const FArdaDependencyResourceHandle& Other) const noexcept",
@@ -158,10 +158,10 @@ window.ArdaRDGApi = {
       "sourceLine": 30
     },
     {
-      "id": "api-arda-fardadependencyresourcehandle-operator-70869d5d",
+      "id": "api-arda-fardadependencyresourcehandle-operator-9464be46",
       "name": "operator!=",
       "qualifiedName": "arda::FArdaDependencyResourceHandle::operator!=",
-      "kind": "conversion operator",
+      "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
       "signature": "bool operator!=(const FArdaDependencyResourceHandle& Other) const noexcept",
@@ -4484,10 +4484,10 @@ window.ArdaRDGApi = {
       "sourceLine": 488
     },
     {
-      "id": "api-arda-fardadependencygraph-operator-67d6a26d",
+      "id": "api-arda-fardadependencygraph-operator-77009fb9",
       "name": "operator=",
       "qualifiedName": "arda::FArdaDependencyGraph::operator=",
-      "kind": "conversion operator",
+      "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
       "signature": "FArdaDependencyGraph& operator=(const FArdaDependencyGraph&) = delete",

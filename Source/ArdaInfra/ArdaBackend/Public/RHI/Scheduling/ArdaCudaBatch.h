@@ -1,7 +1,7 @@
 /** Native CUDA capture and deferred batch submission contracts. */
 #pragma once
 
-#include "RHI/Providers/ArdaRHIProviderTypes.h"
+#include "RHI/Providers/ArdaProviderObject.h"
 #include "RHI/CUDA/ArdaRHICuda.h"
 #include "RHI/Scheduling/ArdaCudaSemaphore.h"
 

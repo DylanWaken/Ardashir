@@ -16,7 +16,7 @@
 #endif
 #include <GLFW/glfw3.h>
 
-#include "RHI/ArdaRHI.h"
+#include "RHI/Device/ArdaRHIDevice.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/array.h>

@@ -4,7 +4,7 @@
 #include "RHI/Interop/ArdaExternalInterop.h"
 #include "RHI/Shaders/ArdaGlobalShaderMap.h"
 
-#include "ArdaHash.h"
+#include "RHI/Resources/ArdaHash.h"
 
 #include <gtest/gtest.h>
 

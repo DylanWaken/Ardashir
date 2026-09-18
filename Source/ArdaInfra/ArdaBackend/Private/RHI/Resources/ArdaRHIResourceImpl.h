@@ -2,6 +2,11 @@
 #pragma once
 
 #include "RHI/Context/ArdaRHILifetimeContext.h"
+#include "RHI/Providers/ArdaProviderObject.h"
+#include <EASTL/shared_ptr.h>
+#include <EASTL/string.h>
+#include <EASTL/utility.h>
+#include <EASTL/atomic.h>
 
 namespace arda::detail
 {
@@ -25,12 +30,12 @@ namespace arda::detail
 
 		void AddRef() noexcept final
 		{
-			mReferences.fetch_add(1, std::memory_order_relaxed);
+			mReferences.fetch_add(1, eastl::memory_order_relaxed);
 		}
 
 		void Release() noexcept final
 		{
-			if (mReferences.fetch_sub(1, std::memory_order_acq_rel) == 1)
+			if (mReferences.fetch_sub(1, eastl::memory_order_acq_rel) == 1)
 			{
 				delete this;
 			}
@@ -62,7 +67,7 @@ namespace arda::detail
 		}
 
 	private:
-		std::atomic<uint32_t> mReferences{0};
+		eastl::atomic<uint32_t> mReferences{0};
 		EArdaRHIResourceType mType;
 		eastl::string mName;
 		const void* mOwner = nullptr;

@@ -6,4 +6,4 @@
 #include <EASTL/string.h>
 #include <EASTL/vector.h>
 
-#include "RHI/ArdaRHI.h"
+#include "RHI/Device/ArdaRHIDevice.h"

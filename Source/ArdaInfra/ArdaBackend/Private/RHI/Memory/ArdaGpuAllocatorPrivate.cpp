@@ -1,11 +1,11 @@
-#include "ArdaBackendCorePch.h"
+#include <EASTL/type_traits.h>
+#include "RHI/Config/ArdaBackendCorePch.h"
 #include "RHI/Memory/ArdaGpuAllocatorPrivate.h"
 #include "RHI/Context/ArdaGpuAllocatorContext.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/unordered_map.h>
 #include <mutex>
-#include <type_traits>
 
 namespace arda
 {
@@ -208,7 +208,7 @@ namespace arda
 	template <typename DescType>
 	constexpr EArdaGpuCacheKind FArdaGpuAllocator::FArdaState::Kind()
 	{
-		return std::is_same_v<DescType, FArdaRHIBufferDesc> ? EArdaGpuCacheKind::Buffer
+		return eastl::is_same_v<DescType, FArdaRHIBufferDesc> ? EArdaGpuCacheKind::Buffer
 		                                                    : EArdaGpuCacheKind::Texture;
 	}
 
@@ -218,7 +218,7 @@ namespace arda
 		FArdaCacheEntry Entry;
 		Entry.mKind = Kind<DescType>();
 		Entry.mObject = eastl::move(Object);
-		if constexpr (std::is_same_v<DescType, FArdaRHIBufferDesc>)
+		if constexpr (eastl::is_same_v<DescType, FArdaRHIBufferDesc>)
 		{
 			Entry.mBufferDesc = CacheDesc(Desc);
 		}
@@ -237,7 +237,7 @@ namespace arda
 			else
 			{
 				TArdaRHIResult<FArdaRHIMemoryRequirements> Requirements;
-				if constexpr (std::is_same_v<DescType, FArdaRHIBufferDesc>)
+				if constexpr (eastl::is_same_v<DescType, FArdaRHIBufferDesc>)
 				{
 					Requirements = mProvider->GetBufferMemoryRequirements(Entry.mObject, Desc);
 				}
@@ -257,7 +257,7 @@ namespace arda
 	FArdaProviderObjectResult FArdaGpuAllocator::FArdaState::CreateNative(const DescType& Desc)
 	{
 		FArdaProviderObjectResult Result;
-		if constexpr (std::is_same_v<DescType, FArdaRHIBufferDesc>)
+		if constexpr (eastl::is_same_v<DescType, FArdaRHIBufferDesc>)
 		{
 			Result = mProvider->CreateBuffer(Desc);
 		}
@@ -268,7 +268,7 @@ namespace arda
 		if (Result && Result.mValue)
 		{
 			std::lock_guard<std::mutex> Lock(mMutex);
-			if constexpr (std::is_same_v<DescType, FArdaRHIBufferDesc>)
+			if constexpr (eastl::is_same_v<DescType, FArdaRHIBufferDesc>)
 			{
 				++mStats.mBufferCreations;
 			}
@@ -302,7 +302,7 @@ namespace arda
 						continue;
 					}
 					bool bMatch;
-					if constexpr (std::is_same_v<DescType, FArdaRHIBufferDesc>)
+					if constexpr (eastl::is_same_v<DescType, FArdaRHIBufferDesc>)
 					{
 						bMatch = Candidate.mBufferDesc == Key;
 					}
@@ -322,7 +322,7 @@ namespace arda
 				return {};
 			}
 			bool bReusable;
-			if constexpr (std::is_same_v<DescType, FArdaRHIBufferDesc>)
+			if constexpr (eastl::is_same_v<DescType, FArdaRHIBufferDesc>)
 			{
 				bReusable = mProvider->CanReuseBufferForQueue(Entry.mObject, Desc, Queue);
 			}
@@ -336,7 +336,7 @@ namespace arda
 				{
 					Forget(Entry);
 				}
-				else if constexpr (std::is_same_v<DescType, FArdaRHIBufferDesc>)
+				else if constexpr (eastl::is_same_v<DescType, FArdaRHIBufferDesc>)
 				{
 					++mStats.mBufferCacheHits;
 				}
@@ -384,7 +384,7 @@ namespace arda
 	    const FArdaProviderObjectRef& Heap,
 	    uint64_t Offset)
 	{
-		if constexpr (std::is_same_v<DescType, FArdaRHIBufferDesc>)
+		if constexpr (eastl::is_same_v<DescType, FArdaRHIBufferDesc>)
 		{
 			return mProvider->BindBufferMemory(Object, Desc, Heap, Offset);
 		}
@@ -415,7 +415,7 @@ namespace arda
 			return Invalid("The allocator resource kind is invalid or its memory is already bound.");
 		}
 		bool bDescriptorMatches;
-		if constexpr (std::is_same_v<DescType, FArdaRHIBufferDesc>)
+		if constexpr (eastl::is_same_v<DescType, FArdaRHIBufferDesc>)
 		{
 			bDescriptorMatches = Owner->mEntry.mBufferDesc == CacheDesc(Desc);
 		}

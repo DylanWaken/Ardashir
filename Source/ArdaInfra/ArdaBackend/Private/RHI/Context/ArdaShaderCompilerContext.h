@@ -2,10 +2,11 @@
 
 #include "RHI/Shaders/ArdaShaderCompiler.h"
 
-#include <map>
-#include <memory>
+#include <EASTL/map.h>
+#include <EASTL/shared_ptr.h>
+#include <EASTL/string.h>
+
 #include <mutex>
-#include <string>
 
 namespace arda
 {
@@ -15,6 +16,6 @@ namespace arda
 		std::mutex mConfigurationMutex;
 		FArdaShaderCompilerConfiguration mConfiguration;
 		std::mutex mOutputMutexMapMutex;
-		std::map<std::string, std::weak_ptr<std::mutex>> mOutputMutexes;
+		eastl::map<eastl::string, eastl::weak_ptr<std::mutex>> mOutputMutexes;
 	};
 }

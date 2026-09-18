@@ -3,7 +3,9 @@
  */
 #pragma once
 
-#include "RHI/Device/ArdaRHIDevice.h"
+#include "RHI/Resources/ArdaRHIAccelerationStructures.h"
+#include "RHI/Resources/ArdaRHISampler.h"
+#include "RHI/Shaders/ArdaRHIBindingSet.h"
 
 #include <EASTL/array.h>
 #include <EASTL/string.h>

@@ -1,8 +1,8 @@
 /** Private process-wide registry context. */
 #pragma once
+#include <EASTL/atomic.h>
 
 #include "RHI/Providers/ArdaBackendProvider.h"
-#include <atomic>
 #include <mutex>
 
 namespace arda
@@ -16,7 +16,7 @@ namespace arda
 	{
 		std::mutex mMutex;
 		eastl::vector<FArdaBackendModuleEntry> mEntries;
-		std::atomic<const IArdaBackendModule*> mActiveModule{nullptr};
+		eastl::atomic<const IArdaBackendModule*> mActiveModule{nullptr};
 	};
 
 

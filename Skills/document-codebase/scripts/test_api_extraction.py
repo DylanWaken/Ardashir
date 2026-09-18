@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sync_api_inventories import make_symbols
+from sync_api_inventories import make_symbols, preserve_symbol_ids, reconcile_backend_sources, select_missing
 
 
 class MacroExtractionTest(unittest.TestCase):
@@ -61,12 +61,60 @@ class CallableExtractionTest(unittest.TestCase):
             self.assertEqual(by_name["mCheck"]["kind"], "member variable")
             self.assertEqual(by_name["FCheck"]["kind"], "alias")
             for name, line in [("MakeCheck", 6), ("GetChecks", 7), ("SetCheck", 8), ("operator<", 9)]:
-                self.assertIn(by_name[name]["kind"], {"method", "conversion operator"})
+                self.assertEqual(by_name[name]["kind"], "operator" if name == "operator<" else "method")
                 self.assertEqual(by_name[name]["sourceLine"], line)
             self.assertEqual(
                 by_name["MakeCheck"]["signature"],
                 "eastl::function<FArdaRHIStatus(const IArdaRHIDevice&)> MakeCheck() const",
             )
+
+
+class SourceOwnershipTest(unittest.TestCase):
+    def test_container_changes_keep_unique_anchors_without_guessing_overloads(self):
+        old = {"symbols": [
+            {"id": "published-read", "qualifiedName": "arda::Read", "kind": "function",
+             "signature": "bool Read(std::vector<uint8_t>& Bytes)"},
+            {"id": "published-copy", "qualifiedName": "arda::Copy", "kind": "function",
+             "signature": "void Copy(int Value)"},
+        ]}
+        new = [
+            {"id": "new-read", "qualifiedName": "arda::Read", "kind": "function",
+             "signature": "bool Read(eastl::vector<uint8_t>& Bytes)"},
+            {"id": "new-copy-int", "qualifiedName": "arda::Copy", "kind": "function",
+             "signature": "void Copy(int Value)"},
+            {"id": "new-copy-long", "qualifiedName": "arda::Copy", "kind": "function",
+             "signature": "void Copy(long Value)"},
+        ]
+        preserve_symbol_ids(new, old)
+        self.assertEqual([item["id"] for item in new], ["published-read", "published-copy", "new-copy-long"])
+
+    def test_split_headers_keep_anchors_without_duplicates_or_deleted_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Buffer.h").write_text(
+                "namespace arda { struct Buffer { void Resize(unsigned Size = 0); }; }\n",
+                encoding="utf-8",
+            )
+            (root / "Texture.h").write_text(
+                "namespace arda { struct Texture { bool operator==(const Texture& Other) const; }; }\n",
+                encoding="utf-8",
+            )
+            declarations = make_symbols(root, [("Buffer.h", "arda", "resources"),
+                ("Texture.h", "arda", "resources")], "test")
+            api = {"symbols": [
+                {"id": "existing-resize", "name": "Resize", "qualifiedName": "arda::Buffer::Resize",
+                 "kind": "method", "signature": "void Resize(unsigned Size)", "source": "Old.h"},
+                {"id": "existing-equality", "name": "operator==", "qualifiedName": "arda::Texture::operator==",
+                 "kind": "operator", "signature": "bool operator==(const Texture& Other) const { return true; }",
+                 "source": "Old.h"},
+                {"id": "removed-field", "name": "OldField", "qualifiedName": "arda::Texture::OldField",
+                 "kind": "member variable", "signature": "bool OldField", "source": "Old.h"},
+            ]}
+            reconcile_backend_sources(api, declarations, root)
+            self.assertEqual([item["source"] for item in api["symbols"]], ["Buffer.h", "Texture.h"])
+            self.assertEqual([item["id"] for item in api["symbols"]], ["existing-resize", "existing-equality"])
+            missing = select_missing(declarations, api, ["Buffer.h", "Texture.h"])
+            self.assertFalse({"existing-resize", "existing-equality"} & {item["id"] for item in missing})
 
 
 if __name__ == "__main__":

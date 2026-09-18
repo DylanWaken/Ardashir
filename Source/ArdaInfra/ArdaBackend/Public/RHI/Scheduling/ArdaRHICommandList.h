@@ -3,8 +3,14 @@
  */
 #pragma once
 
-#include "RHI/Resources/ArdaRHIResources.h"
 #include "RHI/CUDA/ArdaRHICuda.h"
+#include "RHI/Pipelines/ArdaRHIComputePipeline.h"
+#include "RHI/Pipelines/ArdaRHIGraphicsPipeline.h"
+#include "RHI/Pipelines/ArdaRHIMeshletPipeline.h"
+#include "RHI/Pipelines/ArdaRHIRayTracingPipeline.h"
+#include "RHI/Scheduling/ArdaRHIQueueTypes.h"
+#include "RHI/Scheduling/ArdaRHIResourceCopies.h"
+#include "RHI/Scheduling/ArdaRHITransitions.h"
 #include <EASTL/functional.h>
 
 namespace arda

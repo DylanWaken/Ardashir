@@ -2,9 +2,9 @@
 
 *ARithmetic and DAta-driven SHading and Inferencing Runtime*
 
-Ardashir is a modular C++ research and development runtime for real-time
-rendering, ray-traced global illumination, GPU physics, and deep-learning
-systems. Its GPU-facing modules use ArdaBackend's provider-neutral RHI. Native
+Ardashir is a modular C++ runtime for graphics and GPU compute infrastructure,
+dependency-graph scheduling, and tracing. Its GPU-facing modules use
+ArdaBackend's provider-neutral RHI. Native
 Vulkan 1.4 and Direct3D 12 Agility SDK providers are shipped as separate,
 linkable backend libraries; an engine RHI provider can replace them without
 changing renderer code.
@@ -16,6 +16,14 @@ changing renderer code.
 GPU infrastructure lives under [Source/ArdaInfra](Source/ArdaInfra), grouping the
 backend, native provider implementations, generic graph, and render graph. Each
 module remains a separate CMake library with its existing public include names.
+The source tree has three top-level groups:
+
+```text
+Source/
+  ArdaInfra/   Backend, native providers, graph storage and render graph
+  ArdaTests/   Example applications and shared TestSupport
+  ArdaTrace/   CPU tracing runtime and its tests
+```
 
 - **[ArdaBackend](Source/ArdaInfra/ArdaBackend)** — The graphics backend and RHI layer for
   devices, resources, shaders, pipelines, commands, and presentation. See the
@@ -32,19 +40,16 @@ module remains a separate CMake library with its existing public include names.
   and texture uploads, copies, readbacks, and clears, plus native BLAS/TLAS
   cloning and compaction.
 
-- **[ArdaScene](Docs/ArdaScene/README.md)** — Planned engine-neutral scene
-  representation for standalone and hosted ray-traced rendering.
-
-- **ArdaGI** — A library for real-time, ray-tracing-based global illumination.
-
-- **ArdaPhys** — A GPU physics library for AVBD, acceleration structures,
-  solvers, and related simulation systems.
-
-- **ArdaDL** — Deep-learning subsystems designed to integrate with the
-  rendering and simulation runtime.
-
 - **[ArdaTrace](Docs/ArdaTrace/README.md)** — Low-overhead CPU scope, counter,
   and marker recording for offline performance analysis.
+
+- **[ArdaTests](Source/ArdaTests)** — Runnable infrastructure examples and
+  shared [backend test support](Source/ArdaTests/TestSupport).
+
+Scene, global-illumination, physics, deep-learning and standalone interop module
+scaffolding has been removed. The [archived scene representation plan](Docs/ArdaScene/README.md)
+and Unreal research guides remain design references. Native device and resource
+interop is implemented within ArdaBackend.
 
 ## Quick user guides
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Engineering documentation for Ardashir, a modular rendering and graphics systems project.">
+  <meta name="description" content="Engineering documentation for Ardashir graphics and GPU compute infrastructure, dependency graphs, tests and tracing.">
   <title>Ardashir Documentation</title>
   <link rel="stylesheet" href="assets/site.css">
   <script src="assets/glossary-data.js" defer></script>
@@ -32,7 +32,7 @@
     <section class="hero" aria-labelledby="hero-title">
       <p class="eyebrow">Rendering systems documentation</p>
       <h1 id="hero-title">Understand and build with Ardashir.</h1>
-      <p class="lede">Ardashir is a modular C++ rendering project that connects engine-level rendering systems to portable and native graphics APIs. These pages document its architecture, contracts, and practical use.</p>
+      <p class="lede">Ardashir provides C++ graphics and GPU compute infrastructure: backend and RHI contracts, native providers, dependency graphs, runnable examples and tracing. These pages document the supported modules and their practical use.</p>
       <div class="hero__actions">
         <a class="button button--primary" href="ArdaBackend/quick-guide.html">ArdaBackend quick guide</a>
         <a class="button" href="ArdaRDG/quick-guide.html">ArdaRenderGraph quick guide</a>
@@ -92,7 +92,7 @@
 
     <section aria-labelledby="modules-heading">
       <h2 id="modules-heading">Project modules</h2>
-      <p class="section-intro">Published guides cover the graphics backend and render graph. Modules without published guides are listed for orientation and intentionally have no link yet.</p>
+      <p class="section-intro">The source tree contains <code>ArdaInfra</code>, <code>ArdaTests</code> and <code>ArdaTrace</code>. Infrastructure includes ArdaBackend, native backend providers, ArdaGraph and ArdaRenderGraph.</p>
       <div class="card-grid">
         <article class="card">
           <span class="status">Available now</span>
@@ -101,21 +101,22 @@
           <p><a href="ArdaRDG/index.html">Open the ArdaRenderGraph guide</a></p>
         </article>
         <article class="card">
-          <span class="status">Documentation forthcoming</span>
-          <h3>ArdaScene</h3>
-          <p>Scene representation and the bridge between application data and rendering work.</p>
+          <span class="status">Available now</span>
+          <h3>ArdaGraph</h3>
+          <p>Generic directed graph storage, generational handles, traversal and graph algorithms used by infrastructure clients.</p>
         </article>
         <article class="card">
-          <span class="status">Documentation forthcoming</span>
-          <h3>ArdaTrace</h3>
+          <span class="status">Available now</span>
+          <h3><a href="ArdaTrace/README.md">ArdaTrace</a></h3>
           <p>Instrumentation, event capture, and tooling for understanding runtime behavior.</p>
         </article>
         <article class="card">
-          <span class="status">Documentation forthcoming</span>
-          <h3>Native backend notes</h3>
-          <p>Implementation guidance for the Vulkan and Direct3D 12 modules beneath ArdaBackend.</p>
+          <span class="status">Available now</span>
+          <h3>ArdaTests</h3>
+          <p>Runnable graphics and CUDA examples and shared backend test support. Start with the <a href="ArdaRDG/quick-guide.html">graphics examples</a> or <a href="ArdaBackend/cuda-interop.html#pixel-sort">Pixel Sort</a> walkthrough.</p>
         </article>
       </div>
+      <p>The <a href="ArdaScene/README.md">archived scene representation plan</a> and Unreal research guides describe possible future layers. Scene, GI, physics, deep-learning and standalone interop modules are outside the current source tree; device and resource interop remains part of ArdaBackend.</p>
     </section>
 
     <section aria-labelledby="reading-heading">

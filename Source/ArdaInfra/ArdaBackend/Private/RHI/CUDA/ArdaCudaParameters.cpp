@@ -1,3 +1,4 @@
+#include <cstring>
 #include "RHI/CUDA/ArdaCudaParameters.h"
 
 namespace arda

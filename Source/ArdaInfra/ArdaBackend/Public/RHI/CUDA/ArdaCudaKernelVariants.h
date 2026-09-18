@@ -1,7 +1,8 @@
 #pragma once
+#include <EASTL/type_traits.h>
+#include <EASTL/utility.h>
 #include "RHI/CUDA/ArdaCudaParameters.h"
 #include "RHI/Device/ArdaRHIDevice.h"
-#include <utility>
 
 namespace arda
 {
@@ -200,9 +201,9 @@ namespace arda
 
 	/** Enumerates template values with a C++17 callable. Use if constexpr to prune combinations. */
 	template <class T, T... Values, class Visitor>
-	void ForEachArdaCudaPermutation(std::integer_sequence<T, Values...>, Visitor&& Visit)
+	void ForEachArdaCudaPermutation(eastl::integer_sequence<T, Values...>, Visitor&& Visit)
 	{
-		(Visit(std::integral_constant<T, Values>{}), ...);
+		(Visit(eastl::integral_constant<T, Values>{}), ...);
 	}
 
 	/** One immutable selection decision. */
@@ -212,22 +213,6 @@ namespace arda
 		FArdaCudaLaunchConfig mLaunch;
 		/** Allowed only when the operand's mathematical contract permits an empty operation. */
 		bool mbNoWork = false;
-	};
-
-	/** Host metadata available during selection; streams and addresses stay in the provider. */
-	struct FArdaCudaSelectionContext
-	{
-		FArdaCudaCapabilities mCapabilities;
-		EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics;
-	};
-
-	/** Queue completion identity. Zero denotes explicit NoWork. */
-	struct FArdaCudaSubmission
-	{
-		FArdaRHIDeviceRef mDevice;
-		EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics;
-		uint64_t mInstance = 0;
-		FArdaCudaKernelSelection mSelection;
 	};
 
 	/** Frozen values/resources/selection. Returned as shared_ptr<const> by operand preparation. */

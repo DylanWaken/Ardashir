@@ -4,7 +4,7 @@
 #include "RHI/Resources/ArdaRHITexture.h"
 #include "RHI/Scheduling/ArdaRHIResourceStates.h"
 
-#include "ArdaHash.h"
+#include "RHI/Resources/ArdaHash.h"
 
 #include <EASTL/algorithm.h>
 

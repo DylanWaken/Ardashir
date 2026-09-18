@@ -1,10 +1,14 @@
 # ArdaBackend modules
 
-Include `ArdaBackend.h` for the complete public API, or include a module header
-directly when a narrower dependency is sufficient. Public declarations live in
-`Public`; implementations and internal contexts live in the matching `Private`
-directories. Native Vulkan, D3D12 and CUDA providers remain separate linked
-targets in `ArdaBackendImpls` and implement the contracts in `RHI/Providers`.
+Include `ArdaBackend.h` for the complete public API, or include an owning module's
+header directly when a narrower dependency is sufficient. `Public` contains only
+`ArdaBackend.h`, `RHI`, and `FileOperations`. Each RHI header lives in the category
+that owns its declarations. `Private` mirrors those categories for implementation
+files and internal state; tests and their shader fixtures live in `Tests`.
+
+Native Vulkan, D3D12 and CUDA implementations remain separate linked targets in
+`ArdaBackendImpls` and implement the contracts in `RHI/Providers`. Public contracts
+do not include native provider SDKs or private implementation headers.
 
 | Directory | Responsibility |
 | --- | --- |
@@ -18,18 +22,33 @@ targets in `ArdaBackendImpls` and implement the contracts in `RHI/Providers`.
 | `RHI/Memory` | GPU allocation, heaps, memory requirements/planning, residency and sparse tiling. |
 | `RHI/Interop` | Opaque native handles, external device/resource descriptions, resource imports and CUDA resource mappings. |
 | `RHI/Scheduling` | Command lists, resource transitions and copies, queues, fences, queries, CUDA batches/semaphores/graphs/timing/sequences and presentation. |
-| `RHI/Config` | Backend/device configuration, feature requirements and capability hierarchy, CUDA execution policy and result/diagnostic types. |
+| `RHI/Config` | Backend/device configuration, feature requirements and capability hierarchy, CUDA execution policy, result types, assertions and logging. |
 | `FileOperations` | Shared path checks, binary/text reads, temporary-file lifetime, atomic replacement and multi-file cache publication. |
 
-The legacy `RHI/ArdaRHI*.h`, `ShaderStructs`, `Compute`, `Allocator`,
-`PipelineStateCache` and root interop/provider/presentation headers forward to
-the canonical modules for existing consumers. New code should use the module
-paths. Resource and type umbrellas aggregate category headers; they no longer
-own all category definitions. Public headers must compile independently, without
-private implementation or native provider include directories.
+Use category paths such as `RHI/Resources/ArdaRHIBuffer.h`,
+`RHI/Shaders/ArdaRHIBindingLayout.h`, and `RHI/Scheduling/ArdaRHICommandList.h`.
+There are no forwarding headers at the root of `RHI` or former category paths.
+The abstract resource contract is defined in `RHI/Resources/ArdaRHIResource.h`;
+individual resource categories own their descriptions and interfaces.
 
-`ArdaBackendPublicHeaders` checks every public C++ header in isolation, including
-compatibility headers. `ArdaBackendTests`, `ArdaRHITests` and `ArdaGraphTests`
+Contexts own state and lifetime. Devices coordinate the facade and provider;
+resource, shader, pipeline, memory, interop and scheduling implementations own
+their corresponding operations. CUDA launch setup belongs to `RHI/CUDA`, with
+its execution contexts in `RHI/Context` and ordering, graph and timing operations
+in `RHI/Scheduling`. Shared filesystem operations belong to `FileOperations`.
+
+Public headers must compile independently, without private implementation or
+native provider include directories. Add dependencies to the header that uses
+them rather than relying on `ArdaBackend.h` to supply transitive declarations.
+
+Use EASTL for backend containers, strings, ownership and utility types where it
+provides the required operation. Keep standard filesystem, stream and operating
+system synchronization facilities at those integration boundaries.
+
+`ArdaBackendPublicHeaders` checks every public C++ header in isolation.
+`ArdaBackendPrivateHeaders` independently checks internal headers with their
+declared module dependencies.
+`ArdaBackendTests`, `ArdaRHITests` and `ArdaGraphTests`
 exercise backend behavior and downstream integration. CUDA registration's
 `ArdaCudaKernelBinding.cuh` is intended for nvcc and is exercised by CUDA kernel
 targets rather than the host-only header checks.

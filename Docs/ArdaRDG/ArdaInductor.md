@@ -278,7 +278,7 @@ The [compilation chapter](compilation.html) explains the algorithms in execution
 - [Indexed graph](../../Source/ArdaInfra/ArdaGraph/Public/ArdaGraph.h): adjacency and endpoint maps, Kahn ordering, reachability and iterative cycle witnesses.
 - [Resource dependency resolver](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaDependencyHazards.cpp): per-region producer coverage, attachment-ordered hazards and value dependencies used by compilation and removal.
 - [Semantic compiler and scheduler](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductor.cpp): declaration validation, liveness, greedy seeds, adjacent swaps, iterative topological enumeration, queue assignment and cost comparison.
-- [Native memory planner](../../Source/ArdaInfra/ArdaBackend/Private/Allocator/ArdaMemoryPlanner.cpp): requirement queries, minimum-growth heap placement, compatible committed slots, alias dependencies and budget accounting.
+- [Native memory planner](../../Source/ArdaInfra/ArdaBackend/Private/RHI/Memory/ArdaMemoryPlanner.cpp): requirement queries, minimum-growth heap placement, compatible committed slots, alias dependencies and budget accounting.
 - [Pipeline resolver](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorPipeline.cpp): bounded ancestry, group/layout/stage merging, canonical byte serialization and stable pattern keys.
 - [Adaptive search](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorAdaptiveSchedule.cpp): persistent insertion neighborhoods, critical-path candidates and fixed-pool lifetime checks.
 - [Telemetry and adoption](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorTiming.cpp): per-node EMA, snapshot cost normalization, background requests and retirement-gated swaps.

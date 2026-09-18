@@ -1,28 +1,8 @@
+#include <mutex>
 #include "RHI/Device/ArdaRHIDeviceImpl.h"
 
 namespace arda::detail
 {
-	TArdaRHIResult<FArdaRHISamplerRef> FArdaRHIDeviceImpl::CreateSampler(const FArdaRHISamplerDesc& Desc)
-	{
-		if (auto Status = Validate(Desc); !Status)
-		{
-			return Failure<FArdaRHISamplerRef>(eastl::move(Status));
-		}
-		std::lock_guard<std::mutex> Lock(mCacheMutex);
-		if (auto Existing = mSamplerCache.Find(Desc))
-		{
-			return {Existing, {}};
-		}
-		auto Native = mDevice->CreateSampler(Desc);
-		if (!Native)
-		{
-			return Failure<FArdaRHISamplerRef>(eastl::move(Native.mStatus));
-		}
-		FArdaRHISamplerRef Result(new FArdaSampler(Desc, eastl::move(Native.mValue), this, mLifetimeTracker));
-		mSamplerCache.Insert(Desc, Result);
-		return {Result, {}};
-	}
-
 	TArdaRHIResult<FArdaRHIShaderRef> FArdaRHIDeviceImpl::CreateShader(const FArdaRHIShaderDesc& Desc)
 	{
 		if (!Desc.mBytecode || Desc.mBytecodeSize == 0 || Desc.mStage == EArdaRHIShaderStage::None)
@@ -257,137 +237,6 @@ namespace arda::detail
 		            this,
 		            mLifetimeTracker)),
 		    {}};
-	}
-
-	TArdaRHIResult<FArdaRHIResourceCollectionRef> FArdaRHIDeviceImpl::CreateResourceCollection(
-	    const FArdaRHIResourceCollectionDesc& Desc)
-	{
-		eastl::vector<FArdaRHIBindingItem> Bindings;
-		Bindings.reserve(Desc.mItems.size());
-		for (uint32_t Index = 0; Index < Desc.mItems.size(); ++Index)
-		{
-			auto Binding = MakeCollectionBinding(Desc.mItems[Index], Index);
-			if (!Binding)
-			{
-				return Failure<FArdaRHIResourceCollectionRef>(eastl::move(Binding.mStatus));
-			}
-			auto* Resource = Cast<FArdaResource>(Binding.mValue.mResource.Get());
-			if (!Resource || !Owns(Resource))
-			{
-				return Failure<FArdaRHIResourceCollectionRef>(WrongDevice());
-			}
-			Bindings.push_back(eastl::move(Binding.mValue));
-		}
-
-		FArdaRHIDescriptorTableRef DescriptorTable;
-		if (Desc.mbDirectlyIndexed)
-		{
-			if (Bindings.empty())
-			{
-				return Failure<FArdaRHIResourceCollectionRef>(
-				    Invalid("A directly indexed resource collection cannot be empty."));
-			}
-			const auto& Caps = GetCapabilities().mDescriptors;
-			const bool bSampler = Bindings.front().mType == EArdaRHIBindingType::Sampler;
-			if ((!bSampler && !Caps.mbDirectResourceHeapIndexing) ||
-			    (bSampler && !Caps.mbDirectSamplerHeapIndexing))
-			{
-				return UnsupportedResult<FArdaRHIResourceCollectionRef>(
-				    "Direct descriptor-heap indexing is unsupported for this collection.");
-			}
-			const EArdaRHIBindingType Type = Bindings.front().mType;
-			if (eastl::any_of(Bindings.begin(),
-			        Bindings.end(),
-			        [Type](const FArdaRHIBindingItem& Binding)
-			        {
-				        return Binding.mType != Type;
-			        }))
-			{
-				return Failure<FArdaRHIResourceCollectionRef>(
-				    Invalid("A directly indexed collection must use one homogeneous native descriptor type."));
-			}
-			FArdaRHIBindlessLayoutDesc LayoutDesc;
-			LayoutDesc.mVisibility = EArdaRHIShaderStage::All;
-			LayoutDesc.mMaxCapacity = static_cast<uint32_t>(Bindings.size());
-			LayoutDesc.mbUpdateAfterBind = Desc.mbMutable;
-			LayoutDesc.mbDirectHeapIndexing = true;
-			LayoutDesc.mLayoutType = bSampler ? EArdaRHIBindlessLayoutType::MutableSampler
-			                                  : EArdaRHIBindlessLayoutType::MutableSrvUavCbv;
-			LayoutDesc.mRegisterSpaces.push_back({0, 1, Type});
-			LayoutDesc.mDebugName = Desc.mDebugName;
-			auto Layout = CreateBindlessLayout(LayoutDesc);
-			if (!Layout)
-			{
-				return Failure<FArdaRHIResourceCollectionRef>(eastl::move(Layout.mStatus));
-			}
-			auto Table = CreateDescriptorTable(Layout.mValue);
-			if (!Table)
-			{
-				return Failure<FArdaRHIResourceCollectionRef>(eastl::move(Table.mStatus));
-			}
-			for (const auto& Binding : Bindings)
-			{
-				const FArdaRHIStatus Status = WriteDescriptorTable(Table.mValue, Binding);
-				if (!Status)
-				{
-					return Failure<FArdaRHIResourceCollectionRef>(Status);
-				}
-			}
-			DescriptorTable = eastl::move(Table.mValue);
-		}
-
-		return {FArdaRHIResourceCollectionRef(
-		            new FArdaResourceCollection(Desc, eastl::move(DescriptorTable), this, mLifetimeTracker)),
-		    {}};
-	}
-
-	FArdaRHIStatus FArdaRHIDeviceImpl::UpdateResourceCollection(const FArdaRHIResourceCollectionRef& CollectionRef,
-	    uint32_t Index,
-	    const FArdaRHIResourceCollectionItem& Item)
-	{
-		auto* Collection = Cast<FArdaResourceCollection>(CollectionRef.Get());
-		if (!Collection || !Owns(Collection))
-		{
-			return WrongDevice();
-		}
-		std::lock_guard<std::mutex> Lock(Collection->mMutex);
-		if (!Collection->mDesc.mbMutable)
-		{
-			return Invalid("The resource collection is immutable.");
-		}
-		if (Index >= Collection->mDesc.mItems.size())
-		{
-			return Invalid("The resource-collection index is out of range.");
-		}
-		auto Binding = MakeCollectionBinding(Item, Index);
-		if (!Binding)
-		{
-			return Binding.mStatus;
-		}
-		auto* Resource = Cast<FArdaResource>(Binding.mValue.mResource.Get());
-		if (!Resource || !Owns(Resource))
-		{
-			return WrongDevice();
-		}
-		if (Collection->mDescriptorTable)
-		{
-			auto Existing = MakeCollectionBinding(Collection->mDesc.mItems[Index], Index);
-			if (!Existing)
-			{
-				return Existing.mStatus;
-			}
-			if (Existing.mValue.mType != Binding.mValue.mType)
-			{
-				return Invalid("A directly indexed collection update cannot change descriptor type.");
-			}
-			const FArdaRHIStatus Status = WriteDescriptorTable(Collection->mDescriptorTable, Binding.mValue);
-			if (!Status)
-			{
-				return Status;
-			}
-		}
-		Collection->mDesc.mItems[Index] = Item;
-		return {};
 	}
 
 	FArdaRHIStatus FArdaRHIDeviceImpl::ResizeDescriptorTable(const FArdaRHIDescriptorTableRef& TableRef,
@@ -808,7 +657,7 @@ namespace arda::detail
 			{
 				return Failure<int>(Status);
 			}
-			const auto Unused = eastl::find(Table->mRecordTypes.begin(), Table->mRecordTypes.end(), std::nullopt);
+			const auto Unused = eastl::find(Table->mRecordTypes.begin(), Table->mRecordTypes.end(), eastl::nullopt);
 			const int Index = static_cast<int>(Unused - Table->mRecordTypes.begin());
 			*Unused = Category == 0 ? EArdaRHIShaderTableRecordType::Miss
 			    : Category == 1     ? EArdaRHIShaderTableRecordType::HitGroup

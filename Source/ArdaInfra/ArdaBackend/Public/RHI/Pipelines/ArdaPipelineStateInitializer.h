@@ -3,11 +3,16 @@
  */
 #pragma once
 
-#include "RHI/Resources/ArdaRHIResources.h"
-#include "RHI/Shaders/ArdaGlobalShaderMap.h"
+#include "RHI/Pipelines/ArdaRHIComputePipeline.h"
+#include "RHI/Pipelines/ArdaRHIGraphicsPipeline.h"
+#include "RHI/Pipelines/ArdaRHIMeshletPipeline.h"
+#include "RHI/Pipelines/ArdaRHIRayTracingPipeline.h"
+#include "RHI/Pipelines/ArdaRHIWorkGraphPipeline.h"
 
 namespace arda
 {
+	class FArdaGlobalShaderInstance;
+
 	/** Renderer-facing compute PSO description; never a concrete RHI pipeline. */
 	struct FArdaComputePipelineStateInitializer
 	{

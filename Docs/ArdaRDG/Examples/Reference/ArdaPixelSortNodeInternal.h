@@ -5,7 +5,7 @@
 
 #include "ArdaExamplePaths.h"
 #include "ArdaExampleStatus.h"
-#include "ShaderStructs/ArdaGlobalShaderMap.h"
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
 #include <stdexcept>
 #include <string>
 

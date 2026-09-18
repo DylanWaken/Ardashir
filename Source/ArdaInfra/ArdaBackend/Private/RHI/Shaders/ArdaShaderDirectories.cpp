@@ -1,16 +1,16 @@
 #include "RHI/Shaders/ArdaShaderDirectories.h"
 
-#include "ArdaString.h"
+#include "FileOperations/ArdaString.h"
 #include "FileOperations/ArdaFileOperations.h"
 #include "RHI/Context/ArdaShaderDirectoryContext.h"
 #include "RHI/Shaders/ArdaShaderDirectoriesPrivate.h"
 
 #include <EASTL/sort.h>
-#include <algorithm>
+#include <EASTL/algorithm.h>
 #include <cctype>
 #include <mutex>
-#include <string>
-#include <unordered_map>
+#include <EASTL/string.h>
+#include <EASTL/unordered_map.h>
 
 namespace arda
 {
@@ -22,9 +22,9 @@ namespace arda
 			return Registry;
 		}
 
-		std::string PortableKey(std::string Value)
+		eastl::string PortableKey(eastl::string Value)
 		{
-			std::transform(Value.begin(),
+			eastl::transform(Value.begin(),
 			    Value.end(),
 			    Value.begin(),
 			    [](unsigned char Character)
@@ -57,17 +57,17 @@ namespace arda
 			return Registry.mLastStatus;
 		}
 
-		bool HasAcceptedExtension(const std::string& VirtualPath)
+		bool HasAcceptedExtension(const eastl::string& VirtualPath)
 		{
-			const std::string Extension = PortableKey(std::filesystem::path(VirtualPath).extension().string());
+			const eastl::string Extension = PortableKey(ToEastl(std::filesystem::path(VirtualPath.c_str()).extension().string()));
 			return Extension == ".hlsl" || Extension == ".hlsli" || Extension == ".usf" || Extension == ".ush";
 		}
 
 		FArdaShaderDirectoryStatus ValidateVirtualPath(const eastl::string& Path, bool IsRoot)
 		{
-			const std::string Value = ToStd(Path);
-			if (Value.empty() || Value.front() != '/' || Value.find('\\') != std::string::npos ||
-			    Value.find("//") != std::string::npos || (!IsRoot && Value == "/") ||
+			const eastl::string Value = Path;
+			if (Value.empty() || Value.front() != '/' || Value.find('\\') != eastl::string::npos ||
+			    Value.find("//") != eastl::string::npos || (!IsRoot && Value == "/") ||
 			    (Value.size() > 1 && Value.back() == '/'))
 			{
 				return MakeStatus(EArdaShaderDirectoryError::InvalidVirtualPath,
@@ -79,7 +79,7 @@ namespace arda
 			while (Start <= Value.size())
 			{
 				const size_t End = Value.find('/', Start);
-				const std::string Component = Value.substr(Start, End - Start);
+				const eastl::string Component = Value.substr(Start, End - Start);
 				if (Component == "." || Component == ".." || Component.empty())
 				{
 					if (!(Value == "/" && Component.empty()))
@@ -100,7 +100,7 @@ namespace arda
 						    Path);
 					}
 				}
-				if (End == std::string::npos)
+				if (End == eastl::string::npos)
 				{
 					break;
 				}
@@ -116,7 +116,7 @@ namespace arda
 			return {};
 		}
 
-		bool IsUnderVirtualRoot(const std::string& Path, const std::string& Root);
+		bool IsUnderVirtualRoot(const eastl::string& Path, const eastl::string& Root);
 
 		bool IsProperlyNestedRegistration(const FArdaShaderSourceDirectory& Parent,
 		    const FArdaShaderSourceDirectory& Child)
@@ -125,17 +125,17 @@ namespace arda
 			{
 				return false;
 			}
-			const std::string ParentRoot = PortableKey(ToStd(Parent.mVirtualRoot));
-			const std::string ChildRoot = PortableKey(ToStd(Child.mVirtualRoot));
+			const eastl::string ParentRoot = PortableKey(Parent.mVirtualRoot);
+			const eastl::string ChildRoot = PortableKey(Child.mVirtualRoot);
 			if (!fileops::IsPathContainedBy(Child.mPhysicalDirectory, Parent.mPhysicalDirectory, false) ||
 			    !IsUnderVirtualRoot(ChildRoot, ParentRoot))
 			{
 				return false;
 			}
-			const std::string VirtualRelative =
+			const eastl::string VirtualRelative =
 			    ParentRoot == "/" ? ChildRoot.substr(1) : ChildRoot.substr(ParentRoot.size() + 1);
-			const std::string PhysicalRelative =
-			    PortableKey(Child.mPhysicalDirectory.lexically_relative(Parent.mPhysicalDirectory).generic_string());
+			const eastl::string PhysicalRelative =
+			    PortableKey(ToEastl(Child.mPhysicalDirectory.lexically_relative(Parent.mPhysicalDirectory).generic_string()));
 			return PhysicalRelative == VirtualRelative;
 		}
 
@@ -173,7 +173,7 @@ namespace arda
 			return {};
 		}
 
-		bool IsUnderVirtualRoot(const std::string& Path, const std::string& Root)
+		bool IsUnderVirtualRoot(const eastl::string& Path, const eastl::string& Root)
 		{
 			return Root == "/" ||
 			    (Path.size() > Root.size() && Path.compare(0, Root.size(), Root) == 0 && Path[Root.size()] == '/');
@@ -181,21 +181,21 @@ namespace arda
 
 		bool IsShadowedByNestedExclusiveRoot(const FArdaShaderSourceDirectory& Directory,
 		    const eastl::vector<FArdaShaderSourceDirectory>& Directories,
-		    const std::string& VirtualPath)
+		    const eastl::string& VirtualPath)
 		{
 			if (!Directory.mbExclusiveMapping)
 			{
 				return false;
 			}
-			const std::string CurrentRoot = PortableKey(ToStd(Directory.mVirtualRoot));
-			const std::string PathKey = PortableKey(VirtualPath);
+			const eastl::string CurrentRoot = PortableKey(Directory.mVirtualRoot);
+			const eastl::string PathKey = PortableKey(VirtualPath);
 			for (const auto& Other : Directories)
 			{
 				if (!Other.mbExclusiveMapping || Other.mVirtualRoot.size() <= Directory.mVirtualRoot.size())
 				{
 					continue;
 				}
-				const std::string OtherRoot = PortableKey(ToStd(Other.mVirtualRoot));
+				const eastl::string OtherRoot = PortableKey(Other.mVirtualRoot);
 				if (IsUnderVirtualRoot(OtherRoot, CurrentRoot) && IsUnderVirtualRoot(PathKey, OtherRoot))
 				{
 					return true;
@@ -206,12 +206,12 @@ namespace arda
 
 		eastl::string MakeVirtualPath(const eastl::string& Root, const std::filesystem::path& Relative)
 		{
-			const std::string Suffix = Relative.generic_string();
+			const eastl::string Suffix = ToEastl(Relative.generic_string());
 			if (Root == "/")
 			{
-				return ToEastl("/" + Suffix);
+				return "/" + Suffix;
 			}
-			return Root + "/" + ToEastl(Suffix);
+			return Root + "/" + Suffix;
 		}
 
 		FArdaShaderDirectoryStatus AddDirectory(const std::filesystem::path& RealDirectory,
@@ -245,11 +245,11 @@ namespace arda
 				return Publish(Registry, eastl::move(PhysicalStatus));
 			}
 
-			const std::string RootKey = PortableKey(ToStd(VirtualRoot));
+			const eastl::string RootKey = PortableKey(VirtualRoot);
 			const FArdaShaderSourceDirectory Candidate{VirtualRoot, CanonicalDirectory, Exclusive};
 			for (const auto& Existing : Registry.mDirectories)
 			{
-				const bool SameRoot = PortableKey(ToStd(Existing.mVirtualRoot)) == RootKey;
+				const bool SameRoot = PortableKey(Existing.mVirtualRoot) == RootKey;
 				const bool SamePhysical = fileops::IsPathContainedBy(CanonicalDirectory, Existing.mPhysicalDirectory, true) &&
 				    fileops::IsPathContainedBy(Existing.mPhysicalDirectory, CanonicalDirectory, true);
 				if (SameRoot && SamePhysical && Existing.mbExclusiveMapping == Exclusive)
@@ -372,7 +372,7 @@ namespace arda
 							    MakeStatus(EArdaShaderDirectoryError::ScanFailed,
 							        ToEastl("Unable to relativize shader source file: " + Entry.path().string())));
 						}
-						if (HasAcceptedExtension(Relative.generic_string()))
+						if (HasAcceptedExtension(ToEastl(Relative.generic_string())))
 						{
 							const eastl::string VirtualPath = MakeVirtualPath(Directory.mVirtualRoot, Relative);
 							FArdaShaderDirectoryStatus Validation = ValidateVirtualPath(VirtualPath, false);
@@ -380,7 +380,7 @@ namespace arda
 							{
 								return Publish(Registry, eastl::move(Validation));
 							}
-							if (IsShadowedByNestedExclusiveRoot(Directory, Registry.mDirectories, ToStd(VirtualPath)))
+							if (IsShadowedByNestedExclusiveRoot(Directory, Registry.mDirectories, VirtualPath))
 							{
 								Iterator.increment(Error);
 								if (Error)
@@ -436,8 +436,8 @@ namespace arda
 			    Candidates.end(),
 			    [](const auto& Left, const auto& Right)
 			    {
-				    const std::string LeftKey = PortableKey(ToStd(Left.mVirtualPath));
-				    const std::string RightKey = PortableKey(ToStd(Right.mVirtualPath));
+				    const eastl::string LeftKey = PortableKey(Left.mVirtualPath);
+				    const eastl::string RightKey = PortableKey(Right.mVirtualPath);
 				    if (LeftKey != RightKey)
 				    {
 					    return LeftKey < RightKey;
@@ -445,12 +445,12 @@ namespace arda
 				    return Left.mPhysicalPath.generic_string() < Right.mPhysicalPath.generic_string();
 			    });
 
-			std::unordered_map<std::string, size_t> VirtualFiles;
-			std::unordered_map<std::string, size_t> PhysicalFiles;
+			eastl::unordered_map<eastl::string, size_t> VirtualFiles;
+			eastl::unordered_map<eastl::string, size_t> PhysicalFiles;
 			for (size_t Index = 0; Index < Candidates.size(); ++Index)
 			{
 				const auto& Candidate = Candidates[Index];
-				const std::string VirtualKey = PortableKey(ToStd(Candidate.mVirtualPath));
+				const eastl::string VirtualKey = PortableKey(Candidate.mVirtualPath);
 				const auto VirtualExisting = VirtualFiles.find(VirtualKey);
 				if (VirtualExisting != VirtualFiles.end())
 				{
@@ -468,10 +468,10 @@ namespace arda
 				}
 				VirtualFiles.emplace(VirtualKey, Index);
 
-				const std::string PhysicalKey = PortableKey(Candidate.mPhysicalPath.generic_string());
+				const eastl::string PhysicalKey = PortableKey(ToEastl(Candidate.mPhysicalPath.generic_string()));
 				const auto PhysicalExisting = PhysicalFiles.find(PhysicalKey);
 				if (PhysicalExisting != PhysicalFiles.end() &&
-				    PortableKey(ToStd(Candidates[PhysicalExisting->second].mVirtualPath)) != VirtualKey)
+				    PortableKey(Candidates[PhysicalExisting->second].mVirtualPath) != VirtualKey)
 				{
 					const auto& Existing = Candidates[PhysicalExisting->second];
 					auto Status = MakeStatus(EArdaShaderDirectoryError::AmbiguousPhysicalFile,
@@ -539,10 +539,10 @@ namespace arda
 			        VirtualPath));
 		}
 
-		const std::string Key = PortableKey(ToStd(VirtualPath));
+		const eastl::string Key = PortableKey(VirtualPath);
 		for (const auto& File : Registry.mFiles)
 		{
-			if (PortableKey(ToStd(File.mVirtualPath)) == Key)
+			if (PortableKey(File.mVirtualPath) == Key)
 			{
 				OutPhysicalPath = File.mPhysicalPath;
 				return Publish(Registry, {});

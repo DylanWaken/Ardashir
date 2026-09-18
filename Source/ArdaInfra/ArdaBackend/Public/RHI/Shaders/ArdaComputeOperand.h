@@ -3,6 +3,8 @@
  */
 #pragma once
 #include "RHI/CUDA/ArdaCudaKernelVariants.h"
+#include "RHI/Context/ArdaCudaSelectionContext.h"
+#include "RHI/Scheduling/ArdaCudaSubmission.h"
 #include <mutex>
 #include <exception>
 

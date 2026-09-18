@@ -1,12 +1,14 @@
+#include <EASTL/algorithm.h>
+#include <EASTL/type_traits.h>
+#include <EASTL/unique_ptr.h>
+#include "RHI/Device/ArdaRHIDevice.h"
 #include "RHI/Pipelines/ArdaPipelineStateCache.h"
 #include "RHI/Context/ArdaPipelineCacheContext.h"
 
-#include "ArdaHash.h"
+#include "RHI/Resources/ArdaHash.h"
 
-#include <algorithm>
 #include <condition_variable>
 #include <mutex>
-#include <type_traits>
 
 namespace arda
 {
@@ -22,7 +24,7 @@ namespace arda
 		{
 		public:
 			template <typename T,
-			    std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<std::remove_cv_t<T>, bool>, int> = 0>
+			    eastl::enable_if_t<eastl::is_integral_v<T> && !eastl::is_same_v<eastl::remove_cv_t<T>, bool>, int> = 0>
 			void Add(T Value) noexcept
 			{
 				AddUnsigned(static_cast<uint64_t>(Value));
@@ -447,7 +449,7 @@ namespace arda
 
 		for (;;)
 		{
-			auto It = std::find_if(Entries.begin(),
+			auto It = eastl::find_if(Entries.begin(),
 			    Entries.end(),
 			    [&CanonicalDesc](const Entry& Candidate)
 			    {
@@ -463,7 +465,7 @@ namespace arda
 				mChanged.wait(Lock,
 				    [this, &Entries, &CanonicalDesc]
 				    {
-					    const auto Pending = std::find_if(Entries.begin(),
+					    const auto Pending = eastl::find_if(Entries.begin(),
 					        Entries.end(),
 					        [&CanonicalDesc](const Entry& Candidate)
 					        {
@@ -488,7 +490,7 @@ namespace arda
 		auto Created = CreatePipeline(*mDevice, CreationDesc);
 		Lock.lock();
 		--mInFlight;
-		auto Pending = std::find_if(Entries.begin(),
+		auto Pending = eastl::find_if(Entries.begin(),
 		    Entries.end(),
 		    [&CanonicalDesc](const Entry& Candidate)
 		    {
@@ -519,7 +521,7 @@ namespace arda
 
 	FArdaPipelineStateCache::FArdaPipelineStateCache(arda::FArdaRHIDeviceRef Device,
 	    FArdaPipelineStateCacheConfiguration Configuration)
-	    : mImpl(std::make_unique<FArdaImpl>(eastl::move(Device), Configuration))
+	    : mImpl(eastl::make_unique<FArdaImpl>(eastl::move(Device), Configuration))
 	{
 	}
 

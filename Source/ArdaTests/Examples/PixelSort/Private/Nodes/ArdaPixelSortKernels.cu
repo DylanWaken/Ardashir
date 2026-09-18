@@ -170,7 +170,7 @@ namespace ARDA_CUDA_BUILD_NAMESPACE
 		// Each BindArdaCudaKernel<&entry> has its own type before registry storage.
 		// The registry validates the exact parameter signature at runtime and
 		// remembers failures even when Add's return value is not inspected here.
-		arda::ForEachArdaCudaPermutation(std::integer_sequence<int, 128, 256>{},
+		arda::ForEachArdaCudaPermutation(eastl::integer_sequence<int, 128, 256>{},
 		    [&](auto Size)
 		    {
 			    constexpr int Threads = decltype(Size)::value;

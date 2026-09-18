@@ -42,8 +42,8 @@ CONTRACT_HEADERS = (
     ),
 )
 
-# Complete declaration coverage follows the modules instead of a list of former
-# monolithic headers. Compatibility includes have no declarations to duplicate.
+# Complete declaration coverage follows the canonical modules instead of a list
+# of former monolithic headers.
 COMPLETE_BACKEND_SOURCE_ROOTS = (
     "Source/ArdaInfra/ArdaBackend/Public/RHI/",
     "Source/ArdaInfra/ArdaBackend/Public/FileOperations/",
@@ -69,15 +69,52 @@ def signature_identity(text: str) -> str:
 
 
 def preserve_symbol_ids(declarations: Sequence[Dict[str, object]], api: Dict[str, object]) -> None:
-    """Keep published anchors when source formatting changes a signature's layout."""
+    """Keep published anchors through moves and unambiguous signature changes."""
     existing = {
         (item["qualifiedName"], item["kind"], signature_identity(str(item.get("signature", "")))): item["id"]
         for item in api.get("symbols", [])
     }
+    old_counts = collections.Counter((item["qualifiedName"], item["kind"]) for item in api.get("symbols", []))
+    new_counts = collections.Counter((item["qualifiedName"], item["kind"]) for item in declarations)
+    unique_ids = {(item["qualifiedName"], item["kind"]): item["id"] for item in api.get("symbols", [])
+        if old_counts[(item["qualifiedName"], item["kind"])] == 1}
     for item in declarations:
         key = (item["qualifiedName"], item["kind"], signature_identity(str(item["signature"])))
         if key in existing:
             item["id"] = existing[key]
+        elif new_counts[key[:2]] == 1 and key[:2] in unique_ids:
+            item["id"] = unique_ids[key[:2]]
+
+
+def reconcile_backend_sources(
+    api: Dict[str, object], declarations: Sequence[Dict[str, object]], repo: Path
+) -> None:
+    """Move authored contracts with their declarations and retire deleted fields.
+
+    Resolve each symbol against its declaration, not its former header: a split
+    header can move different declarations to different owning modules.
+    """
+    by_name: Dict[str, List[Dict[str, object]]] = collections.defaultdict(list)
+    for declaration in declarations:
+        by_name[str(declaration["qualifiedName"])].append(declaration)
+    reconciled = []
+    for symbol in api.get("symbols", []):
+        candidates = by_name.get(str(symbol.get("qualifiedName", "")), [])
+        signature = str(symbol.get("signature", ""))
+        if symbol.get("kind") in CALLABLE_KINDS:
+            signature = signature.split("{", 1)[0]
+        exact = [item for item in candidates
+            if signature_identity(str(item["signature"])) == signature_identity(signature)]
+        declaration = exact[0] if len(exact) == 1 else candidates[0] if len(candidates) == 1 else None
+        if declaration:
+            # The authored anchor wins over a previously generated duplicate.
+            declaration["id"] = symbol["id"]
+            for field in ("name", "qualifiedName", "source", "sourceLine", "component", "signature", "kind"):
+                symbol[field] = declaration[field]
+        elif not (repo / str(symbol.get("source", ""))).exists():
+            continue
+        reconciled.append(symbol)
+    api["symbols"] = reconciled
 
 
 def humanize(name: str) -> str:
@@ -223,7 +260,7 @@ def api_kind(kind: str, name: str, signature: str, owner: str) -> str:
         if name.startswith("~"):
             return "destructor"
         if name.startswith("operator"):
-            return "conversion operator" if name not in {"operator()", "operator[]"} else "operator"
+            return "conversion operator" if re.match(r"operator\s+[A-Za-z_]", name) else "operator"
         if owner and name == owner:
             return "constructor"
         return "method" if owner else "function"
@@ -278,20 +315,11 @@ def backend_specs(repo: Path) -> List[Tuple[str, str, str]]:
                 "Scheduling": "rhi-device",
                 "Shaders": "shaders",
             }.get(module, "rhi-resources")
-            if header.name in {"ArdaBackendDiagnostics.h", "ArdaRHIDiagnostics.h"}:
+            if header.name in {"ArdaAssert.h", "ArdaLog.h", "ArdaBackendDiagnostics.h", "ArdaRHIDiagnostics.h"}:
                 component = "diagnostics"
         else:
             namespace = "arda"
-            if "/ShaderStructs/" in source:
-                component = "shaders"
-            elif "/PipelineStateCache/" in source:
-                component = "pipelines"
-            elif header.name in {"ArdaAssert.h", "ArdaLog.h"}:
-                component = "diagnostics"
-            elif header.name == "ArdaExternalInterop.h":
-                component = "external-interop"
-            else:
-                component = "core"
+            component = "core"
         specs.append((source, namespace, component))
     return specs
 
@@ -604,6 +632,13 @@ def main() -> int:
     backend_source_specs = backend_specs(repo)
     backend_declarations = make_symbols(repo, backend_source_specs, "backend and RHI")
     preserve_symbol_ids(backend_declarations, evaluate_api(backend_current, "ArdaBackendApi"))
+    backend_authored = evaluate_api(backend_base, "ArdaBackendApi")
+    reconcile_backend_sources(backend_authored, backend_declarations, repo)
+    backend_base = (
+        "/* Machine-checkable public source inventory for ArdaBackend.\n"
+        " * Source declarations own signatures and provenance; authored contracts retain their anchors.\n"
+        " */\nwindow.ArdaBackendApi = " + json.dumps(backend_authored, indent=2) + ";\n"
+    )
     backend_symbols = select_missing(
         backend_declarations,
         evaluate_api(backend_base, "ArdaBackendApi"),
@@ -639,7 +674,7 @@ def main() -> int:
     )
     header_count = len(backend_source_specs)
     backend_updated = synchronize_backend(
-        backend_current, backend_block, header_count
+        backend_base, backend_block, header_count
     )
     provenance = [source for source, _namespace, _component in backend_source_specs]
     backend_updated = re.sub(r'"headerProvenance": \[.*?\n  \]',

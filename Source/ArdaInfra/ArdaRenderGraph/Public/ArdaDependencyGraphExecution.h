@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RHI/ArdaRHI.h"
+#include "RHI/Device/ArdaRHIDevice.h"
 
 #include <cstdint>
 #include <EASTL/array.h>

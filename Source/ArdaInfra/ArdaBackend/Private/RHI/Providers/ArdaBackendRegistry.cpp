@@ -1,4 +1,5 @@
-#include "ArdaBackendCorePch.h"
+#include <EASTL/atomic.h>
+#include <EASTL/numeric_limits.h>
 #include "RHI/Context/ArdaBackendRegistryContext.h"
 
 #include "RHI/Providers/ArdaBackendRegistry.h"
@@ -7,9 +8,7 @@
 #include <EASTL/algorithm.h>
 #include <EASTL/sort.h>
 
-#include <atomic>
 #include <mutex>
-#include <limits>
 
 namespace arda
 {
@@ -59,7 +58,7 @@ namespace arda
 	{
 		auto& Registry = GetBackendModuleRegistry();
 		std::lock_guard<std::mutex> Lock(Registry.mMutex);
-		if (Registry.mActiveModule.load(std::memory_order_acquire) == &Module)
+		if (Registry.mActiveModule.load(eastl::memory_order_acquire) == &Module)
 		{
 			return false;
 		}
@@ -99,7 +98,7 @@ namespace arda
 		auto& Registry = GetBackendModuleRegistry();
 		std::lock_guard<std::mutex> Lock(Registry.mMutex);
 		IArdaBackendModule* BestModule = nullptr;
-		int32_t BestPriority = std::numeric_limits<int32_t>::min();
+		int32_t BestPriority = eastl::numeric_limits<int32_t>::min();
 		for (const FArdaBackendModuleEntry& Entry : Registry.mEntries)
 		{
 			const FArdaBackendModuleDescriptor& Descriptor = Entry.mModule->GetDescriptor();
@@ -156,12 +155,12 @@ namespace arda
 
 	const IArdaBackendModule* GetActiveBackendModule() noexcept
 	{
-		return GetBackendModuleRegistry().mActiveModule.load(std::memory_order_acquire);
+		return GetBackendModuleRegistry().mActiveModule.load(eastl::memory_order_acquire);
 	}
 
 	void SetActiveBackendModule(const IArdaBackendModule* Module) noexcept
 	{
-		GetBackendModuleRegistry().mActiveModule.store(Module, std::memory_order_release);
+		GetBackendModuleRegistry().mActiveModule.store(Module, eastl::memory_order_release);
 	}
 
 }

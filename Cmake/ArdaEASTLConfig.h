@@ -2,9 +2,21 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdarg>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
+
+// EASTL's narrow string formatting uses the platform C runtime. This project
+// does not link EAStdC, so provide EASTL's supported user formatting hook.
+#define EASTL_EASTDC_VSNPRINTF 0
+
+inline int Vsnprintf8(char* Destination, std::size_t Capacity,
+    const char* Format, std::va_list Arguments)
+{
+	return std::vsnprintf(Destination, Capacity, Format, Arguments);
+}
 
 namespace eastl
 {

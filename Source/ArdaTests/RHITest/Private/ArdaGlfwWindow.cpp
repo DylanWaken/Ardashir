@@ -1,7 +1,7 @@
 #include "ArdaRHITestPch.h"
 
 #include "ArdaGlfwWindow.h"
-#include "ArdaLog.h"
+#include "RHI/Config/ArdaLog.h"
 
 #include <cstdio>
 

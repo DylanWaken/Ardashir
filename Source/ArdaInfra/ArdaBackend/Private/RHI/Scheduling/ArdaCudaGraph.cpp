@@ -1,3 +1,4 @@
+#include <mutex>
 #include "RHI/Scheduling/ArdaCudaGraph.h"
 
 namespace arda

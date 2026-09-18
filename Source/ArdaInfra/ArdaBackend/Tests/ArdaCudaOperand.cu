@@ -7,7 +7,7 @@ namespace ARDA_CUDA_BUILD_NAMESPACE
 {
 	void BindAdd(arda::FArdaAddOperand::FArdaRegistry& Registry)
 	{
-		arda::ForEachArdaCudaPermutation(std::integer_sequence<int, 32, 128>{},
+		arda::ForEachArdaCudaPermutation(eastl::integer_sequence<int, 32, 128>{},
 		    [&](auto Tile)
 		    {
 			    constexpr int Block = decltype(Tile)::value;

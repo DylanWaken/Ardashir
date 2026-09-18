@@ -1,6 +1,6 @@
 /** Process-wide diagnostic output and its synchronization. */
 #pragma once
-#include "ArdaLog.h"
+#include "RHI/Config/ArdaLog.h"
 #include <mutex>
 namespace arda
 {

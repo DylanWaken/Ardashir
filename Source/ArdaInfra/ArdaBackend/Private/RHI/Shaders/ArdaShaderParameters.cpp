@@ -1,6 +1,8 @@
+#include "RHI/Device/ArdaRHIDevice.h"
+#include "RHI/Scheduling/ArdaRHICommandList.h"
 #include "RHI/Shaders/ArdaShaderParameters.h"
 
-#include "ArdaHash.h"
+#include "RHI/Resources/ArdaHash.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/utility.h>

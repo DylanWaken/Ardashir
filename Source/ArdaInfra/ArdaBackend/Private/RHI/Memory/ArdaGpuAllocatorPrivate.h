@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RHI/Memory/ArdaGpuAllocator.h"
-#include "RHI/Providers/ArdaRHIProvider.h"
+#include "RHI/Providers/ArdaRHIProviderDevice.h"
 
 namespace arda
 {

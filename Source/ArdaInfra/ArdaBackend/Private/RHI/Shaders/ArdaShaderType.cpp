@@ -1,18 +1,17 @@
+#include <EASTL/map.h>
+#include <EASTL/shared_ptr.h>
+#include <EASTL/string.h>
 #include "RHI/Shaders/ArdaShaderType.h"
 
-#include "ArdaHash.h"
+#include "RHI/Resources/ArdaHash.h"
 #include "RHI/Context/ArdaShaderRegistryContext.h"
 #include "RHI/Shaders/ArdaShaderDirectories.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/sort.h>
-#include <algorithm>
 #include <filesystem>
 #include <cctype>
-#include <map>
-#include <memory>
 #include <mutex>
-#include <string>
 
 namespace arda
 {
@@ -80,8 +79,8 @@ namespace arda
 			{
 				return false;
 			}
-			std::string Value(Stem);
-			if (Value.find("..") != std::string::npos)
+			eastl::string Value(Stem);
+			if (Value.find("..") != eastl::string::npos)
 			{
 				return false;
 			}
@@ -92,14 +91,14 @@ namespace arda
 					return false;
 				}
 			}
-			const std::filesystem::path Path(Value);
+			const std::filesystem::path Path(Value.c_str());
 			return !Path.is_absolute() && !Path.has_parent_path() && Path.filename() == Path;
 		}
 
-		std::string PortableFold(const eastl::string& Value)
+		eastl::string PortableFold(const eastl::string& Value)
 		{
-			std::string Result(Value.data(), Value.size());
-			std::transform(Result.begin(),
+			eastl::string Result(Value.data(), Value.size());
+			eastl::transform(Result.begin(),
 			    Result.end(),
 			    Result.begin(),
 			    [](unsigned char Character)
@@ -155,7 +154,7 @@ namespace arda
 		{
 			return mOutputStem;
 		}
-		const std::string Id = std::to_string(PermutationId);
+		const eastl::string Id = eastl::to_string(PermutationId);
 		eastl::string Result = mOutputStem;
 		Result += "_P";
 		Result.append(Id.data(), Id.size());
@@ -172,7 +171,7 @@ namespace arda
 	    FArdaShaderType::FArdaShouldCompilePermutationFunction ShouldCompilePermutationFunction,
 	    FArdaShaderType::FArdaModifyCompilationEnvironmentFunction ModifyCompilationEnvironmentFunction)
 	{
-		mType = std::make_shared<FArdaShaderType>();
+		mType = eastl::make_shared<FArdaShaderType>();
 		mType->mName = Name != nullptr ? Name : "";
 		mType->mSourceStem = SourceStem != nullptr ? SourceStem : "";
 		mType->mOutputStem = OutputStem != nullptr ? OutputStem : "";
@@ -214,7 +213,7 @@ namespace arda
 		constexpr uint32_t MaxAttempts = 4;
 		for (uint32_t Attempt = 0; Attempt < MaxAttempts; ++Attempt)
 		{
-			eastl::vector<std::shared_ptr<FArdaShaderType>> Candidates;
+			eastl::vector<eastl::shared_ptr<FArdaShaderType>> Candidates;
 			uint64_t Generation = 0;
 			{
 				std::lock_guard<std::mutex> Lock(Registry.mMutex);
@@ -251,7 +250,7 @@ namespace arda
 					}
 				}
 			}
-			std::map<std::string, eastl::string> ArtifactOwners;
+			eastl::map<eastl::string, eastl::string> ArtifactOwners;
 			for (const auto& Candidate : Candidates)
 			{
 				const FArdaShaderType* Type = Candidate.get();
@@ -317,7 +316,7 @@ namespace arda
 				for (uint32_t Id = 0; Id < Type->GetPermutationCount(); ++Id)
 				{
 					const eastl::string Stem = Type->GetPermutationArtifactStem(Id);
-					const std::string Folded = PortableFold(Stem);
+					const eastl::string Folded = PortableFold(Stem);
 					const auto Existing = ArtifactOwners.find(Folded);
 					if (Existing != ArtifactOwners.end())
 					{

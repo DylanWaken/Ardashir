@@ -1,4 +1,5 @@
 #include "ArdaInductorPipeline.h"
+#include "RHI/Device/ArdaRHIDevice.h"
 
 #include <gtest/gtest.h>
 

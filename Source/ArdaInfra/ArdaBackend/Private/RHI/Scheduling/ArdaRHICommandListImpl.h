@@ -1,7 +1,18 @@
 /** Facade command recording state and provider delegation. */
 #pragma once
 
-#include "RHI/Device/ArdaRHIFacadeHelpers.h"
+#include "RHI/Scheduling/ArdaRHICommandList.h"
+#include "RHI/Providers/ArdaRHIProviderCommandList.h"
+#include "RHI/Config/ArdaRHIValidation.h"
+#include "RHI/Resources/ArdaRHIResourceAccess.h"
+#include "RHI/Scheduling/ArdaRHITextureStates.h"
+#include "RHI/Shaders/ArdaRHIBindingValidation.h"
+#include "RHI/Resources/ArdaRHITextureBufferImpl.h"
+#include "RHI/Resources/ArdaRHIAccelerationImpl.h"
+#include "RHI/Shaders/ArdaRHIShaderImpl.h"
+#include "RHI/Pipelines/ArdaRHIPipelineImpl.h"
+#include "RHI/Scheduling/ArdaRHISignalImpl.h"
+#include <EASTL/unordered_map.h>
 
 namespace arda::detail
 {
@@ -277,16 +288,16 @@ namespace arda::detail
 		FArdaRHIStatus mRecordingStatus;
 
 		// State maps use facade identities until submission commits them.
-		mutable std::unordered_map<const FArdaResource*, FArdaRHIResourceRef> mRetainedResources;
-		mutable std::unordered_map<const IArdaRHIBindingLayout*, FArdaRHIBindingSetRef> mEmptyBindingSets;
+		mutable eastl::unordered_map<const FArdaResource*, FArdaRHIResourceRef> mRetainedResources;
+		mutable eastl::unordered_map<const IArdaRHIBindingLayout*, FArdaRHIBindingSetRef> mEmptyBindingSets;
 		eastl::vector<FArdaPendingBufferCopyCompletion> mCopyCompletions;
-		mutable std::unordered_map<FArdaTexture*, eastl::vector<EArdaRHIResourceState>> mFacadeTextureStates;
-		std::unordered_map<FArdaTexture*, eastl::vector<uint8_t>> mTouchedTextureStates;
-		mutable std::unordered_map<FArdaBuffer*, EArdaRHIResourceState> mFacadeBufferStates;
-		mutable std::unordered_map<FArdaSamplerFeedbackTexture*, EArdaRHIResourceState>
+		mutable eastl::unordered_map<FArdaTexture*, eastl::vector<EArdaRHIResourceState>> mFacadeTextureStates;
+		eastl::unordered_map<FArdaTexture*, eastl::vector<uint8_t>> mTouchedTextureStates;
+		mutable eastl::unordered_map<FArdaBuffer*, EArdaRHIResourceState> mFacadeBufferStates;
+		mutable eastl::unordered_map<FArdaSamplerFeedbackTexture*, EArdaRHIResourceState>
 		    mFacadeSamplerFeedbackStates;
-		mutable std::unordered_map<FArdaTexture*, EArdaRHIQueueType> mFacadeTextureQueueOwners;
-		mutable std::unordered_map<FArdaBuffer*, EArdaRHIQueueType> mFacadeBufferQueueOwners;
+		mutable eastl::unordered_map<FArdaTexture*, EArdaRHIQueueType> mFacadeTextureQueueOwners;
+		mutable eastl::unordered_map<FArdaBuffer*, EArdaRHIQueueType> mFacadeBufferQueueOwners;
 
 		struct FArdaAccelStructTracking
 		{
@@ -296,9 +307,9 @@ namespace arda::detail
 			bool mbLifecycleWritten = false;
 		};
 
-		mutable std::unordered_map<FArdaAccelStruct*, FArdaAccelStructTracking> mFacadeAccelStructStates;
-		mutable std::unordered_map<FArdaOpacityMicromap*, FArdaAccelStructTracking> mFacadeOpacityMicromapStates;
-		std::unordered_map<FArdaTexture*, eastl::vector<EArdaRHIResourceState>> mExpectedTextureStartStates;
-		std::unordered_map<FArdaBuffer*, EArdaRHIResourceState> mExpectedBufferStartStates;
+		mutable eastl::unordered_map<FArdaAccelStruct*, FArdaAccelStructTracking> mFacadeAccelStructStates;
+		mutable eastl::unordered_map<FArdaOpacityMicromap*, FArdaAccelStructTracking> mFacadeOpacityMicromapStates;
+		eastl::unordered_map<FArdaTexture*, eastl::vector<EArdaRHIResourceState>> mExpectedTextureStartStates;
+		eastl::unordered_map<FArdaBuffer*, EArdaRHIResourceState> mExpectedBufferStartStates;
 	};
 }

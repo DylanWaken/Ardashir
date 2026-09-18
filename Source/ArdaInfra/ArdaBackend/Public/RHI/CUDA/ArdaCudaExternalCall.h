@@ -3,6 +3,7 @@
  * This header requires no CUDA SDK; include library headers only in adapter implementations.
  */
 #pragma once
+#include <EASTL/type_traits.h>
 #include "RHI/CUDA/ArdaCudaKernelVariants.h"
 #include <cstring>
 
@@ -25,7 +26,7 @@ namespace arda
 			return {&typeid(FArdaCuda),
 			    sizeof(FArdaCuda),
 			    alignof(FArdaCuda),
-			    std::is_trivially_copyable_v<FArdaCuda> && std::is_standard_layout_v<FArdaCuda>};
+			    eastl::is_trivially_copyable_v<FArdaCuda> && eastl::is_standard_layout_v<FArdaCuda>};
 		}
 
 		/** Validates borrowed inputs and copies them into an aligned typed value before preparation. */
@@ -33,7 +34,7 @@ namespace arda
 		    const void* Parameters,
 		    size_t ParameterSize) const final
 		{
-			if constexpr (std::is_trivially_copyable_v<FArdaCuda> && std::is_standard_layout_v<FArdaCuda>)
+			if constexpr (eastl::is_trivially_copyable_v<FArdaCuda> && eastl::is_standard_layout_v<FArdaCuda>)
 			{
 				if (Context.mContext && Context.mStream && Parameters && ParameterSize == sizeof(FArdaCuda))
 				{

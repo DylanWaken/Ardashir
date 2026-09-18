@@ -2,27 +2,29 @@
 
 #include "RHI/Providers/ArdaBackendProvider.h"
 
-#include "ArdaHash.h"
+#include "RHI/Resources/ArdaHash.h"
 #include "FileOperations/ArdaFileOperations.h"
 #include "RHI/Context/ArdaShaderCompilerContext.h"
-#include "ArdaString.h"
+#include "FileOperations/ArdaString.h"
 
 #include "RHI/Shaders/ArdaGlobalShaderMap.h"
 #include "RHI/Shaders/ArdaShaderDirectories.h"
 
-#include <algorithm>
+#include <EASTL/algorithm.h>
+#include <EASTL/sort.h>
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
-#include <map>
-#include <memory>
+#include <EASTL/map.h>
+#include <EASTL/shared_ptr.h>
 #include <mutex>
 #include <sstream>
-#include <set>
+#include <EASTL/set.h>
+#include <EASTL/string.h>
 #include <string>
 #include <system_error>
-#include <vector>
+#include <EASTL/vector.h>
 
 #if defined(_WIN32)
 #include <Windows.h>
@@ -85,7 +87,7 @@ namespace arda
 		    uint32_t PermutationId,
 		    const std::filesystem::path& Source,
 		    const std::filesystem::path& Output,
-		    const std::string& Message)
+		    const eastl::string& Message)
 		{
 			FArdaShaderCompileDiagnostic Result;
 			Result.mCode = Code;
@@ -94,13 +96,13 @@ namespace arda
 			Result.mPermutationId = PermutationId;
 			Result.mSourcePath = Source;
 			Result.mOutputPath = Output;
-			Result.mMessage = ToEastl(Message);
+			Result.mMessage = Message;
 			return Result;
 		}
 
 		FArdaShaderCompileDiagnostic MakeDiagnostic(EArdaShaderCompileError Code,
 		    const FArdaShaderCompileJob& Job,
-		    const std::string& Message)
+		    const eastl::string& Message)
 		{
 			return MakeDiagnostic(Code,
 			    &Job.mType,
@@ -157,7 +159,7 @@ namespace arda
 			return {};
 		}
 
-		bool ContainsControl(const std::string& Value)
+		bool ContainsControl(const eastl::string& Value)
 		{
 			for (const unsigned char Character : Value)
 			{
@@ -169,7 +171,7 @@ namespace arda
 			return false;
 		}
 
-		bool IsValidDefineName(const std::string& Name)
+		bool IsValidDefineName(const eastl::string& Name)
 		{
 			if (Name.empty() || !(std::isalpha(static_cast<unsigned char>(Name.front())) || Name.front() == '_'))
 			{
@@ -190,7 +192,7 @@ namespace arda
 			AppendArdaFnv1a64(Hash, Data, Size);
 		}
 
-		void HashString(uint64_t& Hash, const std::string& Value)
+		void HashString(uint64_t& Hash, const eastl::string& Value)
 		{
 			AppendArdaFnv1a64LittleEndian(Hash, Value.size());
 			HashBytes(Hash, Value.data(), Value.size());
@@ -223,16 +225,16 @@ namespace arda
 
 		bool HashLocalSourceTree(uint64_t& Hash,
 		    const std::filesystem::path& PhysicalPath,
-		    const std::string& LogicalIdentity,
-		    std::set<std::string>& Visiting,
-		    std::set<std::string>& Hashed,
-		    std::string& ErrorMessage)
+		    const eastl::string& LogicalIdentity,
+		    eastl::set<eastl::string>& Visiting,
+		    eastl::set<eastl::string>& Hashed,
+		    eastl::string& ErrorMessage)
 		{
 			std::error_code Error;
-			const auto Canonical = std::filesystem::weakly_canonical(PhysicalPath, Error).generic_string();
+			const eastl::string Canonical = ToEastl(std::filesystem::weakly_canonical(PhysicalPath, Error).generic_string());
 			if (Error || !std::filesystem::is_regular_file(PhysicalPath, Error) || Error)
 			{
-				ErrorMessage = "Unable to resolve local shader include: " + PhysicalPath.generic_string();
+				ErrorMessage = "Unable to resolve local shader include: " + ToEastl(PhysicalPath.generic_string());
 				return false;
 			}
 			if (Hashed.count(Canonical) != 0)
@@ -243,11 +245,11 @@ namespace arda
 			{
 				return true;
 			}
-			const std::string Contents = fileops::ReadText(PhysicalPath);
+			const eastl::string Contents = fileops::ReadText(PhysicalPath);
 			HashString(Hash, LogicalIdentity);
 			HashString(Hash, Contents);
 
-			std::istringstream Lines(Contents);
+			std::istringstream Lines(ToStd(Contents));
 			std::string Line;
 			while (std::getline(Lines, Line))
 			{
@@ -281,9 +283,9 @@ namespace arda
 				}
 				const std::filesystem::path Relative = Line.substr(Cursor + 1, End - Cursor - 1);
 				const std::filesystem::path Included = (PhysicalPath.parent_path() / Relative).lexically_normal();
-				const std::string ChildIdentity = (std::filesystem::path(LogicalIdentity).parent_path() / Relative)
+				const eastl::string ChildIdentity = ToEastl((std::filesystem::path(LogicalIdentity.c_str()).parent_path() / Relative)
 				                                      .lexically_normal()
-				                                      .generic_string();
+				                                      .generic_string());
 				if (!HashLocalSourceTree(Hash, Included, ChildIdentity, Visiting, Hashed, ErrorMessage))
 				{
 					return false;
@@ -296,8 +298,8 @@ namespace arda
 
 		bool HasShaderSourceExtension(const std::filesystem::path& Path)
 		{
-			std::string Extension = Path.extension().string();
-			std::transform(Extension.begin(),
+			eastl::string Extension = ToEastl(Path.extension().string());
+			eastl::transform(Extension.begin(),
 			    Extension.end(),
 			    Extension.begin(),
 			    [](unsigned char Character)
@@ -309,22 +311,22 @@ namespace arda
 
 		bool HashShaderSourceDirectory(uint64_t& Hash,
 		    const std::filesystem::path& Directory,
-		    std::set<std::string>& HashedRoots,
-		    std::string& ErrorMessage)
+		    eastl::set<eastl::string>& HashedRoots,
+		    eastl::string& ErrorMessage)
 		{
 			std::error_code Error;
 			const std::filesystem::path Root = std::filesystem::weakly_canonical(Directory, Error);
 			if (Error || !std::filesystem::is_directory(Root, Error) || Error)
 			{
 				ErrorMessage =
-				    "Configured shader include root is missing or not a directory: " + Directory.generic_string();
+				    "Configured shader include root is missing or not a directory: " + ToEastl(Directory.generic_string());
 				return false;
 			}
-			if (!HashedRoots.insert(Root.generic_string()).second)
+			if (!HashedRoots.insert(ToEastl(Root.generic_string())).second)
 			{
 				return true;
 			}
-			std::vector<std::filesystem::path> Files;
+			eastl::vector<std::filesystem::path> Files;
 			std::filesystem::recursive_directory_iterator Iterator(Root,
 			    std::filesystem::directory_options::skip_permission_denied,
 			    Error);
@@ -339,23 +341,23 @@ namespace arda
 			}
 			if (Error)
 			{
-				ErrorMessage = "Unable to enumerate shader include root: " + Root.generic_string();
+				ErrorMessage = "Unable to enumerate shader include root: " + ToEastl(Root.generic_string());
 				return false;
 			}
-			std::sort(Files.begin(),
+			eastl::sort(Files.begin(),
 			    Files.end(),
 			    [&Root](const auto& Left, const auto& Right)
 			    {
 				    return Left.lexically_relative(Root).generic_string() <
 				        Right.lexically_relative(Root).generic_string();
 			    });
-			HashString(Hash, Root.generic_string());
+			HashString(Hash, ToEastl(Root.generic_string()));
 			for (const auto& File : Files)
 			{
-				HashString(Hash, File.lexically_relative(Root).generic_string());
+				HashString(Hash, ToEastl(File.lexically_relative(Root).generic_string()));
 				if (!HashFile(Hash, File))
 				{
-					ErrorMessage = "Unable to hash shader dependency: " + File.generic_string();
+					ErrorMessage = "Unable to hash shader dependency: " + ToEastl(File.generic_string());
 					return false;
 				}
 			}
@@ -389,11 +391,11 @@ namespace arda
 			return !Error;
 		}
 
-		std::string KeyText(uint64_t Key)
+		eastl::string KeyText(uint64_t Key)
 		{
 			std::ostringstream Stream;
 			Stream << std::hex << std::setfill('0') << std::setw(16) << Key << '\n';
-			return Stream.str();
+			return ToEastl(Stream.str());
 		}
 
 		bool ReadKey(const std::filesystem::path& Path, uint64_t& Out)
@@ -416,32 +418,32 @@ namespace arda
 				return false;
 			}
 			const auto Candidate = Path.lexically_normal();
-			const std::string Name = Candidate.stem().string();
-			return !Name.empty() && Name[0] != '.' && Name.find("..") == std::string::npos;
+			const eastl::string Name = ToEastl(Candidate.stem().string());
+			return !Name.empty() && Name[0] != '.' && Name.find("..") == eastl::string::npos;
 		}
 
-		std::shared_ptr<std::mutex> GetOutputMutex(const std::filesystem::path& Output)
+		eastl::shared_ptr<std::mutex> GetOutputMutex(const std::filesystem::path& Output)
 		{
 			std::error_code Error;
-			const std::string Key = std::filesystem::absolute(Output, Error).lexically_normal().generic_string();
+			const eastl::string Key = ToEastl(std::filesystem::absolute(Output, Error).lexically_normal().generic_string());
 			std::lock_guard<std::mutex> Lock(GetCompilerContext().mOutputMutexMapMutex);
 			auto& Weak = GetCompilerContext().mOutputMutexes[Key];
 			auto Result = Weak.lock();
 			if (!Result)
 			{
-				Result = std::make_shared<std::mutex>();
+				Result = eastl::make_shared<std::mutex>();
 				Weak = Result;
 			}
 			return Result;
 		}
 
-		std::wstring QuoteWindowsArgument(const std::wstring& Value)
+		eastl::wstring QuoteWindowsArgument(const eastl::wstring& Value)
 		{
-			if (!Value.empty() && Value.find_first_of(L" \t\n\v\"") == std::wstring::npos)
+			if (!Value.empty() && Value.find_first_of(L" \t\n\v\"") == eastl::wstring::npos)
 			{
 				return Value;
 			}
-			std::wstring Result = L"\"";
+			eastl::wstring Result = L"\"";
 			size_t Backslashes = 0;
 			for (const wchar_t Character : Value)
 			{
@@ -484,10 +486,10 @@ namespace arda
 			{
 				return false;
 			}
-			std::wstring Command = QuoteWindowsArgument(Compiler.wstring());
+			eastl::wstring Command = QuoteWindowsArgument(Compiler.wstring().c_str());
 			for (const auto& Argument : Arguments)
 			{
-				Command += L" " + QuoteWindowsArgument(std::filesystem::path(ToStd(Argument)).wstring());
+				Command += L" " + QuoteWindowsArgument(std::filesystem::path(Argument.c_str()).wstring().c_str());
 			}
 			STARTUPINFOW Startup{};
 			Startup.cb = sizeof(Startup);
@@ -534,14 +536,14 @@ namespace arda
 				dup2(LogFd, STDOUT_FILENO);
 				dup2(LogFd, STDERR_FILENO);
 				close(LogFd);
-				std::vector<std::string> Storage;
-				Storage.push_back(Compiler.string());
+				eastl::vector<eastl::string> Storage;
+				Storage.push_back(ToEastl(Compiler.string()));
 				for (const auto& Argument : Arguments)
 				{
-					Storage.push_back(ToStd(Argument));
+					Storage.push_back(Argument);
 				}
-				std::vector<char*> Native;
-				for (std::string& Argument : Storage)
+				eastl::vector<char*> Native;
+				for (eastl::string& Argument : Storage)
 				{
 					Native.push_back(Argument.data());
 				}
@@ -569,7 +571,7 @@ namespace arda
 		    FArdaShaderCompileDiagnostic& Diagnostic)
 		{
 
-			const auto Fail = [&](EArdaShaderCompileError Code, const std::string& Message)
+			const auto Fail = [&](EArdaShaderCompileError Code, const eastl::string& Message)
 			{
 				Diagnostic = MakeDiagnostic(Code, Job, Message);
 				return false;
@@ -579,7 +581,7 @@ namespace arda
 			Job.mCompilerExecutable = Compiler;
 			Job.mPermutationId = PermutationId;
 			const eastl::string Stem = Type.GetPermutationArtifactStem(PermutationId);
-			Job.mOutputPath = OutputDirectory / (ToStd(Stem) + ToStd(Target.mArtifactExtension));
+			Job.mOutputPath = OutputDirectory / (Stem + Target.mArtifactExtension).c_str();
 			if (!IsContainedArtifactPath(OutputDirectory, Job.mOutputPath))
 			{
 				return Fail(EArdaShaderCompileError::InvalidPermutation,
@@ -598,7 +600,7 @@ namespace arda
 			if (!ResolveSource(Type, Configuration, Job.mSourcePath))
 			{
 				return Fail(EArdaShaderCompileError::SourceResolutionFailed,
-				    std::string("Unable to resolve registered shader source stem: ") + Type.GetSourceStem());
+				    eastl::string("Unable to resolve registered shader source stem: ") + Type.GetSourceStem());
 			}
 			{
 				const std::filesystem::path Registered(Type.GetSourceStem());
@@ -620,8 +622,8 @@ namespace arda
 			IArdaBackendModule* BackendModule = FindBackendModule(Target.mBackendName.c_str());
 			for (const FArdaShaderDefine& Define : Job.mEnvironment.GetDefines())
 			{
-				const std::string Name = ToStd(Define.mName);
-				const std::string Value = ToStd(Define.mValue);
+				const eastl::string Name = Define.mName;
+				const eastl::string Value = Define.mValue;
 				if (!IsValidDefineName(Name) || ContainsControl(Value))
 				{
 					return Fail(EArdaShaderCompileError::InvalidPermutation,
@@ -658,7 +660,7 @@ namespace arda
 				const arda::FArdaRHIStatus Status = BackendModule->ConfigureShaderCompileInvocation(Invocation);
 				if (!Status)
 				{
-					return Fail(EArdaShaderCompileError::UnsupportedStage, ToStd(Status.mMessage));
+					return Fail(EArdaShaderCompileError::UnsupportedStage, Status.mMessage);
 				}
 				Job.mSourcePath = eastl::move(Invocation.mSourcePath);
 				Job.mOutputPath = eastl::move(Invocation.mOutputPath);
@@ -673,7 +675,7 @@ namespace arda
 			}
 			for (const auto& Argument : Job.mArguments)
 			{
-				if (ContainsControl(ToStd(Argument)))
+				if (ContainsControl(Argument))
 				{
 					return Fail(EArdaShaderCompileError::InvalidPermutation,
 					    "A custom compiler argument contains a control character.");
@@ -682,15 +684,15 @@ namespace arda
 			uint64_t Hash = arda::ArdaFnv1a64OffsetBasis;
 			HashString(Hash, CacheSchema);
 			HashString(Hash, Type.GetName());
-			HashString(Hash, ToStd(Target.mBackendName));
+			HashString(Hash, Target.mBackendName);
 			HashUint32(Hash, static_cast<uint32_t>(Target.mBinaryFormat));
 			HashUint32(Hash, PermutationId);
-			HashString(Hash, ToStd(Job.mProfile));
+			HashString(Hash, Job.mProfile);
 			for (const auto& Argument : Job.mArguments)
 			{
-				HashString(Hash, ToStd(Argument));
+				HashString(Hash, Argument);
 			}
-			HashString(Hash, ToStd(Job.mSourceIdentity));
+			HashString(Hash, Job.mSourceIdentity);
 			if (!Job.mCompilerExecutable.empty() && !HashFile(Hash, Job.mCompilerExecutable))
 			{
 				return Fail(EArdaShaderCompileError::CompilerUnavailable,
@@ -703,11 +705,11 @@ namespace arda
 					return Fail(EArdaShaderCompileError::CompilerUnavailable,
 					    "The backend module has neither a compiler executable nor a stable in-process compiler identity.");
 				}
-				HashString(Hash, ToStd(Target.mCompilerIdentity));
+				HashString(Hash, Target.mCompilerIdentity);
 			}
 			for (const auto& File : EnumerateShaderSourceFiles())
 			{
-				HashString(Hash, ToStd(File.mVirtualPath));
+				HashString(Hash, File.mVirtualPath);
 				if (!HashFile(Hash, File.mPhysicalPath))
 				{
 					return Fail(EArdaShaderCompileError::SourceResolutionFailed,
@@ -716,27 +718,27 @@ namespace arda
 			}
 			if (Type.GetSourceStem()[0] != '/')
 			{
-				std::set<std::string> Visiting;
-				std::set<std::string> Hashed;
-				std::string DependencyError;
+				eastl::set<eastl::string> Visiting;
+				eastl::set<eastl::string> Hashed;
+				eastl::string DependencyError;
 				if (!HashLocalSourceTree(Hash,
 				        Job.mSourcePath,
-				        ToStd(Job.mSourceIdentity),
+				        Job.mSourceIdentity,
 				        Visiting,
 				        Hashed,
 				        DependencyError))
 				{
 					return Fail(EArdaShaderCompileError::SourceResolutionFailed, DependencyError);
 				}
-				std::set<std::string> HashedRoots;
+				eastl::set<eastl::string> HashedRoots;
 				if (!HashShaderSourceDirectory(Hash, Job.mSourcePath.parent_path(), HashedRoots, DependencyError))
 				{
 					return Fail(EArdaShaderCompileError::SourceResolutionFailed, DependencyError);
 				}
 				for (size_t ArgumentIndex = 0; ArgumentIndex < Job.mArguments.size(); ++ArgumentIndex)
 				{
-					const std::string Argument = ToStd(Job.mArguments[ArgumentIndex]);
-					std::string IncludeRoot;
+					const eastl::string Argument = Job.mArguments[ArgumentIndex];
+					eastl::string IncludeRoot;
 					if (Argument == "-I")
 					{
 						if (++ArgumentIndex >= Job.mArguments.size())
@@ -745,7 +747,7 @@ namespace arda
 						}
 						else
 						{
-							IncludeRoot = ToStd(Job.mArguments[ArgumentIndex]);
+							IncludeRoot = Job.mArguments[ArgumentIndex];
 						}
 					}
 					else if (Argument.rfind("-I", 0) == 0 && Argument.size() > 2)
@@ -758,7 +760,7 @@ namespace arda
 					}
 					if (IncludeRoot.empty() ||
 					    !HashShaderSourceDirectory(Hash,
-					        std::filesystem::path(IncludeRoot),
+					        std::filesystem::path(IncludeRoot.c_str()),
 					        HashedRoots,
 					        DependencyError))
 					{
@@ -777,7 +779,7 @@ namespace arda
 		    bool SkipIfCurrent = false,
 		    bool* OutCacheHit = nullptr)
 		{
-			const auto Fail = [&](EArdaShaderCompileError Code, const std::string& Message)
+			const auto Fail = [&](EArdaShaderCompileError Code, const eastl::string& Message)
 			{
 				Diagnostic = MakeDiagnostic(Code, Job, Message);
 				return false;
@@ -810,7 +812,7 @@ namespace arda
 			const fileops::FArdaTemporaryFiles Cleanup{{TemporaryOutput, TemporarySidecar, Log}};
 			{
 				std::ofstream Stream(TemporarySidecar, std::ios::binary | std::ios::trunc);
-				Stream << KeyText(Job.mInputKey);
+				Stream << KeyText(Job.mInputKey).c_str();
 				if (!Stream)
 				{
 					return Fail(EArdaShaderCompileError::CacheWriteFailed,
@@ -849,7 +851,7 @@ namespace arda
 				bLaunched = true;
 				ExitCode = ModuleResult == EArdaBackendShaderCompileResult::Success ? 0 : 1;
 			}
-			std::string CompilerOutput = ModuleDiagnostics.empty() ? fileops::ReadText(Log) : ToStd(ModuleDiagnostics);
+			eastl::string CompilerOutput = ModuleDiagnostics.empty() ? fileops::ReadText(Log) : ModuleDiagnostics;
 			if (!bLaunched)
 			{
 				return Fail(EArdaShaderCompileError::ProcessLaunchFailed,
@@ -858,7 +860,7 @@ namespace arda
 			if (ExitCode != 0 || !fileops::IsRegularNonEmpty(TemporaryOutput))
 			{
 				return Fail(EArdaShaderCompileError::CompilationFailed,
-				    "Shader compilation failed with exit code " + std::to_string(ExitCode) +
+				    "Shader compilation failed with exit code " + eastl::to_string(ExitCode) +
 				        (CompilerOutput.empty() ? "." : ":\n" + CompilerOutput));
 			}
 			const std::filesystem::path Sidecar = Job.mOutputPath.string() + ".arda-key";
@@ -870,7 +872,7 @@ namespace arda
 			return true;
 		}
 
-		std::string JsonEscape(const std::string& Value)
+		eastl::string JsonEscape(const eastl::string& Value)
 		{
 			std::ostringstream Result;
 			for (const unsigned char Character : Value)
@@ -909,10 +911,10 @@ namespace arda
 					}
 				}
 			}
-			return Result.str();
+			return ToEastl(Result.str());
 		}
 
-		std::string BuildManifest(const eastl::vector<FArdaShaderCompileJob>& Jobs)
+		eastl::string BuildManifest(const eastl::vector<FArdaShaderCompileJob>& Jobs)
 		{
 			std::ostringstream Stream;
 			Stream << "{\n  \"schema\": 1,\n  \"jobs\": [\n";
@@ -920,30 +922,30 @@ namespace arda
 			{
 				const auto& Job = Jobs[Index];
 				Stream << "    {\n"
-				       << "      \"type\": \"" << JsonEscape(Job.mType.GetName()) << "\",\n"
-				       << "      \"backend\": \"" << JsonEscape(ToStd(Job.mTarget.mBackendName)) << "\",\n"
+				       << "      \"type\": \"" << JsonEscape(Job.mType.GetName()).c_str() << "\",\n"
+				       << "      \"backend\": \"" << JsonEscape(Job.mTarget.mBackendName).c_str() << "\",\n"
 				       << "      \"permutation\": " << Job.mPermutationId << ",\n"
-				       << "      \"source\": \"" << JsonEscape(ToStd(Job.mSourceIdentity)) << "\",\n"
-				       << "      \"output\": \"" << JsonEscape(Job.mOutputPath.filename().generic_string()) << "\",\n"
-				       << "      \"entry\": \"" << JsonEscape(Job.mType.GetEntryPoint()) << "\",\n"
-				       << "      \"profile\": \"" << JsonEscape(ToStd(Job.mProfile)) << "\",\n"
+				       << "      \"source\": \"" << JsonEscape(Job.mSourceIdentity).c_str() << "\",\n"
+				       << "      \"output\": \"" << JsonEscape(ToEastl(Job.mOutputPath.filename().generic_string())).c_str() << "\",\n"
+				       << "      \"entry\": \"" << JsonEscape(Job.mType.GetEntryPoint()).c_str() << "\",\n"
+				       << "      \"profile\": \"" << JsonEscape(Job.mProfile).c_str() << "\",\n"
 				       << "      \"defines\": {";
 				const auto& Defines = Job.mEnvironment.GetDefines();
 				for (size_t DefineIndex = 0; DefineIndex < Defines.size(); ++DefineIndex)
 				{
 					Stream << (DefineIndex == 0 ? "\n" : ",\n") << "        \""
-					       << JsonEscape(ToStd(Defines[DefineIndex].mName)) << "\": \""
-					       << JsonEscape(ToStd(Defines[DefineIndex].mValue)) << "\"";
+					       << JsonEscape(Defines[DefineIndex].mName).c_str() << "\": \""
+					       << JsonEscape(Defines[DefineIndex].mValue).c_str() << "\"";
 				}
 				if (!Defines.empty())
 				{
 					Stream << '\n' << "      ";
 				}
-				Stream << "},\n      \"key\": \"" << KeyText(Job.mInputKey).substr(0, 16) << "\"\n    }"
+				Stream << "},\n      \"key\": \"" << KeyText(Job.mInputKey).substr(0, 16).c_str() << "\"\n    }"
 				       << (Index + 1 == Jobs.size() ? "\n" : ",\n");
 			}
 			Stream << "  ]\n}\n";
-			return Stream.str();
+			return ToEastl(Stream.str());
 		}
 	}
 
@@ -981,17 +983,17 @@ namespace arda
 			    0,
 			    {},
 			    {},
-			    ToStd(Registration.mMessage)));
+			    Registration.mMessage));
 			return Result;
 		}
 		eastl::vector<FArdaShaderTarget> UniqueTargets = Targets;
-		std::sort(UniqueTargets.begin(),
+		eastl::sort(UniqueTargets.begin(),
 		    UniqueTargets.end(),
 		    [](const FArdaShaderTarget& Left, const FArdaShaderTarget& Right)
 		    {
 			    return Left.mBackendName < Right.mBackendName;
 		    });
-		UniqueTargets.erase(std::unique(UniqueTargets.begin(),
+		UniqueTargets.erase(eastl::unique(UniqueTargets.begin(),
 		                        UniqueTargets.end(),
 		                        [](const FArdaShaderTarget& Left, const FArdaShaderTarget& Right)
 		                        {
@@ -1028,11 +1030,11 @@ namespace arda
 				}
 			}
 		}
-		std::sort(Result.mJobs.begin(),
+		eastl::sort(Result.mJobs.begin(),
 		    Result.mJobs.end(),
 		    [](const auto& Left, const auto& Right)
 		    {
-			    const int TypeOrder = std::string(Left.mType.GetName()).compare(Right.mType.GetName());
+			    const int TypeOrder = eastl::string(Left.mType.GetName()).compare(Right.mType.GetName());
 			    if (TypeOrder != 0)
 			    {
 				    return TypeOrder < 0;
@@ -1140,7 +1142,7 @@ namespace arda
 			return Result;
 		}
 		std::filesystem::create_directories(OutputDirectory, Error);
-		std::vector<std::pair<std::filesystem::path, std::filesystem::path>> Files;
+		eastl::vector<eastl::pair<std::filesystem::path, std::filesystem::path>> Files;
 		for (const auto& Job : Result.mJobs)
 		{
 			const auto StagedArtifact = StagingDirectory / Job.mOutputPath.filename();
@@ -1205,7 +1207,7 @@ namespace arda
 			    0,
 			    {},
 			    {},
-			    ToStd(Registration.mMessage)));
+			    Registration.mMessage));
 			return Result;
 		}
 
@@ -1281,7 +1283,7 @@ namespace arda
 			    PermutationId,
 			    {},
 			    {},
-			    ToStd(Registration.mMessage)));
+			    Registration.mMessage));
 			return Result;
 		}
 		if (PermutationId >= Type.GetPermutationCount() || !Type.ShouldCompilePermutation(Target, PermutationId))
@@ -1296,7 +1298,7 @@ namespace arda
 			return Result;
 		}
 		const eastl::string Stem = Type.GetPermutationArtifactStem(PermutationId);
-		const std::filesystem::path Output = OutputDirectory / (ToStd(Stem) + ToStd(Target.mArtifactExtension));
+		const std::filesystem::path Output = OutputDirectory / (Stem + Target.mArtifactExtension).c_str();
 		if (!IsContainedArtifactPath(OutputDirectory, Output))
 		{
 			Result.mDiagnostics.push_back(MakeDiagnostic(EArdaShaderCompileError::InvalidPermutation,

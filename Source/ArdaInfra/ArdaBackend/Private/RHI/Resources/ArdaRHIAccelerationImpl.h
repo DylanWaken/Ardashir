@@ -2,6 +2,10 @@
 #pragma once
 
 #include "RHI/Resources/ArdaRHIResourceImpl.h"
+#include "RHI/Resources/ArdaRHIAccelerationStructures.h"
+#include "RHI/Memory/ArdaRHIHeap.h"
+#include "RHI/Providers/ArdaProviderCommandTypes.h"
+#include <mutex>
 
 namespace arda::detail
 {

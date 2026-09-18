@@ -1,7 +1,7 @@
 /** Shader target identity and backend compiler invocation contract. */
 #pragma once
 
-#include "RHI/Resources/ArdaRHITypes.h"
+#include "RHI/Shaders/ArdaRHIShader.h"
 #include <EASTL/string.h>
 #include <EASTL/vector.h>
 #include <filesystem>

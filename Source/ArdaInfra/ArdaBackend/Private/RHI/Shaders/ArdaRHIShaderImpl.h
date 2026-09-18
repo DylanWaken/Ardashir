@@ -2,10 +2,18 @@
 #pragma once
 
 #include "RHI/Resources/ArdaRHIResourceImpl.h"
+#include "RHI/Pipelines/ArdaRHIRayTracingPipeline.h"
+#include "RHI/Shaders/ArdaShaderIdentity.h"
+#include "RHI/Shaders/ArdaRHIShaderTable.h"
+#include "RHI/Shaders/ArdaRHIShaderBundle.h"
+#include "RHI/Shaders/ArdaRHIDescriptorTable.h"
+#include "RHI/Shaders/ArdaRHIInputLayout.h"
+#include <EASTL/algorithm.h>
+#include <mutex>
+#include <EASTL/optional.h>
 
 namespace arda::detail
 {
-	using FArdaSampler = TArdaNativeResource<IArdaRHISampler, FArdaRHISamplerDesc, EArdaRHIResourceType::Sampler>;
 	using FArdaBindingLayoutBase =
 	    TArdaNativeResource<IArdaRHIBindingLayout, FArdaRHIBindingLayoutDesc, EArdaRHIResourceType::BindingLayout>;
 
@@ -83,43 +91,6 @@ namespace arda::detail
 		return {};
 	}
 
-	class FArdaResourceCollection final : public FArdaResource, public IArdaRHIResourceCollection
-	{
-	public:
-		FArdaResourceCollection(FArdaRHIResourceCollectionDesc Desc,
-		    FArdaRHIDescriptorTableRef DescriptorTable,
-		    const void* Owner,
-		    eastl::shared_ptr<FArdaLifetimeTracker> LifetimeTracker)
-		    : FArdaResource(EArdaRHIResourceType::ResourceCollection,
-		          Desc.mDebugName,
-		          Owner,
-		          eastl::move(LifetimeTracker)),
-		      mDesc(eastl::move(Desc)),
-		      mDescriptorTable(eastl::move(DescriptorTable))
-		{
-		}
-
-		const FArdaRHIResourceCollectionDesc& GetDesc() const noexcept override
-		{
-			return mDesc;
-		}
-
-		uint32_t GetFirstDescriptorIndexInHeap() const noexcept override
-		{
-			return mDescriptorTable ? mDescriptorTable->GetFirstDescriptorIndexInHeap() : 0xffffffffu;
-		}
-
-		FArdaRHIDescriptorTableRef GetDescriptorTable() const override
-		{
-			std::lock_guard<std::mutex> Lock(mMutex);
-			return mDescriptorTable;
-		}
-
-		FArdaRHIResourceCollectionDesc mDesc;
-		FArdaRHIDescriptorTableRef mDescriptorTable;
-		mutable std::mutex mMutex;
-	};
-
 	class FArdaShaderTable final : public FArdaResource, public IArdaRHIShaderTable
 	{
 	public:
@@ -171,7 +142,7 @@ namespace arda::detail
 		FArdaRHIRayTracingPipelineRef mPipeline;
 		FArdaProviderObjectRef mNative;
 		mutable std::mutex mMutex;
-		eastl::vector<std::optional<EArdaRHIShaderTableRecordType>> mRecordTypes;
+		eastl::vector<eastl::optional<EArdaRHIShaderTableRecordType>> mRecordTypes;
 	};
 
 	class FArdaShaderBundle final : public FArdaResource, public IArdaRHIShaderBundle

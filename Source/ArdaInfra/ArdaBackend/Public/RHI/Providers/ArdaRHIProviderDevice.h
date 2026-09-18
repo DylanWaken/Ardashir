@@ -2,6 +2,18 @@
 #pragma once
 
 #include "RHI/Providers/ArdaRHIProviderCommandList.h"
+#include "RHI/Providers/ArdaProviderResourceTypes.h"
+#include "RHI/Providers/ArdaProviderPipelineTypes.h"
+#include "RHI/Config/ArdaRHICapabilities.h"
+#include "RHI/Device/ArdaRHIDiagnostics.h"
+#include "RHI/Interop/ArdaRHINativeResourceImports.h"
+#include "RHI/Memory/ArdaRHIHeap.h"
+#include "RHI/Resources/ArdaRHISampler.h"
+#include "RHI/Resources/ArdaRHISamplerFeedback.h"
+#include "RHI/Shaders/ArdaRHIShaderTable.h"
+
+#include <EASTL/functional.h>
+#include <EASTL/unique_ptr.h>
 
 namespace arda
 {

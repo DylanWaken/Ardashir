@@ -1,3 +1,4 @@
+#include <mutex>
 #include "RHI/Scheduling/ArdaCudaTiming.h"
 
 namespace arda

@@ -1,6 +1,6 @@
 #include "RHI/Pipelines/ArdaRHIWorkGraphPipeline.h"
 
-#include "ArdaHash.h"
+#include "RHI/Resources/ArdaHash.h"
 
 #include <EASTL/algorithm.h>
 

@@ -79,7 +79,7 @@ bytes and that the workspace view contains at least `mWorkspaceBytes`. Return th
 operand's explicit `NoWork` selection for a mathematically empty operation.
 
 ```cpp
-#include "Compute/ArdaCudaExternalCall.h"
+#include "RHI/CUDA/ArdaCudaExternalCall.h"
 #include <cublas_v2.h>
 
 namespace arda
@@ -259,7 +259,7 @@ cuDNN workloads, use the execution-plan pattern following the example.
 [cuDNN API overview](https://docs.nvidia.com/deeplearning/cudnn/backend/latest/api/overview.html)
 
 ```cpp
-#include "Compute/ArdaCudaExternalCall.h"
+#include "RHI/CUDA/ArdaCudaExternalCall.h"
 #include <cudnn.h>
 
 namespace arda

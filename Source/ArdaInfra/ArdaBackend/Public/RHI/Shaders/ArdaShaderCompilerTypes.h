@@ -2,16 +2,15 @@
  *  @brief Declares backend-neutral shader permutation and compilation inputs.
  */
 #pragma once
+#include <EASTL/numeric_limits.h>
+#include <EASTL/type_traits.h>
 
-#include "RHI/Providers/ArdaBackendProvider.h"
+#include "RHI/Shaders/ArdaShaderTarget.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/string.h>
 #include <EASTL/vector.h>
 #include <cstdint>
-#include <limits>
-#include <string>
-#include <type_traits>
 
 namespace arda
 {
@@ -68,10 +67,10 @@ namespace arda
          * @return True when the definition name was valid.
          */
 		template <typename Integer,
-		    std::enable_if_t<std::is_integral_v<Integer> && !std::is_same_v<std::remove_cv_t<Integer>, bool>, int> = 0>
+		    eastl::enable_if_t<eastl::is_integral_v<Integer> && !eastl::is_same_v<eastl::remove_cv_t<Integer>, bool>, int> = 0>
 		bool SetDefine(const eastl::string& Name, Integer Value)
 		{
-			const std::string Text = std::to_string(Value);
+			const eastl::string Text = eastl::to_string(Value);
 			return SetDefine(Name, eastl::string(Text.data(), Text.size()));
 		}
 
@@ -130,10 +129,10 @@ namespace arda
 		template <typename Dimension>
 		static constexpr uint32_t GetDivisor()
 		{
-			static_assert((std::is_same_v<Dimension, Dimensions> || ...),
+			static_assert((eastl::is_same_v<Dimension, Dimensions> || ...),
 			    "The requested dimension is not part of this permutation domain.");
 			constexpr uint32_t Counts[] = {Dimensions::PermutationCount...};
-			constexpr bool Matches[] = {std::is_same_v<Dimension, Dimensions>...};
+			constexpr bool Matches[] = {eastl::is_same_v<Dimension, Dimensions>...};
 			uint32_t Divisor = 1;
 			for (size_t Index = 0; Index < sizeof...(Dimensions); ++Index)
 			{
@@ -156,7 +155,7 @@ namespace arda
 		/** Number of identifiers in the Cartesian product. */
 		static constexpr uint32_t PermutationCount = static_cast<uint32_t>(CalculateCount());
 
-		static_assert(CalculateCount() <= std::numeric_limits<uint32_t>::max(),
+		static_assert(CalculateCount() <= eastl::numeric_limits<uint32_t>::max(),
 		    "Permutation domain does not fit in a uint32 identifier.");
 
 		/** Constructs the first permutation. */

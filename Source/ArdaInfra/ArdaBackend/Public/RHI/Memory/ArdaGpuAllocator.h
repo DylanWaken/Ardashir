@@ -1,4 +1,4 @@
-/** @file Allocator/ArdaGpuAllocator.h
+/** @file ArdaGpuAllocator.h
  * Device-wide GPU storage cache policy and allocation diagnostics.
  */
 #pragma once

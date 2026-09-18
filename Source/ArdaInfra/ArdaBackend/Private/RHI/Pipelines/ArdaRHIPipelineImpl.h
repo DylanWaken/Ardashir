@@ -1,12 +1,16 @@
-/** Pipeline, framebuffer and logical-state facade resources. */
+/** Pipeline and logical-state facade resources. */
 #pragma once
 
 #include "RHI/Resources/ArdaRHIResourceImpl.h"
+#include "RHI/Pipelines/ArdaRHIGraphicsPipeline.h"
+#include "RHI/Pipelines/ArdaRHIComputePipeline.h"
+#include "RHI/Pipelines/ArdaRHIMeshletPipeline.h"
+#include "RHI/Pipelines/ArdaRHIRayTracingPipeline.h"
+#include "RHI/Pipelines/ArdaRHIWorkGraphPipeline.h"
+#include "RHI/Pipelines/ArdaRHIFixedFunctionStates.h"
 
 namespace arda::detail
 {
-	using FArdaFramebuffer =
-	    TArdaNativeResource<IArdaRHIFramebuffer, FArdaRHIFramebufferDesc, EArdaRHIResourceType::Framebuffer>;
 	using FArdaGraphicsPipeline = TArdaNativeResource<IArdaRHIGraphicsPipeline,
 	    FArdaRHIGraphicsPipelineDesc,
 	    EArdaRHIResourceType::GraphicsPipeline>;

@@ -1,6 +1,8 @@
-#include "ArdaBackendCorePch.h"
+#include <mutex>
+#include "RHI/Config/ArdaBackendCorePch.h"
 #include "RHI/Config/ArdaBackendConfigurationPrivate.h"
 #include "RHI/Interop/ArdaExternalInterop.h"
+#include "RHI/Providers/ArdaExternalDeviceProvider.h"
 #include "RHI/Providers/ArdaLinkedBackends.h"
 namespace arda
 {

@@ -27,13 +27,13 @@ namespace
 
 	TEST_F(FArdaFileOperations, ReadsBinaryAndEmptyFilesAndClearsMissingFileOutput)
 	{
-		const std::string Binary("a\0b\xff", 4);
+		const eastl::string Binary("a\0b\xff", 4);
 		const auto Path = mRoot / "binary";
 		ASSERT_TRUE(fileops::AtomicWrite(Path, Binary));
 		eastl::vector<uint8_t> Bytes;
 		ASSERT_EQ(fileops::ReadBinaryFile(Path, Bytes), fileops::EArdaFileReadResult::Success);
 		ASSERT_EQ(Bytes.size(), Binary.size());
-		EXPECT_EQ(std::string(reinterpret_cast<const char*>(Bytes.data()), Bytes.size()), Binary);
+		EXPECT_EQ(eastl::string(reinterpret_cast<const char*>(Bytes.data()), Bytes.size()), Binary);
 		EXPECT_EQ(fileops::ReadText(Path), Binary);
 		EXPECT_TRUE(fileops::IsRegularNonEmpty(Path));
 

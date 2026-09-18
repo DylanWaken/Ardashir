@@ -2,7 +2,8 @@
  * GPU buffer storage for processing graphics textures with pointer-based CUDA kernels.
  */
 #pragma once
-#include "RHI/Device/ArdaRHIDevice.h"
+#include "RHI/Resources/ArdaRHIBuffer.h"
+#include "RHI/Scheduling/ArdaRHIResourceCopies.h"
 
 namespace arda
 {

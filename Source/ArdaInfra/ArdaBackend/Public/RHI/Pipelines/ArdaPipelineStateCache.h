@@ -2,15 +2,15 @@
  *  @brief Declares the thread-safe renderer-facing pipeline state cache.
  */
 #pragma once
+#include <EASTL/unique_ptr.h>
 
 #include "RHI/Pipelines/ArdaPipelineStateInitializer.h"
-#include "RHI/Device/ArdaRHIDevice.h"
+#include "RHI/Resources/ArdaRHIFwd.h"
 
 #include <EASTL/string.h>
 #include <EASTL/vector.h>
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 
 namespace arda
 {
@@ -271,6 +271,6 @@ namespace arda
 		/** Opaque cache implementation. */
 		struct FArdaImpl;
 		/** Owned cache implementation. */
-		std::unique_ptr<FArdaImpl> mImpl;
+		eastl::unique_ptr<FArdaImpl> mImpl;
 	};
 }

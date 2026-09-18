@@ -3,11 +3,11 @@
  */
 #pragma once
 
-#include "RHI/Device/ArdaBackendDevice.h"
+#include "RHI/Config/ArdaBackendConfiguration.h"
 #include "RHI/Interop/ArdaNativeObject.h"
 #include "RHI/Scheduling/ArdaSwapChain.h"
 #include "RHI/Shaders/ArdaShaderTarget.h"
-#include "RHI/Providers/ArdaRHIProvider.h"
+#include "RHI/Providers/ArdaRHIProviderDevice.h"
 
 #include <EASTL/string.h>
 #include <EASTL/unique_ptr.h>

@@ -9,7 +9,6 @@
 #include <EASTL/vector.h>
 #include <cstdint>
 #include <filesystem>
-#include <vector>
 
 namespace arda
 {

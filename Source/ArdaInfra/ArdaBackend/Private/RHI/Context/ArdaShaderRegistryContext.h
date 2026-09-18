@@ -2,7 +2,7 @@
 
 #include "RHI/Shaders/ArdaShaderType.h"
 
-#include <memory>
+#include <EASTL/shared_ptr.h>
 #include <mutex>
 
 namespace arda
@@ -11,9 +11,9 @@ namespace arda
 	struct FArdaShaderRegistryContext
 	{
 		std::mutex mMutex;
-		eastl::vector<std::shared_ptr<FArdaShaderType>> mNodes;
-		eastl::vector<std::shared_ptr<FArdaShaderType>> mCommitted;
-		eastl::vector<std::shared_ptr<FArdaShaderType>> mRetired;
+		eastl::vector<eastl::shared_ptr<FArdaShaderType>> mNodes;
+		eastl::vector<eastl::shared_ptr<FArdaShaderType>> mCommitted;
+		eastl::vector<eastl::shared_ptr<FArdaShaderType>> mRetired;
 		uint64_t mGeneration = 0;
 	};
 }

@@ -1,4 +1,6 @@
-ardashir_add_module(ArdaBackend Private/ArdaBackendCorePch.h)
+include(ArdaBackendLayout)
+ardashir_validate_backend_layout("${CMAKE_CURRENT_SOURCE_DIR}")
+ardashir_add_module(ArdaBackend Private/RHI/Config/ArdaBackendCorePch.h)
 
 target_compile_definitions(ArdaBackend PRIVATE
     $<$<BOOL:${WIN32}>:NOMINMAX>
@@ -44,32 +46,38 @@ function(ardashir_finalize_backend_modules)
         CONTENT "${ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT}")
 endfunction()
 
-# Compile every public header in isolation without a provider implementation's
-# private or public include paths. This guards the module boundary.
-file(GLOB_RECURSE ARDA_BACKEND_PUBLIC_HEADERS CONFIGURE_DEPENDS
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/Public"
-    "${CMAKE_CURRENT_SOURCE_DIR}/Public/*.h")
-set(ARDA_BACKEND_HEADER_TARGETS)
-foreach(ARDA_PUBLIC_HEADER IN LISTS ARDA_BACKEND_PUBLIC_HEADERS)
-    string(MAKE_C_IDENTIFIER "${ARDA_PUBLIC_HEADER}" ARDA_HEADER_ID)
-    set(ARDA_HEADER_SOURCE
-        "${CMAKE_CURRENT_BINARY_DIR}/PublicHeader_${ARDA_HEADER_ID}.cpp")
-    file(GENERATE OUTPUT "${ARDA_HEADER_SOURCE}"
-        CONTENT "#include \"${ARDA_PUBLIC_HEADER}\"\n")
-    set(ARDA_HEADER_TARGET "ArdaBackendHeader_${ARDA_HEADER_ID}")
-    add_library(${ARDA_HEADER_TARGET} OBJECT "${ARDA_HEADER_SOURCE}")
-    target_compile_features(${ARDA_HEADER_TARGET} PRIVATE cxx_std_17)
-    target_include_directories(${ARDA_HEADER_TARGET} PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/Public")
-    target_link_libraries(${ARDA_HEADER_TARGET} PRIVATE Ardashir::EASTL)
-    set_target_properties(${ARDA_HEADER_TARGET} PROPERTIES
-        FOLDER "Ardashir/Tests/PublicHeaders")
-    list(APPEND ARDA_BACKEND_HEADER_TARGETS ${ARDA_HEADER_TARGET})
+# Compile public and implementation headers independently, without the PCH.
+# Public headers never receive the private include path or native SDK includes.
+foreach(ARDA_HEADER_VISIBILITY Public Private)
+    file(GLOB_RECURSE ARDA_BACKEND_HEADERS CONFIGURE_DEPENDS
+        RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/${ARDA_HEADER_VISIBILITY}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/${ARDA_HEADER_VISIBILITY}/*.h")
+    set(ARDA_BACKEND_HEADER_TARGETS)
+    foreach(ARDA_HEADER IN LISTS ARDA_BACKEND_HEADERS)
+        string(MAKE_C_IDENTIFIER "${ARDA_HEADER}" ARDA_HEADER_ID)
+        set(ARDA_HEADER_SOURCE
+            "${CMAKE_CURRENT_BINARY_DIR}/${ARDA_HEADER_VISIBILITY}Header_${ARDA_HEADER_ID}.cpp")
+        file(GENERATE OUTPUT "${ARDA_HEADER_SOURCE}"
+            CONTENT "#include \"${ARDA_HEADER}\"\n")
+        set(ARDA_HEADER_TARGET "ArdaBackend${ARDA_HEADER_VISIBILITY}Header_${ARDA_HEADER_ID}")
+        add_library(${ARDA_HEADER_TARGET} OBJECT "${ARDA_HEADER_SOURCE}")
+        target_compile_features(${ARDA_HEADER_TARGET} PRIVATE cxx_std_17)
+        target_include_directories(${ARDA_HEADER_TARGET} PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/Public")
+        if(ARDA_HEADER_VISIBILITY STREQUAL "Private")
+            target_include_directories(${ARDA_HEADER_TARGET} PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/Private")
+        endif()
+        target_link_libraries(${ARDA_HEADER_TARGET} PRIVATE Ardashir::EASTL)
+        set_target_properties(${ARDA_HEADER_TARGET} PROPERTIES
+            FOLDER "Ardashir/Tests/${ARDA_HEADER_VISIBILITY}Headers")
+        list(APPEND ARDA_BACKEND_HEADER_TARGETS ${ARDA_HEADER_TARGET})
+    endforeach()
+    add_custom_target(ArdaBackend${ARDA_HEADER_VISIBILITY}Headers ALL
+        DEPENDS ${ARDA_BACKEND_HEADER_TARGETS})
+    set_target_properties(ArdaBackend${ARDA_HEADER_VISIBILITY}Headers PROPERTIES
+        FOLDER "Ardashir/Tests")
 endforeach()
-add_custom_target(ArdaBackendPublicHeaders ALL
-    DEPENDS ${ARDA_BACKEND_HEADER_TARGETS})
-set_target_properties(ArdaBackendPublicHeaders PROPERTIES
-    FOLDER "Ardashir/Tests")
 
 if(ARDASHIR_BUILD_TESTS)
     file(GLOB_RECURSE ARDA_BACKEND_TEST_SOURCES CONFIGURE_DEPENDS

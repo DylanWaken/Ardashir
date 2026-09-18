@@ -2,6 +2,13 @@
 #pragma once
 
 #include "RHI/Resources/ArdaRHIResourceImpl.h"
+#include "RHI/Resources/ArdaRHIBuffer.h"
+#include "RHI/Resources/ArdaRHITexture.h"
+#include "RHI/Resources/ArdaRHISamplerFeedback.h"
+#include "RHI/Resources/ArdaRHIViews.h"
+#include "RHI/Memory/ArdaRHIHeap.h"
+#include <EASTL/vector.h>
+#include <mutex>
 
 namespace arda::detail
 {
@@ -35,7 +42,6 @@ namespace arda::detail
 		uint64_t mHeapOffset = 0;
 	};
 
-	using FArdaHeap = TArdaNativeResource<IArdaRHIHeap, FArdaRHIHeapDesc, EArdaRHIResourceType::Heap>;
 	class FArdaSamplerFeedbackTexture final : public FArdaResource, public IArdaRHISamplerFeedbackTexture
 	{
 	public:

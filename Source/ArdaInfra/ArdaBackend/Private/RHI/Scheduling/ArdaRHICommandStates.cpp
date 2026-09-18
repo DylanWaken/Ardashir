@@ -1,3 +1,6 @@
+#include "RHI/Scheduling/ArdaRHICommandListImpl.h"
+#include "RHI/Scheduling/ArdaRHITextureStates.h"
+#include <mutex>
 #include "RHI/Device/ArdaRHIDeviceImpl.h"
 
 namespace arda::detail

@@ -25,11 +25,11 @@ endif()
 
 function(ardashir_test_validation Target)
     cmake_parse_arguments(VALIDATION "OPTIONAL" "" "" ${ARGN})
-    target_include_directories(${Target} PRIVATE "${PROJECT_SOURCE_DIR}/Source/TestSupport")
+    target_include_directories(${Target} PRIVATE "${PROJECT_SOURCE_DIR}/Source/ArdaTests/TestSupport")
     target_compile_definitions(${Target} PRIVATE
         ARDA_TEST_ENABLE_VALIDATION=$<BOOL:${ARDASHIR_ENABLE_GPU_VALIDATION}>)
     if(ARDASHIR_BACKEND_VULKAN)
-        target_sources(${Target} PRIVATE "${PROJECT_SOURCE_DIR}/Source/TestSupport/ArdaTestValidation.cpp")
+        target_sources(${Target} PRIVATE "${PROJECT_SOURCE_DIR}/Source/ArdaTests/TestSupport/ArdaTestValidation.cpp")
         target_link_libraries(${Target} PRIVATE ${CMAKE_DL_LIBS})
         if(TARGET Vulkan::Headers)
             target_link_libraries(${Target} PRIVATE Vulkan::Headers)

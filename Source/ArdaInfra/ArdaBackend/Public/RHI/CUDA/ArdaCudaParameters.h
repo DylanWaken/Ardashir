@@ -3,6 +3,7 @@
  * Eligibility, signatures, formats and resource availability are checked at runtime.
  */
 #pragma once
+#include <EASTL/type_traits.h>
 #include "RHI/Shaders/ArdaComputeParameters.h"
 #include <cstring>
 #include <typeinfo>
@@ -16,19 +17,19 @@ namespace arda
 	bool IsArdaCudaSurfaceElementSupported(EArdaRHIFormat Format)
 	{
 		const auto Info = GetArdaCudaFormatInfo(Format);
-		if (!std::is_trivially_copyable_v<T> || !std::is_standard_layout_v<T> || !Info.mChannels ||
+		if (!eastl::is_trivially_copyable_v<T> || !eastl::is_standard_layout_v<T> || !Info.mChannels ||
 		    sizeof(T) != size_t(Info.mChannels) * Info.mBits / 8)
 		{
 			return false;
 		}
-		if constexpr (std::is_arithmetic_v<T>)
+		if constexpr (eastl::is_arithmetic_v<T>)
 		{
-			const auto Scalar = std::is_floating_point_v<T> ? EArdaCudaScalarType::Float
-			    : std::is_signed_v<T>                       ? EArdaCudaScalarType::SInt
+			const auto Scalar = eastl::is_floating_point_v<T> ? EArdaCudaScalarType::Float
+			    : eastl::is_signed_v<T>                       ? EArdaCudaScalarType::SInt
 			                                                : EArdaCudaScalarType::UInt;
-			return !std::is_same_v<T, bool> && Info.mChannels == 1 && Info.mScalarType == Scalar;
+			return !eastl::is_same_v<T, bool> && Info.mChannels == 1 && Info.mScalarType == Scalar;
 		}
-		return !std::is_pointer_v<T>;
+		return !eastl::is_pointer_v<T>;
 	}
 
 	/** Host representation of the shared parameter schema. */
@@ -47,9 +48,9 @@ namespace arda
 	{
 		template <class T>
 		using TArdaValue =
-		    std::conditional_t<std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>, T, uint64_t>;
+		    eastl::conditional_t<eastl::is_trivially_copyable_v<T> && eastl::is_standard_layout_v<T>, T, uint64_t>;
 		template <class T, EArdaComputeAccess Access>
-		using TArdaBuffer = std::conditional_t<Access == EArdaComputeAccess::Read, const T*, T*>;
+		using TArdaBuffer = eastl::conditional_t<Access == EArdaComputeAccess::Read, const T*, T*>;
 		template <class T, EArdaComputeAccess Access>
 		using TArdaSurface = uint64_t;
 	};
@@ -137,7 +138,7 @@ namespace arda
 	    sizeof(T),                                                                                                     \
 	    alignof(T),                                                                                                    \
 	    ::arda::EArdaRHIFormat::Unknown,                                                                               \
-	    std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T> && !std::is_pointer_v<T>},
+	    eastl::is_trivially_copyable_v<T> && eastl::is_standard_layout_v<T> && !eastl::is_pointer_v<T>},
 #define ARDA_INTERNAL_CUDA_BUFFER_INFO(T, Name, Access)                                                                \
 	{#Name,                                                                                                            \
 	    ::arda::EArdaComputeParameterKind::Buffer,                                                                     \
@@ -150,7 +151,7 @@ namespace arda
 	    sizeof(T),                                                                                                     \
 	    alignof(T),                                                                                                    \
 	    ::arda::EArdaRHIFormat::Unknown,                                                                               \
-	    std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>},
+	    eastl::is_trivially_copyable_v<T> && eastl::is_standard_layout_v<T>},
 #define ARDA_INTERNAL_CUDA_SURFACE_INFO(T, Name, Access, Format)                                                       \
 	{#Name,                                                                                                            \
 	    ::arda::EArdaComputeParameterKind::Texture,                                                                    \
@@ -194,8 +195,8 @@ namespace arda
 			    {&typeid(FArdaCuda),                                                                                   \
 			        sizeof(FArdaCuda),                                                                                 \
 			        alignof(FArdaCuda),                                                                                \
-			        std::is_trivially_copyable_v<FArdaCuda> && std::is_standard_layout_v<FArdaCuda>},                  \
-			    std::is_standard_layout_v<FArdaParameters>,                                                            \
+			        eastl::is_trivially_copyable_v<FArdaCuda> && eastl::is_standard_layout_v<FArdaCuda>},                  \
+			    eastl::is_standard_layout_v<FArdaParameters>,                                                            \
 			    {Fields(ARDA_INTERNAL_CUDA_VALUE_INFO,                                                                 \
 			        ARDA_INTERNAL_CUDA_BUFFER_INFO,                                                                    \
 			        ARDA_INTERNAL_CUDA_SURFACE_INFO)});                                                                \

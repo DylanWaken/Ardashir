@@ -3,6 +3,7 @@
  */
 
 #pragma once
+#include <EASTL/numeric_limits.h>
 
 #include "RHI/Config/ArdaRHIStatus.h"
 #include "RHI/Memory/ArdaRHIMemoryTypes.h"
@@ -13,12 +14,22 @@
 #include "RHI/Scheduling/ArdaRHIResourceStates.h"
 
 #include <EASTL/string.h>
-#include <limits>
 #include <cstddef>
 #include <cstdint>
 
 namespace arda
 {
+	/** CPU mapping of one staging-texture region, valid until the texture is unmapped. */
+	struct FArdaRHIStagingTextureMapping
+	{
+		/** First mapped byte. */
+		void* mData = nullptr;
+		/** Byte distance between adjacent rows. */
+		size_t mRowPitch = 0;
+		/** Byte distance between adjacent depth slices of the mapped mip. */
+		size_t mDepthPitch = 0;
+	};
+
 	/** Forward declaration of texture desc. */
 	struct FArdaRHITextureDesc;
 
@@ -26,7 +37,7 @@ namespace arda
      * Performs the max operation.
      * @return The requested numeric value.
      */
-	inline constexpr uint32_t ArdaRHIAllSubresources = std::numeric_limits<uint32_t>::max();
+	inline constexpr uint32_t ArdaRHIAllSubresources = eastl::numeric_limits<uint32_t>::max();
 
 	/** Enumerates texture dimension values. */
 	enum class EArdaRHITextureDimension : uint8_t

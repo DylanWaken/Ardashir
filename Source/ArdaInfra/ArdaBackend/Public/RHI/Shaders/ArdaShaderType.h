@@ -2,6 +2,8 @@
  *  @brief Declares global shader types and their registration macros.
  */
 #pragma once
+#include <EASTL/shared_ptr.h>
+#include <EASTL/type_traits.h>
 
 #include "RHI/Shaders/ArdaShaderCompilerTypes.h"
 #include "RHI/Shaders/ArdaShaderParameters.h"
@@ -9,8 +11,6 @@
 #include <EASTL/string.h>
 #include <EASTL/vector.h>
 #include <cstdint>
-#include <memory>
-#include <type_traits>
 
 namespace arda
 {
@@ -225,7 +225,7 @@ namespace arda
 
 	private:
 		/** Shader type populated and published by this registration node. */
-		std::shared_ptr<FArdaShaderType> mType;
+		eastl::shared_ptr<FArdaShaderType> mType;
 	};
 
 	template <typename ShaderClass, typename = void>
@@ -239,7 +239,7 @@ namespace arda
 	};
 
 	template <typename ShaderClass>
-	struct TArdaShaderPermutationTraits<ShaderClass, std::void_t<typename ShaderClass::FArdaPermutationDomain>>
+	struct TArdaShaderPermutationTraits<ShaderClass, eastl::void_t<typename ShaderClass::FArdaPermutationDomain>>
 	{
 		using FArdaDomain = typename ShaderClass::FArdaPermutationDomain;
 		static constexpr uint32_t PermutationCount = FArdaDomain::PermutationCount;
@@ -251,49 +251,49 @@ namespace arda
 	};
 
 	template <typename ShaderClass, typename = void>
-	struct TArdaHasShouldCompilePermutation : std::false_type
+	struct TArdaHasShouldCompilePermutation : eastl::false_type
 	{
 	};
 
 	template <typename ShaderClass>
-	struct TArdaHasShouldCompilePermutation<ShaderClass, std::void_t<decltype(&ShaderClass::ShouldCompilePermutation)>>
-	    : std::bool_constant<std::is_same_v<decltype(&ShaderClass::ShouldCompilePermutation),
+	struct TArdaHasShouldCompilePermutation<ShaderClass, eastl::void_t<decltype(&ShaderClass::ShouldCompilePermutation)>>
+	    : eastl::bool_constant<eastl::is_same_v<decltype(&ShaderClass::ShouldCompilePermutation),
 	          bool (*)(const FArdaShaderPermutationParameters&)>>
 	{
 	};
 
 	template <typename ShaderClass, typename = void>
-	struct TArdaHasNamedShouldCompilePermutation : std::false_type
+	struct TArdaHasNamedShouldCompilePermutation : eastl::false_type
 	{
 	};
 
 	template <typename ShaderClass>
 	struct TArdaHasNamedShouldCompilePermutation<ShaderClass,
-	    std::void_t<decltype(&ShaderClass::ShouldCompilePermutation)>> : std::true_type
+	    eastl::void_t<decltype(&ShaderClass::ShouldCompilePermutation)>> : eastl::true_type
 	{
 	};
 
 	template <typename ShaderClass, typename = void>
-	struct TArdaHasModifyCompilationEnvironment : std::false_type
+	struct TArdaHasModifyCompilationEnvironment : eastl::false_type
 	{
 	};
 
 	template <typename ShaderClass>
 	struct TArdaHasModifyCompilationEnvironment<ShaderClass,
-	    std::void_t<decltype(&ShaderClass::ModifyCompilationEnvironment)>>
-	    : std::bool_constant<std::is_same_v<decltype(&ShaderClass::ModifyCompilationEnvironment),
+	    eastl::void_t<decltype(&ShaderClass::ModifyCompilationEnvironment)>>
+	    : eastl::bool_constant<eastl::is_same_v<decltype(&ShaderClass::ModifyCompilationEnvironment),
 	          void (*)(const FArdaShaderPermutationParameters&, FArdaShaderCompileEnvironment&)>>
 	{
 	};
 
 	template <typename ShaderClass, typename = void>
-	struct TArdaHasNamedModifyCompilationEnvironment : std::false_type
+	struct TArdaHasNamedModifyCompilationEnvironment : eastl::false_type
 	{
 	};
 
 	template <typename ShaderClass>
 	struct TArdaHasNamedModifyCompilationEnvironment<ShaderClass,
-	    std::void_t<decltype(&ShaderClass::ModifyCompilationEnvironment)>> : std::true_type
+	    eastl::void_t<decltype(&ShaderClass::ModifyCompilationEnvironment)>> : eastl::true_type
 	{
 	};
 

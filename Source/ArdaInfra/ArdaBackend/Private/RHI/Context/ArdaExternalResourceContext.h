@@ -1,11 +1,14 @@
 /** Private process-wide registry context. */
 #pragma once
 
-#include "RHI/Interop/ArdaExternalInterop.h"
+#include <EASTL/string.h>
+#include <EASTL/vector.h>
 #include <mutex>
 
 namespace arda
 {
+	class IArdaExternalResourceProvider;
+
 	struct FArdaResourceProviderEntry
 	{
 		eastl::string mName;

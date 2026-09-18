@@ -1,5 +1,6 @@
 /** Include from nvcc-compiled registration units only. C++ consumers require no CUDA SDK. */
 #pragma once
+#include <EASTL/type_traits.h>
 #include "RHI/CUDA/ArdaCudaKernelVariants.h"
 #include <cuda_runtime.h>
 
@@ -24,7 +25,7 @@ namespace arda
 				return {&typeid(P),
 				    sizeof(P),
 				    alignof(P),
-				    !std::is_reference_v<P> && std::is_trivially_copyable_v<P> && std::is_standard_layout_v<P>};
+				    !eastl::is_reference_v<P> && eastl::is_trivially_copyable_v<P> && eastl::is_standard_layout_v<P>};
 			}
 		};
 

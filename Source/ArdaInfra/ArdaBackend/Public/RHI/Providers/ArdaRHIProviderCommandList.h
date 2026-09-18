@@ -1,7 +1,10 @@
 /** Command recording contract implemented by backend providers. */
 #pragma once
 
-#include "RHI/Providers/ArdaRHIProviderTypes.h"
+#include "RHI/Providers/ArdaProviderCommandTypes.h"
+#include "RHI/Resources/ArdaRHIColor.h"
+#include "RHI/Scheduling/ArdaRHIResourceCopies.h"
+#include "RHI/Scheduling/ArdaRHITransitions.h"
 
 namespace arda
 {

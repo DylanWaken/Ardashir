@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RHI/Providers/ArdaRHIProvider.h"
+#include "RHI/Providers/ArdaRHIProviderDevice.h"
 
 namespace arda
 {

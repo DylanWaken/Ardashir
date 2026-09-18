@@ -1,6 +1,6 @@
 /** Process-wide ensure handling policy. */
 #pragma once
-#include "ArdaAssert.h"
+#include "RHI/Config/ArdaAssert.h"
 #include <EASTL/atomic.h>
 namespace arda
 {

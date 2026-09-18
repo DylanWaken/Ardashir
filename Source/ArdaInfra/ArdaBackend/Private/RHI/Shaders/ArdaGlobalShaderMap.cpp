@@ -1,7 +1,9 @@
+#include <mutex>
+#include "RHI/Device/ArdaBackendDevice.h"
 #include "RHI/Shaders/ArdaGlobalShaderMap.h"
 
 #include "RHI/Providers/ArdaBackendProvider.h"
-#include "ArdaString.h"
+#include "FileOperations/ArdaString.h"
 #include "RHI/Shaders/ArdaShaderCompiler.h"
 #include "RHI/Shaders/ArdaShaderDirectories.h"
 
@@ -42,7 +44,7 @@ namespace arda
 		bool IsContainedArtifactPath(const std::filesystem::path& Directory, const std::filesystem::path& Path)
 		{
 			return fileops::IsDirectChildPath(Directory, Path) &&
-			    Path.lexically_normal().stem().string().find("..") == std::string::npos;
+			    ToEastl(Path.lexically_normal().stem().string()).find("..") == eastl::string::npos;
 		}
 	}
 
@@ -144,8 +146,7 @@ namespace arda
 				}
 				const eastl::string ArtifactStem = Type.GetPermutationArtifactStem(PermutationId);
 				const std::filesystem::path Path = ResolvedDirectory /
-				    (std::string(ArtifactStem.data(), ArtifactStem.size()) +
-				        std::string(Target.mArtifactExtension.data(), Target.mArtifactExtension.size()));
+				    (ArtifactStem + Target.mArtifactExtension).c_str();
 				if (!IsContainedArtifactPath(ResolvedDirectory, Path))
 				{
 					mDiagnostics.push_back(MakeDiagnostic(EArdaGlobalShaderMapError::RegistrationFailed,
@@ -209,8 +210,7 @@ namespace arda
 		const FArdaShaderType& Type = Shader.mType;
 		const eastl::string ArtifactStem = Type.GetPermutationArtifactStem(Shader.mPermutationId);
 		const std::filesystem::path Path = mDirectory /
-		    (std::string(ArtifactStem.data(), ArtifactStem.size()) +
-		        std::string(mTarget.mArtifactExtension.data(), mTarget.mArtifactExtension.size()));
+		    (ArtifactStem + mTarget.mArtifactExtension).c_str();
 
 		if (mMode != EArdaShaderCompilationMode::LoadOnly)
 		{

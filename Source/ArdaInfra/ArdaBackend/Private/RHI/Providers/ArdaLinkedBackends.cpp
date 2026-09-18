@@ -1,5 +1,3 @@
-#include "ArdaBackendCorePch.h"
-
 #include "RHI/Providers/ArdaLinkedBackends.h"
 
 #include <mutex>

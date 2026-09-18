@@ -2,6 +2,7 @@
 #pragma once
 
 #include "RHI/Providers/ArdaBackendProvider.h"
+#include "RHI/Device/ArdaBackendDevice.h"
 #include "RHI/Config/ArdaDefaultMessageCallback.h"
 #include <mutex>
 

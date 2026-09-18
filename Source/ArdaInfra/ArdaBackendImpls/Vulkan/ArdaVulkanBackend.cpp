@@ -11,13 +11,14 @@
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include <vulkan/vulkan.hpp>
 
-#include "RHI/Providers/ArdaRHIProvider.h"
+#include "RHI/Providers/ArdaRHIProviderDevice.h"
 #include "RHI/Pipelines/ArdaRHIProviderPipelineCache.h"
 #include "RHI/Providers/ArdaBackendProvider.h"
 #include "../ArdaBackendRequirements.h"
 #include "RHI/Interop/ArdaExternalInterop.h"
+#include "RHI/Providers/ArdaExternalDeviceProvider.h"
 #include "RHI/Scheduling/ArdaSwapChain.h"
-#include "../Cuda/ArdaCudaInterop.h"
+#include "RHI/Providers/ArdaCudaContextProvider.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/array.h>
@@ -2978,7 +2979,7 @@ namespace arda
 				{
 					const eastl::string BackendName = "native-vulkan";
 					const auto Path = MakeArdaPipelineCachePath(mPipelineCacheDirectory, BackendName);
-					std::vector<uint8_t> Payload;
+					eastl::vector<uint8_t> Payload;
 					std::error_code Error;
 					const bool bExists = std::filesystem::exists(Path, Error);
 					const bool bValid = bExists && ReadArdaPipelineCacheBlob(Path, BackendName, Payload);
@@ -6839,7 +6840,7 @@ namespace arda
 					std::vector<uint8_t> Payload = mContext->mDevice.getPipelineCacheData(mPipelineCache);
 					if (!WriteArdaPipelineCacheBlob(MakeArdaPipelineCachePath(mPipelineCacheDirectory, "native-vulkan"),
 					        "native-vulkan",
-					        Payload))
+					        Payload.data(), Payload.size()))
 					{
 						LogArdaPipelineCacheMessage(mDiagnosticCallback,
 						    EArdaDiagnosticSeverity::Warning,

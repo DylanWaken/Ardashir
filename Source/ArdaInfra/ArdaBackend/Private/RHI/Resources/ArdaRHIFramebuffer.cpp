@@ -4,7 +4,7 @@
 #include "RHI/Resources/ArdaRHIFramebuffer.h"
 #include "RHI/Resources/ArdaRHITexture.h"
 
-#include "ArdaHash.h"
+#include "RHI/Resources/ArdaHash.h"
 
 #include <EASTL/algorithm.h>
 

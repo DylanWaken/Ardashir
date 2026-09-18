@@ -3,6 +3,7 @@
  */
 
 #pragma once
+#include <EASTL/numeric_limits.h>
 
 #include "RHI/Config/ArdaRHIStatus.h"
 #include "RHI/Memory/ArdaRHIMemoryTypes.h"
@@ -12,7 +13,6 @@
 #include "RHI/Scheduling/ArdaRHIResourceStates.h"
 
 #include <EASTL/string.h>
-#include <limits>
 #include <cstddef>
 #include <cstdint>
 
@@ -25,7 +25,7 @@ namespace arda
      * Performs the max operation.
      * @return The requested numeric value.
      */
-	inline constexpr uint64_t ArdaRHIWholeBuffer = std::numeric_limits<uint64_t>::max();
+	inline constexpr uint64_t ArdaRHIWholeBuffer = eastl::numeric_limits<uint64_t>::max();
 
 	/** Enumerates buffer usage values. */
 	enum class EArdaRHIBufferUsage : uint16_t

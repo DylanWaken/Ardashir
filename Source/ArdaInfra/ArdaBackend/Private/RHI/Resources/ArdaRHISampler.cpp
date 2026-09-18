@@ -1,7 +1,7 @@
 #include "RHI/Config/ArdaRHIStatus.h"
 #include "RHI/Resources/ArdaRHISampler.h"
 
-#include "ArdaHash.h"
+#include "RHI/Resources/ArdaHash.h"
 
 #include <EASTL/algorithm.h>
 

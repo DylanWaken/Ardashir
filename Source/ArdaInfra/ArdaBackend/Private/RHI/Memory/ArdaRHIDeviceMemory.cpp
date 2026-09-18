@@ -1,4 +1,5 @@
 #include "RHI/Device/ArdaRHIDeviceImpl.h"
+#include "RHI/Memory/ArdaRHIHeapImpl.h"
 
 namespace arda::detail
 {

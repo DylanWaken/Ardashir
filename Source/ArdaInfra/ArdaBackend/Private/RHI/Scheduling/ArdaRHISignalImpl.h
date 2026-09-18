@@ -2,6 +2,8 @@
 #pragma once
 
 #include "RHI/Resources/ArdaRHIResourceImpl.h"
+#include "RHI/Scheduling/ArdaRHIGpuFence.h"
+#include "RHI/Scheduling/ArdaRHIQueries.h"
 
 namespace arda::detail
 {

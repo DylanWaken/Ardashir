@@ -2,7 +2,7 @@
  * Loads the CUDA driver dynamically for D3D12 CiG or precompiled CUDA entry launches.
  * Shared D3D12/Vulkan imports, compiled entries and streams follow graphics-fence lifetime.
  */
-#include "ArdaCudaInterop.h"
+#include "RHI/Providers/ArdaCudaContextProvider.h"
 #include <exception>
 
 #if defined(ARDA_ENABLE_CUDA)

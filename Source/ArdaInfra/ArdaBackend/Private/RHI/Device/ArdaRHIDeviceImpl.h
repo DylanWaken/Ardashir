@@ -1,11 +1,27 @@
 /** Facade device implementation and bounded descriptor caches. */
 #pragma once
 
-#include "RHI/Scheduling/ArdaRHICommandListImpl.h"
+#include "RHI/Device/ArdaRHIDevice.h"
+#include "RHI/Providers/ArdaRHIProviderDevice.h"
+#include "RHI/Config/ArdaRHIValidation.h"
+#include "RHI/Resources/ArdaRHIResourceAccess.h"
+#include "RHI/Shaders/ArdaRHIBindingValidation.h"
+#include "RHI/Resources/ArdaRHITextureBufferImpl.h"
+#include "RHI/Resources/ArdaRHIAccelerationImpl.h"
+#include "RHI/Shaders/ArdaRHIShaderImpl.h"
+#include "RHI/Pipelines/ArdaRHIPipelineImpl.h"
+#include "RHI/Scheduling/ArdaRHISignalImpl.h"
 #include "RHI/Memory/ArdaGpuAllocatorPrivate.h"
+#include <EASTL/shared_ptr.h>
+#include <EASTL/utility.h>
+#include <EASTL/vector.h>
+#include <mutex>
+#include <EASTL/type_traits.h>
 
 namespace arda::detail
 {
+	class FArdaCommandList;
+
 	template <typename Desc, typename Ref>
 	class TArdaDescriptorCache
 	{
@@ -369,7 +385,7 @@ namespace arda::detail
 		    ImportOperation Import,
 		    QueryOperation GetRequirements)
 		{
-			constexpr bool bTexture = std::is_same_v<Resource, FArdaTexture>;
+			constexpr bool bTexture = eastl::is_same_v<Resource, FArdaTexture>;
 			if (Desc.mMemoryAllocationInfo.mbKnown &&
 			    (!Desc.mMemoryAllocationInfo.mIdentity || !Desc.mMemoryAllocationInfo.mByteSize))
 			{

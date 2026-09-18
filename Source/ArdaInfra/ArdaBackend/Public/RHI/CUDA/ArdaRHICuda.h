@@ -3,11 +3,12 @@
  */
 #pragma once
 
-#include "RHI/Resources/ArdaRHIResources.h"
+#include "RHI/Resources/ArdaRHIBuffer.h"
+#include "RHI/Resources/ArdaRHITexture.h"
 #include "RHI/Config/ArdaCudaConfig.h"
 #include "RHI/Context/ArdaCudaExternalCallContext.h"
 #include "RHI/Scheduling/ArdaCudaGraph.h"
-#include <type_traits>
+#include <EASTL/unique_ptr.h>
 #include <typeinfo>
 
 namespace arda

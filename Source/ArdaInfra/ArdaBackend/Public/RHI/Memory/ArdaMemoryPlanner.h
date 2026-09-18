@@ -1,6 +1,10 @@
 #pragma once
 
-#include "RHI/ArdaRHI.h"
+#include "RHI/Memory/ArdaRHIHeap.h"
+#include "RHI/Memory/ArdaRHIMemoryTypes.h"
+#include "RHI/Resources/ArdaRHIAccelerationStructures.h"
+#include "RHI/Resources/ArdaRHIBuffer.h"
+#include "RHI/Resources/ArdaRHITexture.h"
 
 #include <cstdint>
 #include <EASTL/vector.h>

@@ -1,5 +1,6 @@
+#include <EASTL/numeric_limits.h>
+#include "RHI/Device/ArdaRHIDevice.h"
 #include "RHI/Resources/ArdaCudaTextureBuffer.h"
-#include <limits>
 
 namespace arda
 {
@@ -25,13 +26,13 @@ namespace arda
 		}
 		const uint64_t RowBytes = uint64_t(Result.mExtent.mWidth) * Format.mChannels * Format.mBits / 8;
 		const uint64_t RowPitch = (RowBytes + 255) & ~uint64_t(255);
-		if (RowPitch > std::numeric_limits<uint32_t>::max())
+		if (RowPitch > eastl::numeric_limits<uint32_t>::max())
 		{
 			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA texture row pitch overflows.")};
 		}
 		Result.mLayout.mRowPitch = static_cast<uint32_t>(RowPitch);
 		Result.mSlicePitch = RowPitch * Result.mExtent.mHeight;
-		if (Result.mSlicePitch > std::numeric_limits<uint64_t>::max() / Result.mExtent.mDepth)
+		if (Result.mSlicePitch > eastl::numeric_limits<uint64_t>::max() / Result.mExtent.mDepth)
 		{
 			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA texture buffer size overflows.")};
 		}

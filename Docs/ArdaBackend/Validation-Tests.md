@@ -99,7 +99,7 @@ be enabled. Vulkan also handles a discovered manifest whose library cannot load.
 outcome; presentation initialization returns the enum directly.
 
 GoogleTest initialization assertions use `ARDA_REQUIRE_BACKEND()` from
-`Source/TestSupport/ArdaTestBackend.h`. It skips only the missing-validation
+`Source/ArdaTests/TestSupport/ArdaTestBackend.h`. It skips only the missing-validation
 result in validation-enabled builds and retains assertion failures for other
 initialization errors (including unexpected validation requests in OFF builds). Like a
 fatal assertion, it returns from the surrounding function; callers of helpers

@@ -1,11 +1,12 @@
 #include "FileOperations/ArdaFileOperations.h"
+#include "FileOperations/ArdaString.h"
 
-#include <algorithm>
-#include <atomic>
+#include <EASTL/algorithm.h>
+#include <EASTL/atomic.h>
 #include <cctype>
 #include <fstream>
 #include <iterator>
-#include <limits>
+#include <EASTL/numeric_limits.h>
 
 #if defined(_WIN32)
 #include <Windows.h>
@@ -22,8 +23,8 @@ namespace arda::fileops
 #if defined(_WIN32)
 			const auto Fold = [](const std::filesystem::path& Path)
 			{
-				std::string Value = Path.generic_string();
-				std::transform(Value.begin(), Value.end(), Value.begin(), [](unsigned char Character)
+				eastl::string Value = ToEastl(Path.generic_string());
+				eastl::transform(Value.begin(), Value.end(), Value.begin(), [](unsigned char Character)
 				    { return static_cast<char>(std::tolower(Character)); });
 				return Value;
 			};
@@ -77,8 +78,8 @@ namespace arda::fileops
 			return EArdaFileReadResult::OpenFailed;
 		}
 		const std::streamoff Size = Stream.tellg();
-		if (Size < 0 || static_cast<uintmax_t>(Size) > std::numeric_limits<size_t>::max() ||
-		    Size > std::numeric_limits<std::streamsize>::max())
+		if (Size < 0 || static_cast<uintmax_t>(Size) > eastl::numeric_limits<size_t>::max() ||
+		    Size > eastl::numeric_limits<std::streamsize>::max())
 		{
 			return EArdaFileReadResult::ReadFailed;
 		}
@@ -97,15 +98,16 @@ namespace arda::fileops
 		return EArdaFileReadResult::Success;
 	}
 
-	std::string ReadText(const std::filesystem::path& Path)
+	eastl::string ReadText(const std::filesystem::path& Path)
 	{
 		std::ifstream Stream(Path, std::ios::binary);
-		return std::string(std::istreambuf_iterator<char>(Stream), std::istreambuf_iterator<char>());
+		// Standard stream iterators have no EASTL counterpart; convert at this I/O boundary.
+		return ToEastl(std::string(std::istreambuf_iterator<char>(Stream), std::istreambuf_iterator<char>()));
 	}
 
 	std::filesystem::path TemporaryPath(const std::filesystem::path& Base, const char* Kind)
 	{
-		static std::atomic<uint64_t> TemporaryId{0};
+		static eastl::atomic<uint64_t> TemporaryId{0};
 		const uint64_t ProcessId =
 #if defined(_WIN32)
 		    static_cast<uint64_t>(GetCurrentProcessId());
@@ -113,8 +115,9 @@ namespace arda::fileops
 		    static_cast<uint64_t>(getpid());
 #endif
 		std::filesystem::path Result = Base;
-		Result += std::string(".arda-") + Kind + "-" + std::to_string(ProcessId) + "-" +
-		    std::to_string(++TemporaryId) + ".tmp";
+		const eastl::string Suffix = eastl::string(".arda-") + Kind + "-" + eastl::to_string(ProcessId) + "-" +
+		    eastl::to_string(++TemporaryId) + ".tmp";
+		Result += Suffix.c_str();
 		return Result;
 	}
 
@@ -139,7 +142,7 @@ namespace arda::fileops
 		}
 	}
 
-	bool AtomicWrite(const std::filesystem::path& Path, const std::string& Contents)
+	bool AtomicWrite(const std::filesystem::path& Path, const eastl::string& Contents)
 	{
 		const auto Temporary = TemporaryPath(Path, "write");
 		const FArdaTemporaryFiles Cleanup{{Temporary}};
@@ -155,11 +158,11 @@ namespace arda::fileops
 		return AtomicReplace(Temporary, Path);
 	}
 
-	bool PublishFilesTransaction(const std::vector<std::pair<std::filesystem::path, std::filesystem::path>>& Files)
+	bool PublishFilesTransaction(const eastl::vector<eastl::pair<std::filesystem::path, std::filesystem::path>>& Files)
 	{
 		std::error_code Error;
-		std::vector<std::pair<std::filesystem::path, std::filesystem::path>> Backups;
-		std::vector<std::filesystem::path> Published;
+		eastl::vector<eastl::pair<std::filesystem::path, std::filesystem::path>> Backups;
+		eastl::vector<std::filesystem::path> Published;
 		const auto Rollback = [&]
 		{
 			for (const auto& Destination : Published)

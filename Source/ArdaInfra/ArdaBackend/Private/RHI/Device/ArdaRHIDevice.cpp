@@ -1,3 +1,5 @@
+#include <mutex>
+#include "RHI/Scheduling/ArdaRHICommandListImpl.h"
 #include "RHI/Device/ArdaRHIDeviceImpl.h"
 
 namespace arda::detail

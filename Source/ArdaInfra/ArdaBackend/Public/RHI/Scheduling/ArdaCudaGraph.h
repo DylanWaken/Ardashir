@@ -3,7 +3,8 @@
  */
 #pragma once
 
-#include "RHI/Resources/ArdaRHIResources.h"
+#include "RHI/Resources/ArdaRHIRef.h"
+#include "RHI/Resources/ArdaRHIResource.h"
 #include "RHI/Scheduling/ArdaCudaTiming.h"
 
 namespace arda

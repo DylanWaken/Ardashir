@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RHI/Pipelines/ArdaPipelineStateCache.h"
+#include "RHI/Device/ArdaRHIDevice.h"
 #include <condition_variable>
 #include <mutex>
 

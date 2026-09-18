@@ -3,8 +3,10 @@
  */
 #pragma once
 
-#include "RHI/Resources/ArdaRHITypes.h"
+#include "RHI/Config/ArdaRHIStatus.h"
 #include <EASTL/functional.h>
+#include <EASTL/shared_ptr.h>
+#include <EASTL/vector.h>
 #include <mutex>
 
 namespace arda

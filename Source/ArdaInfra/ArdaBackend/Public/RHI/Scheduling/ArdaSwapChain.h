@@ -3,8 +3,9 @@
  */
 #pragma once
 
-#include "RHI/Device/ArdaBackendDevice.h"
+#include "RHI/Config/ArdaBackendConfiguration.h"
 #include "RHI/Interop/ArdaNativeObject.h"
+#include "RHI/Resources/ArdaRHIFramebuffer.h"
 
 #include <cstdint>
 #include <EASTL/unique_ptr.h>

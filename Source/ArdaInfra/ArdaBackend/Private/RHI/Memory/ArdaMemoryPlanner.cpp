@@ -1,4 +1,5 @@
-#include "ArdaBackendCorePch.h"
+#include "RHI/Device/ArdaRHIDevice.h"
+#include "RHI/Config/ArdaBackendCorePch.h"
 #include "RHI/Memory/ArdaMemoryPlanner.h"
 
 #include <EASTL/algorithm.h>

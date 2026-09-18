@@ -148,7 +148,7 @@ namespace
 	TEST(ArdaCudaVariants, EnumeratesAndPrunesCompileTimePermutations)
 	{
 		eastl::vector<int> Selected;
-		ForEachArdaCudaPermutation(std::integer_sequence<int, 16, 32, 64, 128>{},
+		ForEachArdaCudaPermutation(eastl::integer_sequence<int, 16, 32, 64, 128>{},
 		    [&](auto Tile)
 		    {
 			    if constexpr (decltype(Tile)::value >= 32)

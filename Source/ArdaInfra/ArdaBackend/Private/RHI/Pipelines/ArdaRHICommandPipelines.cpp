@@ -1,3 +1,7 @@
+#include "RHI/Scheduling/ArdaRHICommandListImpl.h"
+#include "RHI/Resources/ArdaRHIFramebufferImpl.h"
+#include <cmath>
+#include <mutex>
 #include "RHI/Device/ArdaRHIDeviceImpl.h"
 
 namespace arda::detail
