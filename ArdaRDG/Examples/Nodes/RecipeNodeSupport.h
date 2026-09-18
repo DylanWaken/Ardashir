@@ -1,6 +1,6 @@
 #pragma once
 #include "ArdaDependencyNode.h"
-#include "ShaderStructs/ArdaGlobalShaderMap.h"
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
 
 #ifndef ARDA_RDG_RECIPE_SHADER_DIR
 #error "Set ARDA_RDG_RECIPE_SHADER_DIR to this recipe's absolute Shaders directory."

@@ -1,9 +1,15 @@
-# ArdaScene Representation Plan
+# Archived ArdaScene Representation Plan
 
 ## Status and scope
 
-This document plans only the engine-neutral representation of a renderable
-scene in `Source/ArdaScene`.
+Archived on September 18, 2026. The current source tree retains only
+`ArdaInfra`, `ArdaTests` and `ArdaTrace`; `Source/ArdaScene` and the other
+higher-level module scaffolds have been removed. This document and its diagrams
+preserve the earlier proposal as design references. References below to a
+"current milestone", proposed source layout or future APIs describe that
+proposal, not implemented modules or an active delivery commitment.
+
+The proposal covers the engine-neutral representation of a renderable scene.
 
 The current milestone does not plan or implement:
 

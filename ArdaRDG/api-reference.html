@@ -166,10 +166,7 @@
 <li><a href="#api-arda-fardadependencygraph-fardadependencygraph-ea0e2505">arda::FArdaDependencyGraph::FArdaDependencyGraph <span class="api-kind">constructor</span></a></li>
 <li><a href="#api-arda-fardadependencygraph-fardadependencygraph-807c4cb8">arda::FArdaDependencyGraph::FArdaDependencyGraph <span class="api-kind">constructor</span></a></li>
 <li><a href="#api-arda-fardadependencyframeticket-operator-bool-93392090">arda::FArdaDependencyFrameTicket::operator bool <span class="api-kind">conversion operator</span></a></li>
-<li><a href="#api-arda-fardadependencygraph-operator-67d6a26d">arda::FArdaDependencyGraph::operator= <span class="api-kind">conversion operator</span></a></li>
 <li><a href="#api-arda-fardadependencyresourcehandle-operator-bool-39c77d21">arda::FArdaDependencyResourceHandle::operator bool <span class="api-kind">conversion operator</span></a></li>
-<li><a href="#api-arda-fardadependencyresourcehandle-operator-70869d5d">arda::FArdaDependencyResourceHandle::operator!= <span class="api-kind">conversion operator</span></a></li>
-<li><a href="#api-arda-fardadependencyresourcehandle-operator-d731cfc1">arda::FArdaDependencyResourceHandle::operator== <span class="api-kind">conversion operator</span></a></li>
 <li><a href="#api-arda-fardadependencygraph-fardadependencygraph-d5fb91ca">arda::FArdaDependencyGraph::~FArdaDependencyGraph <span class="api-kind">destructor</span></a></li>
 <li><a href="#api-arda-fardadependencynodeexecutable-fardadependencynodeexecutable-e194744a">arda::FArdaDependencyNodeExecutable::~FArdaDependencyNodeExecutable <span class="api-kind">destructor</span></a></li>
 <li><a href="#api-arda-eardadependencyaccess-f5a2b076">arda::EArdaDependencyAccess <span class="api-kind">enum</span></a></li>
@@ -688,6 +685,9 @@
 <li><a href="#api-arda-tardadependencynode-register-9b507a1f">arda::TArdaDependencyNode::Register <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-tardadependencynode-register-296cf60a">arda::TArdaDependencyNode::Register <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-tardadependencynode-validate-2678def0">arda::TArdaDependencyNode::Validate <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardadependencygraph-operator-77009fb9">arda::FArdaDependencyGraph::operator= <span class="api-kind">operator</span></a></li>
+<li><a href="#api-arda-fardadependencyresourcehandle-operator-9464be46">arda::FArdaDependencyResourceHandle::operator!= <span class="api-kind">operator</span></a></li>
+<li><a href="#api-arda-fardadependencyresourcehandle-operator-33378ee1">arda::FArdaDependencyResourceHandle::operator== <span class="api-kind">operator</span></a></li>
 <li><a href="#api-arda-fardadependencyaccess-76909623">arda::FArdaDependencyAccess <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-fardadependencybindlessentry-05b1fdbc">arda::FArdaDependencyBindlessEntry <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-fardadependencybindlesstable-cb4c93b1">arda::FArdaDependencyBindlessTable <span class="api-kind">struct</span></a></li>
@@ -1139,35 +1139,8 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraph.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardadependencygraph-operator-67d6a26d" tabindex="-1"><h5>arda::FArdaDependencyGraph::operator=</h5><pre><code>FArdaDependencyGraph&amp; operator=(const FArdaDependencyGraph&amp;) = delete</code></pre><p>Performs operator= through the public dependency graph contract.</p>
-<p>Performs operator= through the public dependency graph contract. The signature is generated from the current public header.</p>
-<dl>
-<dt>Returns</dt><dd>See the declared result and status contract.</dd>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraph.h</dd>
-</dl></section>
 <section class="api-entry" id="api-arda-fardadependencyresourcehandle-operator-bool-39c77d21" tabindex="-1"><h5>arda::FArdaDependencyResourceHandle::operator bool</h5><pre><code>explicit operator bool() const noexcept</code></pre><p>Performs operator bool through the public dependency graph contract.</p>
 <p>Performs operator bool through the public dependency graph contract. The signature is generated from the current public header.</p>
-<dl>
-<dt>Returns</dt><dd>See the declared result and status contract.</dd>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraph.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fardadependencyresourcehandle-operator-70869d5d" tabindex="-1"><h5>arda::FArdaDependencyResourceHandle::operator!=</h5><pre><code>bool operator!=(const FArdaDependencyResourceHandle&amp; Other) const noexcept</code></pre><p>Performs operator!= through the public dependency graph contract.</p>
-<p>Performs operator!= through the public dependency graph contract. The signature is generated from the current public header.</p>
-<dl>
-<dt>Returns</dt><dd>See the declared result and status contract.</dd>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraph.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fardadependencyresourcehandle-operator-d731cfc1" tabindex="-1"><h5>arda::FArdaDependencyResourceHandle::operator==</h5><pre><code>bool operator==(const FArdaDependencyResourceHandle&amp; Other) const noexcept</code></pre><p>Performs operator== through the public dependency graph contract.</p>
-<p>Performs operator== through the public dependency graph contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -5246,6 +5219,35 @@
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyNode.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>operator</h4>
+<section class="api-entry" id="api-arda-fardadependencygraph-operator-77009fb9" tabindex="-1"><h5>arda::FArdaDependencyGraph::operator=</h5><pre><code>FArdaDependencyGraph&amp; operator=(const FArdaDependencyGraph&amp;) = delete</code></pre><p>Performs operator= through the public dependency graph contract.</p>
+<p>Performs operator= through the public dependency graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraph.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardadependencyresourcehandle-operator-9464be46" tabindex="-1"><h5>arda::FArdaDependencyResourceHandle::operator!=</h5><pre><code>bool operator!=(const FArdaDependencyResourceHandle&amp; Other) const noexcept</code></pre><p>Performs operator!= through the public dependency graph contract.</p>
+<p>Performs operator!= through the public dependency graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraph.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardadependencyresourcehandle-operator-33378ee1" tabindex="-1"><h5>arda::FArdaDependencyResourceHandle::operator==</h5><pre><code>bool operator==(const FArdaDependencyResourceHandle&amp; Other) const noexcept</code></pre><p>Performs operator== through the public dependency graph contract.</p>
+<p>Performs operator== through the public dependency graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraph.h</dd>
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>struct</h4>

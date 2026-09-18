@@ -48,11 +48,11 @@ The main Unreal research locations were:
 
 The main Arda implementation and evidence locations are:
 
-- `Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h`
-- `Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h`
-- `Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h`
-- `Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h`
-- `Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHIDevice.cpp`
+- `Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h`
+- `Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h`
+- `Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/`
+- `Source/ArdaInfra/ArdaBackend/Public/RHI/Providers/ArdaRHIProviderDevice.h`
+- `Source/ArdaInfra/ArdaBackend/Private/RHI/Device/ArdaRHIDevice.cpp`
 - `Source/ArdaInfra/ArdaBackendImpls/D3D12/ArdaD3D12Backend.cpp`
 - `Source/ArdaInfra/ArdaBackendImpls/Vulkan/ArdaVulkanBackend.cpp`
 - `Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorCommandExecutor.cpp`

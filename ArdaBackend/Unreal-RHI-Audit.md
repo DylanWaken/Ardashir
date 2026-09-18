@@ -79,7 +79,7 @@ provider allocation callbacks to the allocator/provider. Active placed resources
 retain their heap lease; cached placed objects retain the native heap. This avoids
 an obvious allocator/provider ownership cycle and keeps heaps alive while GPU work
 uses them. Retirement destroys native objects outside the allocator mutex.
-See [allocator ownership](D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/Allocator/ArdaGpuAllocatorPrivate.cpp)
+See [allocator ownership](D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/RHI/Memory/ArdaGpuAllocatorPrivate.cpp)
 and the [submission-lease regression](D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Tests/ArdaGpuAllocatorTests.cpp).
 This is a source assessment backed by targeted tests, not a claim that all failure
 paths or driver allocations are leak-free.
@@ -222,43 +222,43 @@ The feature inventory's deferred/unnecessary items remain outside this accepted
 implementation scope. Arda graph's operand registry, automatic pipeline selection,
 scheduling, replay and access validation remain authoritative.
 
-[a-capabilities]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h
-[a-descriptors]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHIDescriptors.cpp
-[a-format-info]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h
-[a-copies]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHITypes.cpp
+[a-capabilities]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h
+[a-descriptors]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Resources/
+[a-format-info]: ../../Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHIFormat.h
+[a-copies]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Scheduling/ArdaRHIResourceCopies.cpp
 [a-copy-tests]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Tests/ArdaTextureBufferTests.cpp
-[a-readback]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h
-[a-subresources]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHISubresources.h
+[a-readback]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
+[a-subresources]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHISubresources.h
 [a-plane-test]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorCommandProgramTests.cpp
-[a-transitions]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHIDevice.cpp
-[a-barriers]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h
+[a-transitions]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Scheduling/ArdaRHICommandStates.cpp
+[a-barriers]: ../../Source/ArdaInfra/ArdaBackend/Public/RHI/Scheduling/ArdaRHICommandList.h
 [a-hazards]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaRenderGraph/Private/ArdaDependencyHazards.cpp
-[a-queues]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h
-[a-direct]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHIDevice.cpp
-[a-indirect]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHIDevice.cpp
+[a-queues]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
+[a-direct]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Pipelines/ArdaRHICommandPipelines.cpp
+[a-indirect]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Pipelines/ArdaRHICommandPipelines.cpp
 [a-d3d-indirect]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackendImpls/D3D12/ArdaD3D12Backend.cpp
 [a-vk-indirect]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackendImpls/Vulkan/ArdaVulkanBackend.cpp
 [a-vk-direct]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackendImpls/Vulkan/ArdaVulkanBackend.cpp
-[a-pipelines]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHIDescriptors.cpp
-[a-fixed]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h
-[a-graphics-bind]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHIDevice.cpp
-[a-framebuffer]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h
-[a-binding-schema]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h
-[a-bindless]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h
-[a-write-table]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHIDevice.cpp
-[a-uniform]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h
-[a-collections]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHIDevice.cpp
-[a-texture-reference]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h
-[a-as]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h
-[a-sbt]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHIDevice.cpp
-[a-workgraph]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h
-[a-special-rt]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h
-[a-queries]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h
-[a-heaps]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h
+[a-pipelines]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Pipelines/
+[a-fixed]: ../../Source/ArdaInfra/ArdaBackend/Public/RHI/Pipelines/ArdaRHIFixedFunctionStates.h
+[a-graphics-bind]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Pipelines/ArdaRHICommandPipelines.cpp
+[a-framebuffer]: ../../Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHIFramebuffer.h
+[a-binding-schema]: ../../Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaRHIBindingLayout.h
+[a-bindless]: ../../Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaRHIDescriptorTable.h
+[a-write-table]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Shaders/ArdaRHIShaderCreation.cpp
+[a-uniform]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
+[a-collections]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Shaders/ArdaRHIShaderCreation.cpp
+[a-texture-reference]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
+[a-as]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
+[a-sbt]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Shaders/ArdaRHIShaderCreation.cpp
+[a-workgraph]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
+[a-special-rt]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
+[a-queries]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
+[a-heaps]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
 [a-graph-runtime]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorRuntime.cpp
-[a-sparse]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h
-[a-libraries]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h
-[a-numeric]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h
+[a-sparse]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
+[a-libraries]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
+[a-numeric]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h
 [a-boundary-tests]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Tests/ArdaBindingBoundaryTests.cpp
 [a-cap-tests]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp
 [a-contract-probe]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp

@@ -21,7 +21,7 @@ Two useful modes are an in-process Unreal adapter consuming render-thread snapsh
 
 - Implement extraction inside Unreal for live/cooked scenes; a .umap plus .uasset filenames is not a universal decoded scene format.
 - A borrowed Unreal texture or FRHIBuffer does not make Unreal material shaders compatible with your shader ABI. Device sharing and material execution are separate contracts.
-- Keep the producer adapter distinct from the renderer's own database. The existing ArdaScene plan describes immutable semantic snapshots; this page is an integration requirements guide, not a claim that the Unreal adapter already exists.
+- Keep the producer adapter distinct from the renderer's own database. The archived ArdaScene plan describes immutable semantic snapshots; this page is an integration requirements guide, not a claim that the scene module or Unreal adapter exists in the current source tree.
 
 Source: `Engine/Source/Runtime/Engine/Public/SceneInterface.h:119` — `class FSceneInterface`.
 

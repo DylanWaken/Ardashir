@@ -66,10 +66,10 @@
 ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
 <p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="fixture"><h2>Shared fixture and application replacements</h2><p>The workloads below are functions in the same anonymous namespace as this source-backed scaffold. It defines FArdaExtendedDiagnosticCallback, FArdaExtendedBackendCleanup, LoadExtendedShaderArtifact, CreateExtendedShader and the Expect*State checks. In an application, replace GoogleTest assertions with checked status handling; use a diagnostic sink that lives through ShutdownBackend, an RAII shutdown guard, and a bytecode loader rooted in your deployed shader directory.</p><p>ARDASHIR_BUILD_TESTS deploys artifacts and defines ARDA_BACKEND_TEST_SHADER_DIR. The shared ArdaTestBackend.h macro returns a GoogleTest skip only for ValidationUnavailable; see <a href="validation.html#results">validation result handling</a>. Other assertions must remain failures. The lifetime-only example uses CreateArtifactShader for the same artifact-loading operation, FArdaCollectingDiagnosticCallback for error counting, and FArdaExternalTestCleanup for shutdown/provider cleanup; use the scaffold equivalents when adapting it without external providers. Windows presentation examples additionally use the native surface class below.</p><details><summary>Headers, diagnostic sink, shutdown guard, loader and state assertions</summary><pre><code class="language-cpp">#include &quot;ArdaTestBackend.h&quot;
 #include &quot;ArdaBackend.h&quot;
-#include &quot;ArdaBackendProvider.h&quot;
+#include &quot;RHI/Providers/ArdaBackendProvider.h&quot;
 #include &quot;../../ArdaBackendImpls/ArdaGpuTimestamp.h&quot;
-#include &quot;PipelineStateCache/ArdaPipelineStateCache.h&quot;
-#include &quot;ShaderStructs/ArdaGlobalShaderMap.h&quot;
+#include &quot;RHI/Pipelines/ArdaPipelineStateCache.h&quot;
+#include &quot;RHI/Shaders/ArdaGlobalShaderMap.h&quot;
 
 #include &lt;gtest/gtest.h&gt;
 
@@ -733,8 +733,8 @@ float4 BindingSpacePS()
 </code></pre></details></section>
 <section id="shader-artifacts"><h2>Build the exact shader variants</h2><p>ArdaLocalRayTracingTest is compiled from ArdaRayTracingTest.hlsl with ARDA_LOCAL_RECORDS defined by EnableLocalRecords. This selects the native local-record ABI; the ordinary ArdaRayTracingTest variant uses fallback constants. Preserve that distinction when testing local argument bytes: omitting the define can produce the expected constants without reading the host records.</p><p>The source-backed test environment below pairs each artifact name, source, entry point and compilation hook, then calls EnsureRegisteredShaderArtifacts for each linked backend. This also supplies the resource-collection and graphics-fallback variants used above. CMake supplies the source and output directory definitions; application deployments should use their own writable compiler cache and deployable artifact directory. See <a href="shaders.html">shader registration and compilation</a> for the application workflow.</p><details><summary>Artifact registrations and compilation environment</summary><pre><code class="language-cpp">#include &quot;ArdaBackend.h&quot;
 #include &quot;ArdaTestValidation.h&quot;
-#include &quot;ArdaBackendProvider.h&quot;
-#include &quot;ShaderStructs/ArdaShaderCompiler.h&quot;
+#include &quot;RHI/Providers/ArdaBackendProvider.h&quot;
+#include &quot;RHI/Shaders/ArdaShaderCompiler.h&quot;
 
 #include &lt;gtest/gtest.h&gt;
 
