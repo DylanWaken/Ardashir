@@ -1,6 +1,6 @@
 #pragma once
 #include "Nodes/ArdaCornellBoxNodes.h"
-#include "ShaderStructs/ArdaGlobalShaderMap.h"
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
 
 namespace arda
 {

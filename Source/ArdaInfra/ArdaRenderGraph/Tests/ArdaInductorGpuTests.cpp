@@ -1,11 +1,11 @@
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
 #include "ArdaDependencyGraph.h"
 #include "ArdaDependencyGraphNodes.h"
 #include "ArdaDependencyNode.h"
-#include "ShaderStructs/ArdaGlobalShaderMap.h"
-#include "ShaderStructs/ArdaShaderCompiler.h"
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
+#include "RHI/Shaders/ArdaShaderCompiler.h"
 
 #include <gtest/gtest.h>
 #include <atomic>

@@ -1,5 +1,5 @@
 #include "ArdaTestBackend.h"
-#include "ArdaExternalInterop.h"
+#include "RHI/Interop/ArdaExternalInterop.h"
 #include <gtest/gtest.h>
 
 #if defined(ARDA_TEST_NATIVE_D3D12)

@@ -1,6 +1,6 @@
 #include "ArdaDependencyNode.h"
 #include "ArdaDependencyGraph.h"
-#include "Allocator/ArdaMemoryPlanner.h"
+#include "RHI/Memory/ArdaMemoryPlanner.h"
 
 #include <gtest/gtest.h>
 

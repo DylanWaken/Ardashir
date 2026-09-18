@@ -1,6 +1,7 @@
 #include "ArdaBackendCorePch.h"
 
 #include "ArdaLog.h"
+#include "RHI/Context/ArdaLogContext.h"
 #include "ArdaStringFormat.h"
 
 #include <cstdarg>
@@ -9,28 +10,6 @@ namespace arda
 {
 	namespace
 	{
-		void DefaultLogOutput(const FArdaLogRecord& Record, void*) noexcept
-		{
-			std::fprintf(stderr,
-			    "[%s][%s] %s\n",
-			    Record.mCategory ? Record.mCategory : "",
-			    ToString(Record.mVerbosity),
-			    Record.mMessage ? Record.mMessage : "");
-		}
-
-		struct FArdaLogState
-		{
-			std::mutex mMutex;
-			FArdaLogOutput mOutput = &DefaultLogOutput;
-			void* mUserData = nullptr;
-		};
-
-		FArdaLogState& GetLogState()
-		{
-			static FArdaLogState state;
-			return state;
-		}
-
 		void DispatchLogRecord(const FArdaLogRecord& Record) noexcept
 		{
 			FArdaLogOutput output = nullptr;

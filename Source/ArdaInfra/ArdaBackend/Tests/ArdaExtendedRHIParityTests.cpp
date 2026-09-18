@@ -1,9 +1,9 @@
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
 #include "../../ArdaBackendImpls/ArdaGpuTimestamp.h"
-#include "PipelineStateCache/ArdaPipelineStateCache.h"
-#include "ShaderStructs/ArdaGlobalShaderMap.h"
+#include "RHI/Pipelines/ArdaPipelineStateCache.h"
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
 
 #include <gtest/gtest.h>
 
@@ -4167,7 +4167,7 @@ namespace
 
 TEST(ArdaBackend, CapabilityMatrixCoversEveryPublicField)
 {
-	std::ifstream Header(ARDA_BACKEND_TEST_SHADER_SOURCE_DIR "/../Public/RHI/ArdaRHICapabilities.h");
+	std::ifstream Header(ARDA_BACKEND_TEST_SHADER_SOURCE_DIR "/../Public/RHI/Config/ArdaRHICapabilities.h");
 	ASSERT_TRUE(Header);
 	std::string Source((std::istreambuf_iterator<char>(Header)), {});
 	// These are admission inputs/reports, not device capabilities. Remove their full declarations

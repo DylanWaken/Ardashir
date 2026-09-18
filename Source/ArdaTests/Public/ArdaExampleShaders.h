@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ShaderStructs/ArdaShaderCompiler.h"
+#include "RHI/Shaders/ArdaShaderCompiler.h"
 
 namespace arda
 {

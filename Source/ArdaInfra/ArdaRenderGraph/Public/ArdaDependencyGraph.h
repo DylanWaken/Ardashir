@@ -3,9 +3,9 @@
 #include "ArdaGraph.h"
 #include "ArdaDependencyGraphExecution.h"
 #include "ArdaDependencyRequirements.h"
-#include "Compute/ArdaCudaSequence.h"
+#include "RHI/Scheduling/ArdaCudaSequence.h"
 #include "ArdaInductorPipeline.h"
-#include "ShaderStructs/ArdaShaderParameters.h"
+#include "RHI/Shaders/ArdaShaderParameters.h"
 #include <EASTL/shared_ptr.h>
 #include <EASTL/unique_ptr.h>
 #include <EASTL/unordered_map.h>

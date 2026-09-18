@@ -2,6 +2,7 @@ file(GLOB_RECURSE ARDG_EXAMPLE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
 )
+list(FILTER ARDG_EXAMPLE_SOURCES EXCLUDE REGEX "/Tests/")
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/Private/ArdaARDGExampleConfig.cpp.in"
     "${CMAKE_CURRENT_BINARY_DIR}/Generated/ArdaARDGExampleConfig.cpp"
@@ -45,6 +46,17 @@ set_target_properties(ARDGExample PROPERTIES FOLDER "Ardashir/Tests/Examples/ARD
 ardashir_test_validation(ARDGExample OPTIONAL)
 
 if(ARDASHIR_BUILD_TESTS)
+    add_executable(ARDGExampleValidationTests
+        Tests/ArdaTerrainValidationTests.cpp
+        Private/ArdaTerrainValidation.cpp)
+    target_compile_features(ARDGExampleValidationTests PRIVATE cxx_std_17)
+    target_include_directories(ARDGExampleValidationTests PRIVATE Private Public)
+    target_link_libraries(ARDGExampleValidationTests PRIVATE
+        Ardashir::ArdaRenderGraph GTest::gtest_main)
+    set_target_properties(ARDGExampleValidationTests PROPERTIES
+        FOLDER "Ardashir/Tests/Examples/ARDGExample")
+    gtest_discover_tests(ARDGExampleValidationTests)
+
     set(ARDG_EXAMPLE_GPU_TESTS)
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         add_test(

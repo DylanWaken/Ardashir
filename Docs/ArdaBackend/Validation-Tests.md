@@ -4,7 +4,8 @@ With the default `ARDASHIR_ENABLE_GPU_VALIDATION=ON`, dedicated GPU test
 executables request installed validation layers. ARDGExample, CornellBox, RHITest
 and PixelSort enable native GPU validation only when launched with `--validation`.
 PixelSort `--verify` independently checks CPU/GPU results; ARDGExample `--verify`
-checks terrain geometry and gradients through readback. Example targets do not
+checks terrain geometry, gradients, and sampled CPU/GPU noise and erosion results
+through readback. Example targets do not
 depend on validation-layer provisioning. Ordinary builds do not download or
 compile Vulkan validation; run `python SetupGraphicsSDK.py` to install missing
 SDK components. Missing requested validation is reported as a skipped test, with
@@ -122,9 +123,13 @@ The examples' existing GPU CTest cases run without native validation. Separate
 PixelSort case. Dedicated GPU test executables keep their strict validation
 requirements.
 `ARDGExample.D3D12.Verify` and `ARDGExample.Vulkan.Verify` opt into terrain
-geometry and gradient readback checks. The normal terrain viewer omits those
-diagnostics. Ordinary Vulkan example CTest cases point `VK_LAYER_PATH` to an
-empty directory and clear `VK_ADD_LAYER_PATH` to hide explicit validation layers.
+geometry, gradient, and sampled height readback checks. The height checks detect
+zero, flat, stale, or incorrectly generated heightmaps even when topology is valid.
+Run `ARDGExample --backend vulkan --frames 3 --hidden --verify` on machines without
+validation layers; failures report the grid coordinate and expected/actual height.
+The normal terrain viewer omits those diagnostics. Ordinary Vulkan example CTest
+cases point `VK_LAYER_PATH` to an empty directory and clear `VK_ADD_LAYER_PATH` to
+hide explicit validation layers.
 
 To reproduce absence without changing the machine, copy a test executable and
 `D3D12/D3D12Core.dll` to a separate deployment directory, omit

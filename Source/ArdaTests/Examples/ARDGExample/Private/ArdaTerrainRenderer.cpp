@@ -1,6 +1,7 @@
 #include "ArdaARDGExamplePch.h"
 
 #include "ArdaTerrainRenderer.h"
+#include "ArdaTerrainValidation.h"
 #include "ArdaDependencyGraphNodes.h"
 
 #include <cmath>
@@ -8,145 +9,6 @@
 
 namespace arda
 {
-	namespace
-	{
-		eastl::string ValidateTerrainReadback(const eastl::vector<uint8_t>& VertexBytes,
-		    const eastl::vector<uint8_t>& IndexBytes)
-		{
-			if (VertexBytes.size() != static_cast<size_t>(ArdaTerrainVertexCount) * sizeof(FArdaTerrainVertex) ||
-			    IndexBytes.size() != static_cast<size_t>(ArdaTerrainIndexCount) * sizeof(uint32_t))
-			{
-				char Message[256]{};
-				std::snprintf(Message,
-				    sizeof(Message),
-				    "Terrain GPU readback returned unexpected byte counts: vertices expected %zu, got %zu; indices expected %zu, got %zu.",
-				    static_cast<size_t>(ArdaTerrainVertexCount) * sizeof(FArdaTerrainVertex),
-				    VertexBytes.size(),
-				    static_cast<size_t>(ArdaTerrainIndexCount) * sizeof(uint32_t),
-				    IndexBytes.size());
-				return Message;
-			}
-
-			// Validate topology and shared-cell continuity independently of the GPU triangulation path.
-			const auto* Vertices = reinterpret_cast<const FArdaTerrainVertex*>(VertexBytes.data());
-			const auto* Indices = reinterpret_cast<const uint32_t*>(IndexBytes.data());
-			constexpr uint32_t LocalIndices[6] = {0, 2, 1, 1, 2, 3};
-			float MaximumGradient = 0.0f;
-			uint32_t MaximumGradientCell = 0;
-			for (uint32_t Cell = 0; Cell < ArdaTerrainCellCount; ++Cell)
-			{
-				const uint32_t VertexBase = Cell * 4;
-				const uint32_t IndexBase = Cell * 6;
-				for (uint32_t Index = 0; Index < 6; ++Index)
-				{
-					const uint32_t Expected = VertexBase + LocalIndices[Index];
-					if (Indices[IndexBase + Index] != Expected)
-					{
-						char Message[192]{};
-						std::snprintf(Message,
-						    sizeof(Message),
-						    "Terrain index readback diverged at cell %u index %u: expected %u, got %u.",
-						    Cell,
-						    Index,
-						    Expected,
-						    Indices[IndexBase + Index]);
-						return Message;
-					}
-				}
-
-				// Check corner positions against the terrain grid and generated height values.
-				const uint32_t CellX = Cell % (ArdaTerrainHeightmapWidth - 1);
-				const uint32_t CellY = Cell / (ArdaTerrainHeightmapWidth - 1);
-				constexpr uint32_t CornerX[4] = {0, 1, 0, 1};
-				constexpr uint32_t CornerY[4] = {0, 0, 1, 1};
-				for (uint32_t Corner = 0; Corner < 4; ++Corner)
-				{
-					const FArdaTerrainVertex& Vertex = Vertices[VertexBase + Corner];
-					const float ExpectedX = ((static_cast<float>(CellY + CornerY[Corner]) /
-					                             static_cast<float>(ArdaTerrainHeightmapHeight - 1)) -
-					                            0.5f) *
-					    1.45f;
-					const float ExpectedY = ((static_cast<float>(CellX + CornerX[Corner]) /
-					                             static_cast<float>(ArdaTerrainHeightmapWidth - 1)) -
-					                            0.5f) *
-					    1.45f;
-					if (!std::isfinite(Vertex.mPosition[0]) || !std::isfinite(Vertex.mPosition[1]) ||
-					    !std::isfinite(Vertex.mPosition[2]) || !std::isfinite(Vertex.mHeight) ||
-					    std::abs(Vertex.mPosition[0] - ExpectedX) > 0.00001f ||
-					    std::abs(Vertex.mPosition[1] - ExpectedY) > 0.00001f ||
-					    std::abs(Vertex.mPosition[2] - (Vertex.mHeight * 0.72f - 0.32f)) > 0.00002f)
-					{
-						char Message[192]{};
-						std::snprintf(Message,
-						    sizeof(Message),
-						    "Terrain vertex readback diverged at cell %u corner %u: position=(%.6f, %.6f, %.6f), height=%.6f.",
-						    Cell,
-						    Corner,
-						    Vertex.mPosition[0],
-						    Vertex.mPosition[1],
-						    Vertex.mPosition[2],
-						    Vertex.mHeight);
-						return Message;
-					}
-				}
-
-				// Bound local slopes and detect cracks where adjacent cells share an edge.
-				const auto HeightDiff = [](float Left, float Right)
-				{
-					return std::abs(Left - Right);
-				};
-				const float HorizontalGradient =
-				    HeightDiff(Vertices[VertexBase + 0].mHeight, Vertices[VertexBase + 1].mHeight);
-				const float VerticalGradient =
-				    HeightDiff(Vertices[VertexBase + 0].mHeight, Vertices[VertexBase + 2].mHeight);
-				const float Gradient = eastl::max(HorizontalGradient, VerticalGradient);
-				if (Gradient > MaximumGradient)
-				{
-					MaximumGradient = Gradient;
-					MaximumGradientCell = Cell;
-				}
-				if (CellX + 1 < ArdaTerrainHeightmapWidth - 1)
-				{
-					const FArdaTerrainVertex* Right = Vertices + VertexBase + 4;
-					if (HeightDiff(Vertices[VertexBase + 1].mHeight, Right[0].mHeight) > 0.000001f ||
-					    HeightDiff(Vertices[VertexBase + 3].mHeight, Right[2].mHeight) > 0.000001f)
-					{
-						char Message[160]{};
-						std::snprintf(Message,
-						    sizeof(Message),
-						    "Terrain readback has a horizontal height seam after cell %u.",
-						    Cell);
-						return Message;
-					}
-				}
-				if (CellY + 1 < ArdaTerrainHeightmapHeight - 1)
-				{
-					const FArdaTerrainVertex* Below = Vertices + VertexBase + (ArdaTerrainHeightmapWidth - 1) * 4;
-					if (HeightDiff(Vertices[VertexBase + 2].mHeight, Below[0].mHeight) > 0.000001f ||
-					    HeightDiff(Vertices[VertexBase + 3].mHeight, Below[1].mHeight) > 0.000001f)
-					{
-						char Message[160]{};
-						std::snprintf(Message,
-						    sizeof(Message),
-						    "Terrain readback has a vertical height seam after cell %u.",
-						    Cell);
-						return Message;
-					}
-				}
-			}
-			if (MaximumGradient > 0.10f)
-			{
-				char Message[160]{};
-				std::snprintf(Message,
-				    sizeof(Message),
-				    "Terrain readback has a discontinuous height gradient of %.6f at cell %u.",
-				    MaximumGradient,
-				    MaximumGradientCell);
-				return Message;
-			}
-			return {};
-		}
-	}
 
 	bool FArdaTerrainRenderer::Initialize(arda::FArdaRHIDeviceRef device, arda::EArdaRHIFormat, bool bVerifyTerrain)
 	{
@@ -424,7 +286,9 @@ namespace arda
 		}
 		if (mbVerifyTerrain && !mbTerrainReadbackValidated)
 		{
-			mError = ValidateTerrainReadback(*Frame->mInputs->mVertexReadback, *Frame->mInputs->mIndexReadback);
+			mError = ValidateTerrainReadback(*Frame->mInputs->mVertexReadback,
+			    *Frame->mInputs->mIndexReadback,
+			    Frame->mInputs->mSettings);
 			if (!mError.empty())
 			{
 				return false;

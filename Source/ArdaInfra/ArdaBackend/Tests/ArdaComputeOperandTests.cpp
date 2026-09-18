@@ -1,5 +1,5 @@
 #include "ArdaTestComputeOperand.h"
-#include "Compute/ArdaCudaSequence.h"
+#include "RHI/Scheduling/ArdaCudaSequence.h"
 #include <gtest/gtest.h>
 #include <atomic>
 #include <future>

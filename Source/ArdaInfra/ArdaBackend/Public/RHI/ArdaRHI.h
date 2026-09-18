@@ -4,10 +4,10 @@
 
 #pragma once
 
-#include "ArdaRHICapabilities.h"
-#include "ArdaRHIDevice.h"
-#include "ArdaRHIFwd.h"
-#include "ArdaRHIRef.h"
-#include "ArdaRHIResource.h"
-#include "ArdaRHIResources.h"
-#include "ArdaRHITypes.h"
+#include "RHI/Config/ArdaRHICapabilities.h"
+#include "RHI/Device/ArdaRHIDevice.h"
+#include "RHI/Resources/ArdaRHIFwd.h"
+#include "RHI/Resources/ArdaRHIRef.h"
+#include "RHI/Resources/ArdaRHIResource.h"
+#include "RHI/Resources/ArdaRHIResources.h"
+#include "RHI/Resources/ArdaRHITypes.h"

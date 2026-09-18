@@ -1,8 +1,8 @@
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
 #include "ArdaTestComputeOperand.h"
-#include "Compute/ArdaCudaTextureBuffer.h"
+#include "RHI/Resources/ArdaCudaTextureBuffer.h"
 #include "ArdaRenderGraph.h"
 #include <gtest/gtest.h>
 #include <cstdio>

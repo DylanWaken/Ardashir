@@ -5,7 +5,7 @@
 #include "ArdaCornellBoxRenderer.h"
 #include "ArdaCornellBoxWindow.h"
 #include "ArdaExampleShaders.h"
-#include "ShaderStructs/ArdaShaderDirectories.h"
+#include "RHI/Shaders/ArdaShaderDirectories.h"
 
 #include <chrono>
 #include <limits>

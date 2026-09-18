@@ -1,8 +1,8 @@
 #include "ArdaTestValidation.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
-#include "ShaderStructs/ArdaGlobalShaderMap.h"
-#include "ShaderStructs/ArdaShaderDirectoriesPrivate.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
+#include "RHI/Shaders/ArdaShaderDirectoriesPrivate.h"
 
 #include <gtest/gtest.h>
 

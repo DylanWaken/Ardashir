@@ -1,9 +1,9 @@
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
 #include "ArdaTestComputeOperand.h"
 #include "ArdaRenderGraph.h"
-#include "Compute/ArdaCudaExternalCall.h"
+#include "RHI/CUDA/ArdaCudaExternalCall.h"
 #include <gtest/gtest.h>
 #include <cstring>
 #include <stdexcept>

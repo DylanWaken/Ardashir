@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ArdaSwapChain.h"
+#include "RHI/Scheduling/ArdaSwapChain.h"
 
 #include <cstdint>
 #include <EASTL/string.h>

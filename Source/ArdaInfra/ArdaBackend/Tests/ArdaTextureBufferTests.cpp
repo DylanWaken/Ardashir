@@ -1,4 +1,4 @@
-#include "RHI/ArdaRHITypes.h"
+#include "RHI/Resources/ArdaRHITypes.h"
 #include <gtest/gtest.h>
 #include <limits>
 

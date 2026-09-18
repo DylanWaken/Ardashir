@@ -25,43 +25,29 @@ RDG_END = "/* END GENERATED ARDA RDG API GAPS */"
 
 CONTRACT_HEADERS = (
     (
-        "Source/ArdaInfra/ArdaBackend/Public/ArdaBackendProvider.h",
+        "Source/ArdaInfra/ArdaBackend/Public/RHI/Providers/ArdaBackendProvider.h",
         "arda",
         "backend-modules",
     ),
-    ("Source/ArdaInfra/ArdaBackend/Public/ArdaSwapChain.h", "arda", "presentation"),
+    ("Source/ArdaInfra/ArdaBackend/Public/RHI/Scheduling/ArdaSwapChain.h", "arda", "presentation"),
     (
-        "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+        "Source/ArdaInfra/ArdaBackend/Public/RHI/Providers/ArdaRHIProviderDevice.h",
         "arda",
         "rhi-device",
     ),
     (
-        "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
+        "Source/ArdaInfra/ArdaBackend/Public/RHI/Pipelines/ArdaRHIProviderPipelineCache.h",
         "arda",
         "pipelines",
     ),
 )
 
-COMPLETE_BACKEND_SOURCES = {
-    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
-    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
-    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaCudaExternalCall.h",
-    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaCudaTextureBuffer.h",
-    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaComputeParameters.h",
-    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
-    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
-    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
-    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICuda.h",
-    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResource.h",
-    "Source/ArdaInfra/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
-    "Source/ArdaInfra/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
-    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
-    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h",
-    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
-    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
-    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-}
+# Complete declaration coverage follows the modules instead of a list of former
+# monolithic headers. Compatibility includes have no declarations to duplicate.
+COMPLETE_BACKEND_SOURCE_ROOTS = (
+    "Source/ArdaInfra/ArdaBackend/Public/RHI/",
+    "Source/ArdaInfra/ArdaBackend/Public/FileOperations/",
+)
 
 CALLABLE_KINDS = {
     "function",
@@ -278,10 +264,22 @@ def backend_specs(repo: Path) -> List[Tuple[str, str, str]]:
             continue
         if "/RHI/" in source:
             namespace = "arda"
-            component = "rhi-device" if header.name == "ArdaRHIDevice.h" else (
-                "rhi-types" if header.name in {"ArdaRHICapabilities.h", "ArdaRHITypes.h"}
-                else "rhi-resources"
-            )
+            module = source.split("/RHI/", 1)[1].split("/", 1)[0]
+            component = {
+                "CUDA": "shaders",
+                "Config": "rhi-types",
+                "Context": "rhi-device",
+                "Device": "rhi-device",
+                "Interop": "external-interop",
+                "Memory": "rhi-resources",
+                "Pipelines": "pipelines",
+                "Providers": "rhi-device",
+                "Resources": "rhi-resources",
+                "Scheduling": "rhi-device",
+                "Shaders": "shaders",
+            }.get(module, "rhi-resources")
+            if header.name in {"ArdaBackendDiagnostics.h", "ArdaRHIDiagnostics.h"}:
+                component = "diagnostics"
         else:
             namespace = "arda"
             if "/ShaderStructs/" in source:
@@ -603,14 +601,14 @@ def main() -> int:
     backend_base = without_generated_block(
         backend_current, BACKEND_BEGIN, BACKEND_END
     )
-    backend_declarations = make_symbols(
-        repo, backend_specs(repo), "backend and RHI"
-    )
+    backend_source_specs = backend_specs(repo)
+    backend_declarations = make_symbols(repo, backend_source_specs, "backend and RHI")
     preserve_symbol_ids(backend_declarations, evaluate_api(backend_current, "ArdaBackendApi"))
     backend_symbols = select_missing(
         backend_declarations,
         evaluate_api(backend_base, "ArdaBackendApi"),
-        COMPLETE_BACKEND_SOURCES,
+        [source for source, _namespace, _component in backend_source_specs
+            if source.startswith(COMPLETE_BACKEND_SOURCE_ROOTS)],
     )
     # Rich header contracts supersede older authored boilerplate while preserving
     # canonical IDs and related links. Generic one-line comments do not replace prose.
@@ -620,8 +618,6 @@ def main() -> int:
     )
     contracts = []
     for declaration in backend_declarations:
-        if declaration["ownership"].startswith("Owning handles retain"):
-            continue
         existing = next((s for s in authored if s["qualifiedName"] == declaration["qualifiedName"]
             and signature_identity(s["signature"]) == signature_identity(declaration["signature"])), None)
         if existing is None and declaration_counts[(declaration["qualifiedName"], declaration["kind"])] == 1:
@@ -631,16 +627,21 @@ def main() -> int:
             if len(candidates) == 1:
                 existing = candidates[0]
         if existing:
+            # Source moves must update provenance even when the source has only a
+            # short comment and the authored prose remains the better contract.
+            fields = ("source", "sourceLine", "component")
+            if not declaration["ownership"].startswith("Owning handles retain"):
+                fields += ("signature", "summary", "details", "params", "returns", "ownership", "errors", "threading")
             contracts.append({"id": existing["id"], **{field: declaration[field] for field in
-                ("signature", "summary", "details", "params", "returns", "ownership", "errors", "threading", "sourceLine")}})
+                fields}})
     backend_block = generated_block(
         backend_symbols, "ArdaBackendApi", BACKEND_BEGIN, BACKEND_END, contracts
     )
-    header_count = len(list((repo / "Source/ArdaInfra/ArdaBackend/Public").rglob("*.h")))
+    header_count = len(backend_source_specs)
     backend_updated = synchronize_backend(
         backend_current, backend_block, header_count
     )
-    provenance = [source for source, _namespace, _component in backend_specs(repo)]
+    provenance = [source for source, _namespace, _component in backend_source_specs]
     backend_updated = re.sub(r'"headerProvenance": \[.*?\n  \]',
         '"headerProvenance": ' + json.dumps(provenance, indent=2).replace("\n", "\n  "),
         backend_updated, count=1, flags=re.S)

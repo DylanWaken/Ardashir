@@ -1,5 +1,5 @@
-#include "Allocator/ArdaGpuAllocator.h"
-#include "RHI/ArdaRHIDevicePrivate.h"
+#include "RHI/Memory/ArdaGpuAllocator.h"
+#include "RHI/Device/ArdaRHIDevicePrivate.h"
 
 #include <gtest/gtest.h>
 

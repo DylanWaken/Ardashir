@@ -1,6 +1,6 @@
 #pragma once
 #include "ArdaDependencyGraph.h"
-#include "Allocator/ArdaMemoryPlanner.h"
+#include "RHI/Memory/ArdaMemoryPlanner.h"
 #include "ArdaInductorCommandProgram.h"
 #include "ArdaInductorAdaptiveSchedule.h"
 

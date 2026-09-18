@@ -1,6 +1,6 @@
 #include "ArdaRHITestPch.h"
 #include "Nodes/ArdaTriangleDrawNode.h"
-#include "ShaderStructs/ArdaGlobalShaderMap.h"
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
 
 namespace arda
 {

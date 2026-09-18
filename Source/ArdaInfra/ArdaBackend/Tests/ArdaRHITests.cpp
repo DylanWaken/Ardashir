@@ -1,10 +1,10 @@
 #include "ArdaTestValidation.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
-#include "RHI/ArdaRHICapabilities.h"
-#include "RHI/ArdaRHIRef.h"
-#include "RHI/ArdaRHIResource.h"
-#include "RHI/ArdaRHIResources.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
+#include "RHI/Config/ArdaRHICapabilities.h"
+#include "RHI/Resources/ArdaRHIRef.h"
+#include "RHI/Resources/ArdaRHIResource.h"
+#include "RHI/Resources/ArdaRHIResources.h"
 
 #include <gtest/gtest.h>
 

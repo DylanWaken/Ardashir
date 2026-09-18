@@ -1,7 +1,7 @@
 #pragma once
 // Start here when writing your own CUDA operand. This header is shared by the
 // node implementation and the nvcc translation unit; CUDA SDK types stay in .cu.
-#include "Compute/ArdaComputeOperand.h"
+#include "RHI/Shaders/ArdaComputeOperand.h"
 
 namespace arda
 {

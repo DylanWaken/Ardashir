@@ -1,8 +1,8 @@
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
-#include "ArdaExternalInterop.h"
-#include "ShaderStructs/ArdaGlobalShaderMap.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
+#include "RHI/Interop/ArdaExternalInterop.h"
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
 
 #include "ArdaHash.h"
 

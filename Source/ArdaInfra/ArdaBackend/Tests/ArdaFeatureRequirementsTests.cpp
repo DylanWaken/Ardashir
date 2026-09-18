@@ -1,4 +1,4 @@
-#include "RHI/ArdaRHICapabilities.h"
+#include "RHI/Config/ArdaRHICapabilities.h"
 
 #include <gtest/gtest.h>
 

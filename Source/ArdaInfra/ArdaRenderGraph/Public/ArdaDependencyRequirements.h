@@ -1,5 +1,5 @@
 #pragma once
-#include "RHI/ArdaRHIDevice.h"
+#include "RHI/Device/ArdaRHIDevice.h"
 #include <EASTL/functional.h>
 
 namespace arda

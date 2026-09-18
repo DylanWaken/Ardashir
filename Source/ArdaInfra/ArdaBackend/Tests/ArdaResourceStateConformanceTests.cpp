@@ -1,6 +1,6 @@
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
 
 #include <gtest/gtest.h>
 

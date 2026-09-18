@@ -1,7 +1,7 @@
 #include "ArdaDependencyNode.h"
 #include "ArdaInductorCommandExecutor.h"
 #include "ArdaDependencyGraph.h"
-#include "../../ArdaBackend/Private/RHI/ArdaRHIDevicePrivate.h"
+#include "../../ArdaBackend/Private/RHI/Device/ArdaRHIDevicePrivate.h"
 
 #include <gtest/gtest.h>
 

@@ -2,7 +2,7 @@
 #include "ArdaRHITestPch.h"
 
 #include "ArdaBackend.h"
-#include "ArdaSwapChain.h"
+#include "RHI/Scheduling/ArdaSwapChain.h"
 #include "ArdaGlfwWindow.h"
 #include "ArdaTriangleRenderer.h"
 #include "ArdaExamplePaths.h"

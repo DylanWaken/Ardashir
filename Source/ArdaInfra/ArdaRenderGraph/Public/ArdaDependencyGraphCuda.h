@@ -1,6 +1,6 @@
 #pragma once
 #include "ArdaDependencyNode.h"
-#include "Compute/ArdaComputeOperand.h"
+#include "RHI/Shaders/ArdaComputeOperand.h"
 #include <cstring>
 
 namespace arda

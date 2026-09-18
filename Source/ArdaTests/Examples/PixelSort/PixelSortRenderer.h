@@ -1,7 +1,7 @@
 #pragma once
 #include "Nodes/ArdaPixelSortNodes.h"
 #include <memory>
-#include "ArdaSwapChain.h"
+#include "RHI/Scheduling/ArdaSwapChain.h"
 #include <filesystem>
 #include <vector>
 

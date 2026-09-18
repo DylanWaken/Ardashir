@@ -1,6 +1,6 @@
 #include "../ArdaGpuTimestamp.h"
 #include "../ArdaSparseMapping.h"
-#include "../../ArdaBackend/Private/RHI/ArdaRHISubresources.h"
+#include "RHI/Resources/ArdaRHISubresources.h"
 #if defined(_WIN32)
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -11,12 +11,12 @@
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include <vulkan/vulkan.hpp>
 
-#include "RHI/ArdaRHIProvider.h"
-#include "RHI/ArdaRHIProviderPipelineCache.h"
-#include "ArdaBackendProvider.h"
+#include "RHI/Providers/ArdaRHIProvider.h"
+#include "RHI/Pipelines/ArdaRHIProviderPipelineCache.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
 #include "../ArdaBackendRequirements.h"
-#include "ArdaExternalInterop.h"
-#include "ArdaSwapChain.h"
+#include "RHI/Interop/ArdaExternalInterop.h"
+#include "RHI/Scheduling/ArdaSwapChain.h"
 #include "../Cuda/ArdaCudaInterop.h"
 
 #include <EASTL/algorithm.h>

@@ -1,7 +1,7 @@
 #include "NodeLibrary/ArdaMemoryNodes.h"
 #include "NodeLibrary/ArdaMemoryTextureNodes.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
 #include "ArdaTestBackend.h"
 
 #include <gtest/gtest.h>

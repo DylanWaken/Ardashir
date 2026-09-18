@@ -1,7 +1,7 @@
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
-#include "ShaderStructs/ArdaShaderCompiler.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
+#include "RHI/Shaders/ArdaShaderCompiler.h"
 #include <gtest/gtest.h>
 
 namespace arda

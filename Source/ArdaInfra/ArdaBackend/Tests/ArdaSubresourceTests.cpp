@@ -1,4 +1,4 @@
-#include "RHI/ArdaRHISubresources.h"
+#include "RHI/Resources/ArdaRHISubresources.h"
 
 #include <gtest/gtest.h>
 #include <array>

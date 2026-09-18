@@ -3,13 +3,13 @@
 
 #include "ArdaARDGExampleConfig.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
-#include "ArdaSwapChain.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
+#include "RHI/Scheduling/ArdaSwapChain.h"
 #include "ArdaGlfwWindow.h"
 #include "ArdaTerrainRenderer.h"
 #include "ArdaExampleShaders.h"
-#include "ShaderStructs/ArdaShaderCompiler.h"
-#include "ShaderStructs/ArdaShaderDirectories.h"
+#include "RHI/Shaders/ArdaShaderCompiler.h"
+#include "RHI/Shaders/ArdaShaderDirectories.h"
 
 #include <chrono>
 #include <cstdio>
@@ -295,12 +295,13 @@ namespace arda
 			}
 			if (options.mbHelp)
 			{
-				std::printf("ARDGExample [--backend d3d12|vulkan] [--frames N --hidden|--fullscreen]\n"
-				            "  [--width N --height N] [--verify] [--validation]\n"
-				            "  [--shader-mode startup|ondemand|load-only] [--shader-cache DIR] [--shader-source DIR]\n"
-				            "  [--arda-cook-shaders DIR]\n"
-				            "--verify checks terrain geometry and gradients without native validation layers.\n"
-				            "--validation explicitly enables native GPU validation and requires its debug layers.\n");
+				std::printf(
+				    "ARDGExample [--backend d3d12|vulkan] [--frames N --hidden|--fullscreen]\n"
+				    "  [--width N --height N] [--verify] [--validation]\n"
+				    "  [--shader-mode startup|ondemand|load-only] [--shader-cache DIR] [--shader-source DIR]\n"
+				    "  [--arda-cook-shaders DIR]\n"
+				    "--verify checks terrain geometry, gradients and sampled generated heights without native validation layers.\n"
+				    "--validation explicitly enables native GPU validation and requires its debug layers.\n");
 				return EXIT_SUCCESS;
 			}
 			const std::filesystem::path executableDirectory = GetExecutableDirectory(arguments[0]);

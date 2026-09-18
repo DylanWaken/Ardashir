@@ -1,13 +1,13 @@
 #include "../ArdaGpuTimestamp.h"
 #include "../ArdaSparseMapping.h"
-#include "../../ArdaBackend/Private/RHI/ArdaRHISubresources.h"
-#include "RHI/ArdaRHIProvider.h"
+#include "RHI/Resources/ArdaRHISubresources.h"
+#include "RHI/Providers/ArdaRHIProvider.h"
 #include "../Cuda/ArdaCudaInterop.h"
-#include "RHI/ArdaRHIProviderPipelineCache.h"
-#include "ArdaBackendProvider.h"
+#include "RHI/Pipelines/ArdaRHIProviderPipelineCache.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
 #include "../ArdaBackendRequirements.h"
-#include "ArdaExternalInterop.h"
-#include "ArdaSwapChain.h"
+#include "RHI/Interop/ArdaExternalInterop.h"
+#include "RHI/Scheduling/ArdaSwapChain.h"
 
 #if !defined(_WIN32)
 #error The native D3D12 backend is Windows-only.

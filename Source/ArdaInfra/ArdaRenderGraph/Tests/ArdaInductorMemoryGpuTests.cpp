@@ -1,8 +1,8 @@
 #include "ArdaDependencyNode.h"
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
-#include "Allocator/ArdaMemoryPlanner.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
+#include "RHI/Memory/ArdaMemoryPlanner.h"
 #include "ArdaDependencyGraph.h"
 
 #include <gtest/gtest.h>

@@ -1,6 +1,7 @@
 #include "ArdaBackendCorePch.h"
 
 #include "ArdaAssert.h"
+#include "RHI/Context/ArdaAssertContext.h"
 #include "ArdaStringFormat.h"
 
 #include <EASTL/atomic.h>
@@ -21,7 +22,6 @@ namespace arda
 {
 	namespace
 	{
-		eastl::atomic<EArdaEnsureBehavior> gEnsureBehavior{EArdaEnsureBehavior::Break};
 
 		void DebugBreakIfAttached() noexcept
 		{
@@ -82,12 +82,12 @@ namespace arda
 
 	void SetEnsureBehavior(EArdaEnsureBehavior behavior) noexcept
 	{
-		gEnsureBehavior.store(behavior, eastl::memory_order_relaxed);
+		GetAssertContext().mEnsureBehavior.store(behavior, eastl::memory_order_relaxed);
 	}
 
 	EArdaEnsureBehavior GetEnsureBehavior() noexcept
 	{
-		return gEnsureBehavior.load(eastl::memory_order_relaxed);
+		return GetAssertContext().mEnsureBehavior.load(eastl::memory_order_relaxed);
 	}
 
 	void ReportFatalCheck(const char* expression, const char* file, std::uint32_t line, const char* function) noexcept

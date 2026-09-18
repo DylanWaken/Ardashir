@@ -3,7 +3,7 @@
 #include "ArdaDependencyGraph.h"
 #include "ArdaDependencyGraphNodes.h"
 #include "ArdaDependencyGraphInternal.h"
-#include "../../ArdaBackend/Private/RHI/ArdaRHIDevicePrivate.h"
+#include "../../ArdaBackend/Private/RHI/Device/ArdaRHIDevicePrivate.h"
 
 #include <gtest/gtest.h>
 #include <chrono>

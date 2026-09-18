@@ -1,7 +1,7 @@
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
-#include "PipelineStateCache/ArdaPipelineStateCache.h"
-#include "ShaderStructs/ArdaGlobalShaderMap.h"
+#include "RHI/Pipelines/ArdaPipelineStateCache.h"
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
 
 #include <gtest/gtest.h>
 

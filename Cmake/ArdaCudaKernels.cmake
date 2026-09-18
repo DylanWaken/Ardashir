@@ -95,7 +95,7 @@ function(ardashir_add_cuda_kernels Target)
     set(GeneratedDir "${CMAKE_CURRENT_BINARY_DIR}/${Target}-generated")
     file(MAKE_DIRECTORY "${GeneratedDir}")
     file(WRITE "${GeneratedDir}/ArdaCudaBuildInfo.h"
-        "#pragma once\n#include \"Compute/ArdaCudaKernelVariants.h\"\nnamespace arda_cuda_${K_PROFILE} { inline arda::FArdaCudaBuildInfo GetBuildInfo() { return {\"${K_PROFILE}\", \"${BuildIdentity}\", {${ManifestTargets}}, ${FastMath}}; } }\n#define ARDA_CUDA_BUILD_NAMESPACE arda_cuda_${K_PROFILE}\n")
+        "#pragma once\n#include \"RHI/CUDA/ArdaCudaKernelVariants.h\"\nnamespace arda_cuda_${K_PROFILE} { inline arda::FArdaCudaBuildInfo GetBuildInfo() { return {\"${K_PROFILE}\", \"${BuildIdentity}\", {${ManifestTargets}}, ${FastMath}}; } }\n#define ARDA_CUDA_BUILD_NAMESPACE arda_cuda_${K_PROFILE}\n")
     add_library(${Target} STATIC ${K_SOURCES})
     target_link_libraries(${Target} PRIVATE Ardashir::ArdaBackend CUDA::cudart_static)
     target_include_directories(${Target} PRIVATE "${GeneratedDir}")

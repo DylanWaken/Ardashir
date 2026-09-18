@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ArdaBackend.h"
-#include "ArdaSwapChain.h"
+#include "RHI/Scheduling/ArdaSwapChain.h"
 #include "ArdaDependencyGraph.h"
 #include "Nodes/ArdaCornellBoxNodes.h"
 

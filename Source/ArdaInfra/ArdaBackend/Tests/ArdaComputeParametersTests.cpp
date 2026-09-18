@@ -1,4 +1,4 @@
-#include "Compute/ArdaComputeOperand.h"
+#include "RHI/Shaders/ArdaComputeOperand.h"
 #include <gtest/gtest.h>
 
 namespace

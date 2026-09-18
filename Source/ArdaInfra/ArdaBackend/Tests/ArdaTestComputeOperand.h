@@ -1,5 +1,5 @@
 #pragma once
-#include "Compute/ArdaComputeOperand.h"
+#include "RHI/Shaders/ArdaComputeOperand.h"
 
 namespace arda
 {

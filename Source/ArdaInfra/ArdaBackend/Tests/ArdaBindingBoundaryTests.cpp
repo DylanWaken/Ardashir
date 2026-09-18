@@ -1,9 +1,9 @@
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
 #include "ArdaTestComputeOperand.h"
-#include "Compute/ArdaCudaSequence.h"
-#include "ShaderStructs/ArdaGlobalShaderMap.h"
+#include "RHI/Scheduling/ArdaCudaSequence.h"
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
 
 #include <gtest/gtest.h>
 #include <atomic>

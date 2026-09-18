@@ -4,7 +4,7 @@
 #include "ArdaCudaBuildInfo.h"
 // Include the nvcc binding adapter only in CUDA translation units. It wraps the
 // compiled entry and later launches it with cudaLaunchKernel on a provider stream.
-#include "Compute/ArdaCudaKernelBinding.cuh"
+#include "RHI/CUDA/ArdaCudaKernelBinding.cuh"
 
 namespace ARDA_CUDA_BUILD_NAMESPACE
 {

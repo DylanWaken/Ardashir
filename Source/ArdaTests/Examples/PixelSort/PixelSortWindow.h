@@ -1,5 +1,5 @@
 #pragma once
-#include "ArdaSwapChain.h"
+#include "RHI/Scheduling/ArdaSwapChain.h"
 #include <Windows.h>
 
 namespace arda

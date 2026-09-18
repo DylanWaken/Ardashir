@@ -1,7 +1,7 @@
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
-#include "PipelineStateCache/ArdaPipelineStateCache.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
+#include "RHI/Pipelines/ArdaPipelineStateCache.h"
 
 #include <gtest/gtest.h>
 

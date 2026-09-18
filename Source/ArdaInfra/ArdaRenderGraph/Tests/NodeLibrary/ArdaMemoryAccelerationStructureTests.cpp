@@ -1,9 +1,9 @@
 #include "NodeLibrary/ArdaMemoryAccelerationStructureNodes.h"
 #include "ArdaBackend.h"
-#include "ArdaBackendProvider.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
 #include "ArdaTestBackend.h"
-#include "ShaderStructs/ArdaGlobalShaderMap.h"
-#include "ShaderStructs/ArdaShaderCompiler.h"
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
+#include "RHI/Shaders/ArdaShaderCompiler.h"
 
 #include <gtest/gtest.h>
 #include <cstring>

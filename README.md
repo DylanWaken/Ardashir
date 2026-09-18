@@ -193,11 +193,16 @@ Run the setup tool's offline regression checks with
 Normal runs of ARDGExample, CornellBox, RHITest and PixelSort leave native GPU
 validation disabled. Add `--validation` to an example launch to request it;
 PixelSort `--verify` independently enables CPU/GPU result comparisons; ARDGExample
-`--verify` enables terrain geometry and gradient readback checks. Example
+`--verify` checks terrain geometry, gradients, and sampled heights against CPU
+noise/erosion results, detecting missing generation and flat heightmaps. Example
 targets do not depend on validation-layer provisioning. The examples' existing
 GPU CTest cases run without native validation; separate `Validation` cases request
 it explicitly in ON builds. Dedicated GPU test executables retain their strict
 validation policy.
+
+To diagnose a red or flat Vulkan terrain on a machine without validation layers,
+run `ARDGExample --backend vulkan --frames 3 --hidden --verify`. A height mismatch
+reports its grid coordinate and expected/actual values and exits with failure.
 
 Build a separate version of every enabled example and GPU test with native
 Vulkan/D3D12 validation disabled at compile time using:

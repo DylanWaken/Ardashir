@@ -137,7 +137,7 @@ def capabilities() -> list[dict]:
              for name, expression, probe in re.findall(r'ARDA_CAPABILITY\("([^"]+)",\s*(.*?),\s*(\w+)\)', block, re.S)]
     if len(cases) != block.count('ARDA_CAPABILITY("'):
         raise ValueError("A capability predicate could not be parsed")
-    header = (ROOT / "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h").read_text(encoding="utf-8")
+    header = (ROOT / "Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h").read_text(encoding="utf-8")
     # Admission requests are inputs, not advertised device facts. Exclude their whole
     # declaration rather than relying on a boolean naming convention: numeric/tier
     # constraints intentionally use mMin/mMax names also found in capability models.
@@ -207,7 +207,7 @@ def generate() -> dict[Path, str]:
         body = f'<p>{api_link("IArdaRHI" + kind)}: {prose}</p><pre><code class="language-cpp">{html.escape(code)}</code></pre><p>{cuda} Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#{function}">Complete example: {function}</a>. Exact creation signatures and failure contracts are in the API link above.</p>'
         resource_sections.append((identifier, f"{kind}: {title}", body))
         resource_coverage[kind] = f"resource-recipes.html#{identifier}"
-    resource_text = (ROOT / "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResource.h").read_text(encoding="utf-8")
+    resource_text = (ROOT / "Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHIResource.h").read_text(encoding="utf-8")
     declared = set(re.findall(r"\b(\w+)\s*,?", resource_text.split("enum class EArdaRHIResourceType", 1)[1].split("{", 1)[1].split("}", 1)[0])) - {"Count"}
     if declared != set(resource_coverage):
         raise ValueError(f"Resource recipe coverage mismatch: missing={declared-set(resource_coverage)}, stale={set(resource_coverage)-declared}")

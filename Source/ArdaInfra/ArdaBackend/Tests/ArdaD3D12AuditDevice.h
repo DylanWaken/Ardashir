@@ -5,7 +5,7 @@
 #include <atomic>
 #include <array>
 #include <cstring>
-#include "RHI/ArdaRHIDiagnostics.h"
+#include "RHI/Device/ArdaRHIDiagnostics.h"
 
 namespace arda
 {

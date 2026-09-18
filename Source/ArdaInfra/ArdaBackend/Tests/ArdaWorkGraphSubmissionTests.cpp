@@ -1,7 +1,7 @@
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
 #include "ArdaTestComputeOperand.h"
-#include "ShaderStructs/ArdaGlobalShaderMap.h"
+#include "RHI/Shaders/ArdaGlobalShaderMap.h"
 
 #include <gtest/gtest.h>
 #include <atomic>

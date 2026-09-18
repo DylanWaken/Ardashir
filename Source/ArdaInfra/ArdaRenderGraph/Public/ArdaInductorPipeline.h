@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#include "PipelineStateCache/ArdaPipelineStateCache.h"
+#include "RHI/Pipelines/ArdaPipelineStateCache.h"
 
 #include <EASTL/shared_ptr.h>
 
