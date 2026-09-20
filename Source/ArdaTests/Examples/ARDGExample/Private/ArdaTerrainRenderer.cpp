@@ -1,9 +1,11 @@
 #include "ArdaARDGExamplePch.h"
+#include "Graph/DefaultNodes/ArdaGraphOperations.h"
 
 #include "ArdaTerrainRenderer.h"
 #include "ArdaTerrainValidation.h"
-#include "ArdaDependencyGraphNodes.h"
+#include "Graph/DefaultNodes/ArdaDependencyGraphNodes.h"
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 
@@ -60,7 +62,6 @@ namespace arda
 		FArdaRHITextureRef mColor;
 		FArdaDependencyGraph mGraph;
 		eastl::shared_ptr<FArdaTerrainFrameInputs> mInputs = eastl::make_shared<FArdaTerrainFrameInputs>();
-		FArdaGraphNodeHandle mVertexReadback, mIndexReadback;
 
 		explicit FArdaFrameGraph(FArdaRHIDeviceRef Device)
 		    : mGraph(eastl::move(Device))
@@ -78,128 +79,69 @@ namespace arda
 
 	bool FArdaTerrainRenderer::CreateFrameGraph(const FArdaRHITextureRef& Color, uint32_t Width, uint32_t Height)
 	{
-		auto Frame = std::make_unique<FArdaFrameGraph>(mDevice);
-		Frame->mColor = Color;
+		const auto Existing = std::find_if(mFrameGraphs.begin(),
+		    mFrameGraphs.end(),
+		    [&](const auto& Cached)
+		    {
+			    return Cached->mColor == Color;
+		    });
+		std::unique_ptr<FArdaFrameGraph> Created;
+		FArdaFrameGraph* Frame = nullptr;
+		if (Existing == mFrameGraphs.end())
+		{
+			Created = std::make_unique<FArdaFrameGraph>(mDevice);
+			Created->mColor = Color;
+			Frame = Created.get();
+		}
+		else
+		{
+			Frame = Existing->get();
+		}
 		auto& Graph = Frame->mGraph;
-		auto Status = Graph.BeginGraphEdit();
+		FArdaGraphEdit Edit(Graph);
+		auto Status = Edit.GetStatus();
 		if (!Status)
 		{
 			mError = Status.mMessage;
 			return false;
 		}
 
-		// Keep only logical resource handles while node declarations create intermediate storage.
-		struct FArdaTerrainGraphResources
-		{
-			FArdaDependencyResourceHandle mSettingsUpload;
-			FArdaDependencyResourceHandle mSettings;
-			FArdaDependencyResourceHandle mCamera;
-			FArdaDependencyResourceHandle mRawHeightmap;
-			FArdaDependencyResourceHandle mHeightmap;
-			FArdaDependencyResourceHandle mVertices;
-			FArdaDependencyResourceHandle mIndices;
-			FArdaDependencyResourceHandle mSceneColor;
-			FArdaDependencyResourceHandle mColor;
-			FArdaDependencyResourceHandle mDepth;
-		} P;
-
-		auto Save = [this](auto Result, auto& Destination)
-		{
-			if (!Result)
-			{
-				mError = Result.mStatus.mMessage;
-				return false;
-			}
-			Destination = eastl::move(Result.mValue);
-			return true;
-		};
-		if (!Save(Graph.ImportTexture("Swap-chain color", Color), P.mColor))
-		{
-			return false;
-		}
-
-		// Attach uploads and compute operations, forwarding each named output to its consumer.
-		FArdaGraphNodeHandle Node;
-		if (!Save(Graph.AttachOrFind<FArdaTerrainUploadSettingsNode>("Upload settings bytes", {{}, Frame->mInputs}),
-		        Node))
-		{
-			return false;
-		}
-		P.mSettingsUpload = Graph.FindOutput(Node, "Destination");
-		if (!Save(Graph.AttachOrFind<FArdaGraphCopyNode>("Copy settings",
-		              {P.mSettingsUpload, {}, sizeof(FArdaTerrainSettings)}),
-		        Node))
-		{
-			return false;
-		}
-		P.mSettings = Graph.FindOutput(Node, "Destination");
-		if (!Save(Graph.AttachOrFind<FArdaTerrainUploadCameraNode>("Upload camera", {{}, Frame->mInputs}), Node))
-		{
-			return false;
-		}
-		P.mCamera = Graph.FindOutput(Node, "Destination");
-		if (!Save(Graph.AttachOrFind<FArdaTerrainGenerateNode>("Generate heightmap", {P.mSettings}), Node))
-		{
-			return false;
-		}
-		P.mRawHeightmap = Graph.FindOutput(Node, "Heightmap");
-		if (!Save(Graph.AttachOrFind<FArdaTerrainErodeNode>("Erode heightmap", {P.mRawHeightmap}), Node))
-		{
-			return false;
-		}
-		P.mHeightmap = Graph.FindOutput(Node, "Heightmap");
-		if (!Save(Graph.AttachOrFind<FArdaTerrainTriangulateNode>("Triangulate terrain", {P.mHeightmap}), Node))
-		{
-			return false;
-		}
-
-		// Feed generated geometry into rasterization, then composite onto the imported back buffer.
-		P.mVertices = Graph.FindOutput(Node, "Vertices");
-		P.mIndices = Graph.FindOutput(Node, "Indices");
-		if (!Save(Graph.AttachOrFind<FArdaTerrainDrawNode>("Draw terrain",
-		              {P.mHeightmap,
-		                  P.mVertices,
-		                  P.mIndices,
-		                  P.mCamera,
-		                  {},
-		                  {},
-		                  Width,
-		                  Height,
-		                  Color->GetDesc().mFormat}),
-		        Node))
-		{
-			return false;
-		}
-		P.mSceneColor = Graph.FindOutput(Node, "Color");
-		P.mDepth = Graph.FindOutput(Node, "Depth");
-		if (!Save(Graph.AttachOrFind<FArdaTerrainOverlayNode>("Composite overlay",
-		              {P.mSceneColor, P.mColor, Width, Height}),
-		        Node))
-		{
-			return false;
-		}
-
+		// Each operation returns the typed resources consumed by subsequent operations.
+		const auto ColorTarget = BindTexture(Edit, Color, "Swap-chain color");
+		const auto SettingsUpload =
+		    TerrainUploadSettings(Edit, {{}, Frame->mInputs}, "Upload settings bytes").GetBuffer();
+		const auto Settings = Clone(Edit, SettingsUpload);
+		const auto Camera = TerrainUploadCamera(Edit, {{}, Frame->mInputs}, "Upload camera").GetBuffer();
+		const auto RawHeightmap = TerrainGenerate(Edit, {Settings}, "Generate heightmap").GetTexture("Heightmap");
+		const auto Heightmap = TerrainErode(Edit, {RawHeightmap}, "Erode heightmap").GetTexture("Heightmap");
+		const auto Mesh = TerrainTriangulate(Edit, {Heightmap}, "Triangulate terrain");
+		const auto Vertices = Mesh.GetBuffer("Vertices");
+		const auto Indices = Mesh.GetBuffer("Indices");
+		const auto Scene = TerrainDraw(Edit,
+		    {Heightmap, Vertices, Indices, Camera, {}, {}, Width, Height, Color->GetDesc().mFormat},
+		    "Draw terrain");
+		TerrainOverlay(Edit, {Scene.GetTexture("Color"), ColorTarget, Width, Height}, "Composite overlay");
 		if (mbVerifyTerrain && !mbTerrainReadbackValidated)
 		{
-			if (!Save(Graph.AttachOrFind<FArdaGraphReadbackNode>("Validate vertices",
-			              FArdaGraphReadbackParameters{P.mVertices, Frame->mInputs->mVertexReadback}),
-			        Frame->mVertexReadback) ||
-			    !Save(Graph.AttachOrFind<FArdaGraphReadbackNode>("Validate indices",
-			              FArdaGraphReadbackParameters{P.mIndices, Frame->mInputs->mIndexReadback}),
-			        Frame->mIndexReadback))
-			{
-				return false;
-			}
+			ReadbackNode(Edit, {Vertices, Frame->mInputs->mVertexReadback}, "Validate vertices");
+			ReadbackNode(Edit, {Indices, Frame->mInputs->mIndexReadback}, "Validate indices");
 		}
 
 		// Compile the completed dependency graph before publishing it in the frame cache.
-		Status = Graph.EndGraphEdit();
+		Status = Edit.Commit();
+		if (Status)
+		{
+			Status = Graph.Compile();
+		}
 		if (!Status)
 		{
 			mError = Status.mMessage;
 			return false;
 		}
-		mFrameGraphs.push_back(std::move(Frame));
+		if (Created)
+		{
+			mFrameGraphs.push_back(std::move(Created));
+		}
 		return true;
 	}
 
@@ -294,27 +236,13 @@ namespace arda
 				return false;
 			}
 			mbTerrainReadbackValidated = true;
-			// Validation is a one-time diagnostic. Remove its nodes transactionally before replay.
-			auto Status = Frame->mGraph.BeginGraphEdit();
-			if (Status)
-			{
-				Status = Frame->mGraph.RemoveNode(Frame->mVertexReadback);
-			}
-			if (Status)
-			{
-				Status = Frame->mGraph.RemoveNode(Frame->mIndexReadback);
-			}
-			if (Status)
-			{
-				Status = Frame->mGraph.EndGraphEdit();
-			}
-			if (!Status)
-			{
-				mError = Status.mMessage;
-				return false;
-			}
+			// The next construction omits the completed diagnostic operations.
 			Frame->mInputs->mVertexReadback->clear();
 			Frame->mInputs->mIndexReadback->clear();
+			if (!CreateFrameGraph(Color, width, height))
+			{
+				return false;
+			}
 		}
 		if (!Result.mSubmittedCommandListCount)
 		{

@@ -1,7 +1,8 @@
 #include "ArdaRHITestPch.h"
+#include "Graph/DefaultNodes/ArdaGraphOperations.h"
 
 #include "ArdaTriangleRenderer.h"
-#include "ArdaDependencyGraphNodes.h"
+#include "Graph/DefaultNodes/ArdaDependencyGraphNodes.h"
 
 namespace arda
 {
@@ -9,9 +10,6 @@ namespace arda
 	{
 		FArdaRHITextureRef mColor;
 		FArdaDependencyGraph mGraph;
-		FArdaTriangleDrawParameters mDrawParameters;
-		FArdaGraphNodeHandle mVertexUpload;
-		FArdaGraphNodeHandle mIndexUpload;
 
 		explicit FArdaFrameGraph(FArdaRHIDeviceRef Device)
 		    : mGraph(eastl::move(Device))
@@ -95,7 +93,8 @@ namespace arda
 			auto Created = std::make_unique<FArdaFrameGraph>(mDevice);
 			Created->mColor = colorAttachment.mTexture;
 			auto& Graph = Created->mGraph;
-			auto Status = Graph.BeginGraphEdit();
+			FArdaGraphEdit Edit(Graph);
+			auto Status = Edit.GetStatus();
 			if (!Status)
 			{
 				mError = Status.mMessage;
@@ -103,37 +102,43 @@ namespace arda
 			}
 
 			// Wire imported geometry and the acquired color target into the registered draw node.
-			auto Color = Graph.ImportTexture("Swap-chain color", Created->mColor);
-			auto V = Graph.ImportBuffer("Triangle vertices", mVertexBuffer);
-			auto I = Graph.ImportBuffer("Triangle indices", mIndexBuffer);
+			auto Color = BindTexture(Edit, Created->mColor, "Swap-chain color");
+			auto V = BindBuffer(Edit, mVertexBuffer, "Triangle vertices");
+			auto I = BindBuffer(Edit, mIndexBuffer, "Triangle indices");
 			if (!Color || !V || !I)
 			{
 				mError = "Unable to import triangle frame resources.";
 				return false;
 			}
-			Created->mDrawParameters = {V.mValue, I.mValue, Color.mValue, swapChain.GetWidth(), swapChain.GetHeight()};
-			auto Draw = Graph.AttachOrFind<FArdaTriangleDrawNode>("Render triangle", Created->mDrawParameters);
+			FArdaTriangleDrawParameters DrawParameters = {V.GetHandle(),
+			    I.GetHandle(),
+			    Color.GetHandle(),
+			    swapChain.GetWidth(),
+			    swapChain.GetHeight()};
+			auto Draw = TriangleDraw(Edit, DrawParameters, "Render triangle");
 			if (!Draw)
 			{
-				mError = Draw.mStatus.mMessage;
+				mError = Edit.GetStatus().mMessage;
 				return false;
 			}
 			if (!mbGeometryUploaded)
 			{
-				// Attach independent uploads after their consumer. ArdaInductor orders them before drawing.
-				auto Vertices = Graph.AttachOrFind<FArdaTriangleVertexUploadNode>("Upload vertices", {V.mValue});
-				auto Indices = Graph.AttachOrFind<FArdaTriangleIndexUploadNode>("Upload indices", {I.mValue});
+				// Record independent uploads after their consumer. ArdaInductor orders them before drawing.
+				auto Vertices = TriangleVertexUpload(Edit, {V.GetHandle()}, "Upload vertices");
+				auto Indices = TriangleIndexUpload(Edit, {I.GetHandle()}, "Upload indices");
 				if (!Vertices || !Indices)
 				{
-					mError = !Vertices ? Vertices.mStatus.mMessage : Indices.mStatus.mMessage;
+					mError = Edit.GetStatus().mMessage;
 					return false;
 				}
-				Created->mVertexUpload = Vertices.mValue;
-				Created->mIndexUpload = Indices.mValue;
 			}
 
 			// Compile the graph before adding the new frame to the replay cache.
-			Status = Graph.EndGraphEdit();
+			Status = Edit.Commit();
+			if (Status)
+			{
+				Status = Graph.Compile();
+			}
 			if (!Status)
 			{
 				mError = Status.mMessage;
@@ -143,7 +148,7 @@ namespace arda
 			mFrameGraphs.push_back(std::move(Created));
 		}
 
-		// Execute compiled work before presenting or removing completed one-time operations.
+		// Execute compiled work before presenting and recording the next revision.
 		swapChain.PrepareSubmit();
 		const auto Result = Frame->mGraph.Execute();
 		if (!Result.mStatus)
@@ -154,27 +159,19 @@ namespace arda
 
 		if (!mbGeometryUploaded)
 		{
-			// Retire one-time uploads after successful execution. Removing a producer cascades to
-			// its draw consumer, so reattach that draw using the now-initialized imported buffers.
+			// Describe the next revision using the geometry initialized by the first execution.
 			auto& Graph = Frame->mGraph;
-			auto Status = Graph.BeginGraphEdit();
+			FArdaGraphEdit Edit(Graph);
+			const auto Color = BindTexture(Edit, Frame->mColor, "Swap-chain color");
+			const auto Vertices = BindBuffer(Edit, mVertexBuffer, "Triangle vertices");
+			const auto Indices = BindBuffer(Edit, mIndexBuffer, "Triangle indices");
+			TriangleDraw(Edit,
+			    {Vertices, Indices, Color, swapChain.GetWidth(), swapChain.GetHeight()},
+			    "Render triangle");
+			auto Status = Edit.Commit();
 			if (Status)
 			{
-				Status = Graph.RemoveNode(Frame->mVertexUpload);
-			}
-			if (Status)
-			{
-				Status = Graph.RemoveNode(Frame->mIndexUpload);
-			}
-			if (Status)
-			{
-				Status = Graph.AttachOrFind<FArdaTriangleDrawNode>("Render triangle", Frame->mDrawParameters).mStatus;
-			}
-			if (Status)
-			{
-
-				// Compile the graph before adding the new frame to the replay cache.
-				Status = Graph.EndGraphEdit();
+				Status = Graph.Compile();
 			}
 			if (!Status)
 			{

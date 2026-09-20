@@ -15,9 +15,11 @@ base owns registration, attachment and weak device-state caching. The trace node
 uses separate per-instance state for its mutable shader table.
 For example, [the trace node](Private/Nodes/ArdaCornellTraceNode.cpp) owns the ray
 exports, layouts and shader-table cache. HLSL sources live in `Private/Nodes/Shaders`.
-The renderer imports resources and attaches classes directly with
-`Graph.AttachOrFind<FArdaCornellTraceNode>(Name, Parameters)`; it does not initialize
-a node library. See the [shared example layout](../README.md).
+The renderer binds resources through an `FArdaGraphEdit` scope and invokes
+`CornellTrace(Edit, Parameters, Name)`; it does not initialize a node library.
+The header declares the global callable with
+`ARDA_DECLARE_GRAPH_NODE(FArdaCornellTraceNode, CornellTrace);` and the implementation
+defines it once with `ARDA_DEFINE_GRAPH_NODE`. See the [shared example layout](../README.md).
 
 The setup sequence is:
 
@@ -52,7 +54,7 @@ frame graph so its radiance buffer has the required capacity.
 
 The frame upload is a Copy node, while TLAS rebuilding, ray dispatch, sample reduction, and
 presentation each have their own node. The renderer attaches presentation before
-its producers and lets `EndGraphEdit` compile the dependency order.
+its producers, queues the edit with `Edit.Commit()`, and lets `Compile()` resolve the dependency order.
 
 Ray nodes declare reads of both the TLAS and its BLAS. Acceleration-structure access
 currently stays on the graphics queue, which also executes the associated compute

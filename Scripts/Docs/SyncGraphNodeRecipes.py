@@ -3,6 +3,7 @@ from pathlib import Path
 import argparse
 import html
 import re
+import textwrap
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCS = ROOT / "Docs/ArdaRDG"
@@ -22,7 +23,7 @@ REFERENCES = [
     "Source/ArdaTests/Examples/CornellBox/Private/Nodes/ArdaCornellNodeInternal.h",
     "Source/ArdaTests/Examples/CornellBox/Private/ArdaCornellBoxPch.h",
     "Source/ArdaTests/Examples/CornellBox/Private/Nodes/Shaders/CornellPathTracer.hlsl",
-    "Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorGpuTests.cpp",
+    "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorGpuTests.cpp",
 ]
 
 def main():
@@ -53,7 +54,33 @@ def main():
             p.read_text(encoding="utf-8").strip()
         ) + "</code></pre></details>"
     text = re.sub(r"<details><summary>([^<]+)</summary>.*?</details>", refresh, text, flags=re.S)
+    assembly = (DOCS / "Examples/AssembleNodes.cpp").read_text(encoding="utf-8")
+    for category in ("compute", "mesh", "raster", "work"):
+        excerpt = assembly.split("// BEGIN " + category + "-assembly", 1)[1].split(
+            "// END " + category + "-assembly", 1
+        )[0]
+        excerpt = textwrap.dedent(excerpt).strip()
+        text, count = re.subn(
+            r'(<section id="' + category + r'">.*?<pre><code>)FArdaRHIStatus Run\w+Recipe\(.*?</code></pre>',
+            lambda match: match[1] + html.escape(excerpt) + "</code></pre>",
+            text, count=1, flags=re.S,
+        )
+        if count != 1:
+            raise SystemExit("Missing assembly recipe excerpt: " + category)
     outputs[chapter] = text
+    # The renderer guide presents the same tested compute assembly as the node recipes.
+    quick_guide = DOCS / "quick-guide.html"
+    compute = assembly.split("// BEGIN compute-assembly", 1)[1].split(
+        "// END compute-assembly", 1
+    )[0]
+    quick_text, count = re.subn(
+        r'(<section id="integrated-frame">.*?<pre><code>)FArdaRHIStatus RunComputeRecipe\(.*?</code></pre>',
+        lambda match: match[1] + html.escape(textwrap.dedent(compute).strip()) + "</code></pre>",
+        quick_guide.read_text(encoding="utf-8"), count=1, flags=re.S,
+    )
+    if count != 1:
+        raise SystemExit("Missing renderer guide compute excerpt")
+    outputs[quick_guide] = quick_text
     stale = []
     for p, content in outputs.items():
         if not p.exists() or p.read_text(encoding="utf-8") != content:

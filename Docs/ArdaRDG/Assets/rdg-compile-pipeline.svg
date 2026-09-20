@@ -1,35 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-<title id="title">ArdaInductor compilation</title><desc id="desc">A deterministic semantic graph becomes a feasible native program.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+<title id="title">Two rule lists, one publication boundary</title>
+<desc id="desc">Preprocess rules change a private graph snapshot. Compile rules transform a result: changing node order invalidates the allocation and dispatch products that follow it. Validation publishes only complete, consistent output. Native allocation and timeline values are deferred to submission.</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker></defs>
-<rect width="1200" height="620" rx="20" fill="#0b1424"/>
-<g font-family="system-ui,sans-serif"><text x="40" y="57" fill="#eef6ff" font-size="29" font-weight="700">ArdaInductor compilation</text>
-<text x="40" y="96" fill="#b7cbe1" font-size="16">A deterministic semantic graph becomes a feasible native program.</text>
-<rect x="40" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
-<text x="60" y="198" fill="#7dd3fc" font-size="14">01</text>
-<text x="60" y="239" fill="#eef6ff" font-size="19" font-weight="700">Resolve semantics</text>
-<text x="60" y="280" fill="#c4d3e5" font-size="15">Validate handles/ranges</text>
-<text x="60" y="312" fill="#c4d3e5" font-size="15">One producer per value</text>
-<text x="60" y="344" fill="#c4d3e5" font-size="15">Reject dependency cycles</text>
-<path d="M294 274H322" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="330" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
-<text x="350" y="198" fill="#7dd3fc" font-size="14">02</text>
-<text x="350" y="239" fill="#eef6ff" font-size="19" font-weight="700">Cull and infer</text>
-<text x="350" y="280" fill="#c4d3e5" font-size="15">Trace observable roots</text>
-<text x="350" y="312" fill="#c4d3e5" font-size="15">Resolve shader ancestry</text>
-<text x="350" y="344" fill="#c4d3e5" font-size="15">Assign pipeline slots</text>
-<path d="M584 274H612" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="620" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
-<text x="640" y="198" fill="#7dd3fc" font-size="14">03</text>
-<text x="640" y="239" fill="#eef6ff" font-size="19" font-weight="700">Search plans</text>
-<text x="640" y="280" fill="#c4d3e5" font-size="15">Choose legal queues</text>
-<text x="640" y="312" fill="#c4d3e5" font-size="15">Group CUDA operations</text>
-<text x="640" y="344" fill="#c4d3e5" font-size="15">Evaluate cost and VRAM</text>
-<path d="M874 274H902" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="910" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
-<text x="930" y="198" fill="#7dd3fc" font-size="14">04</text>
-<text x="930" y="239" fill="#eef6ff" font-size="19" font-weight="700">Materialize plan</text>
-<text x="930" y="280" fill="#c4d3e5" font-size="15">Allocate frame pools</text>
-<text x="930" y="312" fill="#c4d3e5" font-size="15">Build barriers and waits</text>
-<text x="930" y="344" fill="#c4d3e5" font-size="15">Publish compile revision</text>
-<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">Bounded search retains its best feasible incumbent; exhaustive search evaluates every legal order.</text><text x="62" y="518" fill="#abc4dc" font-size="16">The result describes the implemented cost/allocation model, not a guarantee of fastest hardware time.</text></g></svg>
+<rect width="1200" height="630" rx="20" fill="#0b1424"/>
+<g font-family="system-ui,sans-serif" fill="#eef6ff">
+<text x="36" y="48" font-size="28" font-weight="700">Two rule lists, one publication boundary</text>
+<text x="36" y="82" font-size="17" fill="#b7cbe1">Each arrow carries graph or result data. Dashed arrow means downstream data must be rebuilt.</text>
+<g fill="#172a43" stroke="#5cb8df" stroke-width="2">
+<rect x="36" y="116" width="240" height="135" rx="12"/>
+<rect x="326" y="116" width="430" height="135" rx="12"/>
+<rect x="806" y="116" width="358" height="135" rx="12"/>
+<rect x="36" y="319" width="230" height="128" rx="12"/>
+<rect x="316" y="319" width="230" height="128" rx="12"/>
+<rect x="596" y="319" width="280" height="128" rx="12"/>
+<rect x="926" y="319" width="238" height="128" rx="12"/>
+</g>
+<g font-size="19" font-weight="700">
+<text x="54" y="151">Authored construction</text><text x="344" y="151">Preprocess rule instances</text><text x="824" y="151">Read-only working graph</text>
+<text x="54" y="353">Flatten / refine order</text><text x="334" y="353">Allocation plan</text><text x="614" y="353">Dispatches / fences</text><text x="944" y="353">Validate and publish</text>
+</g>
+<g font-size="16" fill="#c4d3e5">
+<text x="54" y="184">Saved before preprocessing</text><text x="54" y="214">Reused by forced compile</text>
+<text x="344" y="184">Apply mutable graph transformations in order</text><text x="344" y="214">Example: accesses → hazards → cycle check</text>
+<text x="824" y="184">No publication of partial edits</text><text x="824" y="214">Input shared by every compile rule</text>
+<text x="54" y="388">A B read-A read-B</text><text x="54" y="418">→ A read-A B read-B</text>
+<text x="334" y="388">Reuse compatible bytes</text><text x="334" y="418">Add alias ordering edges</text>
+<text x="614" y="388">Per-queue / stream order</text><text x="614" y="418">Cross-domain waits</text>
+<text x="944" y="388">Accepted logical plan</text><text x="944" y="418">Failure discards candidate</text>
+</g>
+<g fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)">
+<path d="M280 184H320"/><path d="M760 184H800"/>
+<path d="M985 255V282H151V313"/>
+<path d="M270 385H310"/><path d="M550 385H590"/><path d="M880 385H920"/>
+<path d="M151 450V490H736V451" stroke-dasharray="7 5"/>
+</g>
+<text x="316" y="306" font-size="17" fill="#7dd3fc">Compile rule instances refine one result; the sequence below illustrates data dependencies.</text>
+<text x="36" y="522" font-size="17" fill="#f7d794">Reorder again? Rebuild allocation, queue assignment, batches, dispatches and synchronization.</text>
+<rect x="36" y="546" width="1128" height="58" rx="10" fill="#152637"/>
+<text x="54" y="581" font-size="17">First Submit creates native resources and timeline values. Later frames reuse the accepted execution plan.</text>
+</g></svg>

@@ -3,6 +3,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaTriangleIndexUploadNode, TriangleIndexUpload);
+
 	FArdaDependencyNodeMetadata FArdaTriangleIndexUploadNode::GetMetadata()
 	{
 		return {"example.triangle.indexupload", 1};

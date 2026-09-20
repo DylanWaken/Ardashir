@@ -17,7 +17,7 @@ class HeaderOrderingTest(unittest.TestCase):
                     "RHI/Config/ArdaConfig.h", "RHI/CUDA/ArdaKernel.cuh",
                     "RHI/Context/ArdaContext.h", "ArdaBackend.h",
                 )),
-                (rdg_specs, "Source/ArdaInfra/ArdaRenderGraph/Public", (
+                (rdg_specs, "Source/ArdaInfra/ArdaDependencyGraph/Public", (
                     "ArdaGraph.h", "ArdaGPU.h", "ArdaGraph/ArdaNode.h",
                 )),
             )
@@ -41,6 +41,27 @@ class HeaderOrderingTest(unittest.TestCase):
 
 
 class MacroExtractionTest(unittest.TestCase):
+    def test_named_node_callable_is_a_constant_with_its_own_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Node.h").write_text(
+                "namespace arda {\n"
+                "class FArdaDemoNode {};\n"
+                "/** Records one demo operation through the registered node. */\n"
+                "ARDA_DECLARE_GRAPH_NODE(\n"
+                "    FArdaDemoNode, DemoOperation);\n"
+                "}\n", encoding="utf-8")
+            symbols = make_symbols(root, [("Node.h", "arda", "core")], "test")
+            callables = [item for item in symbols if item["name"] == "DemoOperation"]
+            self.assertEqual(len(callables), 1)
+            operation = callables[0]
+            self.assertEqual(operation["kind"], "constant")
+            self.assertEqual(operation["qualifiedName"], "arda::DemoOperation")
+            self.assertEqual(operation["signature"], "extern const FArdaDemoNode DemoOperation")
+            self.assertEqual(operation["sourceLine"], 4)
+            self.assertEqual(operation["summary"], "Records one demo operation through the registered node.")
+            self.assertFalse(any(item["kind"] == "function" for item in symbols))
+
     def test_continuation_bodies_do_not_consume_adjacent_macro_contracts(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

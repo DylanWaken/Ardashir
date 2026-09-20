@@ -8,7 +8,7 @@ on:
       - "Docs/**"
       - "Skills/document-codebase/**"
       - "Source/ArdaInfra/ArdaBackend/Public/**"
-      - "Source/ArdaInfra/ArdaRenderGraph/Public/**"
+      - "Source/ArdaInfra/ArdaDependencyGraph/Public/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 

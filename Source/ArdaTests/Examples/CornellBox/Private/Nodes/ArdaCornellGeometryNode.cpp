@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaCornellGeometryNode, CornellGeometry);
+
 	class FArdaGenerateCornellGeometryShader final : public arda::FArdaGlobalShader
 	{
 	public:

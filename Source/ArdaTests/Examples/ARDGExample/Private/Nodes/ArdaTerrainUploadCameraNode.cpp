@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaTerrainUploadCameraNode, TerrainUploadCamera);
+
 	FArdaRHIStatus FArdaTerrainUploadCameraNode::DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P)
 	{
 		FArdaRHIBufferDesc D;

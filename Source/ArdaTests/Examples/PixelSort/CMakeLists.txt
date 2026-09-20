@@ -33,7 +33,7 @@ target_include_directories(PixelSort PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Public
 target_compile_features(PixelSort PRIVATE cxx_std_17)
 target_compile_definitions(PixelSort PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 target_link_libraries(PixelSort PRIVATE
-    ArdaExampleNodes Ardashir::ArdaBackend Ardashir::ArdaRenderGraph PixelSortKernels user32 ole32 windowscodecs)
+    ArdaExampleNodes Ardashir::ArdaBackend Ardashir::ArdaDependencyGraph PixelSortKernels user32 ole32 windowscodecs)
 if(ARDASHIR_BACKEND_VULKAN)
     # Headers describe the Win32 surface ABI. PixelSortWindow loads the system's
     # Vulkan loader dynamically, so the application does not link a loader library.

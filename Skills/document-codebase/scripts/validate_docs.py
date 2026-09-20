@@ -125,25 +125,13 @@ MODULES = (
         ),
     ),
     ModuleConfig(
-        name="ArdaRenderGraph",
-        source_public_root="Source/ArdaInfra/ArdaRenderGraph/Public",
+        name="ArdaDependencyGraph",
+        source_public_root="Source/ArdaInfra/ArdaDependencyGraph/Public",
         docs_root="ArdaRDG",
         api_js_path="assets/arda-rdg-api.js",
         api_global="ArdaRDGApi",
-        required_public_headers=(
-            "ArdaDependencyGraph.h",
-            "ArdaDependencyNode.h",
-            "ArdaDependencyKey.h",
-            "ArdaDependencyRequirements.h",
-            "ArdaDependencyGraphCuda.h",
-            "ArdaDependencyGraphExecution.h",
-            "ArdaDependencyGraphNodes.h",
-            "ArdaDependencyGraphNodeLibrary.h",
-            "ArdaMemoryAccelerationStructureNodes.h",
-            "ArdaMemoryNodes.h",
-            "ArdaMemoryTextureNodes.h",
-            "ArdaInductorPipeline.h",
-            "ArdaRenderGraph.h",
+        include_only_umbrellas=(
+            "Source/ArdaInfra/ArdaDependencyGraph/Public/ArdaDependencyGraph.h",
         ),
     ),
 )
@@ -1227,6 +1215,16 @@ class Validator:
                 text = re.sub(r"\bprotected:", "public:   ", text)
             text = self.mask_cpp_implementation(text)
             text = self.mask_template_parameters(text)
+            # Node declaration macros publish an extern const callable object.
+            # Keep its source position at the macro so its adjacent contract survives.
+            for match in re.finditer(
+                r"\bARDA_DECLARE_GRAPH_NODE\s*\(\s*[A-Za-z_]\w*(?:::\w+)*\s*,"
+                r"\s*([A-Za-z_]\w*)\s*\)", text
+            ):
+                records.append((
+                    match.group(1), header,
+                    text.count("\n", 0, match.start()) + 1, "constant",
+                ))
             for match in re.finditer(
                 r"\b(?:enum\s+class|enum|struct|class)\s+([A-Za-z_]\w*)"
                 r"(?=[^;{}]*\{)",

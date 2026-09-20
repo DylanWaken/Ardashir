@@ -24,7 +24,7 @@ target_precompile_headers(CornellBox PRIVATE Private/ArdaCornellBoxPch.h)
 target_link_libraries(CornellBox PRIVATE
     ArdaExampleNodes
     Ardashir::ArdaBackend
-    Ardashir::ArdaRenderGraph
+    Ardashir::ArdaDependencyGraph
     glfw
 )
 

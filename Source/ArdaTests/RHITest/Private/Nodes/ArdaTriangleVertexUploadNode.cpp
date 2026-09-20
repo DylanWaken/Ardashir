@@ -3,6 +3,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaTriangleVertexUploadNode, TriangleVertexUpload);
+
 	FArdaDependencyNodeMetadata FArdaTriangleVertexUploadNode::GetMetadata()
 	{
 		return {"example.triangle.vertexupload", 1};

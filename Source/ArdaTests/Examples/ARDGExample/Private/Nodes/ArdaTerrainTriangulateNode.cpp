@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaTerrainTriangulateNode, TerrainTriangulate);
+
 	class FArdaTriangulateTerrainShader final : public arda::FArdaGlobalShader
 	{
 	public:

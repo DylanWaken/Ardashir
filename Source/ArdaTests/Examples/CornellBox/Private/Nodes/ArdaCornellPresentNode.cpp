@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaCornellPresentNode, CornellPresent);
+
 	class FArdaCornellPresentVertexShader final : public arda::FArdaGlobalShader
 	{
 	public:

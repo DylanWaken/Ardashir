@@ -3,6 +3,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaRasterTriangleNode, RasterTriangle);
+
 	class FArdaRecipeRasterVertexShader final : public FArdaGlobalShader
 	{
 	public:

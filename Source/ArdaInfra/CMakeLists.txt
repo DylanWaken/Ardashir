@@ -4,4 +4,4 @@ add_subdirectory(ArdaBackendImpls)
 ardashir_finalize_backend_modules()
 
 add_subdirectory(ArdaGraph)
-add_subdirectory(ArdaRenderGraph)
+add_subdirectory(ArdaDependencyGraph)

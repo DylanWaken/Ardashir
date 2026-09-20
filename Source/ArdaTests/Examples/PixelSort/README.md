@@ -5,7 +5,7 @@ graphics draw → swap-chain presentation. The palette combines ink, indigo,
 lavender and coral. Resize the window to change sorting direction and kernel
 selection while the noise keeps evolving.
 
-The example links **ArdaBackend**, **ArdaRenderGraph**, and its own
+The example links **ArdaBackend**, **ArdaDependencyGraph**, and its own
 **PixelSortKernels** target. It uses native Win32 for the window, WIC for optional
 PNG captures, and Vulkan headers for surface creation. Build it through the
 repository's root CMake project.
@@ -21,15 +21,17 @@ repository's root CMake project.
    layout and pipeline settings; the [sort node](Private/Nodes/ArdaPixelSortSortNode.cpp)
    owns its CUDA operand. Shared shader-file loading is only a private utility.
    Graph parameters retain prepared device state; the renderer needs no library
-   initialization and attaches classes through `Graph.AttachOrFind<Node>(...)`.
+   initialization and invokes exported callables such as `PixelSortSort(Edit, Parameters)`.
+   Each header declares its callable with `ARDA_DECLARE_GRAPH_NODE`; its `.cpp`
+   supplies the matching `ARDA_DEFINE_GRAPH_NODE` exactly once.
 3. [ArdaPixelSortOperand.h](Public/Nodes/ArdaPixelSortOperand.h) and
    [ArdaPixelSortOperand.cpp](Private/Nodes/ArdaPixelSortOperand.cpp) define the CUDA
    parameter schema, bind compiled entries, and select a launch configuration.
 4. [ArdaPixelSortKernels.cu](Private/Nodes/ArdaPixelSortKernels.cu) implements the
    compiled radix variants. [ArdaPixelSort.hlsl](Private/Nodes/Shaders/ArdaPixelSort.hlsl)
    supplies the graphics producer and presentation stages.
-5. [PixelSortRenderer.cpp](PixelSortRenderer.cpp) creates/imports graph resources,
-   attaches registered nodes, updates frame inputs, submits, and presents. It also
+5. [PixelSortRenderer.cpp](PixelSortRenderer.cpp) allocates/binds typed graph resources through
+   `FArdaGraphEdit`, invokes operations, updates frame inputs, submits, and presents. It also
    owns the independent CPU sort oracle and PNG output.
 6. [PixelSortMain.cpp](PixelSortMain.cpp) and [PixelSortWindow.cpp](PixelSortWindow.cpp)
    connect the backend to the native window and release graph references before resize.

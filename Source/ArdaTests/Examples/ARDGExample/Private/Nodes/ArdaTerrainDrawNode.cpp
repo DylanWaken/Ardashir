@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaTerrainDrawNode, TerrainDraw);
+
 	class FArdaTerrainVertexShader final : public arda::FArdaGlobalShader
 	{
 	public:

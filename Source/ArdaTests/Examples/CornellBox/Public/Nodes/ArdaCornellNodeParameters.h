@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ArdaDependencyNode.h"
+#include "Graph/Node/ArdaDependencyNode.h"
 #include <EASTL/vector.h>
 #include <EASTL/array.h>
 

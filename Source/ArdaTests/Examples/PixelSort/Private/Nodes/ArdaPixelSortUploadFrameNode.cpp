@@ -3,6 +3,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaPixelSortUploadFrameNode, PixelSortUploadFrame);
+
 	struct FArdaPixelSortConstants
 	{
 		uint32_t mWidth;

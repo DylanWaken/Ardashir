@@ -32,4 +32,4 @@
 <text x="930" y="280" fill="#c4d3e5" font-size="15">D3D12 / Vulkan / CUDA</text>
 <text x="930" y="312" fill="#c4d3e5" font-size="15">Barriers and queue waits</text>
 <text x="930" y="344" fill="#c4d3e5" font-size="15">Completion tickets</text>
-<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">Public graph semantics remain separate from private native recording and allocation.</text><text x="62" y="518" fill="#abc4dc" font-size="16">Repeated frames reuse the compiled plan until a successful edit changes its revision.</text></g></svg>
+<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">Public graph semantics remain separate from private native recording and allocation.</text><text x="62" y="518" fill="#abc4dc" font-size="16">Compile selects a persistent revision; matching frame constructions reuse its plan and runtime.</text></g></svg>

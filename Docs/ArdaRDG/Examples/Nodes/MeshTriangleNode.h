@@ -1,5 +1,5 @@
 #pragma once
-#include "ArdaDependencyNode.h"
+#include "Graph/Node/ArdaDependencyNode.h"
 
 namespace arda
 {
@@ -27,4 +27,6 @@ namespace arda
 		    const FArdaState& State,
 		    FArdaInstanceState& Instance);
 	};
+
+	ARDA_DECLARE_GRAPH_NODE(FArdaMeshTriangleNode, MeshTriangle);
 }

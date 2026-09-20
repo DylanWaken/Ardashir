@@ -1,35 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-<title id="title">Persistent graph lifecycle</title><desc id="desc">A successful edit publishes a plan that can execute many frames.</desc>
+<title id="title">Persistent graph lifecycle</title><desc id="desc">Closed edits form an ordered construction; compilation selects a reusable revision; execution unlocks the next construction.</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker></defs>
 <rect width="1200" height="620" rx="20" fill="#0b1424"/>
 <g font-family="system-ui,sans-serif"><text x="40" y="57" fill="#eef6ff" font-size="29" font-weight="700">Persistent graph lifecycle</text>
-<text x="40" y="96" fill="#b7cbe1" font-size="16">A successful edit publishes a plan that can execute many frames.</text>
+<text x="40" y="96" fill="#b7cbe1" font-size="16">Record each frame afresh; matching constructions reuse cached revisions and prepared execution state.</text>
 <rect x="40" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
 <text x="60" y="198" fill="#7dd3fc" font-size="14">01</text>
-<text x="60" y="239" fill="#eef6ff" font-size="19" font-weight="700">BeginGraphEdit</text>
-<text x="60" y="280" fill="#c4d3e5" font-size="15">Retire pending graph work</text>
+<text x="60" y="239" fill="#eef6ff" font-size="19" font-weight="700">FArdaGraphEdit</text>
+<text x="60" y="280" fill="#c4d3e5" font-size="15">Keep cached revisions intact</text>
 <text x="60" y="312" fill="#c4d3e5" font-size="15">Open a transaction</text>
-<text x="60" y="344" fill="#c4d3e5" font-size="15">Preserve prior snapshot</text>
+<text x="60" y="344" fill="#c4d3e5" font-size="15">Start next construction empty</text>
 <path d="M294 274H322" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="330" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
 <text x="350" y="198" fill="#7dd3fc" font-size="14">02</text>
-<text x="350" y="239" fill="#eef6ff" font-size="19" font-weight="700">Describe and attach</text>
+<text x="350" y="239" fill="#eef6ff" font-size="19" font-weight="700">Record and close edits</text>
 <text x="350" y="280" fill="#c4d3e5" font-size="15">Create or import values</text>
-<text x="350" y="312" fill="#c4d3e5" font-size="15">Attach typed instances</text>
-<text x="350" y="344" fill="#c4d3e5" font-size="15">Connect explicit edges</text>
+<text x="350" y="312" fill="#c4d3e5" font-size="15">Call typed operations</text>
+<text x="350" y="344" fill="#c4d3e5" font-size="15">Commit queues an edit hash</text>
 <path d="M584 274H612" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="620" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
 <text x="640" y="198" fill="#7dd3fc" font-size="14">03</text>
-<text x="640" y="239" fill="#eef6ff" font-size="19" font-weight="700">EndGraphEdit</text>
-<text x="640" y="280" fill="#c4d3e5" font-size="15">Validate and compile</text>
-<text x="640" y="312" fill="#c4d3e5" font-size="15">Publish a new revision</text>
-<text x="640" y="344" fill="#c4d3e5" font-size="15">Retain native resources</text>
+<text x="640" y="239" fill="#eef6ff" font-size="19" font-weight="700">Compile</text>
+<text x="640" y="280" fill="#c4d3e5" font-size="15">Combine ordered edit hashes</text>
+<text x="640" y="312" fill="#c4d3e5" font-size="15">Reuse or compile a revision</text>
+<text x="640" y="344" fill="#c4d3e5" font-size="15">Clear queue and lock edits</text>
 <path d="M874 274H902" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="910" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
 <text x="930" y="198" fill="#7dd3fc" font-size="14">04</text>
 <text x="930" y="239" fill="#eef6ff" font-size="19" font-weight="700">Replay frames</text>
-<text x="930" y="280" fill="#c4d3e5" font-size="15">Submit and Wait</text>
-<text x="930" y="312" fill="#c4d3e5" font-size="15">Or synchronous Execute</text>
-<text x="930" y="344" fill="#c4d3e5" font-size="15">Reuse pipelines and pools</text>
-<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">Compilation failure keeps the edit open for repair. CancelGraphEdit restores the previous graph.</text><text x="62" y="518" fill="#abc4dc" font-size="16">Reopen an edit for topology, shader or resource-shape changes; unchanged frames replay.</text></g></svg>
+<text x="930" y="280" fill="#c4d3e5" font-size="15">Materialize on first Submit</text>
+<text x="930" y="312" fill="#c4d3e5" font-size="15">Submit / Wait or Execute</text>
+<text x="930" y="344" fill="#c4d3e5" font-size="15">Unlock the next construction</text>
+<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">Compilation failure retains queued edits for correction. DiscardPendingEdits abandons that construction.</text><text x="62" y="518" fill="#abc4dc" font-size="16">Compile(true) forces compilation. InvalidatePersistentCache invalidates revision reuse.</text></g></svg>

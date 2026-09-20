@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Author resource dependencies once; compile and execute them across frames.">
-  <title>ArdaRenderGraph | Ardashir</title>
+  <title>ArdaDependencyGraph | Ardashir</title>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
   <script src="../assets/arda-rdg-api.js" defer></script>
@@ -15,7 +15,7 @@
   <header class="site-header">
     <a class="site-brand" href="../index.html">Ardashir Docs</a>
     <nav aria-label="Primary">
-      <a aria-current="page" href="index.html">ArdaRenderGraph</a>
+      <a aria-current="page" href="index.html">ArdaDependencyGraph</a>
       <a href="architecture.html">Architecture</a>
       <a href="quick-guide.html">Quick guide</a>
       <a href="getting-started.html">Get started</a>
@@ -24,8 +24,8 @@
     </nav>
   </header>
   <div class="site-layout">
-    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
-      <h2>ArdaRenderGraph</h2>
+    <aside class="sidebar" aria-label="ArdaDependencyGraph pages">
+      <h2>ArdaDependencyGraph</h2>
       <nav>
         <a aria-current="page" href="index.html">Overview</a>
         <a href="getting-started.html">Getting started</a>
@@ -44,14 +44,14 @@
     <main id="main-content">
       <nav class="breadcrumbs" aria-label="Breadcrumb">
         <a href="../index.html">Docs</a> /
-        ArdaRenderGraph
+        ArdaDependencyGraph
       </nav>
       <article>
 <header class="page-header"><p class="eyebrow">Persistent dependency graphs</p><h1>Persistent render graphs</h1><p>Author resource dependencies once; compile and execute them across frames.</p></header>
 <nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">Learning objectives</a><a href="#fundamentals">A reusable compute and graphics program</a><a href="#lifecycle">Edit, compile, replay</a><a href="#worked-frame">Working examples</a><a href="#invariants">The declaration contract</a><a href="#limitations">Capabilities and limits</a><a href="#prerequisites">Choose a starting point</a><a href="#summary">Chapter summary</a></nav>
 <section id="objectives"><h2>Learning objectives</h2><p>Explain persistent graph ownership, edit boundaries and replay, and choose the appropriate authoring guide.</p></section>
 <section id="fundamentals"><h2>A reusable compute and graphics program</h2><p><code>FArdaDependencyGraph</code> owns named typed nodes, logical resources and an ArdaInductor execution plan. It retains physical resources, inferred pipelines and CUDA executable caches. Regions with one producer allow consumers to be attached first. For repeated writers on an overlapping region, attach writes and intervening reads in their intended order; see <a href="resources.html#accesses">resource ordering</a>.</p><figure><img src="Assets/rdg-system-boundary.svg" alt="Application declarations become an ArdaInductor plan, then native graphics and CUDA work." loading="lazy"><figcaption>Application declarations become an ArdaInductor plan, then native graphics and CUDA work.</figcaption></figure></section>
-<section id="lifecycle"><h2>Edit, compile, replay</h2><p>Open <code>BeginGraphEdit()</code>, create or import resources, attach nodes, then call <code>EndGraphEdit()</code>. Successful compilation publishes a revision. Repeated <code>Execute()</code> calls use that revision. <code>Submit()</code> and frame tickets expose asynchronous completion. Reopen an edit when semantics change.</p><figure><img src="Assets/rdg-lifecycle.svg" alt="Successful edits publish a reusable plan; cancellation restores the previous graph." loading="lazy"><figcaption>Successful edits publish a reusable plan; cancellation restores the previous graph.</figcaption></figure></section>
+<section id="lifecycle"><h2>Edit, compile, replay</h2><p>Open <code>FArdaGraphEdit</code>, record operations on resource variables, then call <code>Edit.Commit()</code> to queue the edit. <code>Graph.Compile()</code> combines ordered edit hashes and selects a cached revision or compiles a logical schedule and memory plan. Successful compilation clears the queue and locks edits. <code>Execute()</code> or <code>Submit()</code> unlocks the next construction; its first ordinary edit starts empty, so omitted operations need no removal. Matching constructions reuse compilation results and prepared runtime, including earlier variants in the bounded revision cache. The first submission materializes native resources. Repeated execution without new edits also remains valid. Use <code>Compile(true)</code> to force compilation and <code>InvalidatePersistentCache()</code> to invalidate reuse.</p><figure><img src="Assets/rdg-lifecycle.svg" alt="Closed edits form a construction; compilation selects a reusable revision; execution unlocks the next construction." loading="lazy"><figcaption>Closed edits form a construction; compilation selects a reusable revision; execution unlocks the next construction.</figcaption></figure></section>
 <section id="worked-frame"><h2>Working examples</h2><p>The triangle renderer (<code>Source/ArdaTests/RHITest/Private/ArdaTriangleRenderer.cpp</code>) assembles vertex upload, index upload and draw nodes in its first graph, then retires the uploads and caches draw graphs per swap-chain image. The terrain renderer (<code>Source/ArdaTests/Examples/ARDGExample/Private/ArdaTerrainRenderer.cpp</code>) assembles separate settings/camera uploads, settings copy, heightmap generation, erosion, triangulation, depth-tested drawing, overlay and optional readback nodes. Intermediate resource values let ArdaInductor infer their execution order even when consumers are attached first. Both release cached backbuffers before resize.</p></section>
 <section id="invariants"><h2>The declaration contract</h2><ul><li>Single-producer regions order readers after their producer. Regions with repeated writes order hazards by original successful attachment order; see <a href="resources.html#worked-example">the write-read-write example</a>.</li><li>Declare every native resource access with state and range.</li><li>Semantic parameters and shader settings stay immutable between edits.</li><li>Imports are retained and restored to their entry state and graphics-queue ownership.</li><li>Check all edit, attachment, execution and completion statuses.</li></ul></section>
 <section id="limitations"><h2>Capabilities and limits</h2><p>Graphics, meshlet, compute, ray-tracing and work-graph pipeline requests depend on backend capabilities. Each node can declare an overridable admission contract; <a href="feature-requirements.html">feature requirements</a> explains early rejection, inferred needs and the remaining native-feature integration gaps. CUDA libraries need declared accesses and the framework stream; capture requires explicit adapter support. Bounded search retains a feasible plan within its work budget. Python tracing and discovery of hidden library accesses are outside this API.</p></section>
@@ -63,6 +63,6 @@
 <span id="boundary" aria-hidden="true"></span><span id="failures" aria-hidden="true"></span><span id="why-deferred" aria-hidden="true"></span></article>
     </main>
   </div>
-  <footer class="site-footer"><p>ArdaRenderGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
+  <footer class="site-footer"><p>ArdaDependencyGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
 </body>
 </html>

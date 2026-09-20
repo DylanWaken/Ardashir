@@ -17,7 +17,7 @@ target_precompile_headers(RHITest PRIVATE Private/ArdaRHITestPch.h)
 target_link_libraries(RHITest PRIVATE
     ArdaExampleNodes
     Ardashir::ArdaBackend
-    Ardashir::ArdaRenderGraph
+    Ardashir::ArdaDependencyGraph
     glfw
 )
 

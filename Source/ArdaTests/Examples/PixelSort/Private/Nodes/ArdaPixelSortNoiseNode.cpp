@@ -3,6 +3,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaPixelSortNoiseNode, PixelSortNoise);
+
 	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPixelSortNoiseShaderParameters)
 		ARDA_SHADER_CONSTANT_BUFFER(mConstants, 0, 0, EArdaRHIShaderStage::Compute)
 		ARDA_SHADER_TEXTURE_UAV(mNoise, 0, 0, EArdaRHIShaderStage::Compute)

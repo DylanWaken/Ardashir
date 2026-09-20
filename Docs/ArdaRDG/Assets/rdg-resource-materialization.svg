@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-<title id="title">Logical values to physical storage</title><desc id="desc">Native allocation requirements and GPU ordering determine reuse.</desc>
+<title id="title">Logical values to physical storage</title><desc id="desc">Compile plans storage; the first Submit acquires native storage for execution.</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker></defs>
 <rect width="1200" height="620" rx="20" fill="#0b1424"/>
 <g font-family="system-ui,sans-serif"><text x="40" y="57" fill="#eef6ff" font-size="29" font-weight="700">Logical values to physical storage</text>
-<text x="40" y="96" fill="#b7cbe1" font-size="16">Native allocation requirements and GPU ordering determine reuse.</text>
+<text x="40" y="96" fill="#b7cbe1" font-size="16">Compile plans storage; the first Submit acquires native storage for execution.</text>
 <rect x="40" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
 <text x="60" y="198" fill="#7dd3fc" font-size="14">01</text>
 <text x="60" y="239" fill="#eef6ff" font-size="19" font-weight="700">Resource declarations</text>
@@ -16,7 +16,7 @@
 <text x="350" y="198" fill="#7dd3fc" font-size="14">02</text>
 <text x="350" y="239" fill="#eef6ff" font-size="19" font-weight="700">Native requirements</text>
 <text x="350" y="280" fill="#c4d3e5" font-size="15">Native size and alignment</text>
-<text x="350" y="312" fill="#c4d3e5" font-size="15">Retained heap ownership</text>
+<text x="350" y="312" fill="#c4d3e5" font-size="15">Retained import accounting</text>
 <text x="350" y="344" fill="#c4d3e5" font-size="15">Workspace and frame count</text>
 <path d="M584 274H612" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="620" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
@@ -28,8 +28,8 @@
 <path d="M874 274H902" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="910" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
 <text x="930" y="198" fill="#7dd3fc" font-size="14">04</text>
-<text x="930" y="239" fill="#eef6ff" font-size="19" font-weight="700">Retained frame pools</text>
-<text x="930" y="280" fill="#c4d3e5" font-size="15">Buffers and images</text>
+<text x="930" y="239" fill="#eef6ff" font-size="19" font-weight="700">First Submit</text>
+<text x="930" y="280" fill="#c4d3e5" font-size="15">Create buffers and images</text>
 <text x="930" y="312" fill="#c4d3e5" font-size="15">Alias activation barriers</text>
 <text x="930" y="344" fill="#c4d3e5" font-size="15">Stable CUDA addresses</text>
-<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">Two versions may share storage only when their GPU lifetimes are ordered and do not overlap.</text><text x="62" y="518" fill="#abc4dc" font-size="16">Imports, persistent resources and declared workspaces count toward the graph budget.</text></g></svg>
+<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">Distinct resources may share bytes only when their GPU lifetimes are ordered and do not overlap.</text><text x="62" y="518" fill="#abc4dc" font-size="16">Imports, persistent resources and declared workspaces count toward the graph budget.</text></g></svg>

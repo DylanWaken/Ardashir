@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaTerrainUploadSettingsNode, TerrainUploadSettings);
+
 	FArdaRHIStatus FArdaTerrainUploadSettingsNode::DeclareResources(FArdaDependencyResourceContext& C,
 	    FArdaParameters& P)
 	{

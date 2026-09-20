@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Submit the retained program and observe completion through frame tickets.">
-  <title>Execution and submission | ArdaRenderGraph | Ardashir</title>
+  <title>Execution and submission | ArdaDependencyGraph | Ardashir</title>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
   <script src="../assets/arda-rdg-api.js" defer></script>
@@ -15,7 +15,7 @@
   <header class="site-header">
     <a class="site-brand" href="../index.html">Ardashir Docs</a>
     <nav aria-label="Primary">
-      <a href="index.html">ArdaRenderGraph</a>
+      <a href="index.html">ArdaDependencyGraph</a>
       <a href="architecture.html">Architecture</a>
       <a href="quick-guide.html">Quick guide</a>
       <a href="getting-started.html">Get started</a>
@@ -24,8 +24,8 @@
     </nav>
   </header>
   <div class="site-layout">
-    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
-      <h2>ArdaRenderGraph</h2>
+    <aside class="sidebar" aria-label="ArdaDependencyGraph pages">
+      <h2>ArdaDependencyGraph</h2>
       <nav>
         <a href="index.html">Overview</a>
         <a href="getting-started.html">Getting started</a>
@@ -43,14 +43,14 @@
     <main id="main-content">
       <nav class="breadcrumbs" aria-label="Breadcrumb">
         <a href="../index.html">Docs</a> /
-        <a href="index.html">ArdaRenderGraph</a> /
+        <a href="index.html">ArdaDependencyGraph</a> /
         Execution and submission
       </nav>
       <article>
 <header class="page-header"><p class="eyebrow">Persistent dependency graphs</p><h1>Execution and frame completion</h1><p>Submit the retained program and observe completion through frame tickets.</p></header>
 <nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">Learning objectives</a><a href="#entry">Synchronous and asynchronous execution</a><a href="#recording">Native recording</a><a href="#queues">Ownership and waits</a><a href="#cuda">CUDA graph replay</a><a href="#readback">Completion publication</a><a href="#telemetry">Nonblocking GPU telemetry</a><a href="#reports">Execution evidence</a><a href="#failure">Partial failures</a><a href="#summary">Chapter summary</a></nav>
 <section id="objectives"><h2>Learning objectives</h2><p>Choose synchronous or ticket-based execution and interpret queue handoff, readback completion and partial failure.</p></section>
-<section id="entry"><h2>Synchronous and asynchronous execution</h2><p><code>Execute()</code> performs <code>Submit()</code> followed by <code>Wait()</code>, including frames without readbacks. <code>Submit()</code> waits only when recycling an occupied slot. <code>mFramesInFlight</code> controls independent transient pools. <code>IsComplete()</code> polls a ticket.</p><pre><code class="language-cpp">auto First = Graph.Submit();
+<section id="entry"><h2>Synchronous and asynchronous execution</h2><p><code>Execute()</code> performs <code>Submit()</code> followed by <code>Wait()</code>, including frames without readbacks. The first <code>Submit()</code> materializes pending native resources, pipelines and bindings before recording. Later submissions reuse that state; their frame-retirement wait occurs only when recycling an occupied slot. <code>mFramesInFlight</code> controls independent transient pools. <code>IsComplete()</code> polls a ticket.</p><pre><code class="language-cpp">auto First = Graph.Submit();
 if (!First) return First.mStatus;
 auto Second = Graph.Submit();
 if (!Second) return Second.mStatus;
@@ -58,7 +58,7 @@ auto Completed = Graph.Wait(First.mValue);
 if (!Completed.mStatus) return Completed.mStatus;
 return Graph.Wait(Second.mValue).mStatus;</code></pre></section>
 <section id="recording"><h2>Native recording</h2><p>The compiled program resolves resources and automatic pipeline slots before callbacks. <code>FArdaGraphExecuteOptions</code> controls parallel recording, worker count, resource-state validation and adjacent raster merging. Dependent commands inside one callback still need their internal barriers.</p><figure><img src="Assets/rdg-record-submit-timeline.svg" alt="Record dependency waves, submit ordered work, then publish completed outputs." loading="lazy"><figcaption>Record dependency waves, submit ordered work, then publish completed outputs.</figcaption></figure></section>
-<section id="queues"><h2>Ownership and waits</h2><p>Dependencies include resource handoff, physical aliasing and shared inter-frame storage. D3D12 uses state transitions and queue fence waits; Vulkan also tracks queue-family ownership. Imports enter and leave on graphics. Used imported textures return to the uniform state captured by a read-only query during compilation; they must be initialized or acquired before that query and cannot enter in <code>Unknown</code> or <code>Discard</code>. Callers must preserve or restore the captured contract before replay. Imported buffers return to descriptor initial state. Retirement waits for this graph’s submissions rather than device-wide idle.</p></section>
+<section id="queues"><h2>Ownership and waits</h2><p>Dependencies include resource handoff, physical aliasing and shared inter-frame storage. D3D12 uses state transitions and queue fence waits; Vulkan also tracks queue-family ownership. Imports enter and leave on graphics. Used imported textures return to the uniform state captured by a read-only query during first-submission materialization; they must be initialized or acquired before that query and cannot enter in <code>Unknown</code> or <code>Discard</code>. Callers must preserve or restore the captured contract before replay. Imported buffers return to descriptor initial state. Retirement waits for this graph’s submissions rather than device-wide idle.</p></section>
 <section id="cuda"><h2>CUDA graph replay</h2><p>Retained sequences capture kernels and opted-in external calls. Changing graphics interop waits/signals stay outside captured executables. Each frame slot owns caches; exact argument/address variants select bounded cached executables. Disabled, Prefer and Require modes control fallback. See <a href="../ArdaBackend/CUDA-Sequences.md">CUDA sequences</a>.</p></section>
 <section id="readback"><h2>Completion publication</h2><p>Readback records asynchronous transfers, then publishes host vectors after successful completion. Failed frames clear destinations. Tickets remain valid after slot reuse and edits. Use distinct destinations when several results must coexist.</p></section>
 <section id="telemetry"><h2>Nonblocking GPU telemetry</h2><p>Timing is optional and disabled by default. With <code>mbEnableGpuTiming</code>, sampled frames record per-node timestamps on supported graphics, compute and copy queues. CUDA event regions measure individual semantic nodes within their existing batch, excluding surrounding graphics/CUDA handoffs. Unsupported queues omit samples without queue migration. Stage-only and pure synchronization nodes have no GPU interval.</p><p><code>CollectTelemetry()</code> and <code>Submit()</code> poll completed work and available queries; collection adds no GPU wait. Query setup or polling failures can discard samples without invalidating a successful frame. An unsafe failure ending an already-started native query instead rejects recording and preserves the provider error. <code>Execute()</code> still submits and waits, and asynchronous submission can still wait when recycling an occupied frame slot. <code>GetTimingProfile()</code> exposes EMA statistics; <code>GetTimingHistory()</code> exposes bounded raw node durations.</p><p>Optional background scheduling prepares a replacement on a worker while the current program remains active. Adoption reuses the same allocations and waits for no GPU work: it proceeds only when all old frame slots and readbacks can naturally retire. Continuous saturation may defer adoption. Call <code>CollectTelemetry()</code> or keep submitting, and inspect <code>GetAdaptiveSchedulingStats()</code> for pending work and accepted plans. See the <a href="ArdaInductor.md#gpu-telemetry-and-background-scheduling">configuration and telemetry guide</a> for defaults, sampling overhead and manual requests.</p></section>
@@ -71,6 +71,6 @@ return Graph.Wait(Second.mValue).mStatus;</code></pre></section>
 </article>
     </main>
   </div>
-  <footer class="site-footer"><p>ArdaRenderGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
+  <footer class="site-footer"><p>ArdaDependencyGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
 </body>
 </html>

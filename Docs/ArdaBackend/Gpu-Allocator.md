@@ -2,7 +2,7 @@
 
 ## Scope
 
-ArdaBackend's `Allocator` section owns reusable memory planning and shares
+ArdaBackend's `RHI/Memory` section owns reusable memory planning and shares
 native heap/resource caches between all graphs and ordinary RHI resource callers
 on the same device. It adapts Unreal's persistent heap cache, placed-resource
 cache, and delayed reclamation patterns to Arda's provider and submission
@@ -12,7 +12,8 @@ ownership contracts. It is enabled automatically for concrete backend devices.
 
 - One allocator belongs to each concrete RHI device. No global singleton spans
   devices or backend implementations.
-- Compiled graphs retain their frame-slot leases while live. Their heaps become
+- Graphs acquire frame-slot leases when first submission materializes their
+  compiled logical plan, then retain those leases while the runtime is live. Their heaps become
   available to other graphs when those leases and GPU references are released;
   the cache does not move or alias storage that another graph still owns.
 - Public resources and provider commands retain allocation leases. Submitted
@@ -38,8 +39,8 @@ ownership contracts. It is enabled automatically for concrete backend devices.
 
 ## Integration and controls
 
-Include `Allocator/ArdaMemoryPlanner.h` for the backend-neutral planner and
-`Allocator/ArdaGpuAllocator.h` for cache policy and statistics. Existing RHI
+Include `RHI/Memory/ArdaMemoryPlanner.h` for the backend-neutral planner and
+`RHI/Memory/ArdaGpuAllocator.h` for cache policy and statistics. Existing RHI
 `CreateBuffer`, `CreateTexture`, `CreateHeap`, and virtual-resource binding calls
 use the device allocator. Graph materialization uses `CreatePlacedBuffer` and
 `CreatePlacedTexture` to acquire a cached placed object in one operation.
@@ -48,8 +49,9 @@ use the device allocator. Graph materialization uses `CreatePlacedBuffer` and
 then advances the allocator collection cycle. Graph execution already calls it;
 direct RHI clients should call it during their normal frame maintenance.
 `GetGpuAllocatorStats()` reports cache hits, native creation counts, active plus
-cached backing bytes, and idle bytes. Graph `mAllocatedBytes` measures its leased
-footprint, including cache hits; it is not a native allocation counter.
+cached backing bytes, and idle bytes. Graph `mAllocatedBytes` accounts for the
+selected plan's footprint, including cache hits, even before submission acquires
+its leases; it is not a native allocation counter.
 
 `SetGpuAllocatorOptions()` changes retention ages, soft object capacities and the
 idle-byte limit. Setting the byte limit to zero disables retention and releases
@@ -79,10 +81,10 @@ Use the existing Ninja Debug build with MSVC and both native providers:
 call "D:\VisualStudio\Common7\Tools\VsDevCmd.bat" -no_logo -arch=x64 -host_arch=x64
 "C:\Program Files\CMake\bin\cmake.exe" --build build --config Debug --target ArdaBackendTests ArdaGraphTests ArdaBackendPublicHeaders --parallel 4
 build\Source\ArdaInfra\ArdaBackend\ArdaBackendTests.exe --gtest_filter=FArdaGpuAllocatorTest.*:ArdaMemoryPlanner.*:NativeProviders/FArdaGpuAllocatorGpuTest.*
-build\Source\ArdaInfra\ArdaRenderGraph\ArdaGraphTests.exe
+build\Source\ArdaInfra\ArdaDependencyGraph\ArdaGraphTests.exe
 ```
 
-The graph test binary is under `build/Source/ArdaInfra/ArdaRenderGraph` (the
+The graph test binary is under `build/Source/ArdaInfra/ArdaDependencyGraph` (the
 module retains its existing `ArdaGraphTests` executable name). Run targeted
 native allocator, memory, submission and resource-state checks first, then the
 backend and graph suites. Allocator tests cover concurrent leases and trimming,

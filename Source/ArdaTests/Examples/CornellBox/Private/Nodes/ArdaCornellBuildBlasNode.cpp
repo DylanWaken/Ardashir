@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaCornellBuildBlasNode, CornellBuildBlas);
+
 	FArdaDependencyNodeRequirements FArdaCornellBuildBlasNode::GetRequirements(const FArdaParameters& P)
 	{
 		FArdaDependencyNodeRequirements R;

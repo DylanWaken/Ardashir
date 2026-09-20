@@ -67,7 +67,7 @@ or `AddPlan` is sticky and prevents later submission of a partial algorithm.
 
 ## Persistent dependency graph
 
-Include `ArdaRenderGraph.h`. Define an operand-node class and attach its device-bound
+Include `ArdaDependencyGraph.h`. Define an operand-node class and attach its device-bound
 operand and logical arguments inside an edit transaction. ArdaInductor derives
 resource dependencies and coalesces consecutive eligible CUDA nodes into one batch.
 
@@ -75,30 +75,35 @@ resource dependencies and coalesces consecutive eligible CUDA nodes into one bat
 class FArdaAddNode final : public TArdaCudaOperandNode<FArdaAddNode, FArdaAddOperand>
 {
 public:
-    static FArdaDependencyNodeMetadata GetMetadata() { return {"app.add", 1}; }
+    static FArdaDependencyNodeMetadata GetMetadata() { return {"app.add", 1};
+ARDA_DECLARE_GRAPH_NODE(FArdaAddNode, AddValues);
+
+// In the node implementation file, inside the same namespace:
+ARDA_DEFINE_GRAPH_NODE(FArdaAddNode, AddValues); }
 };
 
 auto Operand = eastl::make_shared<FArdaAddOperand>(Device);
 FArdaDependencyGraph Graph(Device);
-if (auto S = Graph.BeginGraphEdit(); !S) return S;
+FArdaGraphEdit Edit(Graph);
 // Input is an imported resource; Middle and Output are separate logical buffer values.
 TArdaDependencyCudaParameters<FArdaAddParameters> P;
 P.mCount = Count;
 P.mInput.mResource = Input;
 P.mOutput.mResource = Middle;
 P.mBias = 7;
-if (auto N = Graph.AttachOrFind<FArdaAddNode>("add seven", {Operand, P}); !N) return N.mStatus;
+AddValues(Edit, {Operand, P}, "add seven");
 P.mInput.mResource = Middle;
 P.mOutput.mResource = Output;
 P.mBias = 11;
-if (auto N = Graph.AttachOrFind<FArdaAddNode>("add eleven", {Operand, P}); !N) return N.mStatus;
-if (auto S = Graph.MarkOutput(Output); !S) return S;
-if (auto S = Graph.EndGraphEdit(); !S) return S;
+AddValues(Edit, {Operand, P}, "add eleven");
+Edit.Keep(Output);
+if (auto S = Edit.Commit(); !S) return S;
+if (auto S = Graph.Compile(); !S) return S;
 return Graph.Execute().mStatus;
 ```
 
-`Input`, `Middle`, and `Output` are `FArdaDependencyResourceHandle` values created
-or imported in the same edit transaction. Their buffers require CUDA sharing.
+`Input`, `Middle`, and `Output` are `FArdaGraphBuffer` values obtained through `AllocateBuffer` or `BindBuffer`
+in the same construction. Their buffers require CUDA sharing.
 The graph owns immutable parameter copies and registered definitions. The example uses one producer per region, so consumers can be attached first. Repeated writers to the same region instead follow original successful attachment order, with each read consuming the preceding contents. Repeated writes reuse storage; separate handles preserve separate values. See the [write-read-write example](../ArdaRDG/resources.html#worked-example).
 Class registration is device-independent. Each graph retains its operand parameter
 until its node and accepted GPU work retire.

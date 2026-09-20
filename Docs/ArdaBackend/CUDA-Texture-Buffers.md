@@ -94,20 +94,16 @@ is unavailable; using this helper does not change that policy or the device's mo
 
 ## Persistent dependency graph
 
-Include `ArdaRenderGraph.h` and explicitly attach transfer nodes around the CUDA
+Include `ArdaDependencyGraph.h` and record `CopyTo` operations around the CUDA
 nodes. The graph does not insert texture-to-buffer copies automatically.
 
 ```cpp
-// Within Graph.BeginGraphEdit() / Graph.EndGraphEdit():
-auto In = Graph.AttachOrFind<FArdaGraphTextureToBufferNode>("download texels",
-    {InputTexture, Slice, CudaInputBuffer, Layout});
-if (!In) return In.mStatus;
-// Attach registered CUDA operand nodes that read CudaInputBuffer and write
-// separate logical output buffers. ArdaInductor coalesces the CUDA chain.
-auto Out = Graph.AttachOrFind<FArdaGraphBufferToTextureNode>("upload texels",
-    {OutputTexture, Slice, CudaOutputBuffer, Layout});
-if (!Out) return Out.mStatus;
-return Graph.MarkOutput(OutputTexture);
+// Within an FArdaGraphEdit scope:
+CopyTo(Edit, InputTexture, CudaInputBuffer, Slice, Layout);
+// Invoke CUDA operations reading CudaInputBuffer and writing CudaOutputBuffer.
+CopyTo(Edit, CudaOutputBuffer, OutputTexture, Slice, Layout);
+Edit.Keep(OutputTexture);
+return Edit.Commit();
 ```
 
 The handles refer to resources created or imported into the current graph. The
@@ -129,9 +125,9 @@ declares a read/write of the selected subresource: use an imported texture whose
 surrounding texels already exist, or attach a complete subresource writer before
 the partial upload. A partial upload into an uninitialized transient texture fails
 compilation, even if a later node reads only the copied rectangle.
-`AttachOrFind` identifies the
-transfer by its name, resources, copy rectangle and pitch; changed parameters require
-an explicit edit/removal instead of silently altering a compiled node.
+Each transfer freezes its resources, copy rectangle and pitch. Describe changed
+parameters through a fresh frame construction; matching constructions reuse
+the persistent compiled revision.
 
 ## Provider contract and verification
 

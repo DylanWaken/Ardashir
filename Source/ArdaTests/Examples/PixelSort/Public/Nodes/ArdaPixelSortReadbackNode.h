@@ -26,4 +26,6 @@ namespace arda
 		/** Map only after successful completion of the recording graph ticket. */
 		static std::vector<uint32_t> ReadPixels(FArdaRHIDeviceRef Device, const FArdaPixelSortReadback& Readback);
 	};
+
+	ARDA_DECLARE_GRAPH_NODE(FArdaPixelSortReadbackNode, PixelSortReadback);
 }

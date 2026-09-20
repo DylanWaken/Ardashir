@@ -3,6 +3,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaPixelSortPresentNode, PixelSortPresent);
+
 	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPixelSortPresentShaderParameters)
 		ARDA_SHADER_CONSTANT_BUFFER(mConstants, 0, 0, EArdaRHIShaderStage::Pixel)
 		ARDA_SHADER_TEXTURE_SRV(mSorted, 0, 0, EArdaRHIShaderStage::Pixel)

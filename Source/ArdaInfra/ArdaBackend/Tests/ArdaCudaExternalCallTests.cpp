@@ -1,8 +1,9 @@
 #include "ArdaTestBackend.h"
+#include "Graph/DefaultNodes/ArdaGraphOperations.h"
 #include "ArdaBackend.h"
 #include "RHI/Providers/ArdaBackendProvider.h"
 #include "ArdaTestComputeOperand.h"
-#include "ArdaRenderGraph.h"
+#include "ArdaDependencyGraph.h"
 #include "RHI/CUDA/ArdaCudaExternalCall.h"
 #include <gtest/gtest.h>
 #include <cstring>
@@ -12,7 +13,7 @@
 #include <Windows.h>
 #endif
 
-namespace
+namespace arda::cuda_external_tests
 {
 	using namespace arda;
 
@@ -1185,6 +1186,9 @@ namespace
 		}
 	};
 
+	ARDA_DECLARE_GRAPH_NODE(FArdaPersistentExternalAddNode, PersistentExternalAdd);
+	ARDA_DEFINE_GRAPH_NODE(FArdaPersistentExternalAddNode, PersistentExternalAdd);
+
 	struct FArdaPersistentCompiledAddNode : TArdaCudaOperandNode<FArdaPersistentCompiledAddNode, FArdaAddOperand>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata()
@@ -1192,6 +1196,9 @@ namespace
 			return {"test.cuda.persistent-compiled-add", 1};
 		}
 	};
+
+	ARDA_DECLARE_GRAPH_NODE(FArdaPersistentCompiledAddNode, PersistentCompiledAdd);
+	ARDA_DEFINE_GRAPH_NODE(FArdaPersistentCompiledAddNode, PersistentCompiledAdd);
 
 	TEST_P(FArdaCudaExternalGpu, PersistentGraphMixesExternalAndCompiledCudaNodes)
 	{
@@ -1217,49 +1224,50 @@ namespace
 			ASSERT_TRUE(FArdaPersistentCompiledAddNode::Register());
 			FArdaRegistrationScope CompiledRegistration{CompiledDefinition};
 			FArdaDependencyGraph Graph(mDevice);
-			ASSERT_TRUE(Graph.BeginGraphEdit());
-			auto Input = Graph.CreateBuffer("input", BufferDesc(128));
-			auto Middle = Graph.CreateBuffer("external result", BufferDesc(128));
-			auto CompiledOutput = Graph.CreateBuffer("compiled result", BufferDesc(128));
-			auto Output = Graph.CreateBuffer("output", BufferDesc(128));
+			FArdaGraphEdit Edit(Graph);
+			ASSERT_TRUE(Edit.GetStatus());
+			auto Input = AllocateBuffer(Edit, BufferDesc(128), "input");
+			auto Middle = AllocateBuffer(Edit, BufferDesc(128), "external result");
+			auto CompiledOutput = AllocateBuffer(Edit, BufferDesc(128), "compiled result");
+			auto Output = AllocateBuffer(Edit, BufferDesc(128), "output");
 			ASSERT_TRUE(Input);
 			ASSERT_TRUE(Middle);
 			ASSERT_TRUE(CompiledOutput);
 			ASSERT_TRUE(Output);
 			FArdaGraphUploadParameters Upload;
-			Upload.mDestination = Input.mValue;
+			Upload.mDestination = Input.GetHandle();
 			Upload.mBytes.resize(128 * 4);
 			for (uint32_t I = 0; I < 128; ++I)
 			{
 				const uint32_t Value = 19;
 				std::memcpy(Upload.mBytes.data() + I * 4, &Value, 4);
 			}
-			ASSERT_TRUE(Graph.AttachOrFind("upload", "arda.upload", Upload));
+			ASSERT_TRUE(UploadNode(Edit, Upload, "upload"));
 			TArdaDependencyCudaParameters<FArdaAddParameters> P;
-			P.mInput.mResource = Input.mValue;
-			P.mOutput.mResource = Middle.mValue;
+			P.mInput.mResource = Input.GetHandle();
+			P.mOutput.mResource = Middle.GetHandle();
 			P.mCount = 128;
 			P.mBias = 7;
-			auto First = Graph.AttachOrFind<FArdaPersistentExternalAddNode>("external first", {External, P});
-			ASSERT_TRUE(First) << First.mStatus.mMessage.c_str();
-			P.mInput.mResource = Middle.mValue;
-			P.mOutput.mResource = CompiledOutput.mValue;
+			auto First = PersistentExternalAdd(Edit, {External, P}, "external first");
+			ASSERT_TRUE(First) << Edit.GetStatus().mMessage.c_str();
+			P.mInput.mResource = Middle.GetHandle();
+			P.mOutput.mResource = CompiledOutput.GetHandle();
 			P.mBias = 11;
-			auto Second = Graph.AttachOrFind<FArdaPersistentCompiledAddNode>("compiled middle", {Compiled, P});
+			auto Second = PersistentCompiledAdd(Edit, {Compiled, P}, "compiled middle");
 			ASSERT_TRUE(Second);
-			P.mInput.mResource = CompiledOutput.mValue;
-			P.mOutput.mResource = Output.mValue;
+			P.mInput.mResource = CompiledOutput.GetHandle();
+			P.mOutput.mResource = Output.GetHandle();
 			P.mBias = 13;
-			auto Third = Graph.AttachOrFind<FArdaPersistentExternalAddNode>("external last", {External, P});
+			auto Third = PersistentExternalAdd(Edit, {External, P}, "external last");
 			ASSERT_TRUE(Third);
 			auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-			ASSERT_TRUE(
-			    Graph.AttachOrFind("readback", "arda.readback", FArdaGraphReadbackParameters{Output.mValue, Bytes}));
-			auto Status = Graph.EndGraphEdit();
+			ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output.GetHandle(), Bytes}, "readback"));
+			ASSERT_TRUE(Edit.Commit());
+			auto Status = Graph.Compile();
 			ASSERT_TRUE(Status) << Status.mMessage.c_str();
 			ASSERT_EQ(Graph.GetCompileResult().mCudaBatches.size(), 1u);
 			EXPECT_EQ(Graph.GetCompileResult().mCudaBatches.front(),
-			    (eastl::vector<FArdaGraphNodeHandle>{First.mValue, Second.mValue, Third.mValue}));
+			    (eastl::vector<FArdaGraphNodeHandle>{First.GetHandle(), Second.GetHandle(), Third.GetHandle()}));
 			External.reset();
 			Compiled.reset();
 			const auto Result = Graph.Execute();

@@ -1,5 +1,5 @@
 #pragma once
-#include "ArdaDependencyNode.h"
+#include "Graph/Node/ArdaDependencyNode.h"
 #include <filesystem>
 
 namespace arda

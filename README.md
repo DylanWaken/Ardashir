@@ -32,11 +32,11 @@ Source/
 - **[ArdaGraph](Source/ArdaInfra/ArdaGraph)** — Generic directed graph storage with indexed
   adjacency, generational handles, traversal, and graph algorithms.
 
-- **[ArdaRenderGraph](Source/ArdaInfra/ArdaRenderGraph)** — Persistent graphics and CUDA
+- **[ArdaDependencyGraph](Source/ArdaInfra/ArdaDependencyGraph)** — Persistent graphics and CUDA
   dependency graphs compiled by ArdaInductor. Typed registered nodes declare
   resources; compilation resolves dependencies, pipelines, CUDA batches, queue
   scheduling, and memory budgets. See the [graph guide](Docs/ArdaRDG/ArdaInductor.md).
-  Its [node library](Source/ArdaInfra/ArdaRenderGraph/README.md) provides buffer
+  Its [node library](Source/ArdaInfra/ArdaDependencyGraph/README.md) provides buffer
   and texture uploads, copies, readbacks, and clears, plus native BLAS/TLAS
   cloning and compaction.
 
@@ -54,7 +54,7 @@ interop is implemented within ArdaBackend.
 ## Quick user guides
 
 - **[ArdaBackend quick user's guide](Docs/ArdaBackend/quick-guide.html)**
-- **[ArdaRenderGraph quick user's guide](Docs/ArdaRDG/quick-guide.html)**
+- **[ArdaDependencyGraph quick user's guide](Docs/ArdaRDG/quick-guide.html)**
 
 The guides cover startup, compute, raster, submission, and presentation.
 The [Cornell Box example](Source/ArdaTests/Examples/CornellBox/README.md) demonstrates
@@ -72,9 +72,17 @@ generated-source templates now follow the same flat namespace. Provider types us
 `arda::IArdaRHIProviderDevice`; pipeline-cache helpers include
 `arda::ReadArdaPipelineCacheBlob`.
 
-Graph changes are authored between `BeginGraphEdit` and `EndGraphEdit`, which
-recompiles the graph. Use `AttachOrFind` with registered typed parameters, then
-reuse `Execute` or `Submit`/`Wait` across frames. Public headers are compiled
+Graph programs are authored exclusively through `FArdaGraphEdit` and typed resource
+operations or named global node callables: `MyOperation(Edit, Parameters)` also
+accepts positional parameter fields. Node headers publish their callable with
+`ARDA_DECLARE_GRAPH_NODE(FArdaMyNode, MyOperation)` and implementations define it
+once with `ARDA_DEFINE_GRAPH_NODE`. See the [node registration guide](Docs/ArdaRDG/Registering-Nodes.md).
+Raw node attachment and graph mutation
+are private. `Commit()`
+queues each edit, and explicit `Compile()` selects a cached persistent revision
+or compiles a new one. `Execute()` or `Submit()` unlocks the next empty frame
+construction; matching ordered edits reuse prior compilation and runtime state.
+Repeated execution without new edits also reuses the selected revision. Public headers are compiled
 independently to keep execution internals private.
 
 Host-owned Vulkan devices are supported by `native-vulkan`; see the

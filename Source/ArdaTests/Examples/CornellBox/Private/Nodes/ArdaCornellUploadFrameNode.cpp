@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaCornellUploadFrameNode, CornellUploadFrame);
+
 	FArdaRHIStatus FArdaCornellUploadFrameNode::DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P)
 	{
 		FArdaRHIBufferDesc D;

@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaTerrainErodeNode, TerrainErode);
+
 	class FArdaErodeTerrainShader final : public arda::FArdaGlobalShader
 	{
 	public:

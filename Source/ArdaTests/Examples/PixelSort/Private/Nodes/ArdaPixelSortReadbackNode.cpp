@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaPixelSortReadbackNode, PixelSortReadback);
+
 	std::vector<uint32_t> FArdaPixelSortReadbackNode::ReadPixels(FArdaRHIDeviceRef Device,
 	    const FArdaPixelSortReadback& Readback)
 	{

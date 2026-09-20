@@ -188,7 +188,7 @@
     <text x="462" y="1579" class="small">parameters.CreateBindingSet(device, shaderInstance, outSets)</text>
     <text x="462" y="1602" class="small">explicit shader slots and visibility are preserved</text>
     <text x="462" y="1625" class="small">missing, duplicate, or type-mismatched resources return a diagnostic status</text>
-    <text x="462" y="1654" class="tiny">the same metadata also bridges registered shaders into ArdaRenderGraph</text>
+    <text x="462" y="1654" class="tiny">the same metadata also bridges registered shaders into ArdaDependencyGraph</text>
     <path class="flow" d="M875 1561 H926"/>
 
     <rect class="public" x="930" y="1440" width="814" height="242"/>
@@ -295,7 +295,7 @@
     <text x="896" y="2406" class="small">Find registered shader &#8594; build parameter binding sets &#8594; create pipeline initializer &#8594; Set*PipelineState</text>
     <text x="896" y="2429" class="small">&#8594; Open command list &#8594; set resources and barriers &#8594; Draw or Dispatch &#8594; Close &#8594; ExecuteCommandList</text>
     <line x1="78" y1="2452" x2="1714" y2="2452" class="divider"/>
-    <text x="896" y="2478" class="label">ArdaRenderGraph integration</text>
+    <text x="896" y="2478" class="label">ArdaDependencyGraph integration</text>
     <text x="896" y="2504" class="small">ARDG owns logical lifetime, state lowering, and queue dependencies; it records the same IArdaRHICommandList API</text>
     <text x="896" y="2532" class="tiny">The backend remains usable directly: the RHI does not require the render graph</text>
   </g>

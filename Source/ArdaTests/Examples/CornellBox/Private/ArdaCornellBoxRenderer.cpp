@@ -1,4 +1,5 @@
 #include "ArdaCornellBoxPch.h"
+#include "Graph/DefaultNodes/ArdaGraphOperations.h"
 
 #include "ArdaCornellBoxRenderer.h"
 
@@ -168,44 +169,55 @@ namespace arda
 			return false;
 		}
 		FArdaDependencyGraph Graph(mDevice);
-		if (auto S = Graph.BeginGraphEdit(); !S)
+		FArdaGraphEdit Edit(Graph);
+		if (auto S = Edit.GetStatus(); !S)
 		{
 			mError = S.mMessage;
 			return false;
 		}
-		auto V = Graph.ImportBuffer("vertices", mVertexBuffer), I = Graph.ImportBuffer("indices", mIndexBuffer);
-		auto B = Graph.ImportAccelerationStructure("BLAS", mBlas);
-		auto M = Graph.ImportBuffer("materials", mMaterialBuffer);
+		auto V = BindBuffer(Edit, mVertexBuffer, "vertices"), I = BindBuffer(Edit, mIndexBuffer, "indices");
+		auto B = BindAccelerationStructure(Edit, mBlas, "BLAS");
+		auto M = BindBuffer(Edit, mMaterialBuffer, "materials");
 		if (!V || !I || !B || !M)
 		{
 			mError = "Failed to import Cornell BLAS resources.";
 			return false;
 		}
 		FArdaCornellBuildBlasParameters P;
-		P.mVertices = V.mValue;
-		P.mIndices = I.mValue;
-		P.mBlas = B.mValue;
+		P.mVertices = V.GetHandle();
+		P.mIndices = I.GetHandle();
+		P.mBlas = B.GetHandle();
 		P.mBuildFlags = Desc.mBuildFlags;
 		P.mVertexCount = ArdaCornellVertexCount;
 		P.mIndexCount = ArdaCornellIndexCount;
 		P.mVertexStride = sizeof(FArdaCornellVertex);
 		P.mWorkspaceBytes = Requirements.mValue.mBuildScratchSize;
-		auto Build = Graph.AttachOrFind<FArdaCornellBuildBlasNode>("BuildCornellBLAS", P);
+		auto Build = CornellBuildBlas(Edit, P, "BuildCornellBLAS");
 		if (!Build)
 		{
-			mError = Build.mStatus.mMessage;
+			mError = Edit.GetStatus().mMessage;
 			return false;
 		}
 		// Add the producer after its consumers; the compiler derives geometry -> BLAS.
 		FArdaCornellGeometryParameters Geometry;
-		Geometry.mVertices = V.mValue;
-		Geometry.mIndices = I.mValue;
-		Geometry.mMaterials = M.mValue;
+		Geometry.mVertices = V.GetHandle();
+		Geometry.mIndices = I.GetHandle();
+		Geometry.mMaterials = M.GetHandle();
 		Geometry.mGroupCountX = (ArdaCornellTriangleCount + 63) / 64;
-		auto Generate = Graph.AttachOrFind<FArdaCornellGeometryNode>("GenerateCornellGeometry", Geometry);
+		auto Generate = CornellGeometry(Edit, Geometry, "GenerateCornellGeometry");
 		if (!Generate)
 		{
-			mError = Generate.mStatus.mMessage;
+			mError = Edit.GetStatus().mMessage;
+			return false;
+		}
+		if (auto Status = Edit.Commit(); !Status)
+		{
+			mError = Status.mMessage;
+			return false;
+		}
+		if (auto Status = Graph.Compile(); !Status)
+		{
+			mError = Status.mMessage;
 			return false;
 		}
 		return ExecuteGraph(Graph, "Cornell geometry and acceleration-structure build");
@@ -225,25 +237,36 @@ namespace arda
 			return false;
 		}
 		FArdaDependencyGraph Graph(mDevice);
-		if (auto S = Graph.BeginGraphEdit(); !S)
+		FArdaGraphEdit Edit(Graph);
+		if (auto S = Edit.GetStatus(); !S)
 		{
 			mError = S.mMessage;
 			return false;
 		}
-		auto Source = Graph.ImportAccelerationStructure("source BLAS", mBlas);
-		auto Destination = Graph.ImportAccelerationStructure("compacted BLAS", Compact.mValue);
+		auto Source = BindAccelerationStructure(Edit, mBlas, "source BLAS");
+		auto Destination = BindAccelerationStructure(Edit, Compact.mValue, "compacted BLAS");
 		if (!Source || !Destination)
 		{
 			mError = "Failed to import Cornell compaction resources.";
 			return false;
 		}
 		FArdaCornellCompactBlasParameters P;
-		P.mSource = Source.mValue;
-		P.mDestination = Destination.mValue;
-		auto Copy = Graph.AttachOrFind<FArdaCornellCompactBlasNode>("CompactCornellBLAS", P);
+		P.mSource = Source.GetHandle();
+		P.mDestination = Destination.GetHandle();
+		auto Copy = CornellCompactBlas(Edit, P, "CompactCornellBLAS");
 		if (!Copy)
 		{
-			mError = Copy.mStatus.mMessage;
+			mError = Edit.GetStatus().mMessage;
+			return false;
+		}
+		if (auto Status = Edit.Commit(); !Status)
+		{
+			mError = Status.mMessage;
+			return false;
+		}
+		if (auto Status = Graph.Compile(); !Status)
+		{
+			mError = Status.mMessage;
 			return false;
 		}
 		if (!ExecuteGraph(Graph, "Cornell BLAS compaction"))
@@ -278,14 +301,6 @@ namespace arda
 
 	bool FArdaCornellBoxRenderer::ExecuteGraph(FArdaDependencyGraph& Graph, const char* Description)
 	{
-		if (Graph.IsEditing())
-		{
-			if (auto Status = Graph.EndGraphEdit(); !Status)
-			{
-				mError = eastl::string(Description) + " compilation failed: " + Status.mMessage;
-				return false;
-			}
-		}
 		const auto Result = Graph.Execute();
 		if (!Result.mStatus)
 		{
@@ -441,48 +456,47 @@ namespace arda
 			Frame->mInput = eastl::make_shared<FArdaCornellFrameInput>();
 			Frame->mGraph = std::make_unique<FArdaDependencyGraph>(mDevice);
 			auto& Graph = *Frame->mGraph;
-			if (auto S = Graph.BeginGraphEdit(); !S)
+			FArdaGraphEdit Edit(Graph);
+			if (auto S = Edit.GetStatus(); !S)
 			{
 				mError = S.mMessage;
 				return false;
 			}
 
 			// Import persistent scene and accumulation resources; nodes own transient intermediate outputs.
-			auto T = Graph.ImportAccelerationStructure("Frame TLAS", mTlas);
-			auto B = Graph.ImportAccelerationStructure("Static BLAS", mBlas);
-			auto Back = Graph.ImportTexture("back buffer", ColorAttachment.mTexture);
-			auto Accum = Graph.ImportTexture("accumulation", mAccumulationTexture);
+			auto T = BindAccelerationStructure(Edit, mTlas, "Frame TLAS");
+			auto B = BindAccelerationStructure(Edit, mBlas, "Static BLAS");
+			auto Back = BindTexture(Edit, ColorAttachment.mTexture, "back buffer");
+			auto Accum = BindTexture(Edit, mAccumulationTexture, "accumulation");
 
 			if (!Back || !Accum || !T || !B)
 			{
 				mError = "Failed to declare Cornell frame resources.";
 				return false;
 			}
-			const auto Attached = [&](const TArdaRHIResult<FArdaGraphNodeHandle>& Result)
+			const auto Attached = [&](const FArdaGraphOperation& Result)
 			{
 				if (!Result)
 				{
-					mError = Result.mStatus.mMessage;
+					mError = Edit.GetStatus().mMessage;
 				}
 				return bool(Result);
 			};
 			FArdaCornellUploadFrameParameters UploadParameters;
 			UploadParameters.mFrame = Frame->mInput;
-			auto Upload =
-			    Graph.AttachOrFind<FArdaCornellUploadFrameNode>("UpdateCornellFrameConstants", UploadParameters);
+			auto Upload = CornellUploadFrame(Edit, UploadParameters, "UpdateCornellFrameConstants");
 			if (!Attached(Upload))
 			{
 				return false;
 			}
-			const auto Constants = Graph.FindOutput(Upload.mValue, "Constants");
+			const auto Constants = Upload.GetBuffer("Constants");
 			FArdaCornellPresentParameters PresentParameters;
-			PresentParameters.mAccumulation = Accum.mValue;
+			PresentParameters.mAccumulation = Accum.GetHandle();
 			PresentParameters.mConstants = Constants;
-			PresentParameters.mColor = Back.mValue;
+			PresentParameters.mColor = Back.GetHandle();
 			PresentParameters.mWidth = Width;
 			PresentParameters.mHeight = Height;
-			if (!Attached(
-			        Graph.AttachOrFind<FArdaCornellPresentNode>("ToneMapAndPresentCornellBox", PresentParameters)))
+			if (!Attached(CornellPresent(Edit, PresentParameters, "ToneMapAndPresentCornellBox")))
 			{
 				return false;
 			}
@@ -490,8 +504,8 @@ namespace arda
 			// Attach ray generation and accumulation only while progressive sampling has work remaining.
 			if (DispatchSamples)
 			{
-				auto V = Graph.ImportBuffer("vertices", mVertexBuffer), I = Graph.ImportBuffer("indices", mIndexBuffer),
-				     M = Graph.ImportBuffer("materials", mMaterialBuffer);
+				auto V = BindBuffer(Edit, mVertexBuffer, "vertices"), I = BindBuffer(Edit, mIndexBuffer, "indices"),
+				     M = BindBuffer(Edit, mMaterialBuffer, "materials");
 
 				if (!V || !I || !M || !T || !B)
 				{
@@ -499,43 +513,47 @@ namespace arda
 					return false;
 				}
 				FArdaCornellTraceParameters TraceParameters;
-				TraceParameters.mTlas = T.mValue;
-				TraceParameters.mVertices = V.mValue;
-				TraceParameters.mIndices = I.mValue;
-				TraceParameters.mMaterials = M.mValue;
+				TraceParameters.mTlas = T.GetHandle();
+				TraceParameters.mVertices = V.GetHandle();
+				TraceParameters.mIndices = I.GetHandle();
+				TraceParameters.mMaterials = M.GetHandle();
 				TraceParameters.mConstants = Constants;
-				TraceParameters.mBlas = B.mValue;
+				TraceParameters.mBlas = B.GetHandle();
 				TraceParameters.mWidth = Width;
 				TraceParameters.mHeight = Height;
 				TraceParameters.mSamples = DispatchSamples;
-				auto Trace = Graph.AttachOrFind<FArdaCornellTraceNode>("PathTraceCornellBox", TraceParameters);
+				auto Trace = CornellTrace(Edit, TraceParameters, "PathTraceCornellBox");
 				if (!Attached(Trace))
 				{
 					return false;
 				}
 				FArdaCornellAccumulateParameters AccumulateParameters;
-				AccumulateParameters.mRadiance = Graph.FindOutput(Trace.mValue, "Radiance");
-				AccumulateParameters.mAccumulation = Accum.mValue;
+				AccumulateParameters.mRadiance = Trace.GetBuffer("Radiance");
+				AccumulateParameters.mAccumulation = Accum.GetHandle();
 				AccumulateParameters.mConstants = Constants;
 				AccumulateParameters.mGroupCountX = (Width + 7) / 8;
 				AccumulateParameters.mGroupCountY = (Height + 7) / 8;
-				if (!Attached(Graph.AttachOrFind<FArdaCornellAccumulateNode>("ReduceCornellSampleBatch",
-				        AccumulateParameters)))
+				if (!Attached(CornellAccumulate(Edit, AccumulateParameters, "ReduceCornellSampleBatch")))
 				{
 					return false;
 				}
 			}
 			// A real frame operation, even after sampling finishes. The TLAS write orders all ray reads.
 			FArdaCornellBuildTlasParameters BuildTlas;
-			BuildTlas.mBlas = B.mValue;
-			BuildTlas.mTlas = T.mValue;
+			BuildTlas.mBlas = B.GetHandle();
+			BuildTlas.mTlas = T.GetHandle();
 			BuildTlas.mBuildFlags = GetStaticBuildFlags(false);
 			BuildTlas.mWorkspaceBytes = mTlasWorkspaceBytes;
-			if (!Attached(Graph.AttachOrFind<FArdaCornellBuildTlasNode>("RebuildCornellFrameTLAS", BuildTlas)))
+			if (!Attached(CornellBuildTlas(Edit, BuildTlas, "RebuildCornellFrameTLAS")))
 			{
 				return false;
 			}
-			if (auto S = Graph.EndGraphEdit(); !S)
+			if (auto S = Edit.Commit(); !S)
+			{
+				mError = S.mMessage;
+				return false;
+			}
+			if (auto S = Graph.Compile(); !S)
 			{
 				mError = S.mMessage;
 				return false;

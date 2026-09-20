@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaTriangleDrawNode, TriangleDraw);
+
 	class FArdaTriangleVertexShader final : public FArdaGlobalShader
 	{
 	public:

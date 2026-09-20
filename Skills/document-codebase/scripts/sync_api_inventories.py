@@ -230,6 +230,13 @@ def declaration_signature(text: str, name: str, line: int, kind: str) -> str:
         return normalized(match.group(0)) if match else name
     if kind == "callable":
         return callable_signature(text, name, offset)
+    if kind == "constant":
+        for match in re.finditer(
+            r"\bARDA_DECLARE_GRAPH_NODE\s*\(\s*([A-Za-z_]\w*(?:::\w+)*)\s*,"
+            r"\s*([A-Za-z_]\w*)\s*\)", text
+        ):
+            if match.group(2) == name and match.start() <= offset < match.end():
+                return f"extern const {match.group(1)} {name}"
     if kind == "type":
         start = max(text.rfind("\n", 0, offset), text.rfind("}", 0, offset)) + 1
         boundary = max(text.rfind(token, 0, start) for token in ";{}") + 1
@@ -365,7 +372,7 @@ def rdg_specs(repo: Path) -> List[Tuple[str, str, str]]:
     return [
         (header.relative_to(repo).as_posix(), "arda", "core")
         for header in sorted(
-            (repo / "Source/ArdaInfra/ArdaRenderGraph/Public").rglob("*.h"),
+            (repo / "Source/ArdaInfra/ArdaDependencyGraph/Public").rglob("*.h"),
             key=lambda path: path.relative_to(repo).as_posix(),
         )
     ]
@@ -702,19 +709,19 @@ def main() -> int:
     preserve_symbol_ids(rdg_symbols, evaluate_api(rdg_current, "ArdaRDGApi"))
     rdg_provenance = [source for source, _namespace, _component in rdg_specs(repo)]
     rdg_inventory = {
-        "module": {"id": "arda-rdg", "name": "ArdaRenderGraph", "namespace": "arda",
+        "module": {"id": "arda-rdg", "name": "ArdaDependencyGraph", "namespace": "arda",
             "summary": "Persistent dependency graphs compiled by ArdaInductor for graphics, CUDA, and transfer work."},
-        "generatedFrom": f"Source/ArdaInfra/ArdaRenderGraph/Public (all {len(rdg_provenance)} unique public headers)",
+        "generatedFrom": f"Source/ArdaInfra/ArdaDependencyGraph/Public (all {len(rdg_provenance)} unique public headers)",
         "headerProvenance": rdg_provenance,
         "components": [{"id": "core", "name": "Persistent graph API", "page": "api-reference.html",
             "summary": "Typed node registration, resource dependencies, compilation, and reusable GPU execution."}],
         "symbols": rdg_symbols,
     }
-    rdg_updated = (f"/* Generated public source inventory for ArdaRenderGraph; derived from all {len(rdg_provenance)} public headers. */\n"
+    rdg_updated = (f"/* Generated public source inventory for ArdaDependencyGraph; derived from all {len(rdg_provenance)} public headers. */\n"
         + "window.ArdaRDGApi = " + json.dumps(rdg_inventory, indent=2) + ";\n")
     rdg_reference_path = repo / "Docs/ArdaRDG/api-reference.html"
     rdg_reference_current = rdg_reference_path.read_text(encoding="utf-8")
-    rdg_reference_updated = static_api_reference(rdg_reference_current, rdg_updated, "ArdaRDGApi", "ArdaRenderGraph", "RDG")
+    rdg_reference_updated = static_api_reference(rdg_reference_current, rdg_updated, "ArdaRDGApi", "ArdaDependencyGraph", "RDG")
     if args.check:
         stale = []
         if glossary_current != glossary_updated:

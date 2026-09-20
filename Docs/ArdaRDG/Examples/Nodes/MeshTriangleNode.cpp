@@ -3,6 +3,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaMeshTriangleNode, MeshTriangle);
+
 	class FArdaRecipeMeshShader final : public FArdaGlobalShader
 	{
 	public:

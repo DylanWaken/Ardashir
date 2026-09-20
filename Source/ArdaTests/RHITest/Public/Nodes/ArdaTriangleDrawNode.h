@@ -17,4 +17,6 @@ namespace arda
 		    const FArdaState& State,
 		    FArdaInstanceState& Instance);
 	};
+
+	ARDA_DECLARE_GRAPH_NODE(FArdaTriangleDrawNode, TriangleDraw);
 }

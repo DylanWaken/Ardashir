@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaCornellAccumulateNode, CornellAccumulate);
+
 	class FArdaAccumulateCornellSamplesShader final : public arda::FArdaGlobalShader
 	{
 	public:
