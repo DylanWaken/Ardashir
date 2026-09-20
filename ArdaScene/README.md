@@ -17,7 +17,7 @@ The current milestone does not plan or implement:
 - path tracing, ray dispatch, denoising, or presentation;
 - BLAS or TLAS construction;
 - GPU scene upload or bindless descriptor management;
-- ArdaRenderGraph ray-tracing extensions;
+- ArdaDependencyGraph ray-tracing extensions;
 - shared-device, queue, fence, or resource-state integration;
 - an Unreal plugin or renderer replacement;
 - material shader compilation or translation.
@@ -36,7 +36,7 @@ It will not be:
 
 - a gameplay ECS;
 - a world simulation;
-- an owner of backend or ArdaRenderGraph objects;
+- an owner of backend or ArdaDependencyGraph objects;
 - a container of Unreal types;
 - a hard-coded GPU memory layout;
 - a list of rendering callbacks.
@@ -82,7 +82,7 @@ No public `ArdaScene` header may include:
 - Unreal Engine headers;
 - native graphics API headers;
 - ArdaBackend headers;
-- ArdaRenderGraph headers;
+- ArdaDependencyGraph headers;
 - D3D12 or Vulkan headers.
 
 Future adapters communicate through project-owned IDs, descriptors, layouts,
@@ -1193,7 +1193,7 @@ and host-integration modules.
 Separate future plans will cover:
 
 - GPU scene realization;
-- ArdaBackend and ArdaRenderGraph resource import;
+- ArdaBackend and ArdaDependencyGraph resource import;
 - acceleration structures;
 - bindless resource management;
 - shared-device and synchronization contracts;
@@ -1211,7 +1211,7 @@ representation milestone.
 
 The representation plan is complete when:
 
-1. `ArdaScene` builds and tests without a native backend module, ArdaRenderGraph, or
+1. `ArdaScene` builds and tests without a native backend module, ArdaDependencyGraph, or
    Unreal.
 2. A standalone application can represent a complete scene using immutable CPU
    data and canonical layouts.

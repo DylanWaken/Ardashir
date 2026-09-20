@@ -32,7 +32,7 @@ The graph changes retain generation-checked handles, transaction snapshots, atta
 | ArdaBackend | 28,601 | 28,402 | 199 | 0.70% |
 | ArdaBackendImpls | 22,298 | 22,094 | 204 | 0.91% |
 | ArdaGraph | 828 | 791 | 37 | 4.47% |
-| ArdaRenderGraph | 13,465 | 13,259 | 206 | 1.53% |
+| ArdaDependencyGraph | 13,465 | 13,259 | 206 | 1.53% |
 | **Total** | **65,192** | **64,546** | **646** | **0.99%** |
 
 Counts are physical lines in production `.h`, `.cpp`, `.cuh`, and `.cu` files under the four module directories, excluding `Tests`. The baseline is the working tree at review start, including the user's existing Vulkan changes. Documentation, CMake, tests, generated output, third-party code, and unrelated working-tree changes do not contribute to the reduction. Both versions use the repository's expanded C++ layout; clang-format 19 was applied to changed sources. Added validation is included in the final production count.

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Create one persistent graph and replay its compiled program.">
-  <title>Getting started | ArdaRenderGraph | Ardashir</title>
+  <title>Getting started | ArdaDependencyGraph | Ardashir</title>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
   <script src="../assets/arda-rdg-api.js" defer></script>
@@ -15,7 +15,7 @@
   <header class="site-header">
     <a class="site-brand" href="../index.html">Ardashir Docs</a>
     <nav aria-label="Primary">
-      <a href="index.html">ArdaRenderGraph</a>
+      <a href="index.html">ArdaDependencyGraph</a>
       <a href="architecture.html">Architecture</a>
       <a href="quick-guide.html">Quick guide</a>
       <a aria-current="page" href="getting-started.html">Get started</a>
@@ -24,8 +24,8 @@
     </nav>
   </header>
   <div class="site-layout">
-    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
-      <h2>ArdaRenderGraph</h2>
+    <aside class="sidebar" aria-label="ArdaDependencyGraph pages">
+      <h2>ArdaDependencyGraph</h2>
       <nav>
         <a href="index.html">Overview</a>
         <a aria-current="page" href="getting-started.html">Getting started</a>
@@ -42,33 +42,28 @@
     <main id="main-content">
       <nav class="breadcrumbs" aria-label="Breadcrumb">
         <a href="../index.html">Docs</a> /
-        <a href="index.html">ArdaRenderGraph</a> /
+        <a href="index.html">ArdaDependencyGraph</a> /
         Getting started
       </nav>
       <article>
 <header class="page-header"><p class="eyebrow">Persistent dependency graphs</p><h1>Getting started</h1><p>Create one persistent graph and replay its compiled program.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">Learning objectives</a><a href="#prerequisites">Libraries and headers</a><a href="#minimal-example">Clear and read back three frames</a><a href="#dependencies">Consumer-first attachment</a><a href="#lifecycle">Change semantics through edits</a><a href="#validation">Check every result</a><a href="#summary">Chapter summary</a></nav>
-<section id="objectives"><h2>Learning objectives</h2><p>Build and execute a minimal clear/readback graph, explain consumer-first attachment and handle failed edits.</p></section>
-<section id="prerequisites"><h2>Libraries and headers</h2><p>Initialize a native <code>FArdaRHIDeviceRef</code>, link <code>Ardashir::ArdaRenderGraph</code>, and include <code>ArdaDependencyGraphNodes.h</code>. The registry automatically installs upload, buffer-copy, clear, readback and synchronization definitions. CUDA adapters are in <code>ArdaDependencyGraphCuda.h</code>.</p></section>
-<section id="minimal-example"><h2>Clear and read back three frames</h2><pre><code class="language-cpp">#include &quot;ArdaDependencyGraphNodes.h&quot;
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">Learning objectives</a><a href="#prerequisites">Libraries and headers</a><a href="#minimal-example">Clear and read back three frames</a><a href="#dependencies">Automatic dependencies</a><a href="#lifecycle">Change semantics through edits</a><a href="#validation">Check every result</a><a href="#summary">Chapter summary</a></nav>
+<section id="objectives"><h2>Learning objectives</h2><p>Build and execute a minimal clear/readback graph, explain automatic dependencies and handle failed edits.</p></section>
+<section id="prerequisites"><h2>Libraries and headers</h2><p>Initialize a native <code>FArdaRHIDeviceRef</code>, link <code>Ardashir::ArdaDependencyGraph</code>, and include <code>ArdaDependencyGraph.h</code>. The registry automatically installs upload, buffer-copy, clear, readback and synchronization definitions. CUDA adapters are in <code>ArdaDependencyGraphCuda.h</code>.</p></section>
+<section id="minimal-example"><h2>Clear and read back three frames</h2><pre><code class="language-cpp">#include &quot;ArdaDependencyGraph.h&quot;
 using namespace arda;
 FArdaRHIStatus Run(FArdaRHIDeviceRef Device)
 {
     FArdaDependencyGraph Graph(Device);
-    if (auto S = Graph.BeginGraphEdit(); !S) return S;
+    FArdaGraphEdit Edit(Graph);
     FArdaRHIBufferDesc Desc;
     Desc.mByteSize = 256;
     Desc.mUsage = EArdaRHIBufferUsage::UnorderedAccess;
-    auto Output = Graph.CreateBuffer(&quot;output&quot;, Desc);
-    if (!Output) return Output.mStatus;
-    auto Bytes = eastl::make_shared&lt;eastl::vector&lt;uint8_t&gt;&gt;();
-    auto Read = Graph.AttachOrFind(&quot;read&quot;, &quot;arda.readback&quot;,
-        FArdaGraphReadbackParameters{Output.mValue, Bytes});
-    if (!Read) return Read.mStatus;
-    auto Clear = Graph.AttachOrFind(&quot;clear&quot;, &quot;arda.clear-buffer&quot;,
-        FArdaGraphClearParameters{Output.mValue, 7});
-    if (!Clear) return Clear.mStatus;
-    if (auto S = Graph.EndGraphEdit(); !S) return S;
+    const auto Output = AllocateBuffer(Edit, Desc, &quot;output&quot;);
+    Clear(Edit, Output, 7);
+    const auto Bytes = Readback(Edit, Output);
+    if (auto S = Edit.Commit(); !S) return S;
+    if (auto S = Graph.Compile(); !S) return S;
     for (unsigned Frame = 0; Frame != 3; ++Frame)
     {
         auto Result = Graph.Execute();
@@ -77,30 +72,27 @@ FArdaRHIStatus Run(FArdaRHIDeviceRef Device)
     }
     return {};
 }</code></pre></section>
-<section id="parameters"><h2>Parameters belong to each node</h2><p>Every node class declares its own <code>FArdaParameters</code> struct with only that operation's inputs and outputs. Each attached instance owns an immutable snapshot, so changing a local parameter value cannot change another node or graph. Pass a prefilled struct, an inline aggregate, or a callback that fills a fresh struct during attachment:</p><pre><code>// Inside BeginGraphEdit / EndGraphEdit, after declaring the destination buffers.
-FArdaGraphClearNode::FArdaParameters ClearParameters;
-ClearParameters.mDestination = FirstBuffer;
-ClearParameters.mValue = 7;
-auto First = Graph.AttachOrFind&lt;FArdaGraphClearNode&gt;("clear first", ClearParameters);
-if (!First) return First.mStatus;
+<section id="parameters"><h2>Parameters belong to each operation</h2><p>Each node class declares its own <code>FArdaParameters</code> struct. Use the named global callable published by its header: <code>ClearNode(Edit, FirstBuffer, uint32_t{7})</code>. Positional fields aggregate-initialize the node's parameter schema in declaration order, including defaults for omitted fields. The same callable accepts positional fields, a prefilled parameter value, or an initializer callback. The operation retains an immutable snapshot:</p><pre><code class="language-cpp">FArdaGraphClearNode::FArdaParameters Parameters;
+Parameters.mDestination = FirstBuffer;
+Parameters.mValue = 7;
+ClearNode(Edit, Parameters, &quot;clear first&quot;);
 
-auto Second = Graph.AttachOrFind&lt;FArdaGraphClearNode&gt;("clear second",
-    [&amp;](FArdaGraphClearNode::FArdaParameters&amp; Parameters)
+ClearNode(Edit,
+    [&amp;](FArdaGraphClearNode::FArdaParameters&amp; P)
     {
-        Parameters.mDestination = SecondBuffer;
-        Parameters.mValue = 42;
-    });
-if (!Second) return Second.mStatus;</code></pre><p>The callback runs synchronously once per attachment call, including reattachment, before validation or preparation. It can return <code>FArdaRHIStatus</code> to reject initialization. Do not retain its temporary reference or edit the graph inside it. Resource declaration fills omitted node-owned outputs before parameters are frozen. Deliberately shared resource or dynamic input pointees keep their documented lifetime and synchronization requirements; copying the parameter struct does not deep-copy them.</p><p>Migration: texture-to-buffer and buffer-to-texture nodes now have distinct <code>FArdaGraphTextureToBufferParameters</code> and <code>FArdaGraphBufferToTextureParameters</code> structs. Prefer <code>Node::FArdaParameters</code> at attachment sites. Cornell Box, PixelSort and triangle examples likewise use a separate schema for each node.</p></section>
-<section id="dependencies"><h2>Consumer-first attachment</h2><p>The readback reads the value produced by clear, so compilation orders clear first. Readback is observable and retains its producer. Use <code>MarkOutput()</code> for a graph-owned output without another observable consumer. Imported and persistent outputs are also roots.</p></section>
-<section id="lifecycle"><h2>Change semantics through edits</h2><p><code>AttachOrFind()</code> reuses a name only when definition and canonical key match. Replace changed operations within an edit. Removing a producer also removes resource-dependent consumers, which must be recreated as needed. Failed compilation leaves the edit open for repair or <code>CancelGraphEdit()</code>.</p></section>
+        P.mDestination = SecondBuffer;
+        P.mValue = 42;
+    }, &quot;clear second&quot;);</code></pre><p>The callback runs synchronously once before validation or preparation and may return <code>FArdaRHIStatus</code>. Do not retain its temporary reference or edit the graph inside it. Each invocation creates a new operation; optional names are diagnostic and must be unique. Resolve node-owned outputs through <code>GetBuffer(Slot)</code> or <code>GetTexture(Slot)</code> before closing the edit. One <code>Edit.Commit()</code> reports the first authoring error and queues only successful work.</p></section>
+<section id="dependencies"><h2>Automatic dependencies</h2><p>Readback consumes the value produced by clear, so compilation orders clear first and retains its producer. Use <code>Edit.Keep(Resource)</code> for an owned output without another observable consumer. Resource types select operation overloads: <code>CopyTo</code> supports buffer-to-buffer, texture-to-texture and both mixed transfer directions. For a dependency that has no resource access, use <code>Edit.Order(ProducerOperation, ConsumerOperation)</code>.</p></section>
+<section id="lifecycle"><h2>Change semantics through edits</h2><p>After execution, record the next frame in a new edit on the same graph. Its construction starts empty; omit unwanted operations without removing their old nodes. Close each edit, then call <code>Compile()</code>. Matching ordered constructions reuse a persistent revision. Successful compilation locks edits until execution is attempted. A failed compilation retains queued edits for a correction edit or <code>DiscardPendingEdits()</code>.</p></section>
 <section id="validation"><h2>Check every result</h2><p>Invalid handles, uncovered reads, contradictory dependencies, cycles and ambiguous pipelines fail compilation. For repeated writes to an overlapping region, attach writers and intervening readers in their intended order; <a href="resources.html#worked-example">the resource example</a> shows which contents each read observes. Regions with one producer still allow readers to be attached first. Native recording, submission and completion failures propagate through execution status. GPU work already accepted by a queue cannot be rolled back.</p></section>
-<section id="summary"><h2>Chapter summary</h2><p>Readback makes the clear output observable; a single successful edit produces the plan reused by all three executions.</p></section>
+<section id="summary"><h2>Chapter summary</h2><p>Readback makes the clear output observable; a closed edit followed by successful compilation selects the plan reused by all three executions.</p></section>
 <section id="source-guide"><h2>Source and API</h2><p>Read the <a href="ArdaInductor.md">developer guide</a>, <a href="ArdaInductor-Pipelines.md">pipeline guide</a>, <a href="api-reference.html">public API reference</a> and <a href="api-reference.html">graph declarations</a>.</p></section>
 <!-- Stable destinations for existing chapter links. -->
 <span id="builder" aria-hidden="true"></span><span id="checklist" aria-hidden="true"></span><span id="cleanup" aria-hidden="true"></span><span id="compile-execute" aria-hidden="true"></span><span id="failures" aria-hidden="true"></span><span id="include-context" aria-hidden="true"></span><span id="mental-model" aria-hidden="true"></span><span id="outputs" aria-hidden="true"></span><span id="passes" aria-hidden="true"></span><span id="performance" aria-hidden="true"></span><span id="worked-example" aria-hidden="true"></span>
 </article>
     </main>
   </div>
-  <footer class="site-footer"><p>ArdaRenderGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
+  <footer class="site-footer"><p>ArdaDependencyGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
 </body>
 </html>

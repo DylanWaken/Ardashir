@@ -73,7 +73,7 @@
           <a href="#hazards">Hazards and barriers</a>
           <a href="#synchronization">Fences, waits, and queries</a>
           <a href="#recording-modes">Immediate and deferred</a>
-          <a href="#render-graph">ArdaRenderGraph</a>
+          <a href="#render-graph">ArdaDependencyGraph</a>
           <a href="#worked-example">Worked example</a>
           <a href="#invariants">Invariants</a>
           <a href="#failures">Failure analysis</a>
@@ -92,7 +92,7 @@
             <li>Operate the Arda command-list state machine and preserve one device/queue domain.</li>
             <li>Assemble complete graphics, compute, mesh, or ray-tracing binding state before execution commands.</li>
             <li>Classify RAW, WAR, and WAW hazards and select transitions, memory/UAV ordering, or queue waits.</li>
-            <li>Decide when automatic tracking, explicit tracking, immediate execution, deferred recording, or ArdaRenderGraph is appropriate.</li>
+            <li>Decide when automatic tracking, explicit tracking, immediate execution, deferred recording, or ArdaDependencyGraph is appropriate.</li>
             <li>Design a production frame submission pipeline with parallel CPU recording and bounded in-flight resources.</li>
           </ul>
         </section>
@@ -262,7 +262,7 @@ command-&gt;CommitBarriers();</code></pre>
         <section id="synchronization">
           <h2>Cross-queue waits, fences, and queries</h2>
           <h3>Queue-to-queue dependencies</h3>
-          <p>Use submission instance IDs and <code>QueueWait</code> for GPU-side cross-queue order. D3D12 lowers the edge to a queue fence wait; Vulkan lowers it to a timeline-semaphore wait. The CPU can continue recording while the waiting queue stalls at the dependency. A resource crossing queues also needs a state/ownership handoff: release it in <code>Common</code> on the producer, wait on the destination queue, acquire it there, then enter the consumer state. This keeps D3D12 copy queues from seeing shader-only states. When Vulkan work crosses dedicated families, the paired barriers transfer the native queue-family owner; the exact family index is included in state evidence. ArdaRenderGraph generates this choreography and validates the facade, backend, and native state at <code>QueueRelease</code> and <code>QueueAcquire</code>.</p>
+          <p>Use submission instance IDs and <code>QueueWait</code> for GPU-side cross-queue order. D3D12 lowers the edge to a queue fence wait; Vulkan lowers it to a timeline-semaphore wait. The CPU can continue recording while the waiting queue stalls at the dependency. A resource crossing queues also needs a state/ownership handoff: release it in <code>Common</code> on the producer, wait on the destination queue, acquire it there, then enter the consumer state. This keeps D3D12 copy queues from seeing shader-only states. When Vulkan work crosses dedicated families, the paired barriers transfer the native queue-family owner; the exact family index is included in state evidence. ArdaDependencyGraph generates this choreography and validates the facade, backend, and native state at <code>QueueRelease</code> and <code>QueueAcquire</code>.</p>
           <h3>Event queries</h3>
           <p><a href="api-reference.html#api-arda-rhi-iardarhidevice-signaleventquery-66bd68bd"><code>SignalEventQuery</code></a> inserts completion on a queue. <code>PollEventQuery</code> supports non-blocking retirement; <code>WaitEventQuery</code> blocks the CPU; <code>ResetEventQuery</code> prepares reuse after completion.</p>
           <h3>GPU fences</h3>
@@ -286,7 +286,7 @@ command-&gt;CommitBarriers();</code></pre>
 
         <section id="render-graph">
           <h2>Persistent dependency graph integration</h2>
-          <p><a href="../ArdaRDG/ArdaInductor.md"><code>FArdaDependencyGraph</code></a> holds typed nodes and resource values across frames. Register implementations in <code>FArdaNodeRegistry</code>, then edit instances only between <code>BeginGraphEdit</code> and <code>EndGraphEdit</code>.</p>
+          <p><a href="../ArdaRDG/ArdaInductor.md"><code>FArdaDependencyGraph</code></a> holds typed nodes and resource values across frames. Register implementations in <code>FArdaNodeRegistry</code>, then author operations only through an <code>FArdaGraphEdit</code> scope.</p>
           <p>ArdaInductor infers producer-to-reader dependencies independently of attachment order for resource regions with one writer. Overlapping regions with multiple writers use successful attachment order to define which write feeds a read and when later overwrites may run; see <a href="../ArdaRDG/compilation.html#dependencies">dependency construction</a>. The compiler removes dead branches, creates pipelines from stage declarations, coalesces CUDA nodes, assigns queues, and plans reusable physical storage. Its search can optimize execution cost or memory under a configured VRAM budget.</p>
           <p><code>Submit</code> returns a frame ticket; <code>Wait</code> retires that frame and publishes readbacks. <code>Execute</code> combines both. Independent frame slots own transient storage, while imported resources and retained adapter allocations remain shared.</p>
           <p><code>FArdaDependencyExecutionContext</code> resolves declared resources and compiler-assigned pipeline slots. <code>FArdaGraphExecuteOptions</code> controls parallel recording and state validation. <code>FArdaGraphExecutionResult</code> records accepted submissions, queue waits, state checkpoints, and completion identities. The compile result reports scheduling and memory decisions.</p>
@@ -391,7 +391,7 @@ if (!drawn)
           <ol>
             <li><strong>Retire a frame slot.</strong> Poll or wait for that slot’s completion fence before reusing command allocators, upload ranges, transient descriptors, and dynamic buffers.</li>
             <li><strong>Acquire presentation state.</strong> Obtain the next swap-chain image and its known initial/present state.</li>
-            <li><strong>Build work.</strong> Update immutable pass data, compile ArdaRenderGraph, or construct a direct dependency schedule.</li>
+            <li><strong>Build work.</strong> Update immutable pass data, compile ArdaDependencyGraph, or construct a direct dependency schedule.</li>
             <li><strong>Record in parallel.</strong> Assign independent pass waves to worker threads. Give each worker private transient recording storage and avoid mutable shared descriptors.</li>
             <li><strong>Submit coarse batches.</strong> Preserve dependency order while batching compatible same-queue lists with <code>ExecuteCommandLists</code>.</li>
             <li><strong>Insert cross-queue waits.</strong> Wait only at the first true consumer, not at arbitrary frame-wide boundaries.</li>
@@ -413,7 +413,7 @@ if (!drawn)
 
         <section id="summary">
           <h2>Summary</h2>
-          <p>Command recording constructs a future GPU program; closing finalizes it; submission orders it on one queue; barriers make resource accesses visible and legal; waits connect otherwise independent queues; fences and queries prove completion. Arda exposes direct control through <code>IArdaRHICommandList</code> and whole-frame scheduling through ArdaRenderGraph. Production performance comes from correct batching, parallel recording, selective queue overlap, and fence-based resource retirement—not from removing synchronization blindly.</p>
+          <p>Command recording constructs a future GPU program; closing finalizes it; submission orders it on one queue; barriers make resource accesses visible and legal; waits connect otherwise independent queues; fences and queries prove completion. Arda exposes direct control through <code>IArdaRHICommandList</code> and whole-frame scheduling through ArdaDependencyGraph. Production performance comes from correct batching, parallel recording, selective queue overlap, and fence-based resource retirement—not from removing synchronization blindly.</p>
         </section>
 
         <section id="checkpoints">
@@ -424,7 +424,7 @@ if (!drawn)
             <li>When can two UAV operations remain in one state yet still require ordering?</li>
             <li>What information must accompany a submission instance ID for it to be meaningful?</li>
             <li>Which frame resources must be retired by a fence before reuse?</li>
-            <li>What declaration does ArdaRenderGraph need in order to derive a barrier or cross-queue wait?</li>
+            <li>What declaration does ArdaDependencyGraph need in order to derive a barrier or cross-queue wait?</li>
           </ol>
         </section>
 
@@ -436,7 +436,7 @@ if (!drawn)
             <li><a href="pipelines.html">Pipeline states</a> — PSO resolution and graphics compatibility.</li>
             <li><a href="presentation.html">Presentation</a> — swap-chain acquisition, present state, and frame boundaries.</li>
             <li><a href="external-interop.html#queues">External interop</a> — coordinating host-owned native queues.</li>
-            <li><a class="term" data-term="arda-render-graph" href="../glossary.html#term-arda-render-graph">ArdaRenderGraph</a> — pass declarations, compilation, transient lifetime, and execution.</li>
+            <li><a class="term" data-term="arda-render-graph" href="../glossary.html#term-arda-render-graph">ArdaDependencyGraph</a> — pass declarations, compilation, transient lifetime, and execution.</li>
             <li><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-a83aba52">API: <code>IArdaRHICommandList</code></a>,
               <a href="api-reference.html#api-arda-rhi-iardarhidevice-createcommandlist-315fd719"><code>CreateCommandList</code></a>,
               <a href="api-reference.html#api-arda-rhi-iardarhidevice-executecommandlists-5f6de033"><code>ExecuteCommandLists</code></a>, and

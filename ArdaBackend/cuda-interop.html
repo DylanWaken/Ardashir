@@ -397,7 +397,7 @@ if (!Recorded) return Recorded;
 <section id="tuning"><h2>Enumerate finite template choices and choose using payloads</h2><p><a href="api-reference.html#api-arda-foreachardacudapermutation-73777c63"><code>ForEachArdaCudaPermutation</code></a> expands a C++17 integer sequence. Nested calls enumerate M/N/K tile dimensions; if constexpr can prune unsupported combinations before instantiation. Each instantiated symbol has its own wrapper type, while a shared payload type can hold M, N, K, alignment requirements or a human-readable tuning label. The payload guides selection and is not an extra kernel argument.</p>
 <p>The sample binds block sizes 32 and 128, then chooses 32 for counts up to 64 and 128 otherwise. Grid.x = 1 + (Count - 1) / Block avoids overflow from Count + Block - 1. Manifest architecture coverage determines which native entries exist; algorithm requirements further filter them. A runtime-selected flag such as fast math must select a precompiled profile with that property. Do not silently label ordinary code as another architecture or infer coverage from a minimum capability alone.</p>
 <p>Record variant ID, generated profile identity, device capability, input shape, block dimensions, shared bytes and measured time when tuning. Keep profiling outside SelectKernel and feed it an immutable chosen policy. Fast math changes numerical semantics, so an application must opt into that profile and validate its numerical tolerance.</p></section>
-<section id="pixel-sort"><h2>Run the resizable Pixel Sort example</h2><p><a href="api-reference.html#api-pixel-sort"><code>PixelSort</code></a> is the Windows dependency-graph example in <code>Source/ArdaTests/Examples/PixelSort</code>. Its HLSL compute shader generates time-continuous domain-warped noise in an ink, indigo, lavender and coral palette. CUDA sorts the shared RGBA8UInt texture; a fullscreen graphics pass samples the result into the swap-chain back buffer. The target links ArdaBackend, ArdaRenderGraph, its native kernel library and Windows platform libraries. Public/Nodes declares the parameter and library interfaces; Private/Nodes owns shader registration, CUDA preparation and graphics recording. The renderer attaches those operations and submits cached graphs, with per-graph transient intermediates and inferred pipelines.</p>
+<section id="pixel-sort"><h2>Run the resizable Pixel Sort example</h2><p><a href="api-reference.html#api-pixel-sort"><code>PixelSort</code></a> is the Windows dependency-graph example in <code>Source/ArdaTests/Examples/PixelSort</code>. Its HLSL compute shader generates time-continuous domain-warped noise in an ink, indigo, lavender and coral palette. CUDA sorts the shared RGBA8UInt texture; a fullscreen graphics pass samples the result into the swap-chain back buffer. The target links ArdaBackend, ArdaDependencyGraph, its native kernel library and Windows platform libraries. Public/Nodes declares the parameter and library interfaces; Private/Nodes owns shader registration, CUDA preparation and graphics recording. The renderer attaches those operations and submits cached graphs, with per-graph transient intermediates and inferred pipelines.</p>
 <p>Build it from the repository root after following the <a href="#nvcc-build">nvcc setup</a> section. For a clean Ninja build use a Visual Studio developer shell and choose native architectures matching the target GPU:</p><pre><code class="language-powershell">cmake -S . -B build/pixel-sort -G Ninja -DCMAKE_BUILD_TYPE=Release -DARDASHIR_ENABLE_CUDA=ON -DARDASHIR_BUILD_CUDA_KERNELS=ON -DARDASHIR_BUILD_PIXEL_SORT=ON -DARDASHIR_BUILD_TESTS=OFF -DARDASHIR_CUDA_ARCHITECTURES=&quot;120&quot;
 cmake --build build/pixel-sort --target PixelSort
 build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend vulkan --cuda-mode auto</code></pre>
@@ -413,23 +413,26 @@ python Scripts/Examples/RunPixelSort.py vulkan build/pixel-sort Release --run-on
 <p>Use <code>TArdaDependencyCudaParameters</code> to rebind an operand schema to persistent graph resource handles. <code>TArdaCudaOperandNode</code> specializes the common node class contract for compiled kernels and external calls. Derived classes supply metadata; attachments supply the operand and logical arguments. ArdaInductor derives accesses and coalesces CUDA nodes into a single native batch where dependencies permit.</p><pre><code class="language-cpp">class FArdaAddNode final : public TArdaCudaOperandNode&lt;FArdaAddNode, FArdaAddOperand&gt;
 {
 public:
-    static FArdaDependencyNodeMetadata GetMetadata() { return {&quot;app.add&quot;, 1}; }
+    static FArdaDependencyNodeMetadata GetMetadata() { return {&quot;app.add&quot;, 1};
+ARDA_DECLARE_GRAPH_NODE(FArdaAddNode, AddValues);
+
+// In the node implementation file, inside the same namespace:
+ARDA_DEFINE_GRAPH_NODE(FArdaAddNode, AddValues); }
 };
 
 auto Operand = eastl::make_shared&lt;FArdaAddOperand&gt;(Device);
 FArdaDependencyGraph Graph(Device);
-if (auto S = Graph.BeginGraphEdit(); !S) return S;
-// Create/import Input, Middle and Output in this transaction.
+FArdaGraphEdit Edit(Graph);
+// Use BindBuffer/AllocateBuffer for Input, Middle and Output in this edit.
 TArdaDependencyCudaParameters&lt;FArdaAddParameters&gt; P;
 P.mInput.mResource = Input; P.mOutput.mResource = Middle;
 P.mCount = 128; P.mBias = 7;
-auto First = Graph.AttachOrFind&lt;FArdaAddNode&gt;(&quot;add seven&quot;, {Operand, P});
-if (!First) return First.mStatus;
+AddValues(Edit, {Operand, P}, &quot;add seven&quot;);
 P.mInput.mResource = Middle; P.mOutput.mResource = Output; P.mBias = 11;
-auto Second = Graph.AttachOrFind&lt;FArdaAddNode&gt;(&quot;add eleven&quot;, {Operand, P});
-if (!Second) return Second.mStatus;
-if (auto S = Graph.MarkOutput(Output); !S) return S;
-if (auto S = Graph.EndGraphEdit(); !S) return S;
+AddValues(Edit, {Operand, P}, &quot;add eleven&quot;);
+Edit.Keep(Output);
+if (auto S = Edit.Commit(); !S) return S;
+if (auto S = Graph.Compile(); !S) return S;
 return Graph.Execute().mStatus;</code></pre>
 <p>Single-producer regions allow consumers to be attached first. Regions with multiple writer nodes instead order overlapping writes and reads by original successful attachment order; each read consumes the preceding contents. Repeated writes use the same storage, while separate handles preserve separate values. Disjoint regions remain independent. See <a href="../ArdaRDG/resources.html#worked-example">the repeated-write example</a>. Graph-owned CUDA buffers receive dedicated compatible storage, and nonoverlapping values can reuse that storage with explicit ordering. Parameter snapshots and definitions survive across frames.</p>
 <p><code>mCudaGraphMode</code> controls native capture and replay. D3D12 CiG stays on the graphics queue; the compiler owns ordered capture/submission. Class registrations retain no device; graph instances retain their device-bound operand until retirement. See <a href="../ArdaRDG/ArdaInductor.md">ArdaInductor</a> and <a href="CUDA-Sequences.md">CUDA sequences</a>.</p></section>

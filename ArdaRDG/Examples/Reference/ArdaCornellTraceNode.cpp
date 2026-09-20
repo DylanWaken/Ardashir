@@ -6,6 +6,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaCornellTraceNode, CornellTrace);
+
 #define ARDA_CORNELL_RAY_PARAMETERS()                                                                                  \
 	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)                                                                \
 		ARDA_SHADER_ACCELERATION_STRUCTURE(mScene, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                     \

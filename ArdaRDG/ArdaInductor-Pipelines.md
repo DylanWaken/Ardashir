@@ -1,9 +1,10 @@
 # ArdaInductor pipeline inference
 
 Persistent dependency-graph nodes describe shader contributions and request pipeline slots.
-`EndGraphEdit()` infers each live request and creates or reuses its native PSO before `Execute()` records commands.
-Recording callbacks receive the resolved PSO through `FArdaDependencyExecutionContext`; state helpers apply compiler-prepared bindings and shader parameters, while callbacks supply draw/dispatch arguments.
-The public contracts are [ArdaInductorPipeline.h](../../Source/ArdaInfra/ArdaRenderGraph/Public/ArdaInductorPipeline.h) and [ArdaDependencyGraph.h](../../Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraph.h).
+`Compile()` infers each live request into a pipeline pattern. The first `Submit()` creates or reuses native PSOs and framebuffers before any commands are recorded.
+All persistent revisions share the graph's native PSO cache, while each revision owns its compiled plan and prepared runtime. Switching to a newly compiled revision can reuse matching PSOs; selecting a cached revision reuses that revision's runtime as well.
+Recording callbacks receive the resolved PSO through `FArdaDependencyExecutionContext`; state helpers apply runtime-prepared bindings and shader parameters, while callbacks supply draw/dispatch arguments.
+Pipeline descriptions belong to [Inductor/Rules/ArdaInductorPipeline.h](../../Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorPipeline.h). The separate [Inductor/Compiler/ArdaInductorPipelineCompiler.h](../../Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Compiler/ArdaInductorPipelineCompiler.h) exposes inference and native cache-resolution calls. [ArdaDependencyGraph.h](../../Source/ArdaInfra/ArdaDependencyGraph/Public/ArdaDependencyGraph.h) includes both through the module entry point.
 
 ## Describe contributions and slots
 
@@ -40,7 +41,7 @@ Returning a PSO request alone does not declare resource accesses. Shader argumen
 
 ## Ancestry, intermediate nodes, and ambiguity
 
-Inference searches the requesting node and its dependencies, including explicit `AddDependency(Producer, Consumer)` edges.
+Inference searches the requesting node and its dependencies, including explicit `Edit.Order(Producer, Consumer)` constraints between operations.
 Each branch stops before an upstream consumer that requests the same pipeline family: that consumer owns a completed pipeline, so its stages/settings belong to its own draw or dispatch.
 Thus consecutive compute consumers using different shaders get independent PSOs without manual group tags; the terminal's own stages and unfinished stage ancestry remain eligible.
 Consumers of other pipeline families remain traversable. A shared stage provider can feed several consumers through independent dependency edges that bypass any completed same-family consumer.
@@ -147,9 +148,9 @@ For graphics/mesh state, use `Context.GetFramebuffer()` for the compiled attachm
 Then issue the normal draw, dispatch, ray, or work-graph command through `GetCommands()`.
 For compute specifically, check `SetComputeState()`'s status, call the void `Dispatch()` method, then return `FArdaRHIStatus{}`.
 
-See [ArdaInductorGpuTests.cpp](../../Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorGpuTests.cpp) for a complete typed compute node, bindings, consumer-before-producer attachment, and three-frame numerical readback.
-[ArdaInductorPipelineTests.cpp](../../Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorPipelineTests.cpp) covers intermediate ancestry, groups, layout conflicts, tessellation pairs, ray exports, work-graph identity, and invalid configurations without a GPU.
-The implementation is in [ArdaInductorPipeline.cpp](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorPipeline.cpp); [ArdaInductorRuntime.cpp](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorRuntime.cpp) connects inference to compilation and execution.
+See [ArdaInductorGpuTests.cpp](../../Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorGpuTests.cpp) for a complete typed compute node, bindings, consumer-before-producer attachment, and three-frame numerical readback.
+[ArdaInductorPipelineTests.cpp](../../Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorPipelineTests.cpp) covers intermediate ancestry, groups, layout conflicts, tessellation pairs, ray exports, work-graph identity, and invalid configurations without a GPU.
+The implementation is in [ArdaInductorPipeline.cpp](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPipeline.cpp); [ArdaInductorRuntime.cpp](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPreparation.cpp) connects inference to compilation and execution.
 
 ## Native API references
 

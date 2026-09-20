@@ -123,7 +123,7 @@
           <h3>What ArdaBackend does not do</h3>
           <ul>
             <li>It does not decide which objects are visible, which lighting model to use, or how to schedule game systems. Those are renderer and engine responsibilities.</li>
-            <li>It does not infer a complete frame graph from commands. ArdaRenderGraph provides logical pass scheduling and transient-resource planning above this layer.</li>
+            <li>It does not infer a complete frame graph from commands. ArdaDependencyGraph provides logical pass scheduling and transient-resource planning above this layer.</li>
             <li>It does not embed a shader compiler library or require per-shader CMake commands. The <a href="shaders.html">shader system</a> can launch a configured external DXC process at startup or first use, or remain bytecode-only.</li>
             <li>It does not erase hardware differences. Callers must query capabilities and queue availability instead of assuming every backend exposes every feature.</li>
             <li>It does not make arbitrary concurrent access safe. Thread-safety is a contract of each subsystem, not a side effect of abstraction.</li>
@@ -231,7 +231,7 @@
             <li><strong>Compute or offline tool:</strong> Getting started → RHI resources → Commands → Diagnostics.</li>
             <li><strong>Windowed renderer:</strong> Getting started → Architecture → Shaders → Pipelines → Commands → Presentation.</li>
             <li><strong>Engine-owned device and presentation:</strong> Getting started → Architecture → <a href="external-interop.html">External interop</a> → RHI resources → Commands → Diagnostics.</li>
-            <li><strong>Preparing for render-graph integration:</strong> read Architecture &rarr; <a href="rhi.html">RHI resources</a> &rarr; <a href="rhi-feature-guide.html">RHI feature guide</a> &rarr; <a href="commands.html#render-graph">Commands: ArdaRenderGraph integration</a> &rarr; <a href="../ArdaRDG/index.html">ArdaRenderGraph documentation</a>.</li>
+            <li><strong>Preparing for render-graph integration:</strong> read Architecture &rarr; <a href="rhi.html">RHI resources</a> &rarr; <a href="rhi-feature-guide.html">RHI feature guide</a> &rarr; <a href="commands.html#render-graph">Commands: ArdaDependencyGraph integration</a> &rarr; <a href="../ArdaRDG/index.html">ArdaDependencyGraph documentation</a>.</li>
             <li><strong>Production incident:</strong> Diagnostics → the failing subsystem → Architecture failure containment.</li>
           </ul>
         </section>

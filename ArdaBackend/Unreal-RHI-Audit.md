@@ -229,10 +229,10 @@ scheduling, replay and access validation remain authoritative.
 [a-copy-tests]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Tests/ArdaTextureBufferTests.cpp
 [a-readback]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
 [a-subresources]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHISubresources.h
-[a-plane-test]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorCommandProgramTests.cpp
+[a-plane-test]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorCommandProgramTests.cpp
 [a-transitions]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Scheduling/ArdaRHICommandStates.cpp
 [a-barriers]: ../../Source/ArdaInfra/ArdaBackend/Public/RHI/Scheduling/ArdaRHICommandList.h
-[a-hazards]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaRenderGraph/Private/ArdaDependencyHazards.cpp
+[a-hazards]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaDependencyHazards.cpp
 [a-queues]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
 [a-direct]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Pipelines/ArdaRHICommandPipelines.cpp
 [a-indirect]: ../../Source/ArdaInfra/ArdaBackend/Private/RHI/Pipelines/ArdaRHICommandPipelines.cpp
@@ -255,7 +255,7 @@ scheduling, replay and access validation remain authoritative.
 [a-special-rt]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
 [a-queries]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
 [a-heaps]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
-[a-graph-runtime]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorRuntime.cpp
+[a-graph-runtime]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPreparation.cpp
 [a-sparse]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
 [a-libraries]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h
 [a-numeric]: D:/Projects/Ardashader/Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h

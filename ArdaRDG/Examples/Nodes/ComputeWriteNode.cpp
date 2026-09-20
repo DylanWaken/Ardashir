@@ -4,6 +4,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaComputeWriteNode, ComputeWrite);
+
 	class FArdaRecipeComputeShader final : public FArdaGlobalShader
 	{
 	public:

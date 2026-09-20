@@ -3,6 +3,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaWorkWriteNode, WorkWrite);
+
 	class FArdaRecipeWorkShader final : public FArdaGlobalShader
 	{
 	public:

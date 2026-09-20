@@ -8,21 +8,21 @@
 <rect x="40" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
 <text x="60" y="198" fill="#7dd3fc" font-size="14">01</text>
 <text x="60" y="239" fill="#eef6ff" font-size="19" font-weight="700">Author</text>
-<text x="60" y="280" fill="#c4d3e5" font-size="15">BeginGraphEdit</text>
+<text x="60" y="280" fill="#c4d3e5" font-size="15">FArdaGraphEdit</text>
 <text x="60" y="312" fill="#c4d3e5" font-size="15">Create / Import resources</text>
-<text x="60" y="344" fill="#c4d3e5" font-size="15">AttachOrFind / dependencies</text>
+<text x="60" y="344" fill="#c4d3e5" font-size="15">Operations / dependencies</text>
 <path d="M294 274H322" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="330" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
 <text x="350" y="198" fill="#7dd3fc" font-size="14">02</text>
 <text x="350" y="239" fill="#eef6ff" font-size="19" font-weight="700">Compile</text>
-<text x="350" y="280" fill="#c4d3e5" font-size="15">EndGraphEdit</text>
+<text x="350" y="280" fill="#c4d3e5" font-size="15">Compile</text>
 <text x="350" y="312" fill="#c4d3e5" font-size="15">ArdaInductor resolution</text>
-<text x="350" y="344" fill="#c4d3e5" font-size="15">Cache pipelines and storage</text>
+<text x="350" y="344" fill="#c4d3e5" font-size="15">Plan pipelines and storage</text>
 <path d="M584 274H612" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="620" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
 <text x="640" y="198" fill="#7dd3fc" font-size="14">03</text>
 <text x="640" y="239" fill="#eef6ff" font-size="19" font-weight="700">Execute</text>
-<text x="640" y="280" fill="#c4d3e5" font-size="15">Submit frame</text>
+<text x="640" y="280" fill="#c4d3e5" font-size="15">Materialize on first Submit</text>
 <text x="640" y="312" fill="#c4d3e5" font-size="15">Record native program</text>
 <text x="640" y="344" fill="#c4d3e5" font-size="15">Queue waits and submission</text>
 <path d="M874 274H902" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>

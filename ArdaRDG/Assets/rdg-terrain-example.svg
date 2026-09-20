@@ -50,6 +50,6 @@
 <text x="36" y="355" font-size="15" fill="#b7cbe1">Solid arrows: required values</text>
 <text x="36" y="384" font-size="15" fill="#b7cbe1">Dashed arrows: optional readback branches</text>
 <rect x="36" y="498" width="1128" height="90" rx="12" fill="#152637"/>
-<text x="56" y="534" font-size="16">ArdaInductor resolves dependencies, barriers, queues, PSOs and transient lifetimes at EndGraphEdit.</text>
+<text x="56" y="534" font-size="16">Compile plans dependencies, queues and lifetimes. First Submit prepares native PSOs and storage.</text>
 <text x="56" y="566" font-size="16" fill="#b7cbe1">Replay updates CPU inputs. After first-frame validation, an edit removes only the readback branches.</text>
 </g></svg>

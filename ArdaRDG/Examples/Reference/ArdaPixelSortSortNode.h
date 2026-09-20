@@ -24,4 +24,6 @@ namespace arda
 		    FArdaInstanceState& Instance,
 		    FArdaCudaSequence& Sequence);
 	};
+
+	ARDA_DECLARE_GRAPH_NODE(FArdaPixelSortSortNode, PixelSortSort);
 }

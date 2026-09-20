@@ -1,23 +1,32 @@
 # Persistent compute and graphics graphs with ArdaInductor
 
-`FArdaDependencyGraph` is the persistent graph API. It owns typed node instances, logical resources, a compiled schedule, reusable physical storage, and a pipeline cache. `EndGraphEdit()` invokes **ArdaInductor**; `Execute()` submits the compiled work repeatedly. Regions with one producer are independent of attachment order. Regions with multiple writer nodes use original successful attachment order to determine which contents each read observes.
+`FArdaDependencyGraph` is the persistent graph API. It owns typed node instances, logical resources, a compiled schedule, reusable physical storage, and a pipeline cache. `Edit.Commit()` queues an edit without compiling. `Compile()` selects a cached persistent revision or invokes **ArdaInductor** to publish a logical schedule and memory plan. The first `Submit()` materializes native resources and execution state; later submissions reuse them. `Execute()` submits and waits. Regions with one producer are independent of attachment order. Regions with multiple writer nodes use original successful attachment order to determine which contents each read observes.
 
-The public entry points are [ArdaDependencyGraph.h](../../Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraph.h), [ArdaDependencyNode.h](../../Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyNode.h), [ArdaDependencyGraphNodes.h](../../Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraphNodes.h), and [ArdaDependencyGraphCuda.h](../../Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraphCuda.h). The [pipeline guide](ArdaInductor-Pipelines.md) covers automatic graphics, meshlet, compute, ray-tracing, and work-graph PSOs. `ArdaRenderGraph.h` is the umbrella for the persistent APIs; execution options and frame reports are declared in `ArdaDependencyGraphExecution.h`.
+The public entry points are [ArdaDependencyGraph.h](../../Source/ArdaInfra/ArdaDependencyGraph/Public/ArdaDependencyGraph.h), [ArdaDependencyNode.h](../../Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNode.h), [ArdaDependencyGraphNodes.h](../../Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/DefaultNodes/ArdaDependencyGraphNodes.h), and [ArdaDependencyGraphCuda.h](../../Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Runtime/ArdaDependencyGraphCuda.h). The [pipeline guide](ArdaInductor-Pipelines.md) covers automatic graphics, meshlet, compute, ray-tracing, and work-graph PSOs. `ArdaDependencyGraph.h` is the umbrella for the persistent APIs; execution options belong to [Inductor/Config/ArdaGraphExecuteOptions.h](../../Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Config/ArdaGraphExecuteOptions.h), while frame reports belong to [Inductor/Runtime/ArdaDependencyGraphExecution.h](../../Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Runtime/ArdaDependencyGraphExecution.h).
 
 ## Separation of responsibilities
 
 `Ardashir::ArdaGraph` is a separate library with no graphics or CUDA dependency. Its [TArdaDirectedGraph](../../Source/ArdaInfra/ArdaGraph/Public/ArdaGraph.h) accepts arbitrary node and edge payloads. It stores dense live node/edge lists, per-node incoming/outgoing adjacency lists, neighbor hash maps, and an endpoint-pair edge index. Node/edge lookup and duplicate-edge lookup take expected constant time; node removal visits incident edges. Deterministic Kahn ordering and iterative cycle detection avoid depending on hash iteration. Generational handles reject deleted, foreign, and abandoned-edit identities. Snapshots share an identity lineage while copying graph contents.
 
-`Ardashir::ArdaRenderGraph` adds typed resource semantics and execution. Its global `FArdaNodeRegistry::Get()` stores immutable library definitions under unique names and synchronizes registration/lookup. Built-ins are installed automatically: `arda.upload`, `arda.copy-buffer`, `arda.clear-buffer`, `arda.readback`, and `arda.sync`. Applications register their own graphics, compute, copy, or CUDA definitions in the same registry. A definition is shared; a graph owns each instance's parameters and name. `Unregister()` removes future library lookup while existing instances retain their definition. Class registrations retain no device. Device-bound CUDA operands are attachment parameters retained by graph instances until retirement.
+`Ardashir::ArdaDependencyGraph` adds typed resource semantics and execution. Its global `FArdaNodeRegistry::Get()` stores immutable library definitions under unique names and synchronizes registration/lookup. Built-ins are installed automatically: `arda.upload`, `arda.copy-buffer`, `arda.clear-buffer`, `arda.readback`, and `arda.sync`. Applications register their own graphics, compute, copy, or CUDA definitions in the same registry. A definition is shared; a graph owns each instance's parameters and name. `Unregister()` removes future library lookup while existing instances retain their definition. Class registrations retain no device. Device-bound CUDA operands are attachment parameters retained by graph instances until retirement.
 
-ArdaInductor resolves semantic edges, culls unused work, infers PSOs, selects a deterministic schedule, groups CUDA operations, assigns queues, and supplies resource lifetimes to the backend memory planner. A successful edit compiles the native execution program, which retains physical frame leases, barrier plans and resolved pipelines. The [device-wide GPU allocator](../ArdaBackend/Gpu-Allocator.md) reuses compatible storage across graph instances and direct RHI callers after their active references and submissions retire. Optional background scheduling can replace a program while retaining its allocations; ordinary replay does not recreate transient allocations each frame.
+ArdaInductor resolves semantic edges, culls unused work, infers PSOs, selects a deterministic schedule, groups CUDA operations, assigns queues, and supplies resource lifetimes to the backend memory planner. A successful explicit compilation selects a persistent revision and its logical plan. The first submission acquires physical frame leases, resolves pipelines and bindings, and lowers the native execution program. Compilation creates no graph-owned GPU buffers or textures. The [device-wide GPU allocator](../ArdaBackend/Gpu-Allocator.md) reuses compatible storage across graph instances and direct RHI callers after their active references and submissions retire. Optional background scheduling can replace a program while retaining its allocations; ordinary replay does not recreate transient allocations each frame.
+
+The [source architecture](architecture.html#modules) separates graph declarations from configurable compiler transformations and runtime execution. `FArdaInductorOptions::mRules` owns ordered `mPreprocessRules` and `mCompileRules` lists. Rules derive from `FArdaGraphRule`, may own configuration members and execute non-static `Apply` functions. Preprocessing changes a private working graph before compilation; compile rules refine one unpublished result. The default program separates access validation, dependency resolution, acyclicity, flattening, culling, pipeline inference, ordering, allocation planning, queue assignment, CUDA batching, dispatch flattening and fences. Rules can be omitted or repeated when their input/output contracts remain satisfied; there are no fixed stage slots. Reuse immutable rule instances for unchanged settings and replace them when configuration changes. See the [rule composition, memory example and custom policy](compilation.html#rules).
 
 Pipeline inference stops each ancestry branch before an upstream consumer requesting the same pipeline family. Consecutive compute nodes with different shaders therefore receive independent PSOs without manual group tags. Unfinished stage declarations still propagate through intermediate nodes; a shared stage provider reaches multiple consumers through independent dependency edges. Conflicting contributions inside one inference region require explicit groups or compatible settings, as described in the [pipeline guide](ArdaInductor-Pipelines.md#ancestry-intermediate-nodes-and-ambiguity).
 
-## Self-contained node attachment
+## Self-contained operation invocation
 
-The typed [Graph.AttachOrFind&lt;Node&gt;](api-reference.html#api-arda-fardadependencygraph-attachorfind-ea35df5c) overload lets a renderer
-compose operations without registering shaders or building binding layouts.
+Declare a named global callable immediately after the node class with
+`ARDA_DECLARE_GRAPH_NODE(FArdaMyNode, MyOperation)` and define it once in its
+implementation with `ARDA_DEFINE_GRAPH_NODE(FArdaMyNode, MyOperation)`.
+`MyOperation(Edit, Parameters)` records one operation. The same callable accepts
+`MyOperation(Edit, Arg1, Arg2, ...)`, initializing `FArdaMyNode::FArdaParameters`
+in declaration order with its field defaults and C++17 aggregate checks.
+The first invocation registers the node automatically. See the
+[registration walkthrough](Registering-Nodes.md) for a complete header and implementation.
+Renderers compose these operations without registering shaders or building binding layouts.
 A node derives from the [master CRTP base](api-reference.html#api-arda-tardadependencynode-35213481),
 usually through its graphics, compute, copy, CUDA or synchronization specialization.
 CRTP passes the concrete class as the base template's first argument, so required
@@ -31,15 +40,13 @@ Synchronization nodes may omit execution. The public
 [contract trait](api-reference.html#api-arda-tardadependencynodecontract-a4cadef5)
 also lets libraries check a class without registering it.
 
-Typed attachment checks the edit transaction, then uses the base's shared path.
-The [named-definition overload](api-reference.html#api-arda-fardadependencygraph-attachorfind-5ccb9fb8)
-looks up the same registered class and validates its public parameter type. Explicit
-requirements run first, followed by logical output declaration and canonical-key
-comparison. Matching instances skip preparation; conflicting semantics fail before
-setup. A new instance validates its public parameters, obtains immutable device
-state, creates private instance state and describes its accesses. The base retains
-these objects in private execution storage. All authors use the class hooks;
-there is no callback-definition registration or separately authored prepared schema.
+Invocation checks the edit transaction and uses the base's shared registration path.
+`Edit.Invoke(DefinitionName, Parameters)` discovers the same registered class and
+validates its public parameter type. Each invocation creates an operation; an
+optional diagnostic name must be unique. Requirements run first, followed by output
+declaration and immutable parameter retention. The base obtains device state, creates
+private instance state and describes accesses. No public operation adds or removes
+raw nodes; resource dependencies are discovered behind the facade.
 
 All examples use individual node classes in `Public/Nodes` and matching `.cpp`
 files in `Private/Nodes`. The umbrella headers only include classes. There is no
@@ -53,7 +60,7 @@ node header and defined in its implementation file. Stateless defaults cover
 nodes needing neither setup nor private runtime state. The base weakly caches device
 state by concrete node type and device. Bound parameters hold strong references,
 so live graphs reuse setup and retiring them releases the state and device.
-The compiler prepares binding sets, bindless tables, relocated shader parameters and ray shader tables per compiled frame slot after physical allocation. Recording hooks use context state helpers; node instance caches do not manage these objects. See [automatic bindings](ArdaInductor-Bindings.md) and [complete node recipes](node-recipes.html).
+On first submission, the runtime prepares binding sets, bindless tables, relocated shader parameters and ray shader tables per frame slot after physical allocation. Recording hooks use context state helpers; node instance caches do not manage these objects. See [automatic bindings](ArdaInductor-Bindings.md) and [complete node recipes](node-recipes.html).
 
 Device setup must be determined by node type/device. Parameter-dependent setup
 belongs in `CreateInstance`; declare any retained GPU workspace in `Describe`.
@@ -69,14 +76,14 @@ explicit dynamic inputs between recordings; nested semantic pointees are not
 deep-copied by parameter snapshots.
 
 First attachment can compile/load shaders and allocate layouts on the CPU/RHI
-side; this work is outside ordinary graph replay. ArdaInductor creates PSOs during
-`EndGraphEdit`, then reuses the compiled execution program. Typed attachment adds
+side; this work is outside ordinary graph replay. `Compile()` infers pipeline
+patterns. The first `Submit` resolves native PSOs and prepares the execution program. Typed attachment adds
 no GPU submission or wait; node preparation hooks must follow that rule too.
 Preparation failure leaves the edit open and does not attach that node. Returning
 success with null state is rejected. The base retains only successful live setup,
-so repair and retry are possible. Cancelling an edit releases new bound parameters
-and restores removed ones. Removing a committed node releases its state after
-the edit commits and outstanding owners retire; other live graphs can retain it.
+so repair and retry are possible. Cancelling an edit releases its new bound parameters. Cached revisions retain
+their state until eviction or invalidation and retirement of outstanding work;
+other live graphs can retain shared state.
 Process-wide registrations store callbacks without retaining a device. See the
 [worked custom-node recipe](node-recipes.html#compute) for a complete operation.
 
@@ -86,7 +93,7 @@ See the [registration recipes](node-recipes.html) for native compute, indexed ra
 
 The common node base provides an overridable static [GetRequirements](api-reference.html#api-arda-tardadependencynode-getrequirements-defdae36) hook returning [FArdaDependencyNodeRequirements](api-reference.html#api-arda-fardadependencynoderequirements-7513e792). Select portable features, minimum limits, CUDA support and named read-only environment predicates from immutable public parameters. The default imposes no explicit requirements. The hook runs before argument validation, output declaration, preparation and instance setup, so it must safely handle unvalidated inputs and must not allocate, submit, wait or mutate external state.
 
-Typed class attachment and lookup by registered class name share this check. Explicit requirements are evaluated on every attachment, including an existing-name lookup. New descriptions add recognized pipeline, bindless and resource-state requirements before graph binding setup and insertion. The descriptor's requirement field is graph-populated output; authors use the hook. Unsupported reports identify the node and aggregate missing abilities. Failure preserves the open edit, inserts no node and rolls back that attachment's provisional outputs; a failed reattachment preserves the existing instance.
+Typed class attachment and lookup by registered class name share this check. Explicit requirements are evaluated on every operation invocation. New descriptions add recognized pipeline, bindless and resource-state requirements before graph binding setup and insertion. The descriptor's requirement field is graph-populated output; authors use the hook. Unsupported reports identify the node and aggregate missing abilities. Failure preserves the open edit, inserts no node and rolls back that attachment's provisional outputs. The edit retains the first failure until cancellation.
 
 An empty explicit set permits device-free semantic analysis when other hooks also work without a device; inferred requirements remain recorded without device enforcement. Nonempty explicit requirements are never assumed supported without a device. Dedicated compute/copy families are not inferred from the node domain, preserving normal scheduling fallback. Admission does not supply missing resource effects or prove every native format, binary, pipeline or runtime constraint.
 
@@ -94,43 +101,34 @@ Read [the feature admission chapter](feature-requirements.html) for compiled hoo
 
 ## Minimal persistent graph
 
-This example uses a real RHI device and an existing command implementation. Check every returned status in application code, as shown here. The readback node is deliberately attached first.
+This example uses a real RHI device and an existing command implementation. Check every returned status in application code, as shown here. The operations facade creates the graph and discovers dependencies.
 
 ```cpp
-#include "ArdaDependencyGraphNodes.h"
-
-arda::FArdaRHIStatus RunPersistentClear(arda::FArdaRHIDeviceRef Device)
+#include "ArdaDependencyGraph.h"
+using namespace arda;
+FArdaRHIStatus RunPersistentClear(FArdaRHIDeviceRef Device)
 {
-    using namespace arda;
     FArdaDependencyGraph Graph(Device);
-    if (auto S = Graph.BeginGraphEdit(); !S) return S;
-
+    FArdaGraphEdit Edit(Graph);
     FArdaRHIBufferDesc Desc;
     Desc.mByteSize = 256;
     Desc.mUsage = EArdaRHIBufferUsage::UnorderedAccess;
-    auto Output = Graph.CreateBuffer("output", Desc);
-    if (!Output) return Output.mStatus;
-
-    auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-    auto Read = Graph.AttachOrFind<FArdaGraphReadbackNode>("read",
-        FArdaGraphReadbackParameters{Output.mValue, Bytes});
-    if (!Read) return Read.mStatus;
-    auto Clear = Graph.AttachOrFind<FArdaGraphClearNode>("clear",
-        FArdaGraphClearParameters{Output.mValue, 7});
-    if (!Clear) return Clear.mStatus;
-    if (auto S = Graph.EndGraphEdit(); !S) return S;
-
+    const auto Output = AllocateBuffer(Edit, Desc, "output");
+    Clear(Edit, Output, 7);
+    const auto Bytes = Readback(Edit, Output);
+    if (auto S = Edit.Commit(); !S) return S;
+    if (auto S = Graph.Compile(); !S) return S;
     for (unsigned Frame = 0; Frame != 3; ++Frame)
     {
-        auto Run = Graph.Execute();
-        if (!Run.mStatus) return Run.mStatus;
-        // Bytes contains 64 uint32_t values, each equal to 7.
+        auto Result = Graph.Execute();
+        if (!Result.mStatus) return Result.mStatus;
+        // Bytes holds 64 uint32_t values, each equal to 7.
     }
     return {};
 }
 ```
 
-Readback is observable, so it retains the clear producer automatically. A GPU output with no readback must be marked with `MarkOutput()` or declared external/persistent; otherwise a producer with no observable consumers can be culled. `mExecutionOrder`, `mQueues`, `mCudaBatches`, `mMemoryDependencies`, and memory counters in `GetCompileResult()` expose the resulting plan. A graph without a device supports semantic compilation and estimated memory diagnostics, but cannot execute or enforce a native VRAM cap.
+Readback is observable, so it retains the clear producer automatically. A GPU output with no readback must be marked with `Edit.Keep()` or declared external/persistent; otherwise a producer with no observable consumers can be culled. `mExecutionOrder`, `mQueues`, `mCudaBatches`, `mMemoryDependencies`, and memory counters in `GetCompileResult()` expose the resulting plan. A graph without a device supports semantic compilation and estimated memory diagnostics, but cannot execute or enforce a native VRAM cap.
 
 `arda.readback` uses `Context.ReadbackBuffer()` to record an asynchronous transfer. The graph submits all native work before waiting for readback completion and publishing the host vectors. This avoids a per-copy CPU wait that would delay later independent graphics submissions. Readback errors propagate through `Execute().mStatus`; failed frames clear their registered readback destinations, and unsubmitted copies are cancelled rather than waited indefinitely. `Execute()` waits for the entire graph frame, including graphs without readbacks. Use `Submit()` and tickets when the CPU should continue before completion.
 
@@ -138,7 +136,7 @@ A failed recording, submission, or readback completion invalidates the lowered e
 
 ## Parameters, resource versions, and edits
 
-All nodes use the same class contract, including built-ins and CUDA operand adapters. The base lowers its statically checked hooks directly into framework-owned `FArdaDependencyNodeExecutable` storage. Registry lookup exposes only a retained const view; executable records cannot be constructed, copied or registered by application code. Named attachment looks up this same class registration and checks the public parameter type. Authors never provide a second prepared parameter schema: the base retains public parameters, device state and instance state privately.
+All nodes use the same class contract, including built-ins and CUDA operand adapters. The base lowers its statically checked hooks directly into framework-owned `FArdaDependencyNodeExecutable` storage. Registry lookup exposes only a retained const view; executable records cannot be constructed, copied or registered by application code. Registry-driven Edit.Invoke looks up this same class registration and checks the public parameter type. Authors never provide a second prepared parameter schema: the base retains public parameters, device state and instance state privately.
 
 Use `FArdaDependencyKeyBuilder` to encode explicit semantic fields. `Resource` includes graph identity, index and generation; `BufferRange` and `TextureRange` include every range dimension. Scalar values use their declared width in little-endian order; strings and byte spans carry lengths. Encode every behavior-affecting value and immutable pointee meaning. Do not serialize padded structs or use a digest alone as node identity.
 
@@ -150,19 +148,21 @@ For example, attach `Write1`, `Read1`, `Write2`, `Read2` on the same range of on
 
 Graph-owned reads require initialized coverage across their entire range. On a region with repeated writes, an owned read before the first writer fails; imported storage may supply its initial contents. `ReadWrite` consumes incoming contents and produces an update, so its own write cannot initialize its input. A previous writer can initialize an owned region before a later `ReadWrite` node. `mbPersistent` retains storage but does not waive this coverage rule. Explicit dependencies can add ordering, but contradicting an inferred hazard fails compilation with a cycle.
 
-Resource access declarations are the complete hazard contract. Declare every buffer/texture and its RHI state/range, including framebuffer targets. Native callbacks resolve only declared resources through the execution context. Hidden resource access inside an external library cannot be inferred; declare its inputs, outputs and retained workspace. Non-resource side effects require explicit edges and `mbSideEffect` when observable. `arda.sync` is an empty named join: connect its predecessors and successors with `AddDependency()`. Pure joins and stage declarations generate contracted dependency edges without empty native command lists.
+Resource access declarations are the complete hazard contract. Declare every buffer/texture and its RHI state/range, including framebuffer targets. Native callbacks resolve only declared resources through the execution context. Hidden resource access inside an external library cannot be inferred; declare its inputs, outputs and retained workspace. Non-resource side effects require explicit edges and `mbSideEffect` when observable. `arda.sync` is an empty named join: connect its predecessors and successors with `Edit.Order(Producer, Consumer)`. Pure joins and stage declarations generate contracted dependency edges without empty native command lists.
 
-All mutation is restricted to `BeginGraphEdit()` / `EndGraphEdit()`. `AttachOrFind(instanceName, definitionName, parameters)` returns an existing instance only when its definition and canonical key match. Finding that instance preserves its original attachment order. A name collision with different semantics is an error; remove the old instance and attach its replacement within the edit. A replacement is appended after the surviving nodes, even if it reuses a name or internal handle slot. Resource dependencies are resolved at compilation. `FindNode()` and `GetTopology()` provide lookup and inspection.
+All authoring goes through `FArdaGraphEdit`, named global node callables and resource operation functions. `Edit.Commit()` queues the edit and `Edit.Cancel()` rolls it back. The first ordinary edit after execution starts an empty construction. Record the desired frame again and omit operations that are no longer needed. Multiple closed edits accumulate in an ordered queue; `Compile()` combines their hashes and reuses a matching persistent revision or compiles a new one. Successful compilation clears the queue and locks edits until `Execute()` or `Submit()` is attempted. Unchanged frames can also execute the selected revision directly without another edit. The cache retains up to four revisions by default, including their prepared runtime, so A/B/A can reuse A. `Compile(true)` forces recompilation, `InvalidatePersistentCache()` invalidates reuse, and `GetRevisionStats()` exposes activity.
 
-`RemoveNode()` removes that node and recursively removes readers that consume its produced contents, followed by their affected consumers. A later independent overwrite does not consume the earlier value, while `ReadWrite` does. Ordering-only hazards and manual edges do not by themselves cause removal of their successors. An output marker is cleared only when no surviving producer remains. Logical resource declarations remain available for replacement producers. Recompilation resolves the remaining accesses again: removing a writer can return a region to the single-producer rule. `CancelGraphEdit()` restores the previous graph, handles, attachment order, resource descriptions, and options. Failed compilation keeps the edit open for correction or cancellation, and execution is unavailable while editing. Begin-edit waits for outstanding work before replacing compiled storage.
+`FindNode()` and `GetTopology()` provide lookup and inspection.
+
+`Edit.Cancel()` restores its starting construction; earlier queued edits remain. Failed compilation retains the queue for an additional operation edit or `DiscardPendingEdits()`. Execution is unavailable while editing or while changes await compilation. Compilation waits for outstanding work when switching away from its current runtime; selecting the same runtime preserves frame-slot overlap.
 
 The graph is externally synchronized: edit and execution calls on one instance must not run concurrently. Registry synchronization does not make graph mutation thread-safe.
 
-To change input data without recompiling, update the contents of already imported device storage after its prior use completes, then restore the graph's entry-state contract. Changing node parameter values, shapes, or resource identities requires an edit. Retained addresses do not make transient values into cross-frame inputs; use external storage for input state carried between executions.
+To change input data without recompiling, update the contents of already imported device storage after its prior use completes, then restore the graph's entry-state contract. Changing node parameter values, shapes, or resource identities requires a new construction and `Compile()`. Imported native identities and node semantic keys affect revision matching. Retain identity-sensitive input objects and readback destinations across constructions to permit hits; new pointees may deliberately select new revisions. Retained addresses do not make transient values into cross-frame inputs; use external storage for input state carried between executions.
 
 ## Automatic CUDA batches
 
-Compiled-kernel and external-call operand nodes derive from `TArdaCudaOperandNode<Derived, Operand>`, which specializes the common node base. A derived class supplies `GetMetadata`; inherited hooks derive requirements, accesses and native arguments from the operand schema. Its public parameters contain `mOperation` (the retained device-bound operand) and `mArguments` (the logical-resource schema). Attach with `Graph.AttachOrFind<MyCudaNode>("instance", {Operand, Arguments})`. The operand's process-local identity participates in the key, so different device-bound operations cannot silently reuse one instance. The default visitor handles scalar and enum values; aggregate values require overriding the class key hook with explicit semantic encoding. See the [CUDA sequence guide](../ArdaBackend/CUDA-Sequences.md#persistent-dependency-graph) for a complete adapter declaration.
+Compiled-kernel and external-call operand nodes derive from `TArdaCudaOperandNode<Derived, Operand>`, which specializes the common node base. A derived class supplies `GetMetadata`; inherited hooks derive requirements, accesses and native arguments from the operand schema. Its public parameters contain `mOperation` (the retained device-bound operand) and `mArguments` (the logical-resource schema). Publish its callable with `ARDA_DECLARE_GRAPH_NODE(FArdaMyCudaNode, MyCudaOperation)` and a matching definition, then invoke `MyCudaOperation(Edit, {Operand, Arguments}, "instance")`. The operand's process-local identity participates in the key, so different device-bound operations cannot silently reuse one instance. The default visitor handles scalar and enum values; aggregate values require overriding the class key hook with explicit semantic encoding. See the [CUDA sequence guide](../ArdaBackend/CUDA-Sequences.md#persistent-dependency-graph) for a complete adapter declaration.
 
 The helper does not infer GPU allocations hidden inside an operand or external library. Derive a custom node class whose `Describe` hook supplies `mWorkspaceBytes` when such retained storage must participate in the graph budget.
 
@@ -193,20 +193,20 @@ Options.mMaxVramBytes = 512ull * 1024 * 1024; // zero disables the hard cap
 Options.mFramesInFlight = 3;
 Options.mSearchMode = EArdaInductorSearchMode::Bounded;
 // SetOptions is legal only inside an edit.
-auto Status = Graph.SetOptions(Options);
+auto Status = Edit.SetOptions(Options);
 ```
 
 The cap applies to the graph's accounted native resource pool: `shared imports + persistent allocations + retained adapter workspaces + framesInFlight * transient pool`. Imported resources count even without an active consumer. Their complete retained allocation identities and capacities are counted once, including an entire parent heap retained by a small placed resource. Unknown raw-native imports require explicit allocation metadata for a hard cap. `mAllocatedBytes` reports the total; `mPeakLiveBytes` reports logical liveness across the configured slots and `mAliasedBytes` reports storage saved by reuse.
 
 `mWorkspaceBytes` declares retained adapter-owned allocations. `mTransientWorkspaceBytes` instead requests a real graph-owned scratch buffer: retrieve it with `Context.GetWorkspaceBuffer()`, use it only within that node's work, and let the planner alias it with other nonoverlapping scratch/resources. Culled scratch consumes no storage; retained adapter memory still counts. RHI driver/PSO/CUDA-graph internals, hidden library allocations, unrelated process allocations, and provider staging caches are outside this resource-budget contract. An adapter that allocates its own GPU storage must declare it; the graph is not a process-wide residency manager.
 
-Before allocation, D3D12 and Vulkan report native requirements through descriptor-only RHI queries. Candidate plans allocate no graph VRAM. The accepted plan acquires storage through the backend allocator and actual sizes are verified. Edit-time recompilation retires the previous transient leases before acquiring replacements, while persistent allocations remain retained across edits. Compatible idle allocations can satisfy those replacements without native allocation calls. The graph budget still counts each leased allocation in full; idle cached allocations and other graphs are governed separately by device allocator policy. A failed materialization can require rebuilding the prior plan during cancellation. Out-of-memory and backend errors propagate as `FArdaRHIStatus`; repository APIs use status results rather than C++ exceptions.
+Before allocation, D3D12 and Vulkan report native requirements through descriptor-only RHI queries. Candidate plans allocate no graph VRAM. The first submission of the accepted plan acquires storage through the backend allocator and verifies actual sizes. Edit-time recompilation retires previous transient execution storage; replacement allocation is deferred until submission, while persistent allocations can remain retained across edits. Compatible idle allocations can satisfy those replacements without native allocation calls. The graph budget still counts each leased allocation in full; idle cached allocations and other graphs are governed separately by device allocator policy. A failed first submission returns its materialization status without publishing a frame; the pending plan remains available for retry. Out-of-memory and backend errors propagate as `FArdaRHIStatus`; repository APIs use status results rather than C++ exceptions.
 
-`mSearchMode` offers `Greedy`, `Bounded` (default), and `Exhaustive`. All modes evaluate both a critical-path/CUDA-affinity seed and a memory-release seed; Greedy stops there. Bounded mode improves the incumbent through legal adjacent swaps and explores other topological orders, up to `mMaxSearchStates` (default 10000), even when a feasible greedy result already exists. Iterative backtracking has no recursive depth limit. Exhaustive mode ignores the state cap and evaluates every legal order using the admitted allocator and cost model; its factorial worst case makes it appropriate for small graphs or offline compilation. `mbSearchComplete`, `mbSearchExhausted`, `mSearchStatesExamined`, and `mSchedulesExamined` distinguish a complete search from a bounded result. A feasible result remains usable after exhaustion; failure to find a feasible plan within the limit is distinct from completed-search infeasibility. No over-budget plan executes. Only complete enumeration establishes an optimum among the plans evaluated by the implemented allocator and queue heuristics. Greedy and an incomplete bounded search provide feasible incumbents without that guarantee; no mode proves the best possible memory layout or measured hardware execution. Peak-memory DAG scheduling is strongly NP-complete even for restricted graph families; see [New Tools for Peak Memory Scheduling](https://arxiv.org/abs/2312.13526).
+When the rule program selects `FArdaSearchOrderRule`, `mSearchMode` offers `Greedy`, `Bounded` (default), and `Exhaustive`. All modes evaluate both a critical-path/CUDA-affinity seed and a memory-release seed; Greedy stops there. Bounded mode improves the incumbent through legal adjacent swaps and explores other topological orders, up to `mMaxSearchStates` (default 10000), even when a feasible greedy result already exists. Iterative backtracking has no recursive depth limit. Exhaustive mode ignores the state cap and evaluates every legal order using the admitted allocator and cost model; its factorial worst case makes it appropriate for small graphs or offline compilation. `mbSearchComplete`, `mbSearchExhausted`, `mSearchStatesExamined`, and `mSchedulesExamined` distinguish a complete search from a bounded result. A feasible result remains usable after exhaustion; failure to find a feasible plan within the limit is distinct from completed-search infeasibility. No over-budget plan executes. Only complete enumeration establishes an optimum among the plans evaluated by the implemented allocator and queue heuristics. Greedy and an incomplete bounded search provide feasible incumbents without that guarantee; no mode proves the best possible memory layout or measured hardware execution. Peak-memory DAG scheduling is strongly NP-complete even for restricted graph families; see [New Tools for Peak Memory Scheduling](https://arxiv.org/abs/2312.13526).
 
-`mFramesInFlight` selects independently allocated transient frame slots (default one). `Submit()` records and submits a frame and returns a retained ticket; it waits only when recycling an occupied slot. `Wait(ticket)` waits for that frame's native submission tokens and readback callbacks, then publishes its outputs. `IsComplete(ticket)` polls without blocking. Tickets remain valid after slot reuse and graph edits. `Execute()` is the synchronous `Submit`/`Wait` convenience operation. Completed CPU readback destinations are owned per frame; use distinct destinations when multiple results must coexist. GPU timestamps and CUDA executable caches are also owned per slot.
+`mFramesInFlight` selects independently allocated transient frame slots (default one). `Submit()` materializes a pending logical plan on first use, then records and submits a frame and returns a retained ticket. Subsequent submissions reuse that prepared state; their frame-retirement wait occurs only when recycling an occupied slot. `Wait(ticket)` waits for that frame's native submission tokens and readback callbacks, then publishes its outputs. `IsComplete(ticket)` polls without blocking. Tickets remain valid after slot reuse and graph edits. `Execute()` is the synchronous `Submit`/`Wait` convenience operation. Completed CPU readback destinations are owned per frame; use distinct destinations when multiple results must coexist. GPU timestamps and CUDA executable caches are also owned per slot.
 
-Shared imports, persistent resources and retained graph outputs conservatively order successive frames with GPU waits, including ownership transitions. Fully transient frame pools can overlap. Begin-edit and destruction retire only this graph's submissions, without a device-wide idle. External storage must enter on the graphics queue. During compilation, ArdaInductor snapshots each used imported texture's current uniform facade/native state with a read-only state query; it does not use the original creation descriptor as the texture entry state. Initialize the texture, or acquire its swap-chain image, before compilation: `Unknown`, `Discard` and nonuniform texture entry states are not admitted. The graph restores the captured state and graphics ownership at each frame boundary. Callers must synchronize external writes and restore that same entry contract before every subsequent submission. Imported buffers retain the descriptor-initial-state contract (`Unknown` is treated as `Common`).
+Shared imports, persistent resources and retained graph outputs conservatively order successive frames with GPU waits, including ownership transitions. Fully transient frame pools can overlap. Revision switches and destruction retire only this graph's submissions, without a device-wide idle. External storage must enter on the graphics queue. During first-submission materialization, ArdaInductor snapshots each used imported texture's current uniform facade/native state with a read-only state query; it does not use the original creation descriptor as the texture entry state. Initialize the texture, or acquire its swap-chain image, before first submission: `Unknown`, `Discard` and nonuniform texture entry states are not admitted. The graph restores the captured state and graphics ownership at each frame boundary. Callers must synchronize external writes and restore that same entry contract before every subsequent submission. Imported buffers retain the descriptor-initial-state contract (`Unknown` is treated as `Common`).
 
 ```cpp
 auto First = Graph.Submit();
@@ -232,9 +232,10 @@ Options.mAdaptiveSchedulingInterval = 30;  // minimum submitted frames between j
 Options.mAdaptiveSchedulingMinSamples = 8;
 Options.mAdaptiveSchedulingSearchBudget = 128;
 Options.mAdaptiveSchedulingMinImprovement = 0.02;
-if (auto S = Graph.BeginGraphEdit(); !S) return S;
-if (auto S = Graph.SetOptions(Options); !S) return S;
-if (auto S = Graph.EndGraphEdit(); !S) return S;
+FArdaGraphEdit Edit(Graph);
+if (auto S = Edit.SetOptions(Options); !S) return S;
+if (auto S = Edit.Commit(); !S) return S;
+if (auto S = Graph.Compile(); !S) return S;
 ```
 
 Graphics, compute and copy nodes receive GPU timestamps on queues whose `FArdaRHIQueueCapabilities::SupportsTimestamps()` returns true. D3D12 copy timing requires native copy-queue timestamp support and its dedicated query-heap type. Vulkan respects each queue family's timestamp counter width; transfer-only families also require enabled host query reset, because they cannot record query-pool resets. Arda enables supported host reset on devices it creates. Adopted Vulkan devices must declare `vulkan.enabled-feature=hostQueryReset` when their host enabled that feature. Host reset occurs only when the prior query generation has completed, as required by [Vulkan query reset](https://docs.vulkan.org/refpages/latest/refpages/source/vkResetQueryPool.html). Unsupported queues omit samples; instrumentation does not move work to another queue or serialize queues merely to measure them. Stage-only declarations and pure synchronization nodes have no GPU command interval to time.
@@ -259,9 +260,9 @@ A candidate must improve modeled cost by at least two percent by default. This t
 
 The application keeps submitting the current program while the worker searches. A prepared program is adopted only when all existing frame slots have naturally completed and their readbacks can retire. Collection never waits for GPU completion to force adoption; a continuously saturated graph may defer the swap. GPU allocations are reused, preserving addresses and the resource-budget contract. Explicit edits and graph destruction cancel and join CPU preparation before replacing or releasing storage, so a worker cannot retain an old VRAM pool through reallocation. Driver query/program/graph internals remain outside the declared resource budget.
 
-`GetAdaptiveSchedulingStats()` exposes completed iterations, accepted schedules, candidates examined, pending state, last baseline/candidate costs and last status. `mAcceptedSchedules` increases when a replacement is adopted; its compile revision also changes even without a semantic edit. A pending job may already have finished CPU preparation and simply be awaiting frame retirement. A successful `OptimizeFromTimingProfile()` call requests this same nonblocking process outside an edit; it does not wait for outstanding GPU work or immediately publish a new compile result. Manual requests require at least one eligible positive per-node sample and work with automatic scheduling disabled. Inspect stats and call `CollectTelemetry()` or continue submitting to observe completion and adoption.
+`GetAdaptiveSchedulingStats()` exposes completed iterations, accepted schedules, candidates examined, pending state, last baseline/candidate costs and last status. `mAcceptedSchedules` increases when a replacement is adopted; its compile revision also changes even without a semantic edit. A pending job may already have finished CPU preparation and simply be awaiting frame retirement. A successful `OptimizeFromTimingProfile()` call requests this same nonblocking process outside an edit; it does not wait for outstanding GPU work or immediately publish a new compile result. Manual requests require at least one eligible positive per-node sample and work with automatic scheduling disabled. Both automatic and manual optimization require every selected rule to opt in through `AllowsAdaptiveScheduling()`. The standard search rules opt in; the common base, stable ordering and custom policies default to fixed behavior. Fixed policies may collect timings; `SetOptions()` rejects automatic adaptive scheduling unless every rule allows reordering. Inspect stats and call `CollectTelemetry()` or continue submitting to observe completion and adoption.
 
-`ClearTimingProfile()` discards EMA and raw samples and invalidates an optimization based on the old sample epoch; it does not wait for GPU work. A successful edit also clears samples. Changed canonical parameters or registered definition identities invalidate old cost overrides. Stable full node handles prevent same-name replacement nodes from inheriting another node's timing.
+`ClearTimingProfile()` discards EMA and raw samples and invalidates an optimization based on the old sample epoch; it does not wait for GPU work. A newly compiled revision starts fresh samples; selecting a cached revision retains its timing state. Changed canonical parameters or registered definition identities invalidate old cost overrides. Stable full node handles prevent same-name replacement nodes from inheriting another node's timing.
 
 ## Relationship to ML graph runtimes
 
@@ -276,25 +277,25 @@ The design follows the separation of definition, compilation and repeated execut
 The [compilation chapter](compilation.html) explains the algorithms in execution order. These links resolve to source files in a repository checkout or repository browser:
 
 - [Indexed graph](../../Source/ArdaInfra/ArdaGraph/Public/ArdaGraph.h): adjacency and endpoint maps, Kahn ordering, reachability and iterative cycle witnesses.
-- [Resource dependency resolver](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaDependencyHazards.cpp): per-region producer coverage, attachment-ordered hazards and value dependencies used by compilation and removal.
-- [Semantic compiler and scheduler](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductor.cpp): declaration validation, liveness, greedy seeds, adjacent swaps, iterative topological enumeration, queue assignment and cost comparison.
+- [Resource dependency resolver](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaDependencyHazards.cpp): per-region producer coverage, attachment-ordered hazards and value dependencies used by compilation and removal.
+- [Compiler orchestration](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductor.cpp) executes the selected rule program. Separate [ordering rules](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaInductorOrderingRules.cpp), [search rules](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaInductorSearchRules.cpp) and [queue rules](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaInductorQueueRules.cpp) implement policy; [candidate evaluation](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorScheduleEvaluation.cpp) applies the common cost and memory checks.
 - [Native memory planner](../../Source/ArdaInfra/ArdaBackend/Private/RHI/Memory/ArdaMemoryPlanner.cpp): requirement queries, minimum-growth heap placement, compatible committed slots, alias dependencies and budget accounting.
-- [Pipeline resolver](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorPipeline.cpp): bounded ancestry, group/layout/stage merging, canonical byte serialization and stable pattern keys.
-- [Adaptive search](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorAdaptiveSchedule.cpp): persistent insertion neighborhoods, critical-path candidates and fixed-pool lifetime checks.
-- [Telemetry and adoption](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorTiming.cpp): per-node EMA, snapshot cost normalization, background requests and retirement-gated swaps.
-- [Native preparation and frame slots](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorRuntime.cpp): CUDA coalescing, declaration contraction, image alias helpers, frame reuse and tickets.
-- [Command program](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorCommandProgram.cpp) and [executor](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorCommandExecutor.cpp): physical identity/state histories, recording levels, ownership transitions and per-queue token reduction.
+- [Pipeline inference](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorPipelineInference.cpp) orchestrates the separate pipeline rules for bounded ancestry, group/layout/stage merging, canonical byte serialization and stable pattern keys. [Runtime pipeline preparation](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPipeline.cpp) resolves native PSOs.
+- [Adaptive search](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaInductorAdaptiveSchedule.cpp): persistent insertion neighborhoods, critical-path candidates and fixed-pool lifetime checks.
+- [Telemetry](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorTelemetry.cpp) collects per-node timing; [adaptive runtime](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorAdaptiveRuntime.cpp) owns background requests and retirement-gated swaps.
+- [Native preparation](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPreparation.cpp) materializes the pending plan; separate runtime files own frame resources, pipelines, bindings, submission and tickets. [Frame lowering](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorFrameLowering.cpp) translates selected graph work into executable passes.
+- [Command program](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorCommandProgram.cpp) and [executor](../../Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorCommandExecutor.cpp): physical identity/state histories, recording levels, ownership transitions and per-queue token reduction.
 
 ## Executable examples and tests
 
-The [triangle renderer](../../Source/ArdaTests/RHITest/Private/ArdaTriangleRenderer.cpp) caches a graph per swap-chain image with an inferred graphics PSO. The [terrain renderer](../../Source/ArdaTests/Examples/ARDGExample/Private/ArdaTerrainRenderer.cpp) uses a distinct typed operation for each upload, compute dispatch, draw and overlay, plus separate copy/readback nodes. Raw/eroded heightmaps and pre-overlay color are explicit transient values. Consumers are attached first and ArdaInductor derives the execution order. ARDGExample --verify enables first-frame geometry and gradient checks, then removes its readback nodes after completion; ordinary viewer runs omit those diagnostics. Verification is independent of --validation. Ordinary frames change only dynamic CPU uniform inputs. Each graph is first compiled after its swap-chain image is acquired, so the entry-state snapshot reflects the acquired image. Both release cached backbuffer imports before resize.
+The [triangle renderer](../../Source/ArdaTests/RHITest/Private/ArdaTriangleRenderer.cpp) caches a graph per swap-chain image with an inferred graphics PSO. The [terrain renderer](../../Source/ArdaTests/Examples/ARDGExample/Private/ArdaTerrainRenderer.cpp) uses a distinct typed operation for each upload, compute dispatch, draw and overlay, plus separate copy/readback nodes. Raw/eroded heightmaps and pre-overlay color are explicit transient values. Consumers are attached first and ArdaInductor derives the execution order. ARDGExample --verify enables first-frame geometry and gradient checks, then records a new construction omitting those readbacks; ordinary viewer runs omit those diagnostics. Verification is independent of --validation. Ordinary frames change only dynamic CPU uniform inputs. Each graph is first submitted after its swap-chain image is acquired, so first-submission materialization captures the acquired image state. Both release cached backbuffer imports before resize.
 
 
 - [Generic graph tests](../../Source/ArdaInfra/ArdaGraph/Tests/ArdaDirectedGraphTests.cpp): indexed topology, cycle witnesses, removal and snapshot identities.
-- [Compiler tests](../../Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorTests.cpp): attachment-order independence, range coverage, node removal, CUDA batching and queue choices.
+- [Compiler tests](../../Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorTests.cpp): attachment-order independence, range coverage, node removal, CUDA batching and queue choices.
 - [Memory planner tests](../../Source/ArdaInfra/ArdaBackend/Tests/ArdaMemoryPlannerTests.cpp): native sizes, lifetime proofs, alias ordering and cap rejection.
-- [Pipeline inference tests](../../Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorPipelineTests.cpp): intermediate ancestry, ambiguous groups, stable PSO identity and all pipeline families.
-- [Native pipeline execution](../../Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorGpuTests.cpp): numerical graphics-compute outputs, repeated execution and PSO reuse on D3D12/Vulkan.
+- [Pipeline inference tests](../../Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorPipelineTests.cpp): intermediate ancestry, ambiguous groups, stable PSO identity and all pipeline families.
+- [Native pipeline execution](../../Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorGpuTests.cpp): numerical graphics-compute outputs, repeated execution and PSO reuse on D3D12/Vulkan.
 - [CUDA execution](../../Source/ArdaInfra/ArdaBackend/Tests/ArdaCudaTests.cpp): `PersistentInductorCompilesReorderedCudaNodesAndReusesFrameStorage` attaches two dependent kernels in reverse order, runs five frames with alternate-frame per-node timing, verifies numerical readback, executable reuse and alias savings, then rejects an insufficient cap and executes the restored graph.
-- [Queue execution](../../Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorQueueGpuTests.cpp): checks compiled and actual graphics/compute/copy assignments, delayed joins, and numerical results across frames on both native backends.
-- [Edit recovery](../../Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorLifecycleTests.cpp) and [readback completion](../../Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorCompletionTests.cpp): injected allocation failures, retryable cancellation, partially submitted readbacks, and deterministic host result publication.
+- [Queue execution](../../Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorQueueGpuTests.cpp): checks compiled and actual graphics/compute/copy assignments, delayed joins, and numerical results across frames on both native backends.
+- [Edit recovery](../../Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorLifecycleTests.cpp) and [readback completion](../../Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorCompletionTests.cpp): deferred allocation failures, restoration of the prior committed graph, partially submitted readbacks, and deterministic host result publication.

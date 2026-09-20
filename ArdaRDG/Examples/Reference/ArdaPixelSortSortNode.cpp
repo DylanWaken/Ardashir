@@ -6,6 +6,8 @@
 
 namespace arda
 {
+	ARDA_DEFINE_GRAPH_NODE(FArdaPixelSortSortNode, PixelSortSort);
+
 	struct FArdaPixelSortSortNode::FArdaState
 	{
 		FArdaRHIDeviceRef mDevice;

@@ -6,9 +6,9 @@ The [node recipes](node-recipes.html) are the tutorial and the [centralized API 
 
 1. The common node base calls DeclareResources on a parameter copy. Named outputs either declare graph-owned buffers/textures or validate supplied handles. Output resolution precedes the canonical identity check. Failed attachment rolls back provisional resources.
 2. Describe supplies shader metadata, logical resources, push-constant bytes, optional bindless entries and ray records. Metadata-derived accesses participate in dependency resolution alongside explicit copy, attachment and external-library accesses.
-3. The compiler validates producer coverage, schedules work and assigns physical allocations. Shader metadata produces fixed layouts; bindless declarations produce bounded bindless layouts. Generated layouts are interned by semantic description.
-4. Pipeline inference merges layouts and shader contributions, associates explicit local ray layouts with their exports, and creates or reuses native PSOs.
-5. Each compiled frame slot receives its own fixed binding sets, descriptor tables, relocated push constants and committed shader tables. Resource arguments point at that frame's selected physical storage.
+3. The compiler validates producer coverage, schedules work and assigns planned memory placements without creating native buffers or textures. Shader metadata produces fixed layouts; bindless declarations produce bounded bindless layouts. Generated layouts are interned by semantic description.
+4. Pipeline inference merges layouts and shader contributions and associates explicit local ray layouts with their exports. The first submission materializes the accepted resource plan and creates or reuses native PSOs.
+5. During that first submission, each runtime frame slot receives its own fixed binding sets, descriptor tables, relocated push constants and committed shader tables. Resource arguments point at that frame's selected physical storage.
 6. Execution context state helpers bind those prepared objects and bytes. Repeated graph execution does not recreate them. Adaptive schedule adoption retains compatible prepared objects; a graph edit rebuilds changed semantics after retiring earlier work.
 
 The graph owns physical output storage. Shader metadata must outlive the graph (normally static shader metadata); node state retains shader objects. Descriptors and shader tables are immutable while compiled work uses them. Dynamic resource contents require synchronized uploads/imports. New dimensions, resource identities, table membership or frozen scalar values require an edit.
@@ -31,15 +31,15 @@ Buffer access boundaries and texture subresource cells define the regions used f
 
 Declare every potentially selected entry, including GPU-selected indices. Different indices are not proof of independent storage. A descriptor that views an entire resource conservatively declares that entire range. Sparse entries are supported, but the shader must never index an unpopulated slot.
 
-Descriptor-index relocations patch a uint32 field in a named frozen shader value. They must reference a populated table entry with the matching register and descriptor type. Default indices are table-relative; absolute heap indices require direct heap access with exactly one descriptor bank. Invalid indices, capacity, duplicate entries, missing shader members and invalid byte offsets fail compilation.
+Descriptor-index relocations patch a uint32 field in a named frozen shader value during first-submission preparation. They must reference a populated table entry with the matching register and descriptor type. Default indices are table-relative; absolute heap indices require direct heap access with exactly one descriptor bank. Attachment validates table names, capacity, index ranges, register types, duplicate entries, shader schema members and push-constant byte sizes. First-submission preparation validates relocation field alignment/bounds, duplicate byte offsets, the referenced entry, absolute-index bank constraints and overflow before patching the native index.
 
-Tables are node-local, so independent nodes can use the same layout while declaring separate resources or ranges. Native table allocation and individual entry writes happen during compilation per frame slot; large table construction is not a zero-cost operation. Replay retains the resulting objects.
+Tables are node-local, so independent nodes can use the same layout while declaring separate resources or ranges. Native table allocation and individual entry writes happen during first-submission materialization per frame slot; large table construction is not a zero-cost operation. Replay retains the resulting objects.
 
 ## Shader tables
 
 Without explicit records, a ray slot selects its unique ray-generation export and every miss, hit-group and callable export in deterministic pipeline order. More than one ray-generation export requires an explicit selection.
 
-Explicit record indices are dense and zero-based within each record category. The graph converts them into the native flat record array. Unknown exports, wrong categories, duplicate coordinates, holes, conflicting local schemas and missing required local arguments fail compilation. Local binding metadata generates an export-associated local layout and per-frame local bindings. Local resources and geometry references contribute ordinary graph accesses.
+Explicit record indices are dense and zero-based within each record category. The graph converts them into the native flat record array. Actual table preparation on first submission rejects unknown exports, wrong categories, duplicate coordinates, holes, local schemas incompatible with the resolved export layout, and missing required local arguments. Authoring and compilation still validate declared schemas, resource effects, pipeline slots and local-layout counts before that physical preparation. Local binding metadata generates an export-associated local layout and per-frame local bindings. Local resources and geometry references contribute ordinary graph accesses.
 
 Fixed local descriptor layouts work on D3D12. The current Vulkan backend requires direct-heap local descriptors and reports Unsupported for this fixed-local-metadata path. Automatically generated global-binding ray tables work on both backends. Raw local argument bytes remain author-defined and must match the shader ABI.
 
@@ -49,4 +49,4 @@ Disjoint same-state UAV buffer accesses omit unnecessary UAV ordering barriers. 
 
 Buffer state and queue ownership are still tracked for the whole native buffer. Queue changes and incompatible states can therefore serialize disjoint ranges. Separate allocations allow more cross-queue freedom. Texture ownership/state uses native subresources. Explicit edges, memory alias proofs, budget-driven ordering and the single CUDA stream can impose additional order. Independence allows overlap; it does not guarantee simultaneous occupancy.
 
-See [scheduling algorithms](compilation.html), [pipeline inference](ArdaInductor-Pipelines.md) and [GPU conformance tests](../../Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorGpuTests.cpp) for the implementation contracts and numerical examples.
+See [scheduling algorithms](compilation.html), [pipeline inference](ArdaInductor-Pipelines.md) and [GPU conformance tests](../../Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorGpuTests.cpp) for the implementation contracts and numerical examples.

@@ -11,7 +11,7 @@
 
 ## Scope and method
 
-This review compares ArdaBackend, ArdaRHI, and ArdaRenderGraph with the local
+This review compares ArdaBackend, ArdaRHI, and ArdaDependencyGraph with the local
 Unreal Engine 5.8.1 snapshot at `D:\UnrealEngine\Engine`. Research and planning
 were completed before implementation. The result deliberately targets 64-bit
 desktop D3D12 and desktop Vulkan; console, mobile, and Metal breadth are not
@@ -55,10 +55,10 @@ The main Arda implementation and evidence locations are:
 - `Source/ArdaInfra/ArdaBackend/Private/RHI/Device/ArdaRHIDevice.cpp`
 - `Source/ArdaInfra/ArdaBackendImpls/D3D12/ArdaD3D12Backend.cpp`
 - `Source/ArdaInfra/ArdaBackendImpls/Vulkan/ArdaVulkanBackend.cpp`
-- `Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorCommandExecutor.cpp`
+- `Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorCommandExecutor.cpp`
 - `Source/ArdaInfra/ArdaBackend/Tests/ArdaResourceStateConformanceTests.cpp`
 - `Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp`
-- `Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorCommandProgramTests.cpp`
+- `Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorCommandProgramTests.cpp`
 
 Native behavior was cross-checked against the D3D12 Agility SDK 1.619.5
 headers, Vulkan-Headers 1.4.357, DXC 1.9, the local adapter feature data, the

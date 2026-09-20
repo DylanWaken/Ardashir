@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Self-contained GPU nodes, automatic binding preparation, pipeline inference and range-aware dependencies.">
-  <title>Renderer quick guide | ArdaRenderGraph | Ardashir</title>
+  <title>Renderer quick guide | ArdaDependencyGraph | Ardashir</title>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
   <script src="../assets/arda-rdg-api.js" defer></script>
@@ -16,7 +16,7 @@
   <header class="site-header">
     <a class="site-brand" href="../index.html">Ardashir Docs</a>
     <nav aria-label="Primary">
-      <a href="index.html">ArdaRenderGraph</a>
+      <a href="index.html">ArdaDependencyGraph</a>
       <a href="architecture.html">Architecture</a>
       <a href="quick-guide.html">Quick guide</a>
       <a href="api-reference.html">API</a>
@@ -24,8 +24,8 @@
     </nav>
   </header>
   <div class="site-layout">
-    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
-      <h2>ArdaRenderGraph</h2>
+    <aside class="sidebar" aria-label="ArdaDependencyGraph pages">
+      <h2>ArdaDependencyGraph</h2>
       <nav>
         <a href="index.html">Overview</a>
         <a href="getting-started.html">Getting started</a>
@@ -44,60 +44,59 @@
     <main id="main-content">
       <nav class="breadcrumbs" aria-label="Breadcrumb">
         <a href="../index.html">Docs</a> /
-        <a href="index.html">ArdaRenderGraph</a> /
+        <a href="index.html">ArdaDependencyGraph</a> /
         Quick user's guide
       </nav>
-      <article><header class="page-header"><h1>Renderer quick guide</h1><p>Attach registered operations, wire logical outputs, compile once and execute repeatedly.</p></header>
+      <article><header class="page-header"><h1>Renderer quick guide</h1><p>Invoke registered operations, wire logical outputs, compile once and execute repeatedly.</p></header>
 <section id="objectives"><h2>Learning objectives and prerequisites</h2><p>Learn the renderer-facing composition model. Start with <a href="getting-started.html#lifecycle">graph edit lifetime</a> and <a href="passes.html#freezing">frozen parameters</a>. For complete class definitions and all pipeline families, use <a href="node-recipes.html">the node recipes</a>.</p></section>
-<section id="persistent-setup"><h2>Library setup and ownership</h2><p>A node class contains its own shader registration, parameter schema, output declaration and execution hook. The common base handles type registration and shared immutable preparation. A node declares its hardware and environment needs through static <code>GetRequirements</code>; unsupported attachment fails before its output declaration or preparation. See <a href="feature-requirements.html">feature admission and failure handling</a>. The renderer does not create binding layouts or binding sets. The graph generates layouts from shader metadata, allocates declared outputs, infers PSOs and prepares per-frame descriptor tables and shader tables at compilation.</p><p>Call <code>MyNode::Register()</code> to populate the singleton registry for discovery before graph use. Typed <code>AttachOrFind&lt;MyNode&gt;</code> also registers automatically. Include each class header and link its implementation; do not duplicate its shader registration in the renderer.</p><figure><img src="Assets/rdg-resource-materialization.svg" alt="Logical resources become physical allocations during compilation."><figcaption>Bindings refer to the physical resources selected by the compiler.</figcaption></figure></section>
-<section id="integrated-frame"><h2>Compose operations</h2><p>This complete assembly uses the <a href="node-recipes.html#compute">compiled compute recipe</a>. The operation declares its output automatically. Readback is a separate consumer, so its resource edge determines order. Retain the graph as renderer state instead of reconstructing it for each frame.</p><pre><code>FArdaRHIStatus RunComputeRecipe(FArdaRHIDeviceRef Device)
+<section id="persistent-setup"><h2>Library setup and ownership</h2><p>A node class contains its own shader registration, parameter schema, output declaration and execution hook. The common base handles type registration and shared immutable preparation. A node declares its hardware and environment needs through static <code>GetRequirements</code>; unsupported attachment fails before its output declaration or preparation. See <a href="feature-requirements.html">feature admission and failure handling</a>. The renderer does not create binding layouts or binding sets. Attachment derives layouts from shader metadata. Compilation infers pipeline patterns and plans storage; the first submission allocates declared outputs and prepares native PSOs, descriptor tables and shader tables for each frame slot.</p><p>Each node header publishes a named global callable with <code>ARDA_DECLARE_GRAPH_NODE(NodeClass, InvocationName)</code>, and its implementation defines it once with <code>ARDA_DEFINE_GRAPH_NODE</code>. Include the header, link the implementation and call <code>InvocationName(Edit, Parameters)</code> or pass the parameter fields directly. Invocation registers automatically; explicit <code>NodeClass::Register()</code> supports registry discovery before graph use. Read the <a href="Registering-Nodes.md">complete registration walkthrough</a> to add a node. Keep shader registration in its implementation.</p><figure><img src="Assets/rdg-resource-materialization.svg" alt="Logical resources are planned at compilation and materialized on first submission."><figcaption>Bindings are prepared when first submission materializes the compiler-selected resource plan.</figcaption></figure></section>
+<section id="integrated-frame"><h2>Compose operations</h2><p>This complete assembly uses the <a href="node-recipes.html#compute">compiled compute recipe</a>. The node header publishes <code>ComputeWrite</code> as its named global callable. Record an operation with <code>ComputeWrite(Edit, Parameters)</code>, or pass positional fields with <code>ComputeWrite(Edit, FArdaDependencyResourceHandle{}, uint32_t{123})</code>. The operation declares its output automatically. Readback is a separate consumer, so its resource edge determines order. Retain the graph as renderer state instead of reconstructing it for each frame.</p><pre><code>FArdaRHIStatus RunComputeRecipe(FArdaRHIDeviceRef Device)
+{
+
+	// Readback retains the producer chain and publishes its result after execution.
+	FArdaDependencyGraph Graph(Device);
+	FArdaGraphEdit Edit(Graph);
+	const auto Compute = ComputeWrite(Edit, {{}, 123}).GetBuffer(&quot;Output&quot;);
+	const auto Bytes = Readback(Edit, Compute);
+
+	// Queue this construction, then select or compile its persistent revision.
+	if (auto S = Edit.Commit(); !S)
 	{
-		FArdaDependencyGraph Graph(Device);
-		if (auto S = Graph.BeginGraphEdit(); !S)
+		return S;
+	}
+	if (auto S = Graph.Compile(); !S)
+	{
+		return S;
+	}
+
+	// Replay the same compiled graph across frames.
+	for (unsigned Frame = 0; Frame &lt; 3; ++Frame)
+	{
+		const auto Run = Graph.Execute();
+		if (!Run.mStatus)
 		{
-			return S;
+			return Run.mStatus;
 		}
-		auto Compute = Graph.AttachOrFind&lt;FArdaComputeWriteNode&gt;(&quot;write&quot;, {{}, 123});
-		if (!Compute)
+
+		// The synchronous convenience call completed the readback; validate the observable result.
+		uint32_t Value = 0;
+		if (Bytes-&gt;size() != sizeof(Value))
 		{
-			return Compute.mStatus;
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Unexpected readback size.&quot;);
 		}
-		auto Bytes = eastl::make_shared&lt;eastl::vector&lt;uint8_t&gt;&gt;();
-		auto Read =
-		    Graph.AttachOrFind&lt;FArdaGraphReadbackNode&gt;(&quot;read&quot;, {Graph.FindOutput(Compute.mValue, &quot;Output&quot;), Bytes});
-		if (!Read)
+		std::memcpy(&amp;Value, Bytes-&gt;data(), sizeof(Value));
+		if (Value != 123)
 		{
-			return Read.mStatus;
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Unexpected compute-graph output.&quot;);
 		}
-		if (auto S = Graph.EndGraphEdit(); !S)
-		{
-			return S;
-		}
-		for (unsigned Frame = 0; Frame &lt; 3; ++Frame)
-		{
-			const auto Run = Graph.Execute();
-			if (!Run.mStatus)
-			{
-				return Run.mStatus;
-			}
-			uint32_t Value = 0;
-			if (Bytes-&gt;size() != sizeof(Value))
-			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Unexpected readback size.&quot;);
-			}
-			std::memcpy(&amp;Value, Bytes-&gt;data(), sizeof(Value));
-			if (Value != 123)
-			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Unexpected compute-graph output.&quot;);
-			}
-		}
-		return {};
-	}</code></pre><p>The example writes and verifies 123 three times. Its synchronous readback deliberately waits for the requested CPU result; ordinary graph replay can use asynchronous execution and completion handling described in <a href="execution.html">execution</a>. The graph owns its transient physical resources through retirement.</p></section>
-<section id="parameters"><h2>Changing inputs and targets</h2><p>Frozen parameters, shapes and resource identities change inside an edit. For per-frame data, use a synchronized upload node or imported storage and preserve the graph's entry-state contract. A graph per swap-chain image is useful when each graph retains a stable imported target; retain each graph until its accepted work retires. Node-owned intermediate buffers and textures are obtained using <code>FindOutput</code>.</p><p>Terrain composes UploadSettings → Generate → Erode → Triangulate → Draw, with a separate camera upload and overlay. PixelSort composes UploadFrame → Noise → CUDA Sort → Present. Cornell keeps BLAS/TLAS assets externally and rebuilds its TLAS through a node every execution. None of their shader-recording hooks create binding sets or ray tables.</p></section>
+	}
+	return {};
+}</code></pre><p>The example writes and verifies 123 three times. Its synchronous readback deliberately waits for the requested CPU result; ordinary graph replay can use asynchronous execution and completion handling described in <a href="execution.html">execution</a>. The graph owns its transient physical resources through retirement.</p></section>
+<section id="parameters"><h2>Changing inputs and targets</h2><p>Frozen parameters, shapes and resource identities change inside an edit. For per-frame data, use a synchronized upload node or imported storage and preserve the graph's entry-state contract. A graph per swap-chain image is useful when each graph retains a stable imported target; retain each graph until its accepted work retires. Node-owned intermediate buffers and textures are obtained using the operation's <code>GetBuffer</code> / <code>GetTexture</code>.</p><p>Terrain composes UploadSettings → Generate → Erode → Triangulate → Draw, with a separate camera upload and overlay. PixelSort composes UploadFrame → Noise → CUDA Sort → Present. Cornell keeps BLAS/TLAS assets externally and rebuilds its TLAS through a node every execution. None of their shader-recording hooks create binding sets or ray tables.</p></section>
 <section id="summary"><h2>Summary and checkpoints</h2><p>Operation authors declare semantics; renderer authors compose operations; ArdaInductor supplies physical execution state. Can you identify which output causes each edge? Which inputs persist across frames? Which change requires recompilation? Follow <a href="node-recipes.html#failures">failure cases</a> before authoring a new class.</p></section>
 <section id="further-reading"><h2>Further reading</h2><p><a href="node-recipes.html">Compute, CUDA, ray, mesh, raster and work-graph recipes</a>; <a href="compilation.html">scheduling algorithms</a>; <a href="resources.html">resource lifetime</a>; <a href="api-reference.html">canonical APIs</a>.</p></section><span id="node-authoring" hidden></span><span id="node-registration" hidden></span><span id="register-terrain" hidden></span><span id="register-rays" hidden></span><span id="register-cuda" hidden></span><span id="register-custom-cuda" hidden></span><span id="frame-resources" hidden></span><span id="submit" hidden></span><span id="ray-tracing" hidden></span><span id="source-guide" hidden></span><span id="checklists" hidden></span><span id="cleanup" hidden></span><span id="failures" hidden></span><span id="mental-model" hidden></span><span id="prerequisites" hidden></span><span id="queues" hidden></span><span id="recipes" hidden></span></article>
     </main>
   </div>
-  <footer class="site-footer"><p>ArdaRenderGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
+  <footer class="site-footer"><p>ArdaDependencyGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
 </body>
 </html>

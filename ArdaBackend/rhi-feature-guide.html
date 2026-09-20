@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A feature-by-feature guide to ArdaRHI resources, synchronization, data movement, memory, bindings, pipelines, queues, diagnostics, presentation, and ArdaRenderGraph state conformance.">
+  <meta name="description" content="A feature-by-feature guide to ArdaRHI resources, synchronization, data movement, memory, bindings, pipelines, queues, diagnostics, presentation, and ArdaDependencyGraph state conformance.">
   <title>RHI feature guide | Ardashir</title>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
@@ -74,7 +74,7 @@
           <a href="#shaders-pipelines">Shaders and pipeline families</a>
           <a href="#ray-tracing">Ray tracing and opacity micromaps</a>
           <a href="#queues">Command lists, queues, and synchronization</a>
-          <a href="#render-graph">ArdaRenderGraph</a>
+          <a href="#render-graph">ArdaDependencyGraph</a>
           <a href="#feedback">Sampler feedback and streaming</a>
           <a href="#advanced-dispatch">Work graphs and shader bundles</a>
           <a href="#queries">Queries, diagnostics, caches, and lifetime</a>
@@ -129,7 +129,7 @@
           <h2>Layers and capabilities</h2>
           <p>ArdaBackend selects and owns a backend module. <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> is the stable renderer-facing factory and submission authority; <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-a83aba52"><code>IArdaRHICommandList</code></a> records portable work. The common native boundary validates descriptors, ownership, device affinity, command-list state, and submitted resource state before dispatching to D3D12 or Vulkan.</p>
           <figure>
-            <img src="Assets/rhi-feature-layers.svg" loading="lazy" alt="Renderer and ArdaRenderGraph flow through the ArdaRHI facade and common native boundary to D3D12 or Vulkan, while capabilities and state evidence flow upward.">
+            <img src="Assets/rhi-feature-layers.svg" loading="lazy" alt="Renderer and ArdaDependencyGraph flow through the ArdaRHI facade and common native boundary to D3D12 or Vulkan, while capabilities and state evidence flow upward.">
             <figcaption>Backend-specific types stay below the public RHI boundary. Capability and validation evidence travel in the opposite direction from commands.</figcaption>
           </figure>
 
@@ -194,7 +194,7 @@ status = commandList.TransitionTexture(texture, transition);</code></pre>
           <p>Automatic tracking can infer ordinary transitions for command families that know their required states. Explicit tracking is available when scheduling needs exact before/after or pipeline semantics. UAV barriers order unordered writes without changing state. Aliasing barriers transfer the physical bytes of a heap range from one resource identity to another.</p>
 
           <h3>Four-layer conformance</h3>
-          <p>The facade tracker and native backend tracker are independent. A <a href="api-reference.html#api-arda-rhi-fardarhiresourcestatesnapshot"><code>FArdaRHIResourceStateSnapshot</code></a> contains facade state, backend abstract state, and the exact native encoding. ArdaRenderGraph adds its compiled expected state. Tests compare all four at every transition and pass checkpoint.</p>
+          <p>The facade tracker and native backend tracker are independent. A <a href="api-reference.html#api-arda-rhi-fardarhiresourcestatesnapshot"><code>FArdaRHIResourceStateSnapshot</code></a> contains facade state, backend abstract state, and the exact native encoding. ArdaDependencyGraph adds its compiled expected state. Tests compare all four at every transition and pass checkpoint.</p>
           <figure>
             <img src="Assets/resource-state-conformance.svg" loading="lazy" alt="Render graph expected state, facade state, backend abstract state, and native D3D12 or Vulkan encoding are compared at each checkpoint before submission state is published.">
             <figcaption>A command list with a stale declared start state is rejected and cannot publish its terminal state.</figcaption>
@@ -224,7 +224,7 @@ heapDesc.mCapacity = requirements.mValue.mSize;
 heapDesc.mMemoryTypeBits = requirements.mValue.mMemoryTypeBits;
 auto heap = device.CreateHeap(heapDesc);
 status = device.BindTextureMemory(virtualTexture, heap.mValue, 0);</code></pre>
-          <p>ArdaRenderGraph uses this contract for transient device-local resources. It computes live intervals, intersects Vulkan memory-type masks, places simultaneously live resources at non-overlapping offsets, and reuses bytes for non-overlapping lifetimes. The first use of a replacement resource emits an aliasing barrier.</p>
+          <p>ArdaDependencyGraph uses this contract for transient device-local resources. It computes live intervals, intersects Vulkan memory-type masks, places simultaneously live resources at non-overlapping offsets, and reuses bytes for non-overlapping lifetimes. The first use of a replacement resource emits an aliasing barrier.</p>
           <figure>
             <img src="Assets/transient-heap-aliasing.svg" loading="lazy" alt="Virtual resources report memory requirements, bind into a shared heap, and reuse offsets only across non-overlapping pass lifetimes with an alias barrier.">
             <figcaption>Logical lifetime analysis determines when physical bytes may be reused; the barrier makes that change of identity explicit.</figcaption>
@@ -315,7 +315,7 @@ device.WriteDescriptorTable(table.mValue, textureItem);</code></pre>
 
         <section id="render-graph">
           <h2>Persistent dependency graph integration</h2>
-          <p><a href="../ArdaRDG/ArdaInductor.md"><code>FArdaDependencyGraph</code></a> holds typed nodes and resource values across frames. Register implementations in <code>FArdaNodeRegistry</code>, then edit instances only between <code>BeginGraphEdit</code> and <code>EndGraphEdit</code>.</p>
+          <p><a href="../ArdaRDG/ArdaInductor.md"><code>FArdaDependencyGraph</code></a> holds typed nodes and resource values across frames. Register implementations in <code>FArdaNodeRegistry</code>, then author operations only through an <code>FArdaGraphEdit</code> scope.</p>
           <p>ArdaInductor resolves resource and explicit dependencies independently of attachment order, removes dead branches, creates pipelines from stage declarations, coalesces CUDA nodes, assigns queues, and plans reusable physical storage. Its search can optimize execution cost or memory under a configured VRAM budget.</p>
           <p><code>Submit</code> returns a frame ticket; <code>Wait</code> retires that frame and publishes readbacks. <code>Execute</code> combines both. Independent frame slots own transient storage, while imported resources and retained adapter allocations remain shared.</p>
           <p><code>FArdaDependencyExecutionContext</code> resolves declared resources and compiler-assigned pipeline slots. <code>FArdaGraphExecuteOptions</code> controls parallel recording and state validation. <code>FArdaGraphExecutionResult</code> records accepted submissions, queue waits, state checkpoints, and completion identities. The compile result reports scheduling and memory decisions.</p>
@@ -410,7 +410,7 @@ device.WriteDescriptorTable(table.mValue, textureItem);</code></pre>
             <li><a href="rhi.html">RHI resources and memory</a> &mdash; descriptor details, formats, views, ownership, and a worked resource example.</li>
             <li><a href="commands.html">Commands</a> &mdash; recording state, hazards, synchronization, and direct/RDG execution.</li>
             <li><a href="shaders.html">Shaders</a> and <a href="pipelines.html">pipeline states</a> &mdash; artifact identity, layouts, PSO compatibility, and caches.</li>
-            <li><a href="../ArdaRDG/index.html">ArdaRenderGraph documentation</a> &mdash; graph concepts, passes, resources, compilation, execution, and debugging.</li>
+            <li><a href="../ArdaRDG/index.html">ArdaDependencyGraph documentation</a> &mdash; graph concepts, passes, resources, compilation, execution, and debugging.</li>
             <li><a href="Unreal-RHI-Parity-Plan.md">Unreal RHI/RDG parity review</a> &mdash; audited comparison, implementation status, test contract, and prioritized backlog.</li>
             <li><a href="https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html">DirectX Raytracing</a>, <a href="https://microsoft.github.io/DirectX-Specs/d3d/SamplerFeedback.html">Sampler Feedback</a>, and <a href="https://microsoft.github.io/DirectX-Specs/d3d/WorkGraphs.html">Work Graphs</a> &mdash; Microsoft native behavior used by the D3D12 backend.</li>
             <li><a href="https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html">Vulkan specification</a> &mdash; synchronization2, descriptor indexing/heaps, sparse binding, mesh shading, ray tracing, and opacity micromap contracts used by the Vulkan backend.</li>
@@ -425,7 +425,7 @@ device.WriteDescriptorTable(table.mValue, textureItem);</code></pre>
     </main>
   </div>
   <footer class="site-footer">
-    <p>ArdaBackend documentation &middot; Source boundary: <code>Source/ArdaInfra/ArdaBackend</code> and <code>Source/ArdaInfra/ArdaRenderGraph</code> &middot; <a href="api-reference.html">Central API reference</a></p>
+    <p>ArdaBackend documentation &middot; Source boundary: <code>Source/ArdaInfra/ArdaBackend</code> and <code>Source/ArdaInfra/ArdaDependencyGraph</code> &middot; <a href="api-reference.html">Central API reference</a></p>
   </footer>
 </body>
 </html>

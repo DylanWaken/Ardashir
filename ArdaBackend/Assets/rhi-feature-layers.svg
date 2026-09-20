@@ -18,7 +18,7 @@
   <text class="small" x="265" y="160">resources, pipelines, direct command recording</text>
   <text class="small" x="265" y="178">presentation and platform policy</text>
   <rect class="intent" x="520" y="104" width="350" height="90" rx="12"/>
-  <text class="label" x="695" y="136">ArdaRenderGraph</text>
+  <text class="label" x="695" y="136">ArdaDependencyGraph</text>
   <text class="small" x="695" y="160">pass declarations, dependencies, lifetimes</text>
   <text class="small" x="695" y="178">queue selection, transitions, extraction</text>
 
