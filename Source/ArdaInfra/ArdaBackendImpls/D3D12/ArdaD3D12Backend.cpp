@@ -639,6 +639,10 @@ namespace arda
 				return D3D12_SHADER_VISIBILITY_GEOMETRY;
 			case EArdaRHIShaderStage::Pixel:
 				return D3D12_SHADER_VISIBILITY_PIXEL;
+			case EArdaRHIShaderStage::Amplification:
+				return D3D12_SHADER_VISIBILITY_AMPLIFICATION;
+			case EArdaRHIShaderStage::Mesh:
+				return D3D12_SHADER_VISIBILITY_MESH;
 			default:
 				return D3D12_SHADER_VISIBILITY_ALL;
 			}
@@ -2149,6 +2153,8 @@ namespace arda
 			// Backend device creation requires feature level 12_0; GS/HS/DS are mandatory at this level.
 			mCapabilities.mbGeometryShaders = true;
 			mCapabilities.mbTessellationShaders = true;
+			mCapabilities.mbVertexShaderStoresAndAtomics = true;
+			mCapabilities.mbFragmentShaderStoresAndAtomics = true;
 			mCapabilities.mbStagingTextures = true;
 			mCapabilities.mbTextureCopies = true;
 			mCapabilities.mbTextureResolve = true;
@@ -2633,7 +2639,7 @@ namespace arda
 				Clear.Format = Resource.Format;
 				if (HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::DepthStencil))
 				{
-					Clear.DepthStencil.Depth = Desc.mbUseClearValue ? Desc.mClearValue.mR : 1.f;
+					Clear.DepthStencil.Depth = Desc.mbUseClearValue ? Desc.mClearValue.mR : ArdaDepthClearValue;
 					Clear.DepthStencil.Stencil = Desc.mbUseClearValue ? static_cast<UINT8>(Desc.mClearValue.mG) : 0;
 				}
 				else
@@ -3184,7 +3190,7 @@ namespace arda
 				Clear.Format = Resource.Format;
 				if (HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::DepthStencil))
 				{
-					Clear.DepthStencil.Depth = Desc.mbUseClearValue ? Desc.mClearValue.mR : 1.f;
+					Clear.DepthStencil.Depth = Desc.mbUseClearValue ? Desc.mClearValue.mR : ArdaDepthClearValue;
 					Clear.DepthStencil.Stencil = Desc.mbUseClearValue ? static_cast<UINT8>(Desc.mClearValue.mG) : 0;
 				}
 				else
@@ -6271,6 +6277,7 @@ namespace arda
 				return {};
 			}
 			FArdaRHIBufferDesc UploadDesc;
+			UploadDesc.mUsage = EArdaRHIBufferUsage::None;
 			UploadDesc.mByteSize = Size;
 			UploadDesc.mCpuAccess = EArdaRHICpuAccess::Write;
 			UploadDesc.mInitialState = EArdaRHIResourceState::CopySource;
@@ -8118,6 +8125,7 @@ namespace arda
 			Dispatch.HitGroupTable = mBoundShaderTable->mGeneration.mHitGroupRange;
 			Dispatch.CallableShaderTable = mBoundShaderTable->mGeneration.mCallableRange;
 			FArdaRHIBufferDesc UploadDesc;
+			UploadDesc.mUsage = EArdaRHIBufferUsage::None;
 			UploadDesc.mByteSize = sizeof(Dispatch);
 			UploadDesc.mCpuAccess = EArdaRHICpuAccess::Write;
 			UploadDesc.mInitialState = EArdaRHIResourceState::CopySource;
@@ -9158,7 +9166,8 @@ namespace arda
 					if (SUCCEEDED(mPipelineLibrary->Serialize(Payload.data(), Payload.size())) &&
 					    !WriteArdaPipelineCacheBlob(MakeArdaPipelineCachePath(mPipelineCacheDirectory, "native-d3d12"),
 					        "native-d3d12",
-					        Payload.data(), Payload.size()))
+					        Payload.data(),
+					        Payload.size()))
 					{
 						LogArdaPipelineCacheMessage(mDiagnosticCallback,
 						    EArdaDiagnosticSeverity::Warning,

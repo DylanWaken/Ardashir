@@ -129,6 +129,11 @@ namespace arda
 		return mDispatches.size();
 	}
 
+	const eastl::vector<FArdaCudaBinding>& FArdaCudaSequence::GetOperationBindings(size_t Operation) const
+	{
+		return mDispatches.at(Operation).mBindings;
+	}
+
 	FArdaRHIStatus FArdaCudaSequence::DispatchDeferred(IArdaRHICommandList& Commands) const
 	{
 		if (!mStatus)

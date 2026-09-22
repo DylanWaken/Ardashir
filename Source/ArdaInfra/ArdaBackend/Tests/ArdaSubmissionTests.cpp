@@ -71,6 +71,7 @@ namespace
 		ASSERT_EQ(Commands.mValue->GetDevice(), Device);
 
 		FArdaRHIBufferDesc Desc;
+		Desc.mUsage = EArdaRHIBufferUsage::None;
 		Desc.mByteSize = sizeof(uint32_t);
 		const auto Buffer = Device->CreateBuffer(Desc);
 		ASSERT_TRUE(Buffer);

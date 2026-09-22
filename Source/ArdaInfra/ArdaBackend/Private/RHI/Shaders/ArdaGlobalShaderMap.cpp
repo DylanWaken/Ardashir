@@ -61,17 +61,23 @@ namespace arda
 		if (ReadResult == fileops::EArdaFileReadResult::OpenFailed)
 		{
 			Result.mDiagnostic = MakeDiagnostic(EArdaGlobalShaderMapError::BytecodeMissing,
-			    nullptr, Path, eastl::string("Unable to open shader artifact: ") + ToEastlString(Path));
+			    nullptr,
+			    Path,
+			    eastl::string("Unable to open shader artifact: ") + ToEastlString(Path));
 		}
 		else if (ReadResult == fileops::EArdaFileReadResult::ReadFailed)
 		{
 			Result.mDiagnostic = MakeDiagnostic(EArdaGlobalShaderMapError::BytecodeReadFailed,
-			    nullptr, Path, eastl::string("Unable to read shader artifact: ") + ToEastlString(Path));
+			    nullptr,
+			    Path,
+			    eastl::string("Unable to read shader artifact: ") + ToEastlString(Path));
 		}
 		else if (Result.mBytecode.empty())
 		{
 			Result.mDiagnostic = MakeDiagnostic(EArdaGlobalShaderMapError::BytecodeEmpty,
-			    nullptr, Path, eastl::string("Shader artifact is empty: ") + ToEastlString(Path));
+			    nullptr,
+			    Path,
+			    eastl::string("Shader artifact is empty: ") + ToEastlString(Path));
 		}
 		return Result;
 	}
@@ -145,8 +151,8 @@ namespace arda
 					continue;
 				}
 				const eastl::string ArtifactStem = Type.GetPermutationArtifactStem(PermutationId);
-				const std::filesystem::path Path = ResolvedDirectory /
-				    (ArtifactStem + Target.mArtifactExtension).c_str();
+				const std::filesystem::path Path =
+				    ResolvedDirectory / (ArtifactStem + Target.mArtifactExtension).c_str();
 				if (!IsContainedArtifactPath(ResolvedDirectory, Path))
 				{
 					mDiagnostics.push_back(MakeDiagnostic(EArdaGlobalShaderMapError::RegistrationFailed,
@@ -209,8 +215,7 @@ namespace arda
 		FArdaGlobalShaderInstance& Shader = mShaders[Index];
 		const FArdaShaderType& Type = Shader.mType;
 		const eastl::string ArtifactStem = Type.GetPermutationArtifactStem(Shader.mPermutationId);
-		const std::filesystem::path Path = mDirectory /
-		    (ArtifactStem + mTarget.mArtifactExtension).c_str();
+		const std::filesystem::path Path = mDirectory / (ArtifactStem + mTarget.mArtifactExtension).c_str();
 
 		if (mMode != EArdaShaderCompilationMode::LoadOnly)
 		{
@@ -251,6 +256,8 @@ namespace arda
 		ShaderDesc.mBytecodeSize = Bytecode.mBytecode.size();
 		ShaderDesc.mEntryPoint = Type.GetEntryPoint();
 		ShaderDesc.mDebugName = Type.GetName();
+		static const FArdaShaderParameterMetadata EmptyParameters("ArdaParameterlessShader", 1, 1, {});
+		ShaderDesc.mParameterMetadata = Type.GetParameterMetadata() ? Type.GetParameterMetadata() : &EmptyParameters;
 		auto ShaderResult = mDevice->CreateShader(ShaderDesc);
 		if (!ShaderResult)
 		{

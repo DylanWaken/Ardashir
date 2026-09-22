@@ -86,12 +86,14 @@ namespace
 	TEST_P(FArdaMemoryRequirementsTest, RejectsInvalidDescriptorsBeforeNativeQueries)
 	{
 		FArdaRHIBufferDesc Buffer;
+		Buffer.mUsage = EArdaRHIBufferUsage::None;
 		Buffer.mByteSize = 0;
 		EXPECT_EQ(mDevice->QueryBufferMemoryRequirements(Buffer).mStatus.mCode, EArdaRHIResult::InvalidArgument);
 		Buffer.mByteSize = 256;
 		Buffer.mbVirtual = Buffer.mbTiled = true;
 		EXPECT_EQ(mDevice->QueryBufferMemoryRequirements(Buffer).mStatus.mCode, EArdaRHIResult::InvalidArgument);
 		FArdaRHITextureDesc Texture;
+		Texture.mUsage = EArdaRHITextureUsage::ShaderResource;
 		Texture.mFormat = EArdaRHIFormat::R32Float;
 		Texture.mWidth = 0;
 		EXPECT_EQ(mDevice->QueryTextureMemoryRequirements(Texture).mStatus.mCode, EArdaRHIResult::InvalidArgument);

@@ -1,4 +1,5 @@
 #include "Inductor/Compiler/ArdaInductorCompilerInternal.h"
+#include "Inductor/Rules/ArdaInductorShaderContracts.h"
 
 namespace arda::inductor_detail
 {
@@ -16,9 +17,15 @@ namespace arda::inductor_detail
 			{
 				Node.mPipelineBoundaries.push_back(Request.mKind);
 			}
-			for (const auto Edge : Graph.mTopology.GetIncomingEdges(Handle))
+			// Typed graphics chains already carry exactly their own stages on the terminal.
+			// Resource ancestry must not import shaders from unrelated draws or declarations.
+			if (!Graph.mTopology.TryGetNode(Handle)->mPayload.mbGraphicsLowered &&
+			    !Graph.mTopology.TryGetNode(Handle)->mPayload.mbRayTracingLowered)
 			{
-				Node.mDependencies.push_back(Graph.mTopology.TryGetEdge(Edge)->mFrom.GetIndex());
+				for (const auto Edge : Graph.mTopology.GetIncomingEdges(Handle))
+				{
+					Node.mDependencies.push_back(Graph.mTopology.TryGetEdge(Edge)->mFrom.GetIndex());
+				}
 			}
 			Nodes.push_back(eastl::move(Node));
 		}
@@ -44,6 +51,13 @@ namespace arda::inductor_detail
 				if (!Pattern)
 				{
 					return Pattern.mStatus;
+				}
+				if (auto Status = ValidateArdaNodeShaderContract(Graph.mTopology.TryGetNode(Handle)->mPayload.mDesc,
+				        Pattern.mValue.mConfiguration,
+				        Request.mSlot);
+				    !Status)
+				{
+					return Status;
 				}
 			}
 		}

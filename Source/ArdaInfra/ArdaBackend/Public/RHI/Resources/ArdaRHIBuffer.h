@@ -43,22 +43,27 @@ namespace arda
 		AccelStructBuildInput = 1u << 9,
 		AccelStructStorage = 1u << 10,
 		ShaderBindingTable = 1u << 11,
-		OpacityMicromapBuildInput = 1u << 12
+		OpacityMicromapBuildInput = 1u << 12,
+		/** Graph compilation derives required usage flags; must be resolved before native creation. */
+		AutoDeduction = 1u << 15
 	};
 
 	constexpr EArdaRHIBufferUsage operator|(EArdaRHIBufferUsage A, EArdaRHIBufferUsage B) noexcept
 	{
 		return static_cast<EArdaRHIBufferUsage>(static_cast<uint32_t>(A) | static_cast<uint32_t>(B));
 	}
+
 	constexpr EArdaRHIBufferUsage operator&(EArdaRHIBufferUsage A, EArdaRHIBufferUsage B) noexcept
 	{
 		return static_cast<EArdaRHIBufferUsage>(static_cast<uint32_t>(A) & static_cast<uint32_t>(B));
 	}
+
 	constexpr EArdaRHIBufferUsage& operator|=(EArdaRHIBufferUsage& A, EArdaRHIBufferUsage B) noexcept
 	{
 		A = A | B;
 		return A;
 	}
+
 	constexpr bool HasAnyFlags(EArdaRHIBufferUsage Value, EArdaRHIBufferUsage Flags) noexcept
 	{
 		return static_cast<uint32_t>(Value & Flags) != 0;
@@ -108,8 +113,8 @@ namespace arda
 		uint32_t mMaxVersions = 0;
 		/** Stores the format. */
 		EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown;
-		/** Stores the usage. */
-		EArdaRHIBufferUsage mUsage = EArdaRHIBufferUsage::None;
+		/** Graph-derived by default; direct RHI callers must provide concrete usage flags (or None). */
+		EArdaRHIBufferUsage mUsage = EArdaRHIBufferUsage::AutoDeduction;
 		/** Portable heap access: Write permits GPU reads; Read permits copy destinations and CPU reads. */
 		EArdaRHICpuAccess mCpuAccess = EArdaRHICpuAccess::None;
 		/** Stores the initial state. */

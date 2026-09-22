@@ -41,6 +41,47 @@ class HeaderOrderingTest(unittest.TestCase):
 
 
 class MacroExtractionTest(unittest.TestCase):
+    def test_node_parameter_aggregates_keep_types_fields_and_ownership(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Parameters.h").write_text(
+                "namespace arda {\n"
+                "/** Describes a pixel pass. */\n"
+                "ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPixelParameters)\n"
+                "    ARDA_NODE_STAGE_INPUT(FArdaGraphFragments, mInput)\n"
+                "    /** Texture sampled by the pixel shader. */\n"
+                "    ARDA_NODE_SHADER_TEXTURE(mAlbedo,\n"
+                "        FArdaPixelShader::FArdaParameters, mSource)\n"
+                "    ARDA_NODE_COLOR_TARGET_ACCESS(mColor, EArdaDependencyAccess::ReadWrite)\n"
+                "    ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCount, SelectCount(1, 2))\n"
+                "ARDA_END_NODE_PARAMETER_STRUCT()\n"
+                "ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRayParameters)\n"
+                "    ARDA_NODE_STAGE_INPUTS(FArdaGraphRayShader, mShaders)\n"
+                "ARDA_END_NODE_PARAMETER_STRUCT()\n"
+                "struct FArdaAfter { int mValue; };\n"
+                "}\n", encoding="utf-8")
+            symbols = make_symbols(root, [("Parameters.h", "arda", "core")], "test")
+            by_name = {item["name"]: item for item in symbols}
+            self.assertEqual(set(by_name), {"FArdaPixelParameters", "mInput", "mAlbedo",
+                "mColor", "mCount", "FArdaRayParameters", "mShaders", "FArdaAfter"})
+            aggregate = by_name["FArdaPixelParameters"]
+            self.assertEqual(aggregate["kind"], "struct")
+            self.assertEqual(aggregate["signature"], "struct FArdaPixelParameters")
+            self.assertEqual(aggregate["sourceLine"], 3)
+            self.assertEqual(aggregate["summary"], "Describes a pixel pass.")
+            for name, line in (("mInput", 4), ("mAlbedo", 6), ("mColor", 8), ("mCount", 9)):
+                self.assertEqual(by_name[name]["kind"], "member variable")
+                self.assertEqual(by_name[name]["qualifiedName"], "arda::FArdaPixelParameters::" + name)
+                self.assertEqual(by_name[name]["sourceLine"], line)
+            self.assertEqual(by_name["mAlbedo"]["summary"], "Texture sampled by the pixel shader.")
+            self.assertNotEqual(by_name["mColor"]["summary"], by_name["mAlbedo"]["summary"])
+            self.assertEqual(by_name["mAlbedo"]["signature"],
+                "ARDA_NODE_SHADER_TEXTURE(mAlbedo, FArdaPixelShader::FArdaParameters, mSource)")
+            self.assertEqual(by_name["mCount"]["signature"],
+                "ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCount, SelectCount(1, 2))")
+            self.assertEqual(by_name["mShaders"]["qualifiedName"], "arda::FArdaRayParameters::mShaders")
+            self.assertEqual(by_name["FArdaAfter"]["qualifiedName"], "arda::FArdaAfter")
+
     def test_named_node_callable_is_a_constant_with_its_own_contract(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -464,14 +464,26 @@ namespace arda
 		return C.GetCommands().DispatchMesh(1, 1, 1);
 	}
 }</code></pre></details></section>
-<section id="raster"><h2>Rasterization</h2><p>This vertex-ID triangle needs no uploaded vertex buffer. The node owns vertex and pixel shaders and the framebuffer output declaration. Real geometry uploads can be separate nodes whose outputs feed declared vertex/index reads. Two instances below reuse one graphics PSO.</p><p>These are compiled recipe sources, built into <code>ArdaGraphTests</code>. In an application, compile all four node .cpp files and <a href="Examples/AssembleNodes.cpp">the assembly file</a> (it defines all four recipes and the shared registration function), or extract only the assembly function for your selected node, include <a href="Examples/Nodes/RecipeNodeSupport.h">the private recipe support header</a>, link <code>Ardashir::ArdaDependencyGraph</code>, and define <code>ARDA_RDG_RECIPE_SHADER_DIR</code> as an absolute path to <a href="Examples/Nodes/Shaders/RasterTriangle.hlsl">the shader directory</a>. Enable on-demand compilation for development, or deploy matching artifacts for load-only mode.</p><p>Registration: <code>FArdaRasterTriangleNode::Register()</code> publishes the type; <a href="Examples/AssembleNodes.cpp">RegisterRecipeLibrary</a> registers all four native recipes together. The renderer calls named global operations, composes typed resource variables, and checks one commit result:</p><pre><code>FArdaRHIStatus RunRasterRecipe(FArdaRHIDeviceRef Device)
+<section id="raster"><h2>Rasterization</h2><p>This vertex-ID triangle uses separate vertex, raster and pixel node classes. Typed vertex and fragment variables connect the stages automatically. The same vertex result feeds two raster operations, creating two independent draws that execute the vertex shader twice and reuse one compatible graphics PSO. Geometry uploads can supply declared vertex/index reads as shown by RHITest. <code>FetchBuffer(Edit, Vertices)</code> explicitly runs a compute materializer sharing the VS position function; the recipe verifies its float4 position records by GPU readback.</p><p>These are compiled recipe sources, built into <code>ArdaGraphTests</code>. In an application, compile all four node .cpp files and <a href="Examples/AssembleNodes.cpp">the assembly file</a> (it defines all four recipes and the shared registration function), or extract only the assembly function for your selected node, include <a href="Examples/Nodes/RecipeNodeSupport.h">the private recipe support header</a>, link <code>Ardashir::ArdaDependencyGraph</code>, and define <code>ARDA_RDG_RECIPE_SHADER_DIR</code> as an absolute path to <a href="Examples/Nodes/Shaders/RasterTriangle.hlsl">the shader directory</a>. Enable on-demand compilation for development, or deploy matching artifacts for load-only mode.</p><p>Registration: the vertex, raster and pixel classes each expose <code>Register()</code>; <a href="Examples/AssembleNodes.cpp">RegisterRecipeLibrary</a> registers all four native recipes together. The renderer calls named global operations, composes typed resource variables, and checks one commit result:</p><pre><code>FArdaRHIStatus RunRasterRecipe(FArdaRHIDeviceRef Device)
 {
 
 	// Each invocation records an operation and returns its typed resources.
 	FArdaDependencyGraph Graph(Device);
 	FArdaGraphEdit Edit(Graph);
-	const auto First = RasterTriangle(Edit, {}).GetTexture(&quot;Color&quot;);
-	const auto Second = RasterTriangle(Edit, {}).GetTexture(&quot;Color&quot;);
+	FArdaRHITextureDesc TargetDesc;
+	TargetDesc.mWidth = 64;
+	TargetDesc.mHeight = 64;
+	TargetDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	TargetDesc.mUsage = EArdaRHITextureUsage::RenderTarget;
+	const auto First = AllocateTexture(Edit, TargetDesc);
+	const auto Second = AllocateTexture(Edit, TargetDesc);
+	const auto Vertices = RecipeTriangleVS(Edit, uint32_t{3});
+	const auto Positions = Readback(Edit, FetchBuffer(Edit, Vertices));
+	const auto FirstFragments = RecipeTriangleRasterize(Edit, Vertices, uint32_t{64}, uint32_t{64});
+	const auto SecondFragments = RecipeTriangleRasterize(Edit, Vertices, uint32_t{64}, uint32_t{64});
+	RecipeTrianglePS(Edit, FirstFragments, First);
+	RecipeTrianglePS(Edit, SecondFragments, Second);
+	// Each raster branch becomes a separate draw, including its own vertex execution.
 	Edit.Keep(First);
 	Edit.Keep(Second);
 
@@ -486,7 +498,8 @@ namespace arda
 	}
 	// Compilation retains pipeline patterns without creating native PSOs.
 	const auto Compiled = Graph.GetPipelineCacheStats();
-	if (Compiled.mGraphicsEntries != 0 || Compiled.mHits != 0 || Compiled.mMisses != 0)
+	if (Compiled.mGraphicsEntries != 0 || Compiled.mComputeEntries != 0 || Compiled.mHits != 0 ||
+	    Compiled.mMisses != 0)
 	{
 		return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Compilation created a native raster PSO.&quot;);
 	}
@@ -496,9 +509,18 @@ namespace arda
 	}
 	// First submission prepares both instances and reuses their matching graphics PSO.
 	const auto Prepared = Graph.GetPipelineCacheStats();
-	if (Prepared.mGraphicsEntries != 1 || Prepared.mHits &lt; 1 || Prepared.mMisses != 1)
+	if (Prepared.mGraphicsEntries != 1 || Prepared.mComputeEntries != 1 || Prepared.mHits &lt; 1 ||
+	    Prepared.mMisses != 2)
 	{
 		return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Expected raster PSO reuse.&quot;);
+	}
+	// The explicit materializer evaluates the same position function as the vertex shader.
+	const float ExpectedPositions[12] = {-1.f, -1.f, 0.f, 1.f, -1.f, 3.f, 0.f, 1.f, 3.f, -1.f, 0.f, 1.f};
+	if (Positions-&gt;size() != sizeof(ExpectedPositions) ||
+	    std::memcmp(Positions-&gt;data(), ExpectedPositions, sizeof(ExpectedPositions)) != 0)
+	{
+		return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+		    &quot;Vertex materialization returned unexpected positions.&quot;);
 	}
 
 	// Later frames reuse the prepared objects without further cache requests.
@@ -510,7 +532,8 @@ namespace arda
 			return Run.mStatus;
 		}
 		const auto Replayed = Graph.GetPipelineCacheStats();
-		if (Replayed.mGraphicsEntries != Prepared.mGraphicsEntries || Replayed.mHits != Prepared.mHits ||
+		if (Replayed.mGraphicsEntries != Prepared.mGraphicsEntries ||
+		    Replayed.mComputeEntries != Prepared.mComputeEntries || Replayed.mHits != Prepared.mHits ||
 		    Replayed.mMisses != Prepared.mMisses)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
@@ -519,24 +542,52 @@ namespace arda
 	}
 	return {}; // These offscreen textures are released with Graph. Retain Graph in a renderer.
 }</code></pre><details><summary>RasterTriangleNode.h</summary><p><a href="Examples/Nodes/RasterTriangleNode.h">Source file</a></p><pre><code>#pragma once
-#include &quot;Graph/Node/ArdaDependencyNode.h&quot;
+#include &quot;Graph/Node/ArdaNodeDefinition.h&quot;
 
 namespace arda
 {
-	struct FArdaRasterTriangleParameters
-	{
-		FArdaDependencyResourceHandle mColor;
-		uint32_t mWidth = 64, mHeight = 64;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRecipeTriangleVertexParameters)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mVertexCount, 3)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	class FArdaRasterTriangleNode final
-	    : public TArdaGraphicsDependencyNode&lt;FArdaRasterTriangleNode, FArdaRasterTriangleParameters&gt;
+	class FArdaRecipeTriangleVertexNode final : public TArdaNodeDefinition&lt;FArdaRecipeTriangleVertexNode,
+	                                                FArdaRecipeTriangleVertexParameters,
+	                                                EArdaNodeType::Vertex&gt;
 	{
 	public:
 		struct FArdaState;
 		static FArdaDependencyNodeMetadata GetMetadata();
-		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P);
+		static FArdaRHIStatus Validate(const FArdaParameters&amp; P);
+		static FArdaGraphBuffer FetchBuffer(FArdaGraphEdit&amp; Edit,
+		    const FArdaParameters&amp; P,
+		    const FArdaStageBufferRequest&amp; Request);
+		static TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaState&gt;&gt; Prepare(FArdaRHIDeviceRef Device);
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&amp; P, const FArdaState&amp; State);
+		static FArdaRHIStatus ConfigureGraphics(FArdaDependencyExecutionContext&amp; C,
+		    const FArdaParameters&amp; P,
+		    const FArdaState&amp; State,
+		    FArdaInstanceState&amp; Instance,
+		    FArdaGraphicsWork&amp; Work);
+	};
+
+	ARDA_DECLARE_GRAPH_NODE(FArdaRecipeTriangleVertexNode, RecipeTriangleVS);
+
+	/** Capture a prefix of the procedural triangle&#x27;s clip-space float4 positions. */
+	struct FArdaRecipeVertexCaptureParameters
+	{
+		FArdaDependencyResourceHandle mOutput;
+		uint32_t mVertexCount = 3;
+	};
+
+	class FArdaRecipeVertexCaptureNode final : public TArdaNodeDefinition&lt;FArdaRecipeVertexCaptureNode,
+	                                               FArdaRecipeVertexCaptureParameters,
+	                                               EArdaNodeType::Compute&gt;
+	{
+	public:
+		struct FArdaState;
+		static FArdaDependencyNodeMetadata GetMetadata();
 		static eastl::string GetCanonicalKey(const FArdaParameters&amp; P);
+		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P);
 		static FArdaRHIStatus Validate(const FArdaParameters&amp; P);
 		static TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaState&gt;&gt; Prepare(FArdaRHIDeviceRef Device);
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters&amp; P, const FArdaState&amp; State);
@@ -546,13 +597,65 @@ namespace arda
 		    FArdaInstanceState&amp; Instance);
 	};
 
-	ARDA_DECLARE_GRAPH_NODE(FArdaRasterTriangleNode, RasterTriangle);
+	ARDA_DECLARE_GRAPH_NODE(FArdaRecipeVertexCaptureNode, CaptureRecipeVertices);
+
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRecipeTriangleRasterParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphVertices, mInput)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mWidth, 64)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mHeight, 64)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	class FArdaRecipeTriangleRasterNode final : public TArdaNodeDefinition&lt;FArdaRecipeTriangleRasterNode,
+	                                                FArdaRecipeTriangleRasterParameters,
+	                                                EArdaNodeType::Raster&gt;
+	{
+	public:
+		struct FArdaState;
+		static FArdaDependencyNodeMetadata GetMetadata();
+		static FArdaRHIStatus Validate(const FArdaParameters&amp; P);
+		static TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaState&gt;&gt; Prepare(FArdaRHIDeviceRef Device);
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&amp; P, const FArdaState&amp; State);
+		static FArdaRHIStatus ConfigureGraphics(FArdaDependencyExecutionContext&amp; C,
+		    const FArdaParameters&amp; P,
+		    const FArdaState&amp; State,
+		    FArdaInstanceState&amp; Instance,
+		    FArdaGraphicsWork&amp; Work);
+	};
+
+	ARDA_DECLARE_GRAPH_NODE(FArdaRecipeTriangleRasterNode, RecipeTriangleRasterize);
+
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRecipeTrianglePixelParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphFragments, mInput)
+		ARDA_NODE_COLOR_TARGET(mColor)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	class FArdaRecipeTrianglePixelNode final : public TArdaNodeDefinition&lt;FArdaRecipeTrianglePixelNode,
+	                                               FArdaRecipeTrianglePixelParameters,
+	                                               EArdaNodeType::Pixel&gt;
+	{
+	public:
+		struct FArdaState;
+		static FArdaDependencyNodeMetadata GetMetadata();
+		static TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaState&gt;&gt; Prepare(FArdaRHIDeviceRef Device);
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&amp; P, const FArdaState&amp; State);
+		static FArdaRHIStatus ConfigureGraphics(FArdaDependencyExecutionContext&amp; C,
+		    const FArdaParameters&amp; P,
+		    const FArdaState&amp; State,
+		    FArdaInstanceState&amp; Instance,
+		    FArdaGraphicsWork&amp; Work);
+	};
+
+	ARDA_DECLARE_GRAPH_NODE(FArdaRecipeTrianglePixelNode, RecipeTrianglePS);
 }</code></pre></details><details><summary>RasterTriangleNode.cpp</summary><p><a href="Examples/Nodes/RasterTriangleNode.cpp">Source file</a></p><pre><code>#include &quot;RasterTriangleNode.h&quot;
 #include &quot;RecipeNodeSupport.h&quot;
+#include &lt;cstring&gt;
 
 namespace arda
 {
-	ARDA_DEFINE_GRAPH_NODE(FArdaRasterTriangleNode, RasterTriangle);
+	ARDA_DEFINE_GRAPH_NODE(FArdaRecipeTriangleVertexNode, RecipeTriangleVS);
+	ARDA_DEFINE_GRAPH_NODE(FArdaRecipeTriangleRasterNode, RecipeTriangleRasterize);
+	ARDA_DEFINE_GRAPH_NODE(FArdaRecipeTrianglePixelNode, RecipeTrianglePS);
+	ARDA_DEFINE_GRAPH_NODE(FArdaRecipeVertexCaptureNode, CaptureRecipeVertices);
 
 	class FArdaRecipeRasterVertexShader final : public FArdaGlobalShader
 	{
@@ -576,38 +679,184 @@ namespace arda
 	    &quot;RecipeRasterPS&quot;,
 	    EArdaRHIShaderStage::Pixel)
 
-	struct FArdaRasterTriangleNode::FArdaState
+	class FArdaRecipeVertexCaptureShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
+			ARDA_SHADER_BUFFER_UAV(mOutput, 0, 0, EArdaRHIShaderStage::Compute)
+			ARDA_SHADER_PUSH_CONSTANTS(uint32_t, mVertexCount, 0, 0, EArdaRHIShaderStage::Compute)
+		ARDA_END_SHADER_PARAMETER_STRUCT()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaRecipeVertexCaptureShader);
+	};
+	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaRecipeVertexCaptureShader,
+	    ARDA_RDG_RECIPE_SHADER_DIR &quot;/RasterTriangle.hlsl&quot;,
+	    &quot;RecipeVertexCapture&quot;,
+	    &quot;RecipeCaptureVerticesCS&quot;,
+	    EArdaRHIShaderStage::Compute)
+
+	struct FArdaRecipeTriangleVertexNode::FArdaState
 	{
 		FArdaGlobalShaderMap mShaders;
-		eastl::vector&lt;FArdaInductorPipelineContribution&gt; mStages;
+		FArdaInductorPipelineContribution mStage;
+	};
+
+	FArdaDependencyNodeMetadata FArdaRecipeTriangleVertexNode::GetMetadata()
+	{
+		return {&quot;recipe.triangle.vertex&quot;, 1};
+	}
+
+	FArdaRHIStatus FArdaRecipeTriangleVertexNode::Validate(const FArdaParameters&amp; P)
+	{
+		if (!P.mVertexCount || P.mVertexCount &gt; 3)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;The recipe provides one to three vertices.&quot;);
+		}
+		return {};
+	}
+
+	FArdaGraphBuffer FArdaRecipeTriangleVertexNode::FetchBuffer(FArdaGraphEdit&amp; Edit,
+	    const FArdaParameters&amp; P,
+	    const FArdaStageBufferRequest&amp; Request)
+	{
+		const uint64_t Count = Request.mElementCount ? Request.mElementCount : P.mVertexCount;
+		if (!Count || Count &gt; P.mVertexCount)
+		{
+			Edit.ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			    &quot;Recipe vertex capture must fit the producer&#x27;s vertex count.&quot;));
+			return {};
+		}
+		return CaptureRecipeVertices(Edit, {{}, uint32_t(Count)}).GetBuffer(&quot;Positions&quot;);
+	}
+
+	struct FArdaRecipeVertexCaptureNode::FArdaState
+	{
+		FArdaGlobalShaderMap mShaders;
+		FArdaInductorPipelineContribution mStage;
+	};
+
+	FArdaDependencyNodeMetadata FArdaRecipeVertexCaptureNode::GetMetadata()
+	{
+		return {&quot;recipe.triangle.capture-vertices&quot;, 1};
+	}
+
+	eastl::string FArdaRecipeVertexCaptureNode::GetCanonicalKey(const FArdaParameters&amp; P)
+	{
+		return FArdaDependencyKeyBuilder().Resource(P.mOutput).Value(P.mVertexCount).Build();
+	}
+
+	FArdaRHIStatus FArdaRecipeVertexCaptureNode::DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P)
+	{
+		FArdaRHIBufferDesc Desc;
+		Desc.mStructureStride = sizeof(float) * 4;
+		Desc.mByteSize = Desc.mStructureStride * P.mVertexCount;
+		Desc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource |
+		    EArdaRHIBufferUsage::UnorderedAccess;
+		return C.Buffer(P.mOutput, &quot;Positions&quot;, Desc);
+	}
+
+	FArdaRHIStatus FArdaRecipeVertexCaptureNode::Validate(const FArdaParameters&amp; P)
+	{
+		return FArdaRecipeTriangleVertexNode::Validate({P.mVertexCount});
+	}
+
+	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaRecipeVertexCaptureNode::FArdaState&gt;&gt; FArdaRecipeVertexCaptureNode::
+	    Prepare(FArdaRHIDeviceRef Device)
+	{
+		if (!Device)
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Vertex capture requires a device.&quot;)};
+		}
+		auto State = eastl::make_shared&lt;FArdaState&gt;();
+		if (!State-&gt;mShaders.Initialize(Device))
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+		const auto* Shader = State-&gt;mShaders.Find(FArdaRecipeVertexCaptureShader::GetStaticType());
+		if (!Shader)
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+		State-&gt;mStage.mShader = Shader-&gt;GetShader();
+		State-&gt;mStage.mBindingLayouts = Shader-&gt;GetBindingLayouts();
+		return {eastl::move(State), {}};
+	}
+
+	FArdaDependencyNodeDesc FArdaRecipeVertexCaptureNode::Describe(const FArdaParameters&amp; P, const FArdaState&amp; State)
+	{
+		FArdaDependencyShaderValue Count;
+		Count.mMember = &quot;mVertexCount&quot;;
+		Count.mBytes.resize(sizeof(P.mVertexCount));
+		std::memcpy(Count.mBytes.data(), &amp;P.mVertexCount, sizeof(P.mVertexCount));
+		FArdaDependencyNodeDesc Desc;
+		Desc.BindShader&lt;FArdaRecipeVertexCaptureShader::FArdaParameters&gt;({{&quot;mOutput&quot;, P.mOutput}}, &quot;default&quot;, {Count});
+		Desc.mPipelineStages = {State.mStage};
+		Desc.mPipelines = {{&quot;default&quot;, 0, EArdaPipelineStateKind::Compute}};
+		return Desc;
+	}
+
+	FArdaRHIStatus FArdaRecipeVertexCaptureNode::Record(FArdaDependencyExecutionContext&amp; C,
+	    const FArdaParameters&amp;,
+	    const FArdaState&amp;,
+	    FArdaInstanceState&amp;)
+	{
+		if (auto Status = C.SetComputeState(); !Status)
+		{
+			return Status;
+		}
+		C.GetCommands().Dispatch(1, 1, 1);
+		return {};
+	}
+
+	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaRecipeTriangleVertexNode::FArdaState&gt;&gt; FArdaRecipeTriangleVertexNode::
+	    Prepare(FArdaRHIDeviceRef Device)
+	{
+		if (!Device)
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Vertex preparation needs a device.&quot;)};
+		}
+		auto State = eastl::make_shared&lt;FArdaState&gt;();
+		if (!State-&gt;mShaders.Initialize(Device))
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+		const auto* Shader = State-&gt;mShaders.Find(FArdaRecipeRasterVertexShader::GetStaticType());
+		if (!Shader)
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+		State-&gt;mStage.mShader = Shader-&gt;GetShader();
+		State-&gt;mStage.mBindingLayouts = Shader-&gt;GetBindingLayouts();
+		return {eastl::move(State), {}};
+	}
+
+	FArdaDependencyNodeDesc FArdaRecipeTriangleVertexNode::Describe(const FArdaParameters&amp;, const FArdaState&amp; State)
+	{
+		FArdaDependencyNodeDesc Desc;
+		Desc.mPipelineStages = {State.mStage};
+		return Desc;
+	}
+
+	FArdaRHIStatus FArdaRecipeTriangleVertexNode::ConfigureGraphics(FArdaDependencyExecutionContext&amp;,
+	    const FArdaParameters&amp; P,
+	    const FArdaState&amp;,
+	    FArdaInstanceState&amp;,
+	    FArdaGraphicsWork&amp; Work)
+	{
+		Work.mDraw.mVertexCount = P.mVertexCount;
+		return {};
+	}
+
+	struct FArdaRecipeTriangleRasterNode::FArdaState
+	{
 		eastl::shared_ptr&lt;const FArdaInductorPipelineConfiguration&gt; mConfiguration;
 	};
 
-	FArdaRHIStatus FArdaRasterTriangleNode::DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P)
+	FArdaDependencyNodeMetadata FArdaRecipeTriangleRasterNode::GetMetadata()
 	{
-		FArdaRHITextureDesc D;
-		D.mWidth = P.mWidth;
-		D.mHeight = P.mHeight;
-		D.mFormat = EArdaRHIFormat::RGBA8UNorm;
-		D.mUsage = EArdaRHITextureUsage::RenderTarget;
-		return C.Texture(P.mColor, &quot;Color&quot;, D);
+		return {&quot;recipe.triangle.rasterize&quot;, 1};
 	}
 
-	FArdaDependencyNodeMetadata FArdaRasterTriangleNode::GetMetadata()
-	{
-		return {&quot;recipe.raster-triangle&quot;, 1};
-	}
-
-	eastl::string FArdaRasterTriangleNode::GetCanonicalKey(const FArdaParameters&amp; P)
-	{
-		FArdaDependencyKeyBuilder Key;
-		Key.Resource(P.mColor);
-		Key.Value(P.mWidth);
-		Key.Value(P.mHeight);
-		return Key.Build();
-	}
-
-	FArdaRHIStatus FArdaRasterTriangleNode::Validate(const FArdaParameters&amp; P)
+	FArdaRHIStatus FArdaRecipeTriangleRasterNode::Validate(const FArdaParameters&amp; P)
 	{
 		if (!P.mWidth || !P.mHeight)
 		{
@@ -616,77 +865,88 @@ namespace arda
 		return {};
 	}
 
-	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaRasterTriangleNode::FArdaState&gt;&gt; FArdaRasterTriangleNode::Prepare(
-	    FArdaRHIDeviceRef Device)
+	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaRecipeTriangleRasterNode::FArdaState&gt;&gt; FArdaRecipeTriangleRasterNode::
+	    Prepare(FArdaRHIDeviceRef)
 	{
-		if (!Device)
-		{
-			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Raster preparation needs a device.&quot;)};
-		}
-
 		auto State = eastl::make_shared&lt;FArdaState&gt;();
-		if (!State-&gt;mShaders.Initialize(Device))
-		{
-			return {{}, ShaderError(State-&gt;mShaders)};
-		}
-
-		const auto* FArdaVertex = State-&gt;mShaders.Find(FArdaRecipeRasterVertexShader::GetStaticType());
-		const auto* Pixel = State-&gt;mShaders.Find(FArdaRecipeRasterPixelShader::GetStaticType());
-		if (!FArdaVertex || !Pixel)
-		{
-			return {{}, ShaderError(State-&gt;mShaders)};
-		}
-		for (const auto* Shader : {FArdaVertex, Pixel})
-		{
-			FArdaInductorPipelineContribution Stage;
-			Stage.mShader = Shader-&gt;GetShader();
-			State-&gt;mStages.push_back(eastl::move(Stage));
-		}
 		auto Config = eastl::make_shared&lt;FArdaInductorPipelineConfiguration&gt;();
 		Config-&gt;mKind = EArdaPipelineStateKind::Graphics;
 		auto&amp; Desc = Config-&gt;mGraphics.mDesc;
 		Desc.mRasterState.mCullMode = EArdaRHICullMode::None;
 		Desc.mDepthStencilState.mbDepthTest = false;
 		Desc.mDepthStencilState.mbDepthWrite = false;
-		Desc.mSampleCount = 0; // ArdaInductor completes formats and samples from the framebuffer.
+		Desc.mSampleCount = 0;
 		State-&gt;mConfiguration = eastl::move(Config);
 		return {eastl::move(State), {}};
 	}
 
-	FArdaDependencyNodeDesc FArdaRasterTriangleNode::Describe(const FArdaParameters&amp; P, const FArdaState&amp; State)
+	FArdaDependencyNodeDesc FArdaRecipeTriangleRasterNode::Describe(const FArdaParameters&amp;, const FArdaState&amp; State)
 	{
-		FArdaDependencyNodeDesc D;
-		D.mAccesses = {{P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
-		D.mColorTargets = {P.mColor};
-		D.mPipelineStages = State.mStages;
-		D.mPipelines = {{&quot;default&quot;, 0, EArdaPipelineStateKind::Graphics, {}, State.mConfiguration}};
-		return D;
+		FArdaDependencyNodeDesc Desc;
+		FArdaInductorPipelineContribution Raster;
+		Raster.mConfiguration = State.mConfiguration;
+		Desc.mPipelineStages = {eastl::move(Raster)};
+		return Desc;
 	}
 
-	FArdaRHIStatus FArdaRasterTriangleNode::Record(FArdaDependencyExecutionContext&amp; C,
+	FArdaRHIStatus FArdaRecipeTriangleRasterNode::ConfigureGraphics(FArdaDependencyExecutionContext&amp;,
 	    const FArdaParameters&amp; P,
 	    const FArdaState&amp;,
-	    FArdaInstanceState&amp;)
+	    FArdaInstanceState&amp;,
+	    FArdaGraphicsWork&amp; Work)
 	{
-		auto Color = C.GetTexture(P.mColor);
-		if (auto S = C.GetCommands().ClearTexture(*Color, {}, {0.f, 0.f, 0.f, 1.f}); !S)
-		{
-			return S;
-		}
-
-		// Supply dynamic draw inputs; the executor fills the compiled pipeline, framebuffer, and bindings.
-		FArdaRHIGraphicsState State;
-		State.mViewports = {{0.f, float(P.mWidth), 0.f, float(P.mHeight), 0.f, 1.f}};
-		State.mScissors = {{0, int32_t(P.mWidth), 0, int32_t(P.mHeight)}};
-		if (auto S = C.SetGraphicsState(State); !S)
-		{
-			return S;
-		}
-		FArdaRHIDrawArguments Draw;
-		Draw.mVertexCount = 3;
-		// Record only this node&#x27;s draw; submission and cross-node ordering belong to the graph.
-		C.GetCommands().Draw(Draw);
+		Work.mState.mViewports = {{0.f, float(P.mWidth), 0.f, float(P.mHeight), 0.f, 1.f}};
+		Work.mState.mScissors = {{0, int32_t(P.mWidth), 0, int32_t(P.mHeight)}};
 		return {};
+	}
+
+	struct FArdaRecipeTrianglePixelNode::FArdaState
+	{
+		FArdaGlobalShaderMap mShaders;
+		FArdaInductorPipelineContribution mStage;
+	};
+
+	FArdaDependencyNodeMetadata FArdaRecipeTrianglePixelNode::GetMetadata()
+	{
+		return {&quot;recipe.triangle.pixel&quot;, 1};
+	}
+
+	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaRecipeTrianglePixelNode::FArdaState&gt;&gt; FArdaRecipeTrianglePixelNode::
+	    Prepare(FArdaRHIDeviceRef Device)
+	{
+		if (!Device)
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Pixel preparation needs a device.&quot;)};
+		}
+		auto State = eastl::make_shared&lt;FArdaState&gt;();
+		if (!State-&gt;mShaders.Initialize(Device))
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+		const auto* Shader = State-&gt;mShaders.Find(FArdaRecipeRasterPixelShader::GetStaticType());
+		if (!Shader)
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+		State-&gt;mStage.mShader = Shader-&gt;GetShader();
+		State-&gt;mStage.mBindingLayouts = Shader-&gt;GetBindingLayouts();
+		return {eastl::move(State), {}};
+	}
+
+	FArdaDependencyNodeDesc FArdaRecipeTrianglePixelNode::Describe(const FArdaParameters&amp;, const FArdaState&amp; State)
+	{
+		FArdaDependencyNodeDesc Desc;
+		Desc.mPipelineStages = {State.mStage};
+		return Desc;
+	}
+
+	FArdaRHIStatus FArdaRecipeTrianglePixelNode::ConfigureGraphics(FArdaDependencyExecutionContext&amp; C,
+	    const FArdaParameters&amp; P,
+	    const FArdaState&amp;,
+	    FArdaInstanceState&amp;,
+	    FArdaGraphicsWork&amp;)
+	{
+		return C.GetCommands().ClearTexture(*C.GetTexture(P.mColor), {}, {0.f, 0.f, 0.f, 1.f});
 	}
 }</code></pre></details></section>
 <section id="work"><h2>Work graph</h2><p>A CPU entry record drives one work-graph node that writes 123. Global resource bindings are generated from the shader struct. The RHI creates program backing storage. Entry records supply scalar inputs: global graph push-constant arguments are rejected for work graphs. D3D12 requires work-graph support; the current Vulkan backend returns Unsupported.</p><p>These are compiled recipe sources, built into <code>ArdaGraphTests</code>. In an application, compile all four node .cpp files and <a href="Examples/AssembleNodes.cpp">the assembly file</a> (it defines all four recipes and the shared registration function), or extract only the assembly function for your selected node, include <a href="Examples/Nodes/RecipeNodeSupport.h">the private recipe support header</a>, link <code>Ardashir::ArdaDependencyGraph</code>, and define <code>ARDA_RDG_RECIPE_SHADER_DIR</code> as an absolute path to <a href="Examples/Nodes/Shaders/WorkWrite.hlsl">the shader directory</a>. Enable on-demand compilation for development, or deploy matching artifacts for load-only mode.</p><p>Registration: <code>FArdaWorkWriteNode::Register()</code> publishes the type; <a href="Examples/AssembleNodes.cpp">RegisterRecipeLibrary</a> registers all four native recipes together. The renderer calls named global operations, composes typed resource variables, and checks one commit result:</p><pre><code>FArdaRHIStatus RunWorkRecipe(FArdaRHIDeviceRef Device)
@@ -1291,9 +1551,9 @@ D.mBindlessTables = {T};
 <p>Independence permits scheduling freedom; it does not guarantee simultaneous GPU occupancy. The executor omits same-state buffer UAV barriers between disjoint ranges while tracking every outstanding unsynchronized access. The RHI still tracks buffer state and queue ownership for the whole buffer, so cross-queue ownership or state changes can impose waits even for disjoint bytes. Separate buffers offer more freedom across queues. Textures track native subresources. Explicit edges, memory-budget ordering and the single CUDA stream can also serialize otherwise independent work.</p>
 <p>The compiler compares relevant writer ranges per resource, then validates read coverage: buffer intervals are sorted and merged, and texture coverage is checked over mip/slice/plane cells. Graph-owned reads require complete initialized coverage, possibly from several disjoint producers; imported resources may provide initial contents. Range granularity reduces false edges at the cost of compilation work proportional to access counts and texture subresource cells. Descriptor population is first-submission preparation work: the current RHI writes table entries individually. Measure logical compilation, first-submission preparation and steady-state replay separately for large tables.</p>
 <p>The <a href="Examples/Reference/ArdaInductorGpuTests.cpp">bindless GPU conformance test</a> exercises two disjoint UAV views, relocated indices, numerical readback, PSO sharing and repeated table reuse on D3D12 and Vulkan.</p></section>
-<section id="pipelines"><h2>Automatic assignment and stable reuse</h2><p>A pipeline request identifies a family and a local slot. Inference walks dependency ancestry, including through intermediate nodes without shader contributions. It stops at an earlier consumer of the same family, because that consumer already owns a completed pipeline. Stage-only providers set <code>mbPipelineStageOnly</code>, declare no GPU resource work and use a synchronization-domain node class that may omit Record. Connect them with dependency edges; merely attaching a provider nearby does not associate it with a draw.</p>
-<figure class="diagram-scroll" tabindex="0" role="region" aria-label="Scrollable dependency diagram"><img width="800" height="320" src="Assets/rdg-pipeline-ancestry.svg" alt="Shader providers reach two draw consumers through an intermediate dependency node, producing one reusable PSO when complete pipeline state matches." loading="lazy"><figcaption>Dependency ancestry determines stage membership; complete pipeline semantics determine PSO reuse.</figcaption></figure>
-<p>For example, a vertex provider and pixel provider can feed a pure join, which feeds two draws. Each draw declares its own color output and requests Graphics. Both requests see the same stages through the join. Matching attachment formats and fixed state produce the same stable key and reuse one native PSO. The compiled raster and mesh recipes above test the simpler equivalent case where each consumer owns its stage contributions.</p>
+<section id="pipelines"><h2>Automatic assignment and stable reuse</h2><p>Graphics stage templates establish pipeline membership with typed intermediate values. Each pixel terminal selects its raster input and that raster operation's vertex input; unrelated resource dependencies do not select shaders. Other pipeline requests identify a family and a local slot, and inference walks dependency ancestry until an earlier consumer of the same family. The legacy <code>mbPipelineStageOnly</code> declaration flag has no physical resource work; use the graphics stage templates when a shader stage has resource accesses or bindings.</p>
+<figure class="diagram-scroll" tabindex="0" role="region" aria-label="Scrollable dependency diagram"><img width="800" height="320" src="Assets/rdg-pipeline-ancestry.svg" alt="One vertex result feeds two raster operations and independent pixel outputs. Each branch executes a draw, while compatible complete state reuses one PSO." loading="lazy"><figcaption>Typed stage values determine graphics membership; complete pipeline semantics determine PSO reuse.</figcaption></figure>
+<p>The raster recipe passes one <code>FArdaGraphVertices</code> value to two raster operations and passes each resulting <code>FArdaGraphFragments</code> value to a pixel operation. Preprocessing assembles two draws and merges the participating stages' bindings and resource accesses. The shared vertex stage executes once per draw. Matching attachment formats and fixed state let the draws reuse one native PSO. The mesh recipe continues to declare one complete mesh pipeline per operation.</p>
 <p>The stable key serializes shader content identities, layout semantics, fixed/program state, ray exports and attachment formats deterministically. It excludes node IDs, debug names, slot/group labels and resource addresses. Generated layouts are interned by the graph. The native in-memory cache also verifies shader/layout object compatibility; a matching hash alone does not authorize reuse. Keeping shader objects in shared node preparation state supports reuse across instances. Replacing RGBA8 with another attachment format, changing blend state or changing shader content creates a different pattern.</p>
 <p>Multiple named contribution groups require a selected request group; an ungrouped contribution is shared. Conflicting shaders for one stage/export fail rather than selecting an ancestor by distance or attachment order. See <a href="ArdaInductor-Pipelines.md">the complete inference rules</a> and <a href="compilation.html#pipelines">the compiler chapter</a> for normalization and boundary behavior.</p></section>
 <section id="failures"><h2>Registration and compilation failures</h2><ul>
@@ -1301,7 +1561,7 @@ D.mBindlessTables = {T};
 <li><strong>Hidden allocation or descriptor mutation in Record:</strong> the compiler cannot account for hidden hazards and replay may use stale bindings. Declare outputs and tables before compilation; keep opaque library workspace in the node's workspace estimate and declare all its data access.</li>
 <li><strong>Repeated writes:</strong> on regions with multiple distinct writer nodes, attach writes and intervening reads in the intended order. Reads consume the preceding writer; an owned read before the first write fails, while imported storage may supply initial contents. ReadWrite needs incoming initialized coverage. Finding a node does not reorder it, and an explicit dependency cannot oppose inferred hazards. Repeated writes reuse one resource; declare separate output handles if older contents must remain available.</li>
 <li><strong>Incorrect bindless independence:</strong> different indices that resolve to overlapping storage still conflict. Narrow a view only when the shader actually stays inside it; shader control flow is not analyzed. Indexing a hole or undeclared resource cannot be made safe by scheduling.</li>
-<li><strong>Ambiguous pipeline or missing stage:</strong> correct the contribution dependencies, select a group or split conflicting consumers. Stage-only nodes cannot own resource accesses, bindings or render targets.</li>
+<li><strong>Ambiguous pipeline or missing stage:</strong> correct the contribution dependencies, select a group or split conflicting consumers. Graphics stage templates declare resource accesses and bindings on their respective stages; preprocessing validates their typed value chain before assembling a draw.</li>
 <li><strong>Invalid ray table:</strong> supply exactly one selected raygen, known exports with the right category and dense category-relative indices. Declare required local arguments explicitly; respect backend local-binding support.</li>
 <li><strong>Stale identity in named edits:</strong> the same explicit instance name with a changed canonical key fails; static <code>Invoke</code> calls create fresh operations. Remove and replace it inside an edit. Include resources, dimensions, shader choices and frozen parameters in the key. Do not mutate an aliased configuration after attachment.</li>
 <li><strong>Unsupported hardware or artifacts:</strong> check the returned status and device capabilities. Work graphs currently require D3D12; CUDA must be enabled and its interop path supported. On-demand shader loading needs source directories; load-only needs deployed matching artifacts.</li></ul>

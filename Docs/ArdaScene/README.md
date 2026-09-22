@@ -436,29 +436,32 @@ producer can register layouts that describe its source buffers.
 
 ## Math and coordinate conventions
 
-`ArdaSceneMath.h` should define or adopt platform-neutral POD types:
+Any future `ArdaSceneMath.h` should adopt the existing
+[ArdaMath CPU types and conventions](../../Source/ArdaInfra/ArdaMath/README.md).
+Scene-specific bounds such as `FArdaBox` and `FArdaSphere` can build on those
+Eigen-backed types:
 
-- `FArdaFloat2`, `FArdaFloat3`, `FArdaFloat4`;
-- `FArdaMatrix3x4`;
-- `FArdaMatrix4x4`;
-- `FArdaQuaternion`;
-- `FArdaBox`;
-- `FArdaSphere`;
-- `FArdaTransform`.
+- `FArdaVector2f`, `FArdaVector3f`, `FArdaVector4f`;
+- `FArdaMatrix3x4f`, `FArdaMatrix4f`;
+- `FArdaModelMatrix`, `FArdaViewMatrix`, `FArdaProjectionMatrix`,
+  `FArdaViewProjectionMatrix`, `FArdaNormalMatrix`;
+- `FArdaQuaternionf`, `FArdaAffineTransform3f`;
+- `FArdaCameraMatrices` for world-to-view and view-to-clip transforms.
 
-The module must document one canonical convention:
+CPU matrices use row-major storage and multiply column vectors. Transform
+composition is `Clip = Projection * View * Model * Position`. The shared view
+helper uses positive Z forward, positive X right and positive Y up; producers
+must state their world-up axis and units when converting foreign coordinates.
+Projection helpers default to reversed device Z in `[0, 1]`: near maps to 1,
+far maps to 0, depth clears to 0, and depth tests use `Greater` or
+`GreaterOrEqual`.
 
-- handedness;
-- world-up axis;
-- matrix storage order;
-- vector multiplication side;
-- clip-space depth convention for views;
-- transform composition order;
-- units.
-
-Foreign producers convert semantic scalar values and inline transforms to this
-convention. Foreign buffer layouts may retain their original representation,
-but their layout descriptor must state the convention explicitly.
+Explicit POD layouts belong at serialization, shader-upload and import/export
+boundaries. Eigen objects are CPU values, not serialized byte representations;
+use the shared shader packing helpers or copy semantic coefficients into the
+declared boundary layout. Foreign buffer layouts may retain their original
+representation, but their layout descriptor must state storage, multiplication
+and coordinate conventions explicitly.
 
 ## Geometry representation
 
@@ -1233,4 +1236,3 @@ The representation plan is complete when:
   typed handles, but not a dependency of this module.
 - `Conventions/ArdaCodingConventions.md`: naming, ownership, and public-header
   conventions.
-

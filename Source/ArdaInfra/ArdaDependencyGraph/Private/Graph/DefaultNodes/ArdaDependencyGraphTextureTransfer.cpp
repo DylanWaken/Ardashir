@@ -1,4 +1,5 @@
 #include "Graph/DefaultNodes/ArdaDependencyGraphNodes.h"
+#include "Graph/Resources/ArdaGraphResourceValidation.h"
 
 namespace arda
 {
@@ -21,9 +22,9 @@ namespace arda
 			}
 
 			FArdaRHITextureCopyExtent Extent;
-			if (auto Status = ValidateArdaRHITextureBufferCopy(Texture->mTexture,
+			if (auto Status = ValidateArdaRHITextureBufferCopy(ArdaGraphShapeDescription(Texture->mTexture),
 			        Parameters.mSlice,
-			        Buffer->mBuffer,
+			        ArdaGraphShapeDescription(Buffer->mBuffer),
 			        Parameters.mLayout,
 			        Extent);
 			    !Status)

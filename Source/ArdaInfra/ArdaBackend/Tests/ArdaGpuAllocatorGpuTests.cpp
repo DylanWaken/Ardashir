@@ -201,6 +201,7 @@ namespace
 			SCOPED_TRACE(static_cast<uint32_t>(Queue));
 			mDevice->TrimGpuAllocator();
 			FArdaRHIBufferDesc Desc;
+			Desc.mUsage = EArdaRHIBufferUsage::None;
 			Desc.mByteSize = sizeof(uint32_t);
 			Desc.mInitialState = EArdaRHIResourceState::Common;
 			Desc.mDebugName = "Queue allocator upload destination";

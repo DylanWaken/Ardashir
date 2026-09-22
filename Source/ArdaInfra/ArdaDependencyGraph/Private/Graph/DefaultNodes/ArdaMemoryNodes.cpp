@@ -260,7 +260,8 @@ namespace arda
 		const auto* Destination = FindBuffer(Context, Parameters.mDestination);
 		if (!Destination || Destination->mCpuAccess != EArdaRHICpuAccess::None || !Destination->mByteSize ||
 		    Destination->mByteSize % sizeof(uint32_t) != 0 ||
-		    !HasAnyFlags(Destination->mUsage, EArdaRHIBufferUsage::UnorderedAccess))
+		    !HasAnyFlags(Destination->mUsage,
+		        EArdaRHIBufferUsage::UnorderedAccess | EArdaRHIBufferUsage::AutoDeduction))
 		{
 			return Invalid("Buffer clear requires a GPU unordered-access buffer with a nonzero multiple-of-four size.");
 		}

@@ -3,6 +3,7 @@
 #include "Inductor/Runtime/ArdaDependencyExecutionContext.h"
 #include "Inductor/Compiler/ArdaInductorCommandProgramInternal.h"
 #include "Inductor/Runtime/ArdaInductorRuntimeStatus.h"
+#include "Inductor/Runtime/ArdaInductorCudaContract.h"
 #include "Inductor/Rules/ArdaInductorResourceStates.h"
 
 #include <EASTL/algorithm.h>
@@ -65,7 +66,41 @@ namespace arda
 					{
 						return;
 					}
+					const size_t FirstOperation = Sequence.GetOperationCount();
 					PassContext.ReportStatus(Node.mDefinition->mPrepareCuda(Context, Node.mParameters.get(), Sequence));
+					PassContext.ReportStatus(Sequence.GetStatus());
+					if (PassContext.GetStatus() && Sequence.GetOperationCount() < FirstOperation)
+					{
+						PassContext.ReportStatus(MakeArdaInductorRuntimeError(
+						    "CUDA nodes may append operations but cannot replace the shared sequence."));
+					}
+					if (PassContext.GetStatus() && Sequence.GetOperationCount() > FirstOperation)
+					{
+						eastl::vector<FArdaInductorCudaResourceAccess> Declared;
+						for (const auto& Access : Node.mDesc.mAccesses)
+						{
+							const auto& Resource = GraphPtr->mResources[Access.mResource.mIndex];
+							FArdaRHIResourceRef Native = Resource.mbTexture
+							    ? FArdaRHIResourceRef(Context.GetTexture(Access.mResource))
+							    : FArdaRHIResourceRef(Context.GetBuffer(Access.mResource));
+							Declared.push_back({eastl::move(Native), Access});
+						}
+						if (Node.mDesc.mTransientWorkspaceBytes)
+						{
+							FArdaDependencyAccess Workspace;
+							Workspace.mAccess = EArdaDependencyAccess::ReadWrite;
+							Workspace.mState = EArdaRHIResourceState::UnorderedAccess;
+							Workspace.mBufferRange = {0, Node.mDesc.mTransientWorkspaceBytes};
+							Declared.push_back({Context.GetWorkspaceBuffer(), Workspace});
+						}
+						for (size_t Operation = FirstOperation;
+						    PassContext.GetStatus() && Operation < Sequence.GetOperationCount();
+						    ++Operation)
+						{
+							PassContext.ReportStatus(
+							    ValidateArdaInductorCudaBindings(Sequence.GetOperationBindings(Operation), Declared));
+						}
+					}
 					if (CudaTimer && SampleTiming)
 					{
 						PassContext.ReportStatus(Sequence.EndTimingRegion());
@@ -81,7 +116,44 @@ namespace arda
 			{
 				Context.mNode = Nodes.front();
 				const auto& Node = GraphPtr->mTopology.TryGetNode(Context.mNode)->mPayload;
-				if (Node.mDefinition->mRecord)
+				if (!Node.mGraphicsStages.empty())
+				{
+					FArdaGraphicsWork Work;
+					for (size_t StageIndex = 0; StageIndex < Node.mGraphicsStages.size(); ++StageIndex)
+					{
+						const auto StageHandle = Node.mGraphicsStages[StageIndex];
+						const auto& Stage = GraphPtr->mTopology.TryGetNode(StageHandle)->mPayload;
+						PassContext.ReportStatus(Stage.mDefinition->mConfigureGraphics(Context,
+						    Node.mGraphicsStageParameters[StageIndex].get(),
+						    Work));
+						if (!PassContext.GetStatus())
+						{
+							return;
+						}
+					}
+					const bool Meshlet = Node.mDesc.mPipelines.front().mKind == EArdaPipelineStateKind::Meshlet;
+					PassContext.ReportStatus(Meshlet ? Context.SetMeshletState(eastl::move(Work.mMeshletState))
+					                                 : Context.SetGraphicsState(eastl::move(Work.mState)));
+					if (!PassContext.GetStatus())
+					{
+						return;
+					}
+					if (Meshlet)
+					{
+						PassContext.ReportStatus(Context.GetCommands().DispatchMesh(Work.mMeshGroupCountX,
+						    Work.mMeshGroupCountY,
+						    Work.mMeshGroupCountZ));
+					}
+					else if (Work.mbIndexed)
+					{
+						Context.GetCommands().DrawIndexed(Work.mDraw);
+					}
+					else
+					{
+						Context.GetCommands().Draw(Work.mDraw);
+					}
+				}
+				else if (Node.mDefinition->mRecord)
 				{
 					PassContext.ReportStatus(Node.mDefinition->mRecord(Context, Node.mParameters.get()));
 				}

@@ -166,14 +166,14 @@ struct FArdaTerrainVertexOutput
 cbuffer CameraSettings : register(b0)
 {
 	row_major float4x4 WorldToView;
-	row_major float4x4 Projection;
+	row_major float4x4 ViewToClip;
 };
 
 FArdaTerrainVertexOutput TerrainVS(FArdaTerrainVertexInput input)
 {
 	FArdaTerrainVertexOutput output;
-	const float4 viewPosition = mul(float4(input.mPosition, 1.0), WorldToView);
-	output.mPosition = mul(viewPosition, Projection);
+	const float4 viewPosition = mul(WorldToView, float4(input.mPosition, 1.0));
+	output.mPosition = mul(ViewToClip, viewPosition);
 	output.mUV = float2(input.mPosition.y, input.mPosition.x) / 1.45 + 0.5;
 	output.mDepth = viewPosition.z;
 	return output;

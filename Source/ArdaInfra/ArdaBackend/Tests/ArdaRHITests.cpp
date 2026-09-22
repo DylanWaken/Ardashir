@@ -111,10 +111,45 @@ TEST(ArdaRHI, DescriptorEqualityAndHashAreStable)
 	EXPECT_NE(HashValue(A), HashValue(C));
 }
 
+TEST(ArdaRHI, BufferUsageDefaultsToAutoDeductionAndRequiresResolutionBeforeNativeUse)
+{
+	using namespace arda;
+	FArdaRHIBufferDesc Desc;
+	Desc.mByteSize = 256;
+	EXPECT_EQ(Desc.mUsage, EArdaRHIBufferUsage::AutoDeduction);
+	EXPECT_EQ(Validate(Desc).mCode, EArdaRHIResult::InvalidArgument);
+	EXPECT_NE(Validate(Desc).mMessage.find("AutoDeduction"), eastl::string::npos);
+	Desc.mUsage |= EArdaRHIBufferUsage::ShaderResource;
+	EXPECT_EQ(Validate(Desc).mCode, EArdaRHIResult::InvalidArgument);
+	EXPECT_EQ(ValidateResourceCapabilities(Desc, {}, {}).mCode, EArdaRHIResult::InvalidArgument);
+	Desc.mUsage = EArdaRHIBufferUsage::ShaderResource;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mUsage = EArdaRHIBufferUsage::None;
+	EXPECT_TRUE(Validate(Desc));
+}
+
+TEST(ArdaRHI, TextureUsageDefaultsToAutoDeductionAndRequiresResolutionBeforeNativeUse)
+{
+	using namespace arda;
+	FArdaRHITextureDesc Desc;
+	Desc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	EXPECT_EQ(Desc.mUsage, EArdaRHITextureUsage::AutoDeduction);
+	EXPECT_EQ(Validate(Desc).mCode, EArdaRHIResult::InvalidArgument);
+	EXPECT_NE(Validate(Desc).mMessage.find("AutoDeduction"), eastl::string::npos);
+	Desc.mUsage |= EArdaRHITextureUsage::RenderTarget;
+	EXPECT_EQ(Validate(Desc).mCode, EArdaRHIResult::InvalidArgument);
+	EXPECT_EQ(ValidateResourceCapabilities(Desc, {}, {}).mCode, EArdaRHIResult::InvalidArgument);
+	Desc.mUsage = EArdaRHITextureUsage::RenderTarget;
+	EXPECT_TRUE(Validate(Desc));
+	Desc.mUsage = EArdaRHITextureUsage::None;
+	EXPECT_TRUE(Validate(Desc));
+}
+
 TEST(ArdaRHI, TextureDescriptorsRejectInvalidDomainsAndShapes)
 {
 	using namespace arda;
 	FArdaRHITextureDesc Base;
+	Base.mUsage = EArdaRHITextureUsage::ShaderResource;
 	Base.mWidth = 16;
 	Base.mHeight = 8;
 	Base.mFormat = EArdaRHIFormat::RGBA8UNorm;
@@ -138,7 +173,7 @@ TEST(ArdaRHI, TextureDescriptorsRejectInvalidDomainsAndShapes)
 	Reject(
 	    [](auto& D)
 	    {
-		    D.mUsage = static_cast<EArdaRHITextureUsage>(1u << 15);
+		    D.mUsage = static_cast<EArdaRHITextureUsage>(1u << 14);
 	    });
 	Reject(
 	    [](auto& D)
@@ -186,6 +221,7 @@ TEST(ArdaRHI, TextureDescriptorsBoundMipChainsAndCubeFaces)
 {
 	using namespace arda;
 	FArdaRHITextureDesc Desc;
+	Desc.mUsage = EArdaRHITextureUsage::ShaderResource;
 	Desc.mFormat = EArdaRHIFormat::RGBA8UNorm;
 	Desc.mWidth = 9;
 	Desc.mHeight = 5;
@@ -219,6 +255,7 @@ TEST(ArdaRHI, TextureDescriptorsValidateMultisamplingWithoutDroppingLegacyTwoDim
 {
 	using namespace arda;
 	FArdaRHITextureDesc Desc;
+	Desc.mUsage = EArdaRHITextureUsage::ShaderResource;
 	Desc.mWidth = Desc.mHeight = 8;
 	Desc.mFormat = EArdaRHIFormat::RGBA8UNorm;
 	Desc.mSampleCount = 4;
@@ -288,7 +325,7 @@ TEST(ArdaRHI, BufferDescriptorsRejectInvalidDomainsAndStructuredStrides)
 	Desc.mCpuAccess = static_cast<EArdaRHICpuAccess>(255);
 	EXPECT_FALSE(Validate(Desc));
 	Desc.mCpuAccess = EArdaRHICpuAccess::None;
-	Desc.mUsage = static_cast<EArdaRHIBufferUsage>(1u << 15);
+	Desc.mUsage = static_cast<EArdaRHIBufferUsage>(1u << 14);
 	EXPECT_FALSE(Validate(Desc));
 	Desc.mUsage = EArdaRHIBufferUsage::None;
 	Desc.mInitialState = EArdaRHIResourceState::RenderTarget;
@@ -338,6 +375,7 @@ TEST(ArdaRHI, TextureAdmissionUsesDimensionSpecificLimitsAndAuthoritativeFormatF
 	C.mLimits.mMaxTexture3D = 4;
 	C.mLimits.mMaxTextureArrayLayers = 6;
 	FArdaRHITextureDesc Desc;
+	Desc.mUsage = EArdaRHITextureUsage::ShaderResource;
 	Desc.mWidth = Desc.mHeight = 8;
 	Desc.mFormat = EArdaRHIFormat::RGBA8UNorm;
 	EXPECT_TRUE(ValidateResourceCapabilities(Desc, C, {}));
@@ -408,12 +446,14 @@ TEST(ArdaRHI, ResourceAdmissionRequiresReportedStorageFeatures)
 	using namespace arda;
 	FArdaRHICapabilities C;
 	FArdaRHIBufferDesc Buffer;
+	Buffer.mUsage = EArdaRHIBufferUsage::None;
 	Buffer.mByteSize = 256;
 	Buffer.mbTiled = true;
 	EXPECT_FALSE(ValidateResourceCapabilities(Buffer, C, {}));
 	C.mResidency.mbReservedBuffers = true;
 	EXPECT_TRUE(ValidateResourceCapabilities(Buffer, C, {}));
 	FArdaRHITextureDesc Texture;
+	Texture.mUsage = EArdaRHITextureUsage::ShaderResource;
 	Texture.mFormat = EArdaRHIFormat::RGBA8UNorm;
 	Texture.mbTiled = true;
 	EXPECT_FALSE(ValidateResourceCapabilities(Texture, C, {}));
@@ -579,6 +619,7 @@ TEST(ArdaRHI, FramebufferAttachmentFormatAndUsageAreValidatedBeforeNativeCreatio
 {
 	using namespace arda;
 	FArdaRHITextureDesc Texture;
+	Texture.mUsage = EArdaRHITextureUsage::ShaderResource;
 	Texture.mFormat = EArdaRHIFormat::RGBA8UNorm;
 	FArdaRHIFramebufferAttachment Attachment, Resolved;
 	EXPECT_FALSE(ResolveArdaRHIFramebufferAttachment(Texture, Attachment, false, Resolved));
@@ -718,6 +759,7 @@ TEST(ArdaRHI, TextureCopyAndResolveUseCentralRegionPolicy)
 {
 	using namespace arda;
 	FArdaRHITextureDesc Source;
+	Source.mUsage = EArdaRHITextureUsage::ShaderResource;
 	Source.mWidth = 16;
 	Source.mHeight = 8;
 	Source.mDepth = 1;
@@ -920,6 +962,7 @@ TEST(ArdaRHI, NativeImportRejectsNonPortableTransferredOwnership)
 	Desc.mNativeObject = 1;
 	Desc.mOwnership = arda::EArdaRHINativeOwnership::Transferred;
 	Desc.mTexture.mFormat = arda::EArdaRHIFormat::RGBA8UNorm;
+	Desc.mTexture.mUsage = EArdaRHITextureUsage::ShaderResource;
 	const auto Result = arda::GetDevice()->ImportNativeTexture(Desc);
 	EXPECT_FALSE(Result);
 	EXPECT_EQ(Result.mStatus.mCode, arda::EArdaRHIResult::Unsupported);
@@ -944,6 +987,7 @@ TEST(ArdaRHI, NativeBufferImportValidationIsDeterministic)
 
 	arda::FArdaRHINativeBufferImportDesc Null;
 	Null.mBuffer.mByteSize = 64;
+	Null.mBuffer.mUsage = EArdaRHIBufferUsage::None;
 	auto NullResult = Device->ImportNativeBuffer(Null);
 	EXPECT_FALSE(NullResult);
 	EXPECT_EQ(NullResult.mStatus.mCode, arda::EArdaRHIResult::InvalidArgument);

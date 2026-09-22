@@ -101,7 +101,7 @@ namespace arda
 				return false;
 			}
 
-			// Wire imported geometry and the acquired color target into the registered draw node.
+			// Intermediate values connect independently registered graphics stages.
 			auto Color = BindTexture(Edit, Created->mColor, "Swap-chain color");
 			auto V = BindBuffer(Edit, mVertexBuffer, "Triangle vertices");
 			auto I = BindBuffer(Edit, mIndexBuffer, "Triangle indices");
@@ -110,13 +110,10 @@ namespace arda
 				mError = "Unable to import triangle frame resources.";
 				return false;
 			}
-			FArdaTriangleDrawParameters DrawParameters = {V.GetHandle(),
-			    I.GetHandle(),
-			    Color.GetHandle(),
-			    swapChain.GetWidth(),
-			    swapChain.GetHeight()};
-			auto Draw = TriangleDraw(Edit, DrawParameters, "Render triangle");
-			if (!Draw)
+			const auto VertexResults = TriangleVS(Edit, V, I);
+			const auto Fragments = TriangleRasterize(Edit, VertexResults, swapChain.GetWidth(), swapChain.GetHeight());
+			const auto Pixels = TrianglePS(Edit, Fragments, Color);
+			if (!Pixels)
 			{
 				mError = Edit.GetStatus().mMessage;
 				return false;
@@ -165,9 +162,9 @@ namespace arda
 			const auto Color = BindTexture(Edit, Frame->mColor, "Swap-chain color");
 			const auto Vertices = BindBuffer(Edit, mVertexBuffer, "Triangle vertices");
 			const auto Indices = BindBuffer(Edit, mIndexBuffer, "Triangle indices");
-			TriangleDraw(Edit,
-			    {Vertices, Indices, Color, swapChain.GetWidth(), swapChain.GetHeight()},
-			    "Render triangle");
+			const auto VertexResults = TriangleVS(Edit, Vertices, Indices);
+			const auto Fragments = TriangleRasterize(Edit, VertexResults, swapChain.GetWidth(), swapChain.GetHeight());
+			TrianglePS(Edit, Fragments, Color);
 			auto Status = Edit.Commit();
 			if (Status)
 			{

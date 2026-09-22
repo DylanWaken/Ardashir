@@ -35,7 +35,9 @@ namespace arda
 	{
 		Read,
 		Write,
-		ReadWrite
+		ReadWrite,
+		/** Only shader arguments may use this sentinel; their schema resolves it before dependency analysis. */
+		AutoDeduction
 	};
 
 	/** One dependency derived from a node's typed parameters. */

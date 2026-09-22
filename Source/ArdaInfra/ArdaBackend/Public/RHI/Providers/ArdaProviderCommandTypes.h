@@ -74,6 +74,7 @@ namespace arda
 	/** Backend-resolved TLAS instance. */
 	struct FArdaProviderRayTracingInstance
 	{
+		/** Native row-major coefficients; provider records retain their explicit scalar ABI. */
 		float mTransform[3][4]{};
 		uint32_t mInstanceID = 0;
 		uint32_t mInstanceMask = 0xff;

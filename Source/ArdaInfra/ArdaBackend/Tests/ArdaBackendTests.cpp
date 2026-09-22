@@ -590,6 +590,7 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
 	ResourceProvider.mBuffer.mNativeType = EArdaRHINativeResourceType::D3D12Resource;
 	ResourceProvider.mBuffer.mInitialState = EArdaRHIResourceState::Common;
 	ResourceProvider.mBuffer.mBuffer.mByteSize = 4096;
+	ResourceProvider.mBuffer.mBuffer.mUsage = EArdaRHIBufferUsage::None;
 	ResourceProvider.mBuffer.mBuffer.mInitialState = EArdaRHIResourceState::Common;
 	ResourceProvider.mBuffer.mLifetimeToken = Token;
 	ResourceProvider.mTexture.mNativeObject = reinterpret_cast<uintptr_t>(NativeTexture.Get());
@@ -598,6 +599,7 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
 	ResourceProvider.mTexture.mTexture.mWidth = 4;
 	ResourceProvider.mTexture.mTexture.mHeight = 4;
 	ResourceProvider.mTexture.mTexture.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	ResourceProvider.mTexture.mTexture.mUsage = EArdaRHITextureUsage::ShaderResource;
 	ResourceProvider.mTexture.mTexture.mInitialState = EArdaRHIResourceState::Common;
 	ResourceProvider.mTexture.mLifetimeToken = Token;
 
@@ -617,6 +619,7 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
 	FArdaRHIDeviceRef SurvivingDevice = Device;
 	ASSERT_TRUE(Device);
 	FArdaRHIBufferDesc ArdaBufferDesc;
+	ArdaBufferDesc.mUsage = EArdaRHIBufferUsage::None;
 	ArdaBufferDesc.mByteSize = 256;
 	EXPECT_TRUE(Device->CreateBuffer(ArdaBufferDesc));
 	auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
@@ -859,12 +862,14 @@ namespace
 		StagingDesc.mTexture.mWidth = 4;
 		StagingDesc.mTexture.mHeight = 4;
 		StagingDesc.mTexture.mFormat = EArdaRHIFormat::RGBA8UNorm;
+		StagingDesc.mTexture.mUsage = EArdaRHITextureUsage::None;
 		StagingDesc.mCpuAccess = EArdaRHICpuAccess::Read;
 		EXPECT_TRUE(Device.CreateStagingTexture(StagingDesc));
 
 		if (Capabilities.mbHeaps)
 		{
 			FArdaRHIBufferDesc BufferDesc;
+			BufferDesc.mUsage = EArdaRHIBufferUsage::None;
 			BufferDesc.mDebugName = "PlacedBuffer";
 			BufferDesc.mByteSize = 4096;
 			BufferDesc.mbVirtual = true;
@@ -1331,6 +1336,7 @@ TEST(ArdaBackend, NativeHostDeviceCopiesSupportBlockingAndAsyncReadback)
 		ASSERT_TRUE(Device);
 		const auto Baseline = Device->GetResourceLifetimeStats();
 		FArdaRHIBufferDesc BufferDesc;
+		BufferDesc.mUsage = EArdaRHIBufferUsage::None;
 		BufferDesc.mDebugName = "Host/device copy test";
 		BufferDesc.mByteSize = 64;
 		BufferDesc.mInitialState = EArdaRHIResourceState::Common;

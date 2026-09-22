@@ -22,6 +22,14 @@ namespace arda
 		uint64_t mAttachmentOrder = 0;
 		/** Canonical parameters with this graph's resource generations normalized for revision reuse. */
 		eastl::string mConstructionKey;
+		/** Compiler-owned traditional or meshlet stage chain recorded once for this terminal draw. */
+		eastl::vector<FArdaGraphNodeHandle> mGraphicsStages;
+		/** Per-draw parameter owners; immutable setup is shared but mutable stage instances are independent. */
+		eastl::vector<eastl::shared_ptr<const void>> mGraphicsStageParameters;
+		bool mbGraphicsLowered = false;
+		bool mbRayTracingLowered = false;
+		/** A successful explicit buffer materializer consumes this logical stage without requiring a pixel terminal. */
+		bool mbStageMaterialized = false;
 	};
 
 	/** Value dependencies drive removal; overwrite hazards constrain execution without consuming a value. */

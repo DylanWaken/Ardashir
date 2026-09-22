@@ -93,6 +93,10 @@ namespace arda
 			    [](const void* Graph, FArdaDependencyResourceHandle Handle)
 			    {
 				    return static_cast<const FArdaImpl*>(Graph)->HasResource(Handle);
+			    },
+			    [](const void* Graph, FArdaGraphNodeHandle Handle)
+			    {
+				    return static_cast<const FArdaImpl*>(Graph)->mTopology.ContainsNode(Handle);
 			    }};
 
 			struct FArdaConstructionKeyScope
@@ -132,6 +136,8 @@ namespace arda
 			{
 				if (Resources.mOutputs[I].mName != N.mOutputs[I].mName ||
 				    Resources.mOutputs[I].mResource.mIndex != N.mOutputs[I].mResource.mIndex ||
+				    Resources.mOutputs[I].mRequiredBufferUsage != N.mOutputs[I].mRequiredBufferUsage ||
+				    Resources.mOutputs[I].mRequiredTextureUsage != N.mOutputs[I].mRequiredTextureUsage ||
 				    !G.HasResource(Resources.mOutputs[I].mResource))
 				{
 					return {{}, GraphInvalid("Node output declaration changed under an existing name.")};
@@ -162,7 +168,12 @@ namespace arda
 		}
 
 		// Infer descriptor requirements before automatic binding setup can create native objects.
-		auto Desc = D->mDescribe(Parameters.get());
+		auto Description = D->mDescribe(Parameters.get());
+		if (!Description)
+		{
+			return AdmissionError(eastl::move(Description.mStatus));
+		}
+		auto Desc = eastl::move(Description.mValue);
 		Desc.mRequirements = eastl::move(Requirements);
 		InferArdaNodeRequirements(G, D->mKind, Desc);
 		if (G.mDevice)
@@ -172,7 +183,11 @@ namespace arda
 				return AdmissionError(eastl::move(S));
 			}
 		}
-		if (auto S = DescribeArdaShaderBindings(G, Desc); !S)
+		// Stage schemas are composed onto a draw by the preprocess assembler before native layouts are made.
+		if (auto S = Desc.mGraphicsStage == EArdaGraphicsStage::None && Desc.mRayStage == EArdaRHIShaderStage::None
+		        ? DescribeArdaShaderBindings(G, Desc)
+		        : FArdaRHIStatus{};
+		    !S)
 		{
 			return {{}, eastl::move(S)};
 		}
@@ -207,10 +222,21 @@ namespace arda
 				return {{}, GraphInvalid("Node parameters contain a foreign or stale resource version.")};
 			}
 		}
+		// Deferred stage layouts still need to prove that a node-owned physical output is written.
+		// Keep the authored description unexpanded: preprocessing derives its complete draw accesses.
+		auto OutputDesc = Desc;
+		if (!Resources.mOutputs.empty() &&
+		    (Desc.mGraphicsStage != EArdaGraphicsStage::None || Desc.mRayStage != EArdaRHIShaderStage::None))
+		{
+			if (auto S = DescribeArdaShaderAccesses(G, OutputDesc); !S)
+			{
+				return {{}, eastl::move(S)};
+			}
+		}
 		for (const auto& Output : Resources.mOutputs)
 		{
-			if (!eastl::any_of(Desc.mAccesses.begin(),
-			        Desc.mAccesses.end(),
+			if (!eastl::any_of(OutputDesc.mAccesses.begin(),
+			        OutputDesc.mAccesses.end(),
 			        [&](const auto& A)
 			        {
 				        return A.mResource == Output.mResource && A.mAccess != EArdaDependencyAccess::Read;

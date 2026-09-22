@@ -48,6 +48,7 @@ namespace arda
 			ASSERT_FALSE(ActualAdapter.mId.mValue.empty());
 
 			FArdaRHIBufferDesc Desc;
+			Desc.mUsage = EArdaRHIBufferUsage::None;
 			Desc.mByteSize = sizeof(uint32_t);
 			const auto Buffer = mDevice->CreateBuffer(Desc);
 			ASSERT_TRUE(Buffer);

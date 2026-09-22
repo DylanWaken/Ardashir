@@ -412,6 +412,7 @@ namespace
 		auto Buffer = Device->CreateBuffer(BufferDesc);
 		ASSERT_TRUE(Buffer);
 		FArdaRHIBufferDesc ScratchDesc;
+		ScratchDesc.mUsage = EArdaRHIBufferUsage::None;
 		ScratchDesc.mByteSize = sizeof(uint32_t);
 		auto Scratch = Device->CreateBuffer(ScratchDesc);
 		ASSERT_TRUE(Scratch);
@@ -498,6 +499,7 @@ namespace
 		EXPECT_FALSE(Device->GetCapabilities().mDescriptors.mbRuntimeDescriptorArrays);
 		EXPECT_FALSE(Device->GetCudaCapabilities());
 		FArdaRHIBufferDesc Desc;
+		Desc.mUsage = EArdaRHIBufferUsage::None;
 		Desc.mByteSize = 1024;
 		auto Buffer = Device->CreateBuffer(Desc);
 		ASSERT_TRUE(Buffer) << Buffer.mStatus.mMessage.c_str();

@@ -4,6 +4,7 @@
 #include "Inductor/Runtime/ArdaDependencyExecutionContext.h"
 #include "RHI/Scheduling/ArdaCudaSequence.h"
 #include "Graph/Node/ArdaDependencyKey.h"
+#include "Graph/Node/ArdaNodeParameters.h"
 #include <EASTL/functional.h>
 #include <EASTL/type_traits.h>
 #include <EASTL/utility.h>
@@ -21,6 +22,35 @@ namespace arda
 
 	/** Default state for nodes with no device preparation or private per-instance state. */
 	struct FArdaEmptyDependencyNodeState
+	{
+	};
+
+	/** Only metadata-backed schemas with semantic encoders may use the generated canonical key. */
+	template <class Parameters, bool = TArdaNodeParameterTraits<Parameters>::value>
+	struct TArdaNodeParameterKeySupport : eastl::false_type
+	{
+	};
+
+	template <class Parameters>
+	struct TArdaNodeParameterKeySupport<Parameters, true> : eastl::bool_constant<Parameters::SupportsNodeParameterKey()>
+	{
+	};
+
+	/** Detect an optional producer-owned stage materializer without weakening the normal node contract. */
+	template <class Node, class = void>
+	struct TArdaNodeFetchBufferHook : eastl::false_type
+	{
+	};
+
+	template <class Node>
+	struct TArdaNodeFetchBufferHook<Node,
+	    eastl::void_t<decltype(Node::FetchBuffer(eastl::declval<FArdaGraphEdit&>(),
+	        eastl::declval<const typename Node::FArdaParameters&>(),
+	        eastl::declval<const FArdaStageBufferRequest&>()))>>
+	    : eastl::is_same<FArdaGraphBuffer,
+	          decltype(Node::FetchBuffer(eastl::declval<FArdaGraphEdit&>(),
+	              eastl::declval<const typename Node::FArdaParameters&>(),
+	              eastl::declval<const FArdaStageBufferRequest&>()))>
 	{
 	};
 
@@ -131,6 +161,8 @@ namespace arda
 	 * Derived supplies static GetMetadata() -> FArdaDependencyNodeMetadata,
 	 * GetCanonicalKey(const FArdaParameters&) -> eastl::string and
 	 * Describe(const FArdaParameters&, const FArdaState&) -> FArdaDependencyNodeDesc.
+	 * Macro-authored parameter structs provide default identity and resource descriptions;
+	 * Describe may add pipeline contributions or parameter-dependent effects to those declarations.
 	 * Native nodes implement Record(Context&, const FArdaParameters&, const FArdaState&, FArdaInstanceState&)
 	 * returning FArdaRHIStatus. CUDA nodes instead implement PrepareCuda with the same arguments plus
 	 * FArdaCudaSequence& and append operations without submitting. Synchronization may omit execution.
@@ -168,6 +200,9 @@ namespace arda
 		using FArdaInstanceState = FArdaEmptyDependencyNodeState;
 		/** Execution domain fixed by this specialization; queue selection remains ArdaInductor's responsibility. */
 		static constexpr EArdaDependencyNodeKind mKind = Kind;
+		/** Overridden only by graphics stage templates. Ordinary operations have no logical stage input. */
+		static constexpr EArdaGraphicsStage mGraphicsStage = EArdaGraphicsStage::None;
+		static constexpr EArdaRHIShaderStage mRayStage = EArdaRHIShaderStage::None;
 
 		/** Override to list hardware, feature and environment requirements for the public parameters.
 		 * Runs before DeclareResources, Prepare and CreateInstance, including matching reattachments.
@@ -185,6 +220,26 @@ namespace arda
 		 * The default declares none. Must not submit GPU work or modify external state.
 		 */
 		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext&, FArdaParameters&)
+		{
+			return {};
+		}
+
+		/** Macro-declared fields are encoded semantically, including normalized graph resource identities.
+		 * Override for schemas containing values without a built-in semantic encoder.
+		 */
+		template <class Node = Derived,
+		    eastl::enable_if_t<TArdaNodeParameterKeySupport<typename Node::FArdaParameters>::value, int> = 0>
+		static eastl::string GetCanonicalKey(const FArdaParameters& P)
+		{
+			return Parameters::GetNodeParameterKey(P);
+		}
+
+		/** Static resource declarations are appended by registration, including when this hook is overridden.
+		 * Override to add shaders, pipeline requests or effects that depend on parameter values.
+		 */
+		template <class Node = Derived,
+		    eastl::enable_if_t<TArdaNodeParameterTraits<typename Node::FArdaParameters>::value, int> = 0>
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&, const typename Node::FArdaState&)
 		{
 			return {};
 		}
@@ -225,8 +280,42 @@ namespace arda
 		static FArdaRHIStatus Register(FArdaNodeRegistry& Registry)
 		{
 			static_assert(TArdaDependencyNodeContract<Derived>::value,
-			    "Node must implement GetMetadata, GetCanonicalKey, Describe and its domain's execution hook; inherited or overridden requirements/preparation hooks must match the base signatures.");
+			    "Node must implement GetMetadata and its domain's execution hook; GetCanonicalKey and Describe may use parameter metadata defaults. All hooks must match the base signatures.");
 			static_assert(Derived::mKind == Kind, "A node's execution domain is fixed by its base specialization.");
+			if constexpr (TArdaNodeParameterTraits<Parameters>::value)
+			{
+				const auto& ParametersMetadata = Parameters::GetNodeParameterMetadata();
+				if (auto Status = ParametersMetadata.GetStatus(); !Status)
+				{
+					return Status;
+				}
+				for (const auto& Member : ParametersMetadata.GetMembers())
+				{
+					if (Member.mKind == EArdaNodeParameterKind::CudaResource && Kind != EArdaDependencyNodeKind::Cuda)
+					{
+						return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+						    "CUDA parameter mappings require a CUDA node execution contract.");
+					}
+					if (Member.mKind == EArdaNodeParameterKind::ShaderResource && Kind == EArdaDependencyNodeKind::Cuda)
+					{
+						return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+						    "CUDA nodes must map operand parameters instead of shader bindings.");
+					}
+				}
+				if constexpr (Derived::mGraphicsStage == EArdaGraphicsStage::None &&
+				    Derived::mRayStage == EArdaRHIShaderStage::None)
+				{
+					for (const auto& Member : ParametersMetadata.GetMembers())
+					{
+						if (Member.mKind == EArdaNodeParameterKind::StageInput ||
+						    Member.mKind == EArdaNodeParameterKind::StageInputs)
+						{
+							return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+							    "Logical stage inputs require a graphics or ray shader stage node.");
+						}
+					}
+				}
+			}
 			static std::mutex Mutex;
 			std::lock_guard<std::mutex> Lock(Mutex);
 			const auto Metadata = Derived::GetMetadata();
@@ -267,7 +356,30 @@ namespace arda
 			};
 			Definition.mCanonicalKey = [](const void* Value)
 			{
-				return Derived::GetCanonicalKey(*static_cast<const Parameters*>(Value));
+				const auto& P = *static_cast<const Parameters*>(Value);
+				if constexpr (Derived::mGraphicsStage != EArdaGraphicsStage::None)
+				{
+					return FArdaDependencyKeyBuilder()
+					    .String(Derived::GetCanonicalKey(P))
+					    .Value(Derived::mGraphicsStage)
+					    .Stage(Derived::GetStageInput(P))
+					    .Build();
+				}
+				else if constexpr (Derived::mRayStage != EArdaRHIShaderStage::None)
+				{
+					const auto Inputs = Derived::GetRayInputs(P);
+					FArdaDependencyKeyBuilder Key;
+					Key.String(Derived::GetCanonicalKey(P)).Value(Derived::mRayStage).Value(uint64_t(Inputs.size()));
+					for (auto Input : Inputs)
+					{
+						Key.Stage(Input);
+					}
+					return Key.Build();
+				}
+				else
+				{
+					return Derived::GetCanonicalKey(P);
+				}
 			};
 			Definition.mPrepare =
 			    [](FArdaRHIDeviceRef Device,
@@ -277,11 +389,82 @@ namespace arda
 				    eastl::static_pointer_cast<const Parameters>(eastl::move(Value)));
 				return {eastl::move(Result.mValue), eastl::move(Result.mStatus)};
 			};
-			Definition.mDescribe = [](const void* Value)
+			Definition.mDescribe = [](const void* Value) -> TArdaRHIResult<FArdaDependencyNodeDesc>
 			{
 				const auto& P = *static_cast<const FArdaBound*>(Value);
-				return Derived::Describe(*P.mParameters, *P.mPrepared->mState);
+				auto Desc = Derived::Describe(*P.mParameters, *P.mPrepared->mState);
+				if constexpr (TArdaNodeParameterTraits<Parameters>::value)
+				{
+					const auto& Metadata = Parameters::GetNodeParameterMetadata();
+					if (auto Status = Metadata.Apply(*P.mParameters, Desc); !Status)
+					{
+						return {{}, eastl::move(Status)};
+					}
+					if constexpr (Derived::mGraphicsStage != EArdaGraphicsStage::None)
+					{
+						if (Metadata.GetStageInputs(*P.mParameters).size() > 1)
+						{
+							return {{},
+							    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+							        "A graphics stage must declare at most one logical stage input.")};
+						}
+					}
+				}
+				if constexpr (Derived::mGraphicsStage != EArdaGraphicsStage::None)
+				{
+					Desc.mGraphicsStage = Derived::mGraphicsStage;
+					Desc.mGraphicsInput = Derived::GetStageInput(*P.mParameters);
+					Desc.mbPipelineStageOnly = Derived::mGraphicsStage != EArdaGraphicsStage::Pixel;
+				}
+				if constexpr (Derived::mRayStage != EArdaRHIShaderStage::None)
+				{
+					Desc.mRayStage = Derived::mRayStage;
+					Desc.mRayInputs = Derived::GetRayInputs(*P.mParameters);
+					Desc.mbPipelineStageOnly = Derived::mRayStage != EArdaRHIShaderStage::RayGeneration;
+				}
+				return {eastl::move(Desc), {}};
 			};
+			if constexpr (Derived::mGraphicsStage != EArdaGraphicsStage::None)
+			{
+				Definition.mCloneGraphicsParameters =
+				    [](const void* Value) -> TArdaRHIResult<eastl::shared_ptr<const void>>
+				{
+					const auto& P = *static_cast<const FArdaBound*>(Value);
+					auto Instance = Derived::CreateInstance(P.mPrepared->mDevice, *P.mParameters, *P.mPrepared->mState);
+					if (!Instance)
+					{
+						return {{}, eastl::move(Instance.mStatus)};
+					}
+					if (!Instance.mValue)
+					{
+						return {{},
+						    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+						        "CreateInstance returned no state for an assembled graphics draw.")};
+					}
+					auto Bound = eastl::make_shared<FArdaBound>(P);
+					Bound->mInstance = eastl::move(Instance.mValue);
+					return {eastl::move(Bound), {}};
+				};
+				Definition.mConfigureGraphics =
+				    [](FArdaDependencyExecutionContext& Context, const void* Value, FArdaGraphicsWork& Work)
+				{
+					const auto& P = *static_cast<const FArdaBound*>(Value);
+					return Derived::ConfigureGraphics(Context,
+					    *P.mParameters,
+					    *P.mPrepared->mState,
+					    *P.mInstance,
+					    Work);
+				};
+				if constexpr (TArdaNodeFetchBufferHook<Derived>::value)
+				{
+					Definition.mFetchBuffer =
+					    [](FArdaGraphEdit& Edit, const void* Value, const FArdaStageBufferRequest& Request)
+					{
+						const auto& P = *static_cast<const FArdaBound*>(Value);
+						return Derived::FetchBuffer(Edit, *P.mParameters, Request);
+					};
+				}
+			}
 
 			// Each domain exposes exactly one recording hook; CUDA work is appended to the shared sequence.
 			if constexpr (Kind == EArdaDependencyNodeKind::Cuda)

@@ -309,6 +309,7 @@ namespace arda::memorytexture_tests
 	TEST(ArdaMemoryTextures, FootprintsRetainOnlyFinalRowTexelsAndAlignWholeTexels)
 	{
 		auto Desc = MakeTextureDesc(13, 7);
+		Desc.mUsage = EArdaRHITextureUsage::None; // Direct RHI queries use a concrete descriptor.
 		const auto Color = GetArdaRHITextureBufferFootprint(Desc, {});
 		ASSERT_TRUE(Color) << Color.mStatus.mMessage.c_str();
 		EXPECT_EQ(Color.mValue.mExtent.mWidth, 13u);
@@ -345,6 +346,7 @@ namespace arda::memorytexture_tests
 		FArdaGraphEdit Edit(Graph);
 		ASSERT_TRUE(Edit.GetStatus());
 		auto Desc = MakeTextureDesc(8, 4);
+		Desc.mUsage = EArdaRHITextureUsage::ShaderResource; // Explicitly forbid render-target use.
 		const auto NoRenderTarget = MakeTestTexture(Edit, "no render target", Desc);
 		Desc.mUsage = EArdaRHITextureUsage::RenderTarget;
 		Desc.mFormat = EArdaRHIFormat::RGBA8UInt;

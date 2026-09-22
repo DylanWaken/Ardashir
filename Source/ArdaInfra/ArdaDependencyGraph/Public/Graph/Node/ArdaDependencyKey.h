@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graph/Resources/ArdaDependencyResource.h"
+#include "Graph/Resources/ArdaGraphicsState.h"
 #include <cstring>
 #include <EASTL/type_traits.h>
 
@@ -55,6 +56,23 @@ namespace arda
 			return Value(Range.mByteOffset).Value(Range.mByteSize);
 		}
 
+		/** Encodes a logical stage connection, normalizing valid producer identities for revision reuse. */
+		FArdaDependencyKeyBuilder& Stage(FArdaGraphStageValue Input)
+		{
+			const auto Handle = Input.GetProducer();
+			Value(Input.GetKind());
+			if (mConstructionContext)
+			{
+				const bool bValid = mConstructionContext->mValidateStage(mConstructionContext->mGraph, Handle);
+				Value(bValid);
+				if (bValid)
+				{
+					return Value(uint64_t{0}).Value(Handle.GetIndex()).Value(uint32_t{0});
+				}
+			}
+			return Value(Handle.GetGraphIdentity()).Value(Handle.GetIndex()).Value(Handle.GetGeneration());
+		}
+
 		FArdaDependencyKeyBuilder& TextureRange(const FArdaRHITextureSubresourceRange& Range)
 		{
 			return Value(Range.mBaseMipLevel)
@@ -96,6 +114,7 @@ namespace arda
 			uint64_t mGraphIdentity;
 			const void* mGraph;
 			bool (*mValidate)(const void*, FArdaDependencyResourceHandle);
+			bool (*mValidateStage)(const void*, FArdaGraphNodeHandle);
 		};
 
 		/** Scoped by attachment while asking a node for its construction identity. */

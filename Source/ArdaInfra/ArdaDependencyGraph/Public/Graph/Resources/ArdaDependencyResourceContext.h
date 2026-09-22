@@ -13,6 +13,9 @@ namespace arda
 	{
 		eastl::string mName;
 		FArdaDependencyResourceHandle mResource;
+		/** Explicit requirements retained until compilation, including for supplied AutoDeduction outputs. */
+		EArdaRHIBufferUsage mRequiredBufferUsage = EArdaRHIBufferUsage::None;
+		EArdaRHITextureUsage mRequiredTextureUsage = EArdaRHITextureUsage::None;
 	};
 
 	/** Attachment-time resource declarations. Empty outputs become graph-owned transients;

@@ -1,5 +1,6 @@
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
 #include "Graph/Node/ArdaGraphAccess.h"
+#include "Graph/Resources/ArdaGraphResourceValidation.h"
 
 #include "Graph/DefaultNodes/ArdaDependencyGraphNodes.h"
 #include "Graph/DefaultNodes/ArdaMemoryNodes.h"
@@ -22,7 +23,8 @@ namespace arda
 				return true;
 			}
 			const auto* Description = Edit.GetGraph().FindResource(Texture.GetHandle());
-			const auto Footprint = GetArdaRHITextureBufferFootprint(Description->mTexture, Slice);
+			const auto Footprint =
+			    GetArdaRHITextureBufferFootprint(ArdaGraphShapeDescription(Description->mTexture), Slice);
 			Edit.ReportError(Footprint.mStatus);
 			if (!Footprint)
 			{

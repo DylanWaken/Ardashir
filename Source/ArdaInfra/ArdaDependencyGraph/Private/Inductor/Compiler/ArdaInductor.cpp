@@ -23,17 +23,17 @@ namespace arda
 			return S;
 		}
 
-		struct FGuard
+		struct FArdaCompileGuard
 		{
 			bool& mFlag;
 
-			explicit FGuard(bool& Flag)
+			explicit FArdaCompileGuard(bool& Flag)
 			    : mFlag(Flag)
 			{
 				mFlag = true;
 			}
 
-			~FGuard()
+			~FArdaCompileGuard()
 			{
 				mFlag = false;
 			}
@@ -53,6 +53,34 @@ namespace arda
 				}
 			}
 			// Structural safety is independent of the chosen transformation list.
+			for (auto Handle : G.mTopology.GetNodes())
+			{
+				const auto& Node = G.mTopology.TryGetNode(Handle)->mPayload;
+				if (Node.mDesc.mGraphicsStage != EArdaGraphicsStage::None && !Node.mbGraphicsLowered)
+				{
+					return Error("Graphics stages require FArdaAssembleGraphicsStagesRule before compilation.");
+				}
+				if (Node.mDesc.mRayStage != EArdaRHIShaderStage::None && !Node.mbRayTracingLowered)
+				{
+					return Error("Ray stages require FArdaAssembleRayTracingStagesRule before compilation.");
+				}
+				if (Node.mDesc.mGraphicsStage == EArdaGraphicsStage::Pixel)
+				{
+					if (Node.mGraphicsStages.size() < 3 || Node.mGraphicsStages.back() != Handle ||
+					    Node.mGraphicsStageParameters.size() != Node.mGraphicsStages.size())
+					{
+						return Error("Preprocessing invalidated an assembled graphics chain.");
+					}
+					for (auto Stage : Node.mGraphicsStages)
+					{
+						if (!G.mTopology.ContainsNode(Stage) ||
+						    (Stage != Handle && !G.mTopology.IsReachable(Stage, Handle)))
+						{
+							return Error("Preprocessing removed a required graphics stage dependency.");
+						}
+					}
+				}
+			}
 			if (auto S = ValidateResourceAccesses(G); !S)
 			{
 				return S;

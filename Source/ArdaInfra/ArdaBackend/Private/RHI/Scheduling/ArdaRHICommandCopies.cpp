@@ -3,10 +3,7 @@
 
 namespace arda::detail
 {
-	FArdaRHIStatus FArdaCommandList::WriteBuffer(IArdaRHIBuffer& Buffer,
-	    const void* Data,
-	    size_t Size,
-	    uint64_t Offset)
+	FArdaRHIStatus FArdaCommandList::WriteBuffer(IArdaRHIBuffer& Buffer, const void* Data, size_t Size, uint64_t Offset)
 	{
 		auto* Native = Cast<FArdaBuffer>(&Buffer);
 		if (!Native || !RetainOwned(Native))
@@ -77,6 +74,7 @@ namespace arda::detail
 		}
 
 		FArdaRHIBufferDesc ReadbackDesc;
+		ReadbackDesc.mUsage = EArdaRHIBufferUsage::None;
 		ReadbackDesc.mByteSize = ResolvedSize;
 		ReadbackDesc.mCpuAccess = EArdaRHICpuAccess::Read;
 		ReadbackDesc.mInitialState = EArdaRHIResourceState::CopyDest;
@@ -91,8 +89,7 @@ namespace arda::detail
 		{
 			return Status;
 		}
-		if (auto Status = mNative->CopyBuffer(Readback.mValue, 0, Native->mNative, SourceOffset, ResolvedSize);
-		    !Status)
+		if (auto Status = mNative->CopyBuffer(Readback.mValue, 0, Native->mNative, SourceOffset, ResolvedSize); !Status)
 		{
 			return Status;
 		}
@@ -140,9 +137,8 @@ namespace arda::detail
 		{
 			return WrongDevice();
 		}
-		if (Size == 0 || DestinationOffset > Dst->mDesc.mByteSize ||
-		    Size > Dst->mDesc.mByteSize - DestinationOffset || SourceOffset > Src->mDesc.mByteSize ||
-		    Size > Src->mDesc.mByteSize - SourceOffset)
+		if (Size == 0 || DestinationOffset > Dst->mDesc.mByteSize || Size > Dst->mDesc.mByteSize - DestinationOffset ||
+		    SourceOffset > Src->mDesc.mByteSize || Size > Src->mDesc.mByteSize - SourceOffset)
 		{
 			return Invalid("Buffer copy range is invalid.");
 		}
@@ -168,13 +164,11 @@ namespace arda::detail
 			return Status;
 		}
 		if (Dst == Src && DestinationSlice.mMipLevel == SourceSlice.mMipLevel &&
-		    DestinationSlice.mArraySlice == SourceSlice.mArraySlice &&
-		    DestinationSlice.mPlane == SourceSlice.mPlane)
+		    DestinationSlice.mArraySlice == SourceSlice.mArraySlice && DestinationSlice.mPlane == SourceSlice.mPlane)
 		{
 			return Invalid("A texture subresource cannot be copied onto itself.");
 		}
-		return mNative
-		    ->CopyTexture(Dst->mNative, Dst->mDesc, DestinationSlice, Src->mNative, Src->mDesc, SourceSlice);
+		return mNative->CopyTexture(Dst->mNative, Dst->mDesc, DestinationSlice, Src->mNative, Src->mDesc, SourceSlice);
 	}
 
 	FArdaRHIStatus FArdaCommandList::CopyBufferToTexture(IArdaRHITexture& Destination,
@@ -204,12 +198,8 @@ namespace arda::detail
 		{
 			return Status;
 		}
-		return mNative->CopyBufferToTexture(Dst->mNative,
-		    Dst->mDesc,
-		    DestinationSlice,
-		    Src->mNative,
-		    Src->mDesc,
-		    SourceLayout);
+		return mNative
+		    ->CopyBufferToTexture(Dst->mNative, Dst->mDesc, DestinationSlice, Src->mNative, Src->mDesc, SourceLayout);
 	}
 
 	FArdaRHIStatus FArdaCommandList::CopyTextureToBuffer(IArdaRHIBuffer& Destination,
@@ -239,12 +229,8 @@ namespace arda::detail
 		{
 			return Status;
 		}
-		return mNative->CopyTextureToBuffer(Dst->mNative,
-		    Dst->mDesc,
-		    DestinationLayout,
-		    Src->mNative,
-		    Src->mDesc,
-		    SourceSlice);
+		return mNative
+		    ->CopyTextureToBuffer(Dst->mNative, Dst->mDesc, DestinationLayout, Src->mNative, Src->mDesc, SourceSlice);
 	}
 
 	FArdaRHIStatus FArdaCommandList::ResolveTexture(IArdaRHITexture& Destination,
@@ -259,8 +245,7 @@ namespace arda::detail
 			return WrongDevice();
 		}
 		FArdaRHITextureCopyExtent Extent;
-		if (auto Status =
-		        ValidateArdaRHITextureResolve(Dst->mDesc, DestinationSlice, Src->mDesc, SourceSlice, Extent);
+		if (auto Status = ValidateArdaRHITextureResolve(Dst->mDesc, DestinationSlice, Src->mDesc, SourceSlice, Extent);
 		    !Status)
 		{
 			return Status;
@@ -285,21 +270,14 @@ namespace arda::detail
 			return Invalid("A texture readback requires a read staging texture.");
 		}
 		FArdaRHITextureCopyExtent Extent;
-		if (auto Status = ResolveArdaRHITextureCopyExtent(Dst->mDesc.mTexture,
-		        DestinationSlice,
-		        Src->mDesc,
-		        SourceSlice,
-		        Extent);
+		if (auto Status =
+		        ResolveArdaRHITextureCopyExtent(Dst->mDesc.mTexture, DestinationSlice, Src->mDesc, SourceSlice, Extent);
 		    !Status)
 		{
 			return Status;
 		}
-		return mNative->CopyTextureToStaging(Dst->mNative,
-		    Dst->mDesc,
-		    DestinationSlice,
-		    Src->mNative,
-		    Src->mDesc,
-		    SourceSlice);
+		return mNative
+		    ->CopyTextureToStaging(Dst->mNative, Dst->mDesc, DestinationSlice, Src->mNative, Src->mDesc, SourceSlice);
 	}
 
 	FArdaRHIStatus FArdaCommandList::CopyTextureFromStaging(IArdaRHITexture& Destination,
@@ -318,21 +296,14 @@ namespace arda::detail
 			return Invalid("A texture upload requires a write staging texture.");
 		}
 		FArdaRHITextureCopyExtent Extent;
-		if (auto Status = ResolveArdaRHITextureCopyExtent(Dst->mDesc,
-		        DestinationSlice,
-		        Src->mDesc.mTexture,
-		        SourceSlice,
-		        Extent);
+		if (auto Status =
+		        ResolveArdaRHITextureCopyExtent(Dst->mDesc, DestinationSlice, Src->mDesc.mTexture, SourceSlice, Extent);
 		    !Status)
 		{
 			return Status;
 		}
-		return mNative->CopyTextureFromStaging(Dst->mNative,
-		    Dst->mDesc,
-		    DestinationSlice,
-		    Src->mNative,
-		    Src->mDesc,
-		    SourceSlice);
+		return mNative
+		    ->CopyTextureFromStaging(Dst->mNative, Dst->mDesc, DestinationSlice, Src->mNative, Src->mDesc, SourceSlice);
 	}
 
 	FArdaRHIStatus FArdaCommandList::ClearTexture(IArdaRHITexture& Texture,
@@ -450,10 +421,8 @@ namespace arda::detail
 		{
 			return Invalid("The decoded texture must contain every feedback region, mip and array slice.");
 		}
-		const FArdaRHIStatus Status = mNative->DecodeSamplerFeedbackTexture(Destination->mNative,
-		    Destination->mDesc,
-		    Feedback->mNative,
-		    Format);
+		const FArdaRHIStatus Status =
+		    mNative->DecodeSamplerFeedbackTexture(Destination->mNative, Destination->mDesc, Feedback->mNative, Format);
 		if (Status)
 		{
 			mFacadeSamplerFeedbackStates[Feedback] = EArdaRHIResourceState::ResolveSource;

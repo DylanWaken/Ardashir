@@ -37,9 +37,13 @@ namespace arda
 				{
 					Node.mPipelineBoundaries.push_back(Request.mKind);
 				}
-				for (auto Edge : Graph.mTopology.GetIncomingEdges(Handle))
+				if (!Graph.mTopology.TryGetNode(Handle)->mPayload.mbGraphicsLowered &&
+				    !Graph.mTopology.TryGetNode(Handle)->mPayload.mbRayTracingLowered)
 				{
-					Node.mDependencies.push_back(Graph.mTopology.TryGetEdge(Edge)->mFrom.GetIndex());
+					for (auto Edge : Graph.mTopology.GetIncomingEdges(Handle))
+					{
+						Node.mDependencies.push_back(Graph.mTopology.TryGetEdge(Edge)->mFrom.GetIndex());
+					}
 				}
 				PipelineNodes.push_back(eastl::move(Node));
 			}

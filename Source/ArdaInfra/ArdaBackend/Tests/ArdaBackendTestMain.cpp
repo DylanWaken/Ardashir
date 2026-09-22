@@ -32,6 +32,27 @@ namespace
 			const std::filesystem::path SourceDirectory = ARDA_BACKEND_TEST_SHADER_SOURCE_DIR;
 			const std::string StructSource = (SourceDirectory / "ArdaShaderStructTest.hlsl").string();
 			const std::string RayTracingSource = (SourceDirectory / "ArdaRayTracingTest.hlsl").string();
+			// Cook fixture artifacts while registrations are scoped to setup, keeping registry tests isolated.
+			const auto MatrixSource = (SourceDirectory / "ArdaShaderMatrixTest.hlsl").string();
+			FArdaShaderTypeRegistration MatrixInterop("ArdaMatrixInterop",
+			    MatrixSource.c_str(),
+			    "ArdaMatrixInterop",
+			    "MatrixInteropCS",
+			    FArdaStage::Compute,
+			    nullptr);
+			const auto RasterStorageSource = (SourceDirectory / "ArdaRasterStorageTest.hlsl").string();
+			FArdaShaderTypeRegistration RasterStorageVertex("ArdaRasterStorageVS",
+			    RasterStorageSource.c_str(),
+			    "ArdaRasterStorageVS",
+			    "RasterStorageVS",
+			    FArdaStage::Vertex,
+			    nullptr);
+			FArdaShaderTypeRegistration RasterStoragePixel("ArdaRasterStoragePS",
+			    RasterStorageSource.c_str(),
+			    "ArdaRasterStoragePS",
+			    "RasterStoragePS",
+			    FArdaStage::Pixel,
+			    nullptr);
 			const auto RasterStageSource = (SourceDirectory / "ArdaRasterStageTest.hlsl").string();
 			FArdaShaderTypeRegistration RasterVertex("ArdaRasterStageVS",
 			    RasterStageSource.c_str(),

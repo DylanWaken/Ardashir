@@ -67,13 +67,19 @@ namespace arda::detail
 		NativeInstances.reserve(Instances.size());
 		for (const auto& Instance : Instances)
 		{
+			if (!Instance.mTransform.allFinite())
+			{
+				return Invalid("A TLAS instance transform must contain only finite coefficients.");
+			}
 			auto* BottomLevel = Cast<FArdaAccelStruct>(Instance.mBottomLevelAccelStruct.Get());
 			if (!BottomLevel || !RetainOwned(BottomLevel) || BottomLevel->mDesc.mbTopLevel)
 			{
 				return WrongDevice();
 			}
 			FArdaProviderRayTracingInstance Native;
-			std::memcpy(Native.mTransform, Instance.mTransform, sizeof(Instance.mTransform));
+			static_assert(FArdaMatrix3x4f::IsRowMajor);
+			static_assert(sizeof(Native.mTransform) == sizeof(float) * FArdaMatrix3x4f::SizeAtCompileTime);
+			std::memcpy(Native.mTransform, Instance.mTransform.data(), sizeof(Native.mTransform));
 			Native.mInstanceID = Instance.mInstanceId;
 			Native.mInstanceMask = Instance.mInstanceMask;
 			Native.mInstanceContributionToHitGroupIndex = Instance.mHitGroupContribution;
@@ -81,8 +87,7 @@ namespace arda::detail
 			Native.mBottomLevelAccelStruct = BottomLevel->mNative;
 			NativeInstances.push_back(eastl::move(Native));
 		}
-		const FArdaRHIStatus Status =
-		    mNative->BuildTopLevelAccelStruct(AccelStruct->mNative, NativeInstances, Flags);
+		const FArdaRHIStatus Status = mNative->BuildTopLevelAccelStruct(AccelStruct->mNative, NativeInstances, Flags);
 		if (Status)
 		{
 			mFacadeAccelStructStates[AccelStruct] = {EArdaRHIResourceState::AccelStructRead,

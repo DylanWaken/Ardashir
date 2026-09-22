@@ -326,6 +326,7 @@ namespace
 		static FArdaRHITextureDesc TextureDesc()
 		{
 			FArdaRHITextureDesc Desc;
+			Desc.mUsage = EArdaRHITextureUsage::ShaderResource;
 			Desc.mWidth = Desc.mHeight = 16;
 			Desc.mFormat = EArdaRHIFormat::RGBA8UNorm;
 			return Desc;

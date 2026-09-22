@@ -174,8 +174,21 @@ namespace arda
 					{
 						return BindingError("Missing shader argument: " + F.mPath);
 					}
-					if (auto S =
-					        DescribeResource(G, D, M.mBindingType, R->mResource, R->mView, R->mAccess, R->mSampler);
+					const auto RequiredAccess = M.GetResourceAccess();
+					const auto DeclaredAccess = RequiredAccess == EArdaShaderResourceAccess::Read
+					    ? EArdaDependencyAccess::Read
+					    : RequiredAccess == EArdaShaderResourceAccess::Write ? EArdaDependencyAccess::Write
+					                                                         : EArdaDependencyAccess::ReadWrite;
+					const auto Access =
+					    R->mAccess == EArdaDependencyAccess::AutoDeduction ? DeclaredAccess : R->mAccess;
+					const bool UAV = M.mKind == EArdaShaderParameterKind::BufferUAV ||
+					    M.mKind == EArdaShaderParameterKind::TextureUAV;
+					if (Access > EArdaDependencyAccess::ReadWrite || (!UAV && Access != EArdaDependencyAccess::Read) ||
+					    (Access != DeclaredAccess && Access != EArdaDependencyAccess::ReadWrite))
+					{
+						return BindingError("Node access does not cover its shader parameter requirement: " + F.mPath);
+					}
+					if (auto S = DescribeResource(G, D, M.mBindingType, R->mResource, R->mView, Access, R->mSampler);
 					    !S)
 					{
 						return S;
@@ -189,6 +202,41 @@ namespace arda
 			return {};
 		}
 
+	}
+
+	FArdaRHIStatus DescribeArdaShaderAccesses(const FArdaDependencyGraph::FArdaImpl& G, FArdaDependencyNodeDesc& D)
+	{
+		for (const auto& B : D.mShaderBindings)
+		{
+			if (auto S = DescribeSchema(G, D, B); !S)
+			{
+				return S;
+			}
+		}
+		for (const auto& Table : D.mBindlessTables)
+		{
+			for (const auto& R : Table.mEntries)
+			{
+				if (auto S = DescribeResource(G, D, R.mType, R.mResource, R.mView, R.mAccess, R.mSampler); !S)
+				{
+					return S;
+				}
+			}
+		}
+		for (const auto& Table : D.mShaderTables)
+		{
+			for (const auto& R : Table.mRecords)
+			{
+				if (R.mLocalBindings.mMetadata)
+				{
+					if (auto S = DescribeSchema(G, D, R.mLocalBindings, true); !S)
+					{
+						return S;
+					}
+				}
+			}
+		}
+		return {};
 	}
 
 	FArdaRHIStatus DescribeArdaShaderBindings(FArdaDependencyGraph::FArdaImpl& G, FArdaDependencyNodeDesc& D)

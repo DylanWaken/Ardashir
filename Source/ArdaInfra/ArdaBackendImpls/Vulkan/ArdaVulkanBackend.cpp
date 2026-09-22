@@ -1292,6 +1292,25 @@ namespace arda
 				return reinterpret_cast<const void*>(static_cast<VkImage>(mImage));
 			}
 
+			void CreateDefaultView()
+			{
+				// Transfer-only images cannot have Vulkan image views and copy commands need only the image.
+				constexpr auto ViewUsage = EArdaRHITextureUsage::ShaderResource |
+				    EArdaRHITextureUsage::UnorderedAccess | EArdaRHITextureUsage::RenderTarget |
+				    EArdaRHITextureUsage::DepthStencil;
+				if (!HasAnyFlags(mDesc.mUsage, ViewUsage))
+				{
+					return;
+				}
+				vk::ImageViewCreateInfo ViewInfo;
+				ViewInfo.image = mImage;
+				ViewInfo.viewType = ToViewType(mDesc.mDimension, mDesc.mArraySize);
+				ViewInfo.format = ToVulkan(mDesc.mFormat);
+				ViewInfo.subresourceRange =
+				    vk::ImageSubresourceRange(ImageAspect(mDesc.mFormat), 0, mDesc.mMipLevels, 0, mDesc.mArraySize);
+				mView = mContext->mDevice.createImageView(ViewInfo);
+			}
+
 			eastl::shared_ptr<IArdaCudaMapping> mCudaMapping;
 			eastl::shared_ptr<FArdaVulkanContext> mContext;
 			FArdaRHITextureDesc mDesc;
@@ -3061,6 +3080,10 @@ namespace arda
 			// These exact feature bits are copied into VkDeviceCreateInfo's enabled core features.
 			mCapabilities.mbGeometryShaders = mContext->mEnabledFeatures.geometryShader == VK_TRUE;
 			mCapabilities.mbTessellationShaders = mContext->mEnabledFeatures.tessellationShader == VK_TRUE;
+			mCapabilities.mbVertexShaderStoresAndAtomics =
+			    mContext->mEnabledFeatures.vertexPipelineStoresAndAtomics == VK_TRUE;
+			mCapabilities.mbFragmentShaderStoresAndAtomics =
+			    mContext->mEnabledFeatures.fragmentStoresAndAtomics == VK_TRUE;
 			mCapabilities.mbStagingTextures = true;
 			mCapabilities.mbTextureCopies = true;
 			mCapabilities.mbTextureResolve = true;
@@ -3436,13 +3459,7 @@ namespace arda
 				}
 				if (Desc.mbTiled)
 				{
-					vk::ImageViewCreateInfo ViewInfo;
-					ViewInfo.image = Texture->mImage;
-					ViewInfo.viewType = ToViewType(Desc.mDimension, Desc.mArraySize);
-					ViewInfo.format = Format;
-					ViewInfo.subresourceRange =
-					    vk::ImageSubresourceRange(ImageAspect(Desc.mFormat), 0, Desc.mMipLevels, 0, Desc.mArraySize);
-					Texture->mView = mContext->mDevice.createImageView(ViewInfo);
+					Texture->CreateDefaultView();
 					return {Texture, {}};
 				}
 				const auto Requirements = mContext->mDevice.getImageMemoryRequirements(Texture->mImage);
@@ -3467,13 +3484,7 @@ namespace arda
 				    Requirements.size,
 				    true};
 				mContext->mDevice.bindImageMemory(Texture->mImage, Texture->mMemory, 0);
-				vk::ImageViewCreateInfo ViewInfo;
-				ViewInfo.image = Texture->mImage;
-				ViewInfo.viewType = ToViewType(Desc.mDimension, Desc.mArraySize);
-				ViewInfo.format = Format;
-				ViewInfo.subresourceRange =
-				    vk::ImageSubresourceRange(ImageAspect(Desc.mFormat), 0, Desc.mMipLevels, 0, Desc.mArraySize);
-				Texture->mView = mContext->mDevice.createImageView(ViewInfo);
+				Texture->CreateDefaultView();
 				if (Desc.mbCudaInterop && mContext->mCudaContext)
 				{
 					auto Mapping = mContext->ImportCudaMemory(Texture->mMemory, Requirements.size, 0, &Desc);
@@ -4140,7 +4151,7 @@ namespace arda
 		}
 
 		FArdaRHIStatus FArdaVulkanProviderDevice::BindTextureMemory(const FArdaProviderObjectRef& Object,
-		    const FArdaRHITextureDesc& Desc,
+		    const FArdaRHITextureDesc&,
 		    const FArdaProviderObjectRef& HeapObject,
 		    uint64_t Offset)
 		{
@@ -4171,13 +4182,7 @@ namespace arda
 			try
 			{
 				mContext->mDevice.bindImageMemory(Texture->mImage, Heap->mMemory, Offset);
-				vk::ImageViewCreateInfo ViewInfo;
-				ViewInfo.image = Texture->mImage;
-				ViewInfo.viewType = ToViewType(Desc.mDimension, Desc.mArraySize);
-				ViewInfo.format = ToVulkan(Desc.mFormat);
-				ViewInfo.subresourceRange =
-				    vk::ImageSubresourceRange(ImageAspect(Desc.mFormat), 0, Desc.mMipLevels, 0, Desc.mArraySize);
-				Texture->mView = mContext->mDevice.createImageView(ViewInfo);
+				Texture->CreateDefaultView();
 				Texture->mHeap = HeapObject;
 				return {};
 			}
@@ -4976,16 +4981,7 @@ namespace arda
 				Texture->mStageMasks.assign(SubresourceCount, InitialSync.mStages);
 				Texture->mAccessMasks.assign(SubresourceCount, InitialSync.mAccess);
 				Texture->mQueueFamily = mContext->mQueueFamily;
-				vk::ImageViewCreateInfo ViewInfo;
-				ViewInfo.image = Texture->mImage;
-				ViewInfo.viewType = ToViewType(Desc.mTexture.mDimension, Desc.mTexture.mArraySize);
-				ViewInfo.format = ToVulkan(Desc.mTexture.mFormat);
-				ViewInfo.subresourceRange = vk::ImageSubresourceRange(ImageAspect(Desc.mTexture.mFormat),
-				    0,
-				    Desc.mTexture.mMipLevels,
-				    0,
-				    Desc.mTexture.mArraySize);
-				Texture->mView = mContext->mDevice.createImageView(ViewInfo);
+				Texture->CreateDefaultView();
 				return {Texture, {}};
 			}
 			catch (const vk::SystemError& Error)
@@ -6840,7 +6836,8 @@ namespace arda
 					std::vector<uint8_t> Payload = mContext->mDevice.getPipelineCacheData(mPipelineCache);
 					if (!WriteArdaPipelineCacheBlob(MakeArdaPipelineCachePath(mPipelineCacheDirectory, "native-vulkan"),
 					        "native-vulkan",
-					        Payload.data(), Payload.size()))
+					        Payload.data(),
+					        Payload.size()))
 					{
 						LogArdaPipelineCacheMessage(mDiagnosticCallback,
 						    EArdaDiagnosticSeverity::Warning,
@@ -7245,6 +7242,7 @@ namespace arda
 				}
 
 				FArdaRHIBufferDesc UploadDesc;
+				UploadDesc.mUsage = EArdaRHIBufferUsage::None;
 				UploadDesc.mByteSize = Size;
 				UploadDesc.mCpuAccess = EArdaRHICpuAccess::Write;
 				UploadDesc.mInitialState = EArdaRHIResourceState::CopySource;
@@ -11508,6 +11506,9 @@ namespace arda
 						MaskFeature(SupportedFeatures.features.samplerAnisotropy, "samplerAnisotropy");
 						MaskFeature(SupportedFeatures.features.geometryShader, "geometryShader");
 						MaskFeature(SupportedFeatures.features.tessellationShader, "tessellationShader");
+						MaskFeature(SupportedFeatures.features.vertexPipelineStoresAndAtomics,
+						    "vertexPipelineStoresAndAtomics");
+						MaskFeature(SupportedFeatures.features.fragmentStoresAndAtomics, "fragmentStoresAndAtomics");
 						MaskFeature(SupportedFeatures.features.multiDrawIndirect, "multiDrawIndirect");
 						MaskFeature(SupportedFeatures.features.drawIndirectFirstInstance, "drawIndirectFirstInstance");
 						MaskFeature(SupportedFeatures.features.sparseBinding, "sparseBinding");
@@ -11633,6 +11634,8 @@ namespace arda
 					Enabled.samplerAnisotropy = Supported.samplerAnisotropy;
 					Enabled.geometryShader = Supported.geometryShader;
 					Enabled.tessellationShader = Supported.tessellationShader;
+					Enabled.vertexPipelineStoresAndAtomics = Supported.vertexPipelineStoresAndAtomics;
+					Enabled.fragmentStoresAndAtomics = Supported.fragmentStoresAndAtomics;
 					Enabled.multiDrawIndirect = Supported.multiDrawIndirect;
 					Enabled.drawIndirectFirstInstance = Supported.drawIndirectFirstInstance;
 					Enabled.sparseBinding = Supported.sparseBinding;

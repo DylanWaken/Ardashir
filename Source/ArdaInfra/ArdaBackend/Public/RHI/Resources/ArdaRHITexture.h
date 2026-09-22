@@ -62,22 +62,27 @@ namespace arda
 		UnorderedAccess = 1u << 1,
 		RenderTarget = 1u << 2,
 		DepthStencil = 1u << 3,
-		Typeless = 1u << 4
+		Typeless = 1u << 4,
+		/** Graph compilation derives required usage flags; must be resolved before native creation. */
+		AutoDeduction = 1u << 15
 	};
 
 	constexpr EArdaRHITextureUsage operator|(EArdaRHITextureUsage A, EArdaRHITextureUsage B) noexcept
 	{
 		return static_cast<EArdaRHITextureUsage>(static_cast<uint32_t>(A) | static_cast<uint32_t>(B));
 	}
+
 	constexpr EArdaRHITextureUsage operator&(EArdaRHITextureUsage A, EArdaRHITextureUsage B) noexcept
 	{
 		return static_cast<EArdaRHITextureUsage>(static_cast<uint32_t>(A) & static_cast<uint32_t>(B));
 	}
+
 	constexpr EArdaRHITextureUsage& operator|=(EArdaRHITextureUsage& A, EArdaRHITextureUsage B) noexcept
 	{
 		A = A | B;
 		return A;
 	}
+
 	constexpr bool HasAnyFlags(EArdaRHITextureUsage Value, EArdaRHITextureUsage Flags) noexcept
 	{
 		return static_cast<uint32_t>(Value & Flags) != 0;
@@ -138,8 +143,8 @@ namespace arda
 		EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown;
 		/** Stores the dimension. */
 		EArdaRHITextureDimension mDimension = EArdaRHITextureDimension::Texture2D;
-		/** Stores the usage. */
-		EArdaRHITextureUsage mUsage = EArdaRHITextureUsage::ShaderResource;
+		/** Graph-derived by default; direct RHI callers must provide concrete usage flags (or None). */
+		EArdaRHITextureUsage mUsage = EArdaRHITextureUsage::AutoDeduction;
 		/** Stores the initial state. */
 		EArdaRHIResourceState mInitialState = EArdaRHIResourceState::Unknown;
 		/** Stores the keep initial state. */

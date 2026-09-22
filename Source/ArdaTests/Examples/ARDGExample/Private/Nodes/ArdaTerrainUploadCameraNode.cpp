@@ -9,7 +9,7 @@ namespace arda
 	FArdaRHIStatus FArdaTerrainUploadCameraNode::DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P)
 	{
 		FArdaRHIBufferDesc D;
-		D.mByteSize = sizeof(FArdaTerrainCameraSettings);
+		D.mByteSize = sizeof(FArdaShaderCameraMatrices);
 		D.mStructureStride = 0;
 		D.mUsage = EArdaRHIBufferUsage::Constant;
 		return C.Buffer(P.mDestination, "Destination", D);
@@ -52,8 +52,7 @@ namespace arda
 	    const FArdaState& Prepared,
 	    FArdaInstanceState& InstanceState)
 	{
-		return C.GetCommands().WriteBuffer(*C.GetBuffer(P.mDestination),
-		    &P.mInputs->mCamera,
-		    sizeof(FArdaTerrainCameraSettings));
+		const FArdaShaderCameraMatrices Camera = PackArdaShaderCameraMatrices(P.mInputs->mCamera);
+		return C.GetCommands().WriteBuffer(*C.GetBuffer(P.mDestination), &Camera, sizeof(Camera));
 	}
 }

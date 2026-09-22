@@ -25,6 +25,7 @@ target_link_libraries(CornellBox PRIVATE
     ArdaExampleNodes
     Ardashir::ArdaBackend
     Ardashir::ArdaDependencyGraph
+    Ardashir::ArdaMath
     glfw
 )
 

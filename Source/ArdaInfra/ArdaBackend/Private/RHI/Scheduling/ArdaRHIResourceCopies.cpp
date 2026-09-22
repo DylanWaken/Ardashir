@@ -199,6 +199,7 @@ namespace arda
 		}
 		Footprint.mByteSize = (Footprint.mRowCount - 1) * RowPitch + Footprint.mRowBytes;
 		FArdaRHIBufferDesc BufferDesc;
+		BufferDesc.mUsage = EArdaRHIBufferUsage::None;
 		BufferDesc.mByteSize = Footprint.mByteSize;
 		if (auto Status =
 		        ValidateArdaRHITextureBufferCopy(TextureDesc, Slice, BufferDesc, Footprint.mLayout, Footprint.mExtent);

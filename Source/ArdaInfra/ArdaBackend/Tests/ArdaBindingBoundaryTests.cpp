@@ -202,6 +202,49 @@ namespace
 		}
 	}
 
+	TEST_P(FArdaBindingBoundaryTest, TextureViewsAndBindingsRequireDeclaredUsage)
+	{
+		for (const auto Usage :
+		    {EArdaRHITextureUsage::None, EArdaRHITextureUsage::ShaderResource, EArdaRHITextureUsage::UnorderedAccess})
+		{
+			SCOPED_TRACE(static_cast<uint16_t>(Usage));
+			FArdaRHITextureDesc TextureDesc;
+			TextureDesc.mWidth = TextureDesc.mHeight = 4;
+			TextureDesc.mFormat = EArdaRHIFormat::R32Float;
+			TextureDesc.mUsage = Usage;
+			auto Texture = mDevice->CreateTexture(TextureDesc);
+			ASSERT_TRUE(Texture) << Texture.mStatus.mMessage.c_str();
+			const FArdaRHIResourceRef Resource(Texture.mValue.Get());
+			const auto Srv = mDevice->CreateShaderResourceView(Resource, {});
+			EXPECT_EQ(bool(Srv), HasAnyFlags(Usage, EArdaRHITextureUsage::ShaderResource));
+			const auto Uav = mDevice->CreateUnorderedAccessView(Resource, {});
+			EXPECT_EQ(bool(Uav), HasAnyFlags(Usage, EArdaRHITextureUsage::UnorderedAccess));
+
+			for (const auto Type : {EArdaRHIBindingType::TextureSRV, EArdaRHIBindingType::TextureUAV})
+			{
+				SCOPED_TRACE(static_cast<uint16_t>(Type));
+				const auto Required = Type == EArdaRHIBindingType::TextureSRV ? EArdaRHITextureUsage::ShaderResource
+				                                                              : EArdaRHITextureUsage::UnorderedAccess;
+				FArdaRHIBindingLayoutDesc LayoutDesc;
+				LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+				LayoutDesc.mItems = {{0, 1, Type}};
+				const auto Layout = mDevice->CreateBindingLayout(LayoutDesc);
+				ASSERT_TRUE(Layout);
+				FArdaRHIBindingSetDesc Bindings;
+				Bindings.mLayout = Layout.mValue;
+				Bindings.mItems.resize(1);
+				Bindings.mItems.front().mType = Type;
+				Bindings.mItems.front().mResource = Resource;
+				const auto Result = mDevice->CreateBindingSet(Bindings);
+				EXPECT_EQ(bool(Result), HasAnyFlags(Usage, Required));
+				if (!HasAnyFlags(Usage, Required))
+				{
+					EXPECT_EQ(Result.mStatus.mCode, EArdaRHIResult::InvalidArgument);
+				}
+			}
+		}
+	}
+
 	TEST_P(FArdaBindingBoundaryTest, BindlessWritesRejectInvalidKindsAndRangesTransactionally)
 	{
 		auto Buffer = MakeBuffer();

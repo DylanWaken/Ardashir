@@ -158,6 +158,10 @@ namespace arda
 
 	FArdaRHIStatus Validate(const FArdaRHITextureDesc& D) noexcept
 	{
+		if (HasAnyFlags(D.mUsage, EArdaRHITextureUsage::AutoDeduction))
+		{
+			return Invalid("Texture AutoDeduction usage must be resolved by graph compilation before RHI use.");
+		}
 		if (!D.mWidth || !D.mHeight || !D.mDepth || !D.mArraySize || !D.mMipLevels || !D.mSampleCount)
 		{
 			return Invalid("Texture dimensions, array size, mip count, and sample count must be non-zero.");

@@ -102,8 +102,8 @@ namespace arda
 		bool mbDepthTest = true;
 		/** Stores the depth write. */
 		bool mbDepthWrite = true;
-		/** Stores the depth func. */
-		EArdaRHIComparisonFunc mDepthFunc = EArdaRHIComparisonFunc::Less;
+		/** Reversed device Z by default: near=1, far/clear=0. */
+		EArdaRHIComparisonFunc mDepthFunc = EArdaRHIComparisonFunc::GreaterOrEqual;
 
 		/**
          * Compares two values for equality.

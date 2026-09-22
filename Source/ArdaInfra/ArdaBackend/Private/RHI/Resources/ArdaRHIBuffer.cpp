@@ -77,6 +77,10 @@ namespace arda
 
 	FArdaRHIStatus Validate(const FArdaRHIBufferDesc& D) noexcept
 	{
+		if (HasAnyFlags(D.mUsage, EArdaRHIBufferUsage::AutoDeduction))
+		{
+			return Invalid("Buffer AutoDeduction usage must be resolved by graph compilation before RHI use.");
+		}
 		if (!D.mByteSize)
 		{
 			return Invalid("Buffer size must be non-zero.");

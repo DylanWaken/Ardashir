@@ -176,6 +176,18 @@ namespace
 	        {
 		        return C.mbTessellationShaders;
 	        }},
+	    {"VertexShaderStoresAndAtomics",
+	        &FArdaRHIFeatureRequirements::mbRequireVertexShaderStoresAndAtomics,
+	        [](FArdaRHICapabilities& C) -> bool&
+	        {
+		        return C.mbVertexShaderStoresAndAtomics;
+	        }},
+	    {"FragmentShaderStoresAndAtomics",
+	        &FArdaRHIFeatureRequirements::mbRequireFragmentShaderStoresAndAtomics,
+	        [](FArdaRHICapabilities& C) -> bool&
+	        {
+		        return C.mbFragmentShaderStoresAndAtomics;
+	        }},
 	    {"ResourceCollections",
 	        &FArdaRHIFeatureRequirements::mbRequireResourceCollections,
 	        [](FArdaRHICapabilities& C) -> bool&

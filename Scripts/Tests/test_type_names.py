@@ -90,9 +90,14 @@ class FArdaTypeNameTests(unittest.TestCase):
         struct Name { using FBadAlias = int; };
         ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
         ARDA_END_SHADER_PARAMETER_STRUCT()
+        ARDA_BEGIN_NODE_PARAMETER_STRUCT(FNodeParameters)
+        ARDA_NODE_PARAMETER(int, mValue)
+        ARDA_END_NODE_PARAMETER_STRUCT()
+        ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaNodeParameters)
+        ARDA_END_NODE_PARAMETER_STRUCT()
         ARDA_CUDA_PARAMETER_STRUCT(FArdaCudaParameters, FIELDS)
         """
-        self.assertEqual(self.names(source), ["FBadAlias", "FParameters"])
+        self.assertEqual(self.names(source), ["FBadAlias", "FParameters", "FNodeParameters"])
 
     def test_keeps_macro_formals_distinct_from_final_and_incomplete_typedefs(self):
         source = """#define ARDA_DIMENSION(Name) \\

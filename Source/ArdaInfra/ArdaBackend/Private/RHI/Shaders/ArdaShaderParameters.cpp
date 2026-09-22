@@ -232,6 +232,16 @@ namespace arda
 		for (const FArdaFlattenedShaderParameterMember& Resolved : Flattened)
 		{
 			const FArdaShaderParameterMember& Member = *Resolved.mMember;
+			const auto Access = Member.GetResourceAccess();
+			const bool UAV = Member.mKind == EArdaShaderParameterKind::TextureUAV ||
+			    Member.mKind == EArdaShaderParameterKind::BufferUAV;
+			if (Access < EArdaShaderResourceAccess::Read || Access > EArdaShaderResourceAccess::ReadWrite ||
+			    (!UAV && Access != EArdaShaderResourceAccess::Read))
+			{
+				mStatus = MakeError(EArdaShaderStructError::InvalidMember,
+				    eastl::string("Invalid shader resource access: ") + Member.mName);
+				return;
+			}
 			if (IsBindingMember(Member.mKind) && Member.mVisibility == arda::EArdaRHIShaderStage::None)
 			{
 				mStatus = MakeError(EArdaShaderStructError::IncompatibleVisibility,
@@ -255,6 +265,7 @@ namespace arda
 			HashBytes(mLayoutHash, &Resolved.mAbsoluteOffset, sizeof(Resolved.mAbsoluteOffset));
 			HashBytes(mLayoutHash, &Member.mSize, sizeof(Member.mSize));
 			HashBytes(mLayoutHash, &Member.mVisibility, sizeof(Member.mVisibility));
+			HashBytes(mLayoutHash, &Access, sizeof(Access));
 		}
 
 		for (size_t LeftIndex = 0; LeftIndex < Flattened.size(); ++LeftIndex)

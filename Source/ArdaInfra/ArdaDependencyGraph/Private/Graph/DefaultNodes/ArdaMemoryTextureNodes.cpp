@@ -1,6 +1,7 @@
 #include "Graph/DefaultNodes/ArdaMemoryTextureNodes.h"
 
 #include "Graph/Node/ArdaDependencyKey.h"
+#include "Graph/Resources/ArdaGraphResourceValidation.h"
 
 #include <cstring>
 
@@ -113,7 +114,7 @@ namespace arda
 		{
 			return InvalidTexture("Texture upload requires a destination texture from this graph.");
 		}
-		const auto Footprint = GetArdaRHITextureBufferFootprint(*Texture, Parameters.mSlice);
+		const auto Footprint = GetArdaRHITextureBufferFootprint(ArdaGraphShapeDescription(*Texture), Parameters.mSlice);
 		if (!Footprint)
 		{
 			return Footprint.mStatus;
@@ -209,7 +210,7 @@ namespace arda
 		{
 			return InvalidTexture("Texture readback requires a source texture and retained byte destination.");
 		}
-		const auto Footprint = GetArdaRHITextureBufferFootprint(*Texture, Parameters.mSlice);
+		const auto Footprint = GetArdaRHITextureBufferFootprint(ArdaGraphShapeDescription(*Texture), Parameters.mSlice);
 		if (!Footprint)
 		{
 			return Footprint.mStatus;
@@ -348,7 +349,8 @@ namespace arda
 		}
 		const auto& Format = GetArdaRHIFormatInfo(Destination->mFormat);
 		if (Format.mbDepth || Format.mbStencil || Format.mbInteger || Format.mBlockWidth != 1 ||
-		    !HasAnyFlags(Destination->mUsage, EArdaRHITextureUsage::RenderTarget) ||
+		    !HasAnyFlags(Destination->mUsage,
+		        EArdaRHITextureUsage::RenderTarget | EArdaRHITextureUsage::AutoDeduction) ||
 		    HasAnyFlags(Destination->mUsage, EArdaRHITextureUsage::Typeless))
 		{
 			return InvalidTexture("Color clear requires a typed noninteger color render-target texture.");

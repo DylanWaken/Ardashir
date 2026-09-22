@@ -65,6 +65,15 @@ namespace arda
 	/** Describes the layout and members of a shader parameter struct. */
 	class FArdaShaderParameterMetadata;
 
+	/** Authoritative data access declared by a shader resource parameter. */
+	enum class EArdaShaderResourceAccess : uint8_t
+	{
+		AutoDeduction,
+		Read,
+		Write,
+		ReadWrite
+	};
+
 	/** Describes one direct member of a shader parameter struct. */
 	struct FArdaShaderParameterMember
 	{
@@ -90,6 +99,20 @@ namespace arda
 		arda::EArdaRHIShaderStage mVisibility = arda::EArdaRHIShaderStage::None;
 		/** Metadata for a nested parameter struct, or null. */
 		const FArdaShaderParameterMetadata* mNestedMetadata = nullptr;
+		/** AutoDeduction means Read for SRV/CBV and Write for UAV; annotate read-modify-write UAVs explicitly. */
+		EArdaShaderResourceAccess mResourceAccess = EArdaShaderResourceAccess::AutoDeduction;
+
+		/** @return The concrete data access used by graph dependency inference. */
+		[[nodiscard]] EArdaShaderResourceAccess GetResourceAccess() const noexcept
+		{
+			if (mResourceAccess != EArdaShaderResourceAccess::AutoDeduction)
+			{
+				return mResourceAccess;
+			}
+			return mKind == EArdaShaderParameterKind::TextureUAV || mKind == EArdaShaderParameterKind::BufferUAV
+			    ? EArdaShaderResourceAccess::Write
+			    : EArdaShaderResourceAccess::Read;
+		}
 	};
 
 	/** One recursively flattened member and its offset from the root struct. */
@@ -274,7 +297,15 @@ namespace arda
 }
 
 /** Internal implementation for declaring an array shader parameter member. */
-#define ARDA_INTERNAL_SHADER_PARAMETER(Kind, BindingType, CppType, MemberName, Slot, Space, Count, Visibility)         \
+#define ARDA_INTERNAL_SHADER_PARAMETER_ACCESS(Kind,                                                                    \
+    BindingType,                                                                                                       \
+    CppType,                                                                                                           \
+    MemberName,                                                                                                        \
+    Slot,                                                                                                              \
+    Space,                                                                                                             \
+    Count,                                                                                                             \
+    Visibility,                                                                                                        \
+    Access)                                                                                                            \
 	FArdaShaderMemberId##MemberName;                                                                                   \
                                                                                                                        \
 public:                                                                                                                \
@@ -301,12 +332,20 @@ private:                                                                        
 		    sizeof(eastl::array<CppType, Count>),                                                                      \
 		    sizeof(CppType),                                                                                           \
 		    Visibility,                                                                                                \
-		    nullptr});                                                                                                 \
+		    nullptr,                                                                                                   \
+		    Access});                                                                                                  \
 	}                                                                                                                  \
 	typedef FArdaShaderNextMemberId##MemberName
 
 /** Internal implementation for declaring a scalar shader parameter member. */
-#define ARDA_INTERNAL_SHADER_PARAMETER_SCALAR(Kind, BindingType, CppType, MemberName, Slot, Space, Visibility)         \
+#define ARDA_INTERNAL_SHADER_PARAMETER_SCALAR_ACCESS(Kind,                                                             \
+    BindingType,                                                                                                       \
+    CppType,                                                                                                           \
+    MemberName,                                                                                                        \
+    Slot,                                                                                                              \
+    Space,                                                                                                             \
+    Visibility,                                                                                                        \
+    Access)                                                                                                            \
 	FArdaShaderMemberId##MemberName;                                                                                   \
                                                                                                                        \
 public:                                                                                                                \
@@ -332,9 +371,79 @@ private:                                                                        
 		    sizeof(CppType),                                                                                           \
 		    sizeof(CppType),                                                                                           \
 		    Visibility,                                                                                                \
-		    nullptr});                                                                                                 \
+		    nullptr,                                                                                                   \
+		    Access});                                                                                                  \
 	}                                                                                                                  \
 	typedef FArdaShaderNextMemberId##MemberName
+
+/** Internal array declaration using the binding kind's default access. */
+#define ARDA_INTERNAL_SHADER_PARAMETER(Kind, BindingType, CppType, MemberName, Slot, Space, Count, Visibility)         \
+	ARDA_INTERNAL_SHADER_PARAMETER_ACCESS(Kind,                                                                        \
+	    BindingType,                                                                                                   \
+	    CppType,                                                                                                       \
+	    MemberName,                                                                                                    \
+	    Slot,                                                                                                          \
+	    Space,                                                                                                         \
+	    Count,                                                                                                         \
+	    Visibility,                                                                                                    \
+	    ::arda::EArdaShaderResourceAccess::AutoDeduction)
+
+/** Internal scalar declaration using the binding kind's default access. */
+#define ARDA_INTERNAL_SHADER_PARAMETER_SCALAR(Kind, BindingType, CppType, MemberName, Slot, Space, Visibility)         \
+	ARDA_INTERNAL_SHADER_PARAMETER_SCALAR_ACCESS(Kind,                                                                 \
+	    BindingType,                                                                                                   \
+	    CppType,                                                                                                       \
+	    MemberName,                                                                                                    \
+	    Slot,                                                                                                          \
+	    Space,                                                                                                         \
+	    Visibility,                                                                                                    \
+	    ::arda::EArdaShaderResourceAccess::AutoDeduction)
+
+/** Declares a texture UAV's required shader access explicitly. */
+#define ARDA_SHADER_TEXTURE_UAV_ACCESS(MemberName, Slot, Space, Visibility, Access)                                    \
+	ARDA_INTERNAL_SHADER_PARAMETER_SCALAR_ACCESS(::arda::EArdaShaderParameterKind::TextureUAV,                         \
+	    ::arda::EArdaRHIBindingType::TextureUAV,                                                                       \
+	    ::arda::FArdaRHITextureRef,                                                                                    \
+	    MemberName,                                                                                                    \
+	    Slot,                                                                                                          \
+	    Space,                                                                                                         \
+	    Visibility,                                                                                                    \
+	    Access)
+
+/** Declares a structured-buffer UAV's required shader access explicitly. */
+#define ARDA_SHADER_BUFFER_UAV_ACCESS(MemberName, Slot, Space, Visibility, Access)                                     \
+	ARDA_INTERNAL_SHADER_PARAMETER_SCALAR_ACCESS(::arda::EArdaShaderParameterKind::BufferUAV,                          \
+	    ::arda::EArdaRHIBindingType::StructuredBufferUAV,                                                              \
+	    ::arda::FArdaRHIBufferRef,                                                                                     \
+	    MemberName,                                                                                                    \
+	    Slot,                                                                                                          \
+	    Space,                                                                                                         \
+	    Visibility,                                                                                                    \
+	    Access)
+
+/** Declares a texture UAV array's required shader access explicitly. */
+#define ARDA_SHADER_TEXTURE_UAV_ARRAY_ACCESS(MemberName, Slot, Space, Count, Visibility, Access)                       \
+	ARDA_INTERNAL_SHADER_PARAMETER_ACCESS(::arda::EArdaShaderParameterKind::TextureUAV,                                \
+	    ::arda::EArdaRHIBindingType::TextureUAV,                                                                       \
+	    ::arda::FArdaRHITextureRef,                                                                                    \
+	    MemberName,                                                                                                    \
+	    Slot,                                                                                                          \
+	    Space,                                                                                                         \
+	    Count,                                                                                                         \
+	    Visibility,                                                                                                    \
+	    Access)
+
+/** Declares a structured-buffer UAV array's required shader access explicitly. */
+#define ARDA_SHADER_BUFFER_UAV_ARRAY_ACCESS(MemberName, Slot, Space, Count, Visibility, Access)                        \
+	ARDA_INTERNAL_SHADER_PARAMETER_ACCESS(::arda::EArdaShaderParameterKind::BufferUAV,                                 \
+	    ::arda::EArdaRHIBindingType::StructuredBufferUAV,                                                              \
+	    ::arda::FArdaRHIBufferRef,                                                                                     \
+	    MemberName,                                                                                                    \
+	    Slot,                                                                                                          \
+	    Space,                                                                                                         \
+	    Count,                                                                                                         \
+	    Visibility,                                                                                                    \
+	    Access)
 
 /**
  * Begins a macro-authored shader parameter struct declaration.

@@ -45,6 +45,10 @@ namespace arda::inductor_detail
 
 	FArdaRHIStatus ValidateCompiledResult(const FArdaDependencyGraph::FArdaImpl& G, const FArdaInductorCompileResult& R)
 	{
+		if (auto Status = ValidateResourceAccesses(G); !Status)
+		{
+			return Status;
+		}
 		if (auto S = ValidateNodeOrder(G, R); !S)
 		{
 			return S;
@@ -59,6 +63,34 @@ namespace arda::inductor_detail
 		    (G.mOptions.mMaxVramBytes && R.mAllocatedBytes > G.mOptions.mMaxVramBytes))
 		{
 			return Error("The result requires an accepted allocation plan for its current node order and budget.");
+		}
+		if (R.mMemoryPlan->mRequests.size() < G.mResources.size())
+		{
+			return Error("The allocation plan omits graph resource descriptions.");
+		}
+		for (const auto& Request : R.mMemoryPlan->mRequests)
+		{
+			if (HasAnyFlags(Request.mBufferDesc.mUsage, EArdaRHIBufferUsage::AutoDeduction) ||
+			    HasAnyFlags(Request.mTextureDesc.mUsage, EArdaRHITextureUsage::AutoDeduction))
+			{
+				return Error("Allocation plans must contain concrete resource usages, never AutoDeduction.");
+			}
+			if (Request.mIdentifier < G.mResources.size())
+			{
+				const auto& Resource = G.mResources[Request.mIdentifier];
+				if (Resource.mExternalAccelerationStructure)
+				{
+					continue;
+				}
+				const bool Matches = Resource.mbTexture ? Request.mKind == EArdaMemoryKind::Texture &&
+				        (Request.mTextureDesc.mUsage & Resource.mTexture.mUsage) == Resource.mTexture.mUsage
+				                                        : Request.mKind == EArdaMemoryKind::Buffer &&
+				        (Request.mBufferDesc.mUsage & Resource.mBuffer.mUsage) == Resource.mBuffer.mUsage;
+				if (!Matches)
+				{
+					return Error("Allocation resource usages no longer satisfy the compiled graph requirements.");
+				}
+			}
 		}
 		eastl::vector<eastl::pair<FArdaGraphNodeHandle, FArdaGraphNodeHandle>> MemoryEdges;
 		const auto Find = [&](uint32_t Id)

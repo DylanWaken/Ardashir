@@ -47,6 +47,97 @@ namespace arda
 		}
 	}
 
+	FArdaGraphVertices FArdaGraphOperation::GetVertices() const
+	{
+		return mEdit && mEdit->ValidateStage({mNode, EArdaGraphStageValueKind::Vertices}) ? FArdaGraphVertices(mNode)
+		                                                                                  : FArdaGraphVertices{};
+	}
+
+	FArdaGraphFragments FArdaGraphOperation::GetFragments() const
+	{
+		return mEdit && mEdit->ValidateStage({mNode, EArdaGraphStageValueKind::Fragments}) ? FArdaGraphFragments(mNode)
+		                                                                                   : FArdaGraphFragments{};
+	}
+
+	FArdaGraphPixels FArdaGraphOperation::GetPixels() const
+	{
+		return mEdit && mEdit->ValidateStage({mNode, EArdaGraphStageValueKind::Pixels}) ? FArdaGraphPixels(mNode)
+		                                                                                : FArdaGraphPixels{};
+	}
+
+	bool FArdaGraphEdit::ValidateStage(FArdaGraphStageValue Value)
+	{
+		if (!CanRecord())
+		{
+			return false;
+		}
+		const auto* Node = mGraph.GetTopology().TryGetNode(Value.GetProducer());
+		const auto OutputKind = Node && IsArdaRHIRayTracingShaderStage(Node->mPayload.mDesc.mRayStage) &&
+		        Node->mPayload.mDesc.mRayStage != EArdaRHIShaderStage::RayGeneration
+		    ? EArdaGraphStageValueKind::RayShader
+		    : Node ? GetArdaGraphicsStageOutput(Node->mPayload.mDesc.mGraphicsStage)
+		           : EArdaGraphStageValueKind::None;
+		if (!Node || Value.GetKind() == EArdaGraphStageValueKind::None || OutputKind != Value.GetKind())
+		{
+			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			    "Stage value is empty, foreign, stale or has the wrong output kind."));
+			return false;
+		}
+		return true;
+	}
+
+	FArdaGraphControlPoints FArdaGraphOperation::GetControlPoints() const
+	{
+		return mEdit && mEdit->ValidateStage({mNode, EArdaGraphStageValueKind::ControlPoints})
+		    ? FArdaGraphControlPoints(mNode)
+		    : FArdaGraphControlPoints{};
+	}
+
+	FArdaGraphMeshPayload FArdaGraphOperation::GetMeshPayload() const
+	{
+		return mEdit && mEdit->ValidateStage({mNode, EArdaGraphStageValueKind::MeshPayload})
+		    ? FArdaGraphMeshPayload(mNode)
+		    : FArdaGraphMeshPayload{};
+	}
+
+	TArdaGraphStageValue<EArdaGraphStageValueKind::RayShader> FArdaGraphOperation::GetRayShader() const
+	{
+		using FArdaResult = TArdaGraphStageValue<EArdaGraphStageValueKind::RayShader>;
+		return mEdit && mEdit->ValidateStage({mNode, EArdaGraphStageValueKind::RayShader}) ? FArdaResult(mNode)
+		                                                                                   : FArdaResult{};
+	}
+
+	FArdaGraphBuffer FArdaGraphEdit::FetchBuffer(FArdaGraphStageValue Value, const FArdaStageBufferRequest& Request)
+	{
+		if (!ValidateStage(Value))
+		{
+			return {};
+		}
+		// Retain before invoking the adapter: recording may reallocate topology storage.
+		const auto& Node = mGraph.GetTopology().TryGetNode(Value.GetProducer())->mPayload;
+		const auto Definition = Node.mDefinition;
+		const auto Parameters = Node.mParameters;
+		if (!Definition->mFetchBuffer)
+		{
+			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+			    "This graphics stage has no registered buffer materializer. Define FetchBuffer on its node class."));
+			return {};
+		}
+		auto Buffer = Definition->mFetchBuffer(*this, Parameters.get(), Request);
+		Buffer = UseBuffer(Buffer.GetHandle());
+		if (Buffer && ValidateStage(Value))
+		{
+			mGraph.mImpl->mTopology.TryGetNode(Value.GetProducer())->mPayload.mbStageMaterialized = true;
+			return Buffer;
+		}
+		return {};
+	}
+
+	FArdaGraphBuffer FArdaGraphEdit::GetStageBuffer(FArdaGraphStageValue Value, const eastl::string& Slot)
+	{
+		return ValidateStage(Value) ? UseBuffer(mGraph.FindOutput(Value.GetProducer(), Slot)) : FArdaGraphBuffer{};
+	}
+
 	FArdaGraphEdit::~FArdaGraphEdit()
 	{
 		if (IsOpen())

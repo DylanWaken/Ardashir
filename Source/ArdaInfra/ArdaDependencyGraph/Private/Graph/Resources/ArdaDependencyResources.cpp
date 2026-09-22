@@ -1,6 +1,7 @@
 #include "Graph/Resources/ArdaDependencyResourceContext.h"
 #include "Graph/Node/ArdaDependencyGraphImpl.h"
 #include "Graph/Node/ArdaDependencyGraphStatus.h"
+#include "Graph/Resources/ArdaGraphResourceValidation.h"
 #include <EASTL/algorithm.h>
 
 namespace arda
@@ -28,6 +29,15 @@ namespace arda
 		if (D.mExternalTexture && !D.mbTexture)
 		{
 			return {{}, GraphInvalid("External texture kind mismatch.")};
+		}
+		// Only the resource's active descriptor participates in usage deduction.
+		if (D.mbTexture || D.mExternalAccelerationStructure)
+		{
+			D.mBuffer.mUsage = EArdaRHIBufferUsage::None;
+		}
+		if (!D.mbTexture || D.mExternalAccelerationStructure)
+		{
+			D.mTexture.mUsage = EArdaRHITextureUsage::None;
 		}
 		if (D.mExternalBuffer)
 		{
@@ -63,10 +73,7 @@ namespace arda
 				        "External storage is already imported. Reuse its logical handle so resource hazards cannot be hidden by another name.")};
 			}
 		}
-		if (auto S = D.mExternalAccelerationStructure ? FArdaRHIStatus{}
-		        : D.mbTexture                         ? Validate(D.mTexture)
-		                                              : Validate(D.mBuffer);
-		    !S)
+		if (auto S = ValidateArdaGraphResourceDescription(D); !S)
 		{
 			return {{}, S};
 		}
@@ -212,10 +219,13 @@ namespace arda
 		{
 			return GraphInvalid("Node output names must be nonempty and unique.");
 		}
-		if (auto S = D.mbTexture ? Validate(D.mTexture) : Validate(D.mBuffer); !S)
+		if (auto S = ValidateArdaGraphResourceDescription(D); !S)
 		{
 			return S;
 		}
+		const auto BufferUsage = D.mbTexture ? EArdaRHIBufferUsage::None : ArdaExplicitResourceUsage(D.mBuffer.mUsage);
+		const auto TextureUsage =
+		    D.mbTexture ? ArdaExplicitResourceUsage(D.mTexture.mUsage) : EArdaRHITextureUsage::None;
 		if (!Output)
 		{
 			for (const auto& O : mExisting)
@@ -240,7 +250,9 @@ namespace arda
 				const auto& B = D.mTexture;
 				if (A.mDimension != B.mDimension || A.mWidth != B.mWidth || A.mHeight != B.mHeight ||
 				    A.mDepth != B.mDepth || A.mArraySize != B.mArraySize || A.mMipLevels != B.mMipLevels ||
-				    A.mFormat != B.mFormat || A.mSampleCount != B.mSampleCount || (A.mUsage & B.mUsage) != B.mUsage ||
+				    A.mFormat != B.mFormat || A.mSampleCount != B.mSampleCount ||
+				    (!HasAnyFlags(A.mUsage, EArdaRHITextureUsage::AutoDeduction) &&
+				        (A.mUsage & TextureUsage) != TextureUsage) ||
 				    (B.mbCudaInterop && !A.mbCudaInterop))
 				{
 					return GraphInvalid("Supplied texture does not satisfy node output requirements.");
@@ -252,7 +264,9 @@ namespace arda
 				const auto& B = D.mBuffer;
 				if (A.mByteSize < B.mByteSize || (B.mStructureStride && A.mStructureStride != B.mStructureStride) ||
 				    (B.mFormat != EArdaRHIFormat::Unknown && A.mFormat != B.mFormat) ||
-				    (A.mUsage & B.mUsage) != B.mUsage || (B.mbCudaInterop && !A.mbCudaInterop))
+				    (!HasAnyFlags(A.mUsage, EArdaRHIBufferUsage::AutoDeduction) &&
+				        (A.mUsage & BufferUsage) != BufferUsage) ||
+				    (B.mbCudaInterop && !A.mbCudaInterop))
 				{
 					return GraphInvalid("Supplied buffer does not satisfy node output requirements.");
 				}
@@ -269,7 +283,7 @@ namespace arda
 			}
 			Output = Created.mValue;
 		}
-		mOutputs.push_back({eastl::move(Name), Output});
+		mOutputs.push_back({eastl::move(Name), Output, BufferUsage, TextureUsage});
 		return {};
 	}
 }

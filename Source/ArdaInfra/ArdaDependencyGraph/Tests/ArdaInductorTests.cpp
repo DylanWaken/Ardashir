@@ -1424,6 +1424,7 @@ namespace arda::inductor_tests
 		const uint32_t PhysicalIdentity = 1;
 		FArdaRHIBufferDesc Desc;
 		Desc.mByteSize = 256;
+		Desc.mUsage = EArdaRHIBufferUsage::None;
 		using FArdaBuffer =
 		    TArdaInductorExternalResource<IArdaRHIBuffer, FArdaRHIBufferDesc, EArdaRHIResourceType::Buffer>;
 		const FArdaRHIBufferRef First(new FArdaBuffer(Desc, &PhysicalIdentity));

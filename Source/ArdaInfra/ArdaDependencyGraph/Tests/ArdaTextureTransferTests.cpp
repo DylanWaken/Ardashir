@@ -174,6 +174,10 @@ namespace arda::texturetransfer_tests
 				TextureDesc.mDimension = EArdaRHITextureDimension::Texture3D;
 				TextureDesc.mWidth = TextureDesc.mHeight = TextureDesc.mDepth = 4;
 				TextureDesc.mFormat = EArdaRHIFormat::R32UInt;
+				if (Imported)
+				{
+					TextureDesc.mUsage = EArdaRHITextureUsage::ShaderResource;
+				}
 				const auto Texture = Imported
 				    ? BindTexture(Edit, FArdaRHITextureRef(new FArdaImportedTransferTexture(TextureDesc)), "texture")
 				    : AllocateTexture(Edit, TextureDesc, "texture");

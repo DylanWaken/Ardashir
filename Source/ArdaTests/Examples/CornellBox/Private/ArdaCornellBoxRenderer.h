@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ArdaBackend.h"
+#include "ArdaMath.h"
 #include "RHI/Scheduling/ArdaSwapChain.h"
 #include "ArdaDependencyGraph.h"
 #include "Nodes/ArdaCornellBoxNodes.h"
@@ -76,7 +77,7 @@ namespace arda
 		arda::FArdaRHITextureRef mAccumulationTexture;
 
 		FArdaCornellBoxSettings mSettings;
-		float mCameraPosition[3] = {0.0f, -2.65f, 1.0f};
+		FArdaVector3f mCameraPosition = {0.0f, -2.65f, 1.0f};
 		float mCameraYaw = 1.57079632679f;
 		float mCameraPitch = 0.0f;
 		uint32_t mAccumulatedSamples = 0;

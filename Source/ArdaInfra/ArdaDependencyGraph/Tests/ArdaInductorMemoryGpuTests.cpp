@@ -306,6 +306,7 @@ namespace arda::inductor_memory_gpu_tests
 		ASSERT_TRUE(Edit.SetOptions(Options));
 		FArdaRHIBufferDesc RetainedDesc;
 		RetainedDesc.mByteSize = 4096;
+		RetainedDesc.mUsage = EArdaRHIBufferUsage::None;
 		const auto Retained = mDevice->CreateBuffer(RetainedDesc);
 		ASSERT_TRUE(Retained);
 		ASSERT_TRUE(BindBuffer(Edit, Retained.mValue, "retained-with-no-users"));
@@ -348,6 +349,7 @@ namespace arda::inductor_memory_gpu_tests
 				Desc.mWidth = Desc.mHeight = 32;
 				Desc.mFormat = EArdaRHIFormat::RGBA8UNorm;
 				Desc.mInitialState = EArdaRHIResourceState::Common;
+				Desc.mUsage = EArdaRHITextureUsage::ShaderResource;
 				auto Created = mDevice->CreateTexture(Desc);
 				ASSERT_TRUE(Created);
 				Texture = eastl::move(Created.mValue);
@@ -477,6 +479,7 @@ namespace arda::inductor_memory_gpu_tests
 		Requests[1].mIdentifier = 1;
 		Requests[1].mKind = EArdaMemoryKind::Texture;
 		Requests[1].mTextureDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+		Requests[1].mTextureDesc.mUsage = EArdaRHITextureUsage::ShaderResource;
 		ASSERT_TRUE(DescribeArdaMemory(*mDevice, Requests));
 		const auto Planned = PlanArdaMemory(Requests);
 		ASSERT_TRUE(Planned);

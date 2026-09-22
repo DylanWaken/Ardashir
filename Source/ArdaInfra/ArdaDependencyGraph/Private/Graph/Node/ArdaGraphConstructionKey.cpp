@@ -126,6 +126,7 @@ namespace arda
 			Key.Value(Handle.GetIndex())
 			    .String(Node.mName)
 			    .String(Node.mConstructionKey)
+			    .Value(Node.mbStageMaterialized)
 			    .Value(reinterpret_cast<uintptr_t>(Node.mDefinition.get()))
 			    .String(Node.mDefinition->mName)
 			    .Value(Node.mDefinition->mVersion)
@@ -133,7 +134,10 @@ namespace arda
 			Key.Value(static_cast<uint64_t>(Node.mOutputs.size()));
 			for (const auto& Output : Node.mOutputs)
 			{
-				Key.String(Output.mName).Value(Output.mResource.mIndex);
+				Key.String(Output.mName)
+				    .Value(Output.mResource.mIndex)
+				    .Value(Output.mRequiredBufferUsage)
+				    .Value(Output.mRequiredTextureUsage);
 			}
 			const auto& Desc = Node.mDesc;
 			Key.Value(Desc.mEstimatedCost)
@@ -141,6 +145,7 @@ namespace arda
 			    .Value(Desc.mTransientWorkspaceBytes)
 			    .Value(Desc.mbSideEffect)
 			    .Value(Desc.mbPipelineStageOnly)
+			    .Value(Desc.mbDeclarativeParameters)
 			    .Value(static_cast<uint64_t>(Desc.mAccesses.size()));
 			for (const auto& Access : Desc.mAccesses)
 			{

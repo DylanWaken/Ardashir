@@ -39,9 +39,66 @@ The node class also supplies GetMetadata, GetCanonicalKey and its domain executi
 Its key must cover every behavior-affecting parameter, including shader contents, layout semantics, resource versions, and dispatch dimensions.
 Returning a PSO request alone does not declare resource accesses. Shader argument schemas and bindless entries derive their own accesses; copy, attachment and opaque-library work still declare `mAccesses`. See [class-authored recipes](node-recipes.html).
 
-## Ancestry, intermediate nodes, and ambiguity
+## Graphics stage values
 
-Inference searches the requesting node and its dependencies, including explicit `Edit.Order(Producer, Consumer)` constraints between operations.
+Standalone graphics nodes use `TArdaNodeDefinition<Node, Parameters, Type>` with
+`EArdaNodeType::Vertex`, `Raster` or `Pixel` (the stage-specific aliases remain
+available). Their named calls
+return `FArdaGraphVertices`, `FArdaGraphFragments` and `FArdaGraphPixels` respectively.
+These graph-owned values describe shader dataflow; they are not memory allocations.
+
+```cpp
+const auto Vertices = TriangleVS(Edit, VertexBuffer, IndexBuffer);
+const auto Fragments = TriangleRasterize(Edit, Vertices, Width, Height);
+TrianglePS(Edit, Fragments, ColorTarget);
+```
+
+The input parameter is named `mInput`, or the node overrides `GetStageInput`.
+The graph records its producer edge automatically. `Edit.Order` is not used to
+select or connect these stages. A preprocessing rule validates the chain before
+ordinary resource dependency resolution and creates a graphics terminal for each
+pixel operation. Rasterization accepts vertex results, pixel shading accepts
+fragments, and incompatible, missing, stale or foreign graph values are rejected.
+The compiler also validates erased stage declarations, so bypassing C++ type
+checking does not permit rasterizing the output of another raster operation.
+
+Before culling, preprocessing checks every declared graphics stage for a path to
+a pixel terminal. A standalone vertex operation, an unfinished raster branch or
+any other orphan stage fails compilation even when its output is unused. A
+successful explicit `FetchBuffer` materialization also completes its producer
+and that producer's upstream stage chain. This is the supported way to capture
+intermediate results without adding a pixel terminal; failed or unavailable
+materializers do not satisfy completeness. Stage order, input kinds and ownership
+remain validated for captured chains. Complete unused draws can subsequently be
+culled through the ordinary physical-output liveness rules.
+
+Each stage declares its own accesses, shader arguments and bindings. Compilation
+collects them onto the assembled draw. A vertex node contributes its vertex shader
+and optional `mGraphicsInputLayout`; a raster node contributes fixed state through
+`mPipelineStages` with a configuration and no shader; a pixel node contributes its
+pixel shader and framebuffer targets. Stage nodes do not request a pipeline slot
+or issue a draw themselves. Their optional `ConfigureGraphics` hooks fill shared
+`FArdaGraphicsWork` state and draw arguments, then the executor submits one draw.
+
+If one vertex value feeds two raster operations, there are two assembled draws.
+The vertex stage executes in both pipelines. Shader objects and compatible PSOs
+can still be cached and shared; the graph does not silently cache vertex results
+in a buffer. The [compiled raster recipe](Examples/AssembleNodes.cpp) exercises
+this fan-out using two render targets.
+
+## Pipeline requests, ancestry, and ambiguity
+
+Ray pipelines use the same definition template with `RayMiss`, `RayClosestHit`,
+`RayAnyHit`, `RayIntersection` and `RayCallable` providers returning
+`FArdaGraphRayShader`. A `RayGeneration` terminal selects those values in its
+`mShaders` parameter list. Preprocessing validates the providers and collects
+their contributions, resource accesses and bindings onto that terminal. It
+supplies the default ray-tracing pipeline request when omitted. The terminal
+retains its authored `Record` callback for `SetRayTracingState` and `DispatchRays`.
+Provider values can be shared by multiple terminals; unrelated resource ancestry
+does not add ray shaders to these assembled pipelines. See [ray stage registration](Registering-Nodes.md#compose-ray-tracing-stages).
+
+For complete-operation compute, mesh, ray and work-graph requests, inference searches the requesting node and its dependencies. Typed graphics and ray stage assembly supplies the selected stages directly from their logical values.
 Each branch stops before an upstream consumer that requests the same pipeline family: that consumer owns a completed pipeline, so its stages/settings belong to its own draw or dispatch.
 Thus consecutive compute consumers using different shaders get independent PSOs without manual group tags; the terminal's own stages and unfinished stage ancestry remain eligible.
 Consumers of other pipeline families remain traversable. A shared stage provider can feed several consumers through independent dependency edges that bypass any completed same-family consumer.
@@ -50,10 +107,12 @@ Intermediate nodes may have no shader contributions; a vertex stage can reach a 
 Attachment order and node numbering do not choose the winning shader.
 Missing dependency IDs and cycles are checked throughout the terminal's ancestry, including beyond pipeline boundaries; stage compatibility and shader identities are checked only inside its bounded inference region.
 
-For a node that only contributes stages, set `mbPipelineStageOnly = true` and connect it to its consumers.
-Use a synchronization-domain class, which may omit Record and records no separate GPU commands; its live descendants use the inferred PSO.
-Stage-only descriptions must leave resource accesses, shader binding/table declarations and framebuffer targets empty; put resource work in executable nodes.
-An unconsumed declaration has no reason to keep an otherwise dead branch alive.
+Use the graphics stage templates for graphics dataflow. The older
+`mbPipelineStageOnly` flag describes a declaration-only provider with no physical
+resource work; it is not the authoring contract for standalone VS/raster/PS
+operations. The completeness requirement above applies to typed graphics stage
+operations; the declaration-only flag does not turn an orphan typed stage into a
+valid pipeline.
 
 The grouping rules are explicit:
 
@@ -86,7 +145,7 @@ Ray-generation, miss, and callable contributions set `mExportName`.
 Closest-hit, any-hit, and intersection contributions set a common `mHitGroupName` to assemble one group; an intersection shader makes it procedural.
 Use `mLocalBindingLayout` for a ray export or hit group, and `mBindingLayouts` for global layouts.
 Conflicting local layouts or shader exports fail; general export names and hit-group names must be distinct.
-Null shaders and empty configured hit groups are rejected.
+Null shaders without a settings contribution and empty configured hit groups are rejected.
 
 Work-graph program settings can be provided by the consumer:
 

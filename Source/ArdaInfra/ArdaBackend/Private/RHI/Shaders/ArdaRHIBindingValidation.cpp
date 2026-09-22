@@ -33,8 +33,7 @@ namespace arda::detail
 		const FArdaRHIViewDesc* RetainedView = nullptr;
 		if (const auto* View = Cast<FArdaShaderResourceView>(Resource))
 		{
-			if (Item.mType != EArdaRHIBindingType::TextureSRV &&
-			    Item.mType != EArdaRHIBindingType::TypedBufferSRV &&
+			if (Item.mType != EArdaRHIBindingType::TextureSRV && Item.mType != EArdaRHIBindingType::TypedBufferSRV &&
 			    Item.mType != EArdaRHIBindingType::StructuredBufferSRV &&
 			    Item.mType != EArdaRHIBindingType::RawBufferSRV)
 			{
@@ -45,8 +44,7 @@ namespace arda::detail
 		}
 		else if (const auto* View = Cast<FArdaUnorderedAccessView>(Resource))
 		{
-			if (Item.mType != EArdaRHIBindingType::TextureUAV &&
-			    Item.mType != EArdaRHIBindingType::TypedBufferUAV &&
+			if (Item.mType != EArdaRHIBindingType::TextureUAV && Item.mType != EArdaRHIBindingType::TypedBufferUAV &&
 			    Item.mType != EArdaRHIBindingType::StructuredBufferUAV &&
 			    Item.mType != EArdaRHIBindingType::RawBufferUAV)
 			{
@@ -114,9 +112,8 @@ namespace arda::detail
 			const bool bStorage = Item.mType == EArdaRHIBindingType::StructuredBufferSRV ||
 			    Item.mType == EArdaRHIBindingType::StructuredBufferUAV ||
 			    Item.mType == EArdaRHIBindingType::RawBufferSRV || Item.mType == EArdaRHIBindingType::RawBufferUAV;
-			const uint64_t Size = Range.mByteSize == ArdaRHIWholeBuffer
-			    ? Buffer->mDesc.mByteSize - Range.mByteOffset
-			    : Range.mByteSize;
+			const uint64_t Size =
+			    Range.mByteSize == ArdaRHIWholeBuffer ? Buffer->mDesc.mByteSize - Range.mByteOffset : Range.mByteSize;
 			const uint64_t Limit = bUniform ? Limits.mMaxUniformBufferRange
 			    : bStorage                  ? Limits.mMaxStorageBufferRange
 			                                : 0;
@@ -130,6 +127,14 @@ namespace arda::detail
 		}
 		else if (const auto* Texture = Cast<FArdaTexture>(Resource))
 		{
+			const auto RequiredUsage = Item.mType == EArdaRHIBindingType::TextureUAV
+			    ? EArdaRHITextureUsage::UnorderedAccess
+			    : EArdaRHITextureUsage::ShaderResource;
+			if (!HasAnyFlags(Texture->mDesc.mUsage, RequiredUsage))
+			{
+				return Invalid(
+				    "Texture binding requires its matching declared shader-resource or unordered-access usage.");
+			}
 			const auto& Range = Item.mView.mTextureRange;
 			const auto Fits = [](uint32_t Base, uint32_t Count, uint32_t Limit)
 			{

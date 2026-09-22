@@ -6,6 +6,21 @@ namespace arda
 {
 	namespace
 	{
+		void RequireShaderStorage(FArdaRHIFeatureRequirements& R,
+		    EArdaRHIBindingType Type,
+		    EArdaRHIShaderStage Visibility)
+		{
+			if (Type != EArdaRHIBindingType::TextureUAV && Type != EArdaRHIBindingType::TypedBufferUAV &&
+			    Type != EArdaRHIBindingType::StructuredBufferUAV && Type != EArdaRHIBindingType::RawBufferUAV)
+			{
+				return;
+			}
+			R.mbRequireVertexShaderStoresAndAtomics |= HasAnyFlags(Visibility,
+			    EArdaRHIShaderStage::Vertex | EArdaRHIShaderStage::Hull | EArdaRHIShaderStage::Domain |
+			        EArdaRHIShaderStage::Geometry);
+			R.mbRequireFragmentShaderStoresAndAtomics |= HasAnyFlags(Visibility, EArdaRHIShaderStage::Pixel);
+		}
+
 		void RequirePipeline(FArdaRHIFeatureRequirements& R, EArdaPipelineStateKind Kind)
 		{
 			R.mbRequireGraphicsQueue |=
@@ -40,6 +55,7 @@ namespace arda
 			R.mbRequireDescriptorBuffer |= B.mbDescriptorBuffer;
 			for (const auto& Bank : B.mRegisterSpaces)
 			{
+				RequireShaderStorage(R, Bank.mType, B.mVisibility);
 				const bool Sampler = Bank.mType == EArdaRHIBindingType::Sampler;
 				R.mbRequireDirectSamplerHeapIndexing |= B.mbDirectHeapIndexing && Sampler;
 				R.mbRequireDirectDescriptorIndexing |= B.mbDirectHeapIndexing && !Sampler;
@@ -60,6 +76,7 @@ namespace arda
 			}
 			for (const auto& I : Layout->GetDesc().mItems)
 			{
+				RequireShaderStorage(R, I.mType, Layout->GetDesc().mVisibility);
 				R.mbRequireAccelerationStructures |= I.mType == EArdaRHIBindingType::RayTracingAccelStruct;
 			}
 		}
@@ -181,6 +198,17 @@ namespace arda
 		}
 		for (const auto& B : D.mShaderBindings)
 		{
+			// Typed graphics stages defer physical binding assembly until preprocessing. Their
+			// metadata still exposes exact stage visibility for admission before that lowering.
+			if (B.mMetadata)
+			{
+				eastl::vector<FArdaFlattenedShaderParameterMember> Members;
+				B.mMetadata->GetFlattenedMembers(Members);
+				for (const auto& Member : Members)
+				{
+					RequireShaderStorage(R, Member.mMember->mBindingType, Member.mMember->mVisibility);
+				}
+			}
 			for (const auto& A : B.mResources)
 			{
 				Resource(A.mResource);

@@ -14,16 +14,21 @@ changing renderer code.
 ## Modules
 
 GPU infrastructure lives under [Source/ArdaInfra](Source/ArdaInfra), grouping the
-backend, native provider implementations, generic graph, and render graph. Each
+CPU math library, backend, native provider implementations, generic graph, and render graph. Each
 module remains a separate CMake library with its existing public include names.
 The source tree has three top-level groups:
 
 ```text
 Source/
-  ArdaInfra/   Backend, native providers, graph storage and render graph
+  ArdaInfra/   CPU math, backend, native providers, graph storage and render graph
   ArdaTests/   Example applications and shared TestSupport
   ArdaTrace/   CPU tracing runtime and its tests
 ```
+
+- **[ArdaMath](Source/ArdaInfra/ArdaMath/README.md)** — Standard Eigen CPU vectors,
+  matrices, transforms, and camera/projection helpers. Graphics matrices use
+  row-major storage, column-vector algebra, and reversed device depth by default.
+  Explicit packing helpers produce shader constant-buffer layouts.
 
 - **[ArdaBackend](Source/ArdaInfra/ArdaBackend)** — The graphics backend and RHI layer for
   devices, resources, shaders, pipelines, commands, and presentation. See the
@@ -124,6 +129,8 @@ toolkit and architecture selection.
 
 ## Dependencies
 
+- [Eigen](https://gitlab.com/libeigen/eigen/-/tags/5.0.1) 5.0.1 for CPU linear algebra,
+  pinned in `ThirdParty/Eigen` and exposed through `Eigen3::Eigen` and ArdaMath
 - [GoogleTest](https://github.com/google/googletest) for module tests
 - [GLFW](https://github.com/glfw/glfw) for cross-platform windows and surfaces
 - [Vulkan-Headers](https://github.com/KhronosGroup/Vulkan-Headers) 1.4.357
@@ -135,6 +142,13 @@ The root build downloads pinned GLFW, DirectX Shader Compiler, Vulkan-Headers,
 and Direct3D 12 Agility releases. DXC compiles shaders to DXIL and SPIR-V. The
 Vulkan backend dynamically loads the platform Vulkan loader, so a separately
 installed Vulkan SDK is not required.
+
+Eigen is a checked-in submodule reference, initialized by the same
+`git submodule update --init --recursive` command as the other third-party
+libraries. Its upstream license notices are retained in
+[ThirdParty/Eigen/COPYING.README](ThirdParty/Eigen/COPYING.README).
+Use the [ArdaMath types and conventions](Source/ArdaInfra/ArdaMath/README.md)
+for new CPU graphics math instead of defining application-specific matrix types.
 
 To detect and download missing graphics SDK/validation components before a build,
 run the root-level setup script with Python 3.10+:

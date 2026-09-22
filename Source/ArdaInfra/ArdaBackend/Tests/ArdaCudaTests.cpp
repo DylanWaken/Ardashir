@@ -1089,6 +1089,159 @@ namespace arda::cuda_tests
 	ARDA_DECLARE_GRAPH_NODE(FArdaPersistentAddNode, PersistentCudaAdd);
 	ARDA_DEFINE_GRAPH_NODE(FArdaPersistentAddNode, PersistentCudaAdd);
 
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaSchemaCudaAddParameters)
+		ARDA_NODE_CUDA_BUFFER(mSource, FArdaAddParameters, mInput)
+		ARDA_NODE_CUDA_BUFFER(mDestination, FArdaAddParameters, mOutput)
+		ARDA_NODE_PARAMETER(uint32_t, mCount)
+		ARDA_NODE_PARAMETER(uint32_t, mBias)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	/** Dependencies and host resource resolution share the operand member mappings above. */
+	class FArdaSchemaCudaAddNode final
+	    : public TArdaNodeDefinition<FArdaSchemaCudaAddNode, FArdaSchemaCudaAddParameters, EArdaNodeType::Cuda>
+	{
+	public:
+		struct FArdaState
+		{
+			eastl::shared_ptr<FArdaAddOperand> mOperand;
+		};
+
+		static FArdaDependencyNodeMetadata GetMetadata()
+		{
+			return {"test.cuda.schema-add", 1};
+		}
+
+		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device)
+		{
+			auto State = eastl::make_shared<FArdaState>();
+			State->mOperand = eastl::make_shared<FArdaAddOperand>(eastl::move(Device));
+			if (auto Status = State->mOperand->GetOperandSupport(); !Status)
+			{
+				return {{}, Status};
+			}
+			return {eastl::move(State), {}};
+		}
+
+		static FArdaRHIStatus PrepareCuda(FArdaDependencyExecutionContext& Context,
+		    const FArdaParameters& Parameters,
+		    const FArdaState& State,
+		    FArdaInstanceState&,
+		    FArdaCudaSequence& Sequence)
+		{
+			FArdaAddParameters Host;
+			Host.mCount = Parameters.mCount;
+			Host.mBias = Parameters.mBias;
+			if (auto Status = ResolveNodeCudaParameters(Context, Parameters, Host); !Status)
+			{
+				return Status;
+			}
+			return Sequence.Add(*State.mOperand, Host);
+		}
+	};
+
+	ARDA_DECLARE_GRAPH_NODE(FArdaSchemaCudaAddNode, SchemaCudaAdd);
+	ARDA_DEFINE_GRAPH_NODE(FArdaSchemaCudaAddNode, SchemaCudaAdd);
+
+	TEST_P(FArdaCudaGpu, NodeParameterMappingsDeriveDependenciesAndResolveOperandResources)
+	{
+		ASSERT_TRUE(FArdaSchemaCudaAddNode::Register());
+		FArdaScopedPersistentCudaRegistration Registration{FArdaSchemaCudaAddNode::GetMetadata().mName};
+		FArdaDependencyGraph Graph(mDevice);
+		FArdaGraphEdit Edit(Graph);
+		auto Desc = BufferDesc(512);
+		Desc.mUsage = EArdaRHIBufferUsage::AutoDeduction;
+		const auto Input = AllocateBuffer(Edit, Desc, "schema input");
+		const auto Middle = AllocateBuffer(Edit, Desc, "schema middle");
+		const auto Output = AllocateBuffer(Edit, Desc, "schema output");
+		ASSERT_TRUE(Input);
+		ASSERT_TRUE(Middle);
+		ASSERT_TRUE(Output);
+		ASSERT_TRUE(UploadNode(Edit, CudaGraphUpload(Input.GetHandle(), 128), "schema upload"));
+		ASSERT_TRUE(SchemaCudaAdd(Edit, Input, Middle, 128u, 7u));
+		ASSERT_TRUE(SchemaCudaAdd(Edit, FArdaSchemaCudaAddParameters{Middle, Output, 128u, 11u}));
+		auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
+		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output.GetHandle(), Bytes}, "schema readback"));
+		ASSERT_TRUE(Edit.Commit());
+		const auto Compiled = Graph.Compile();
+		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
+		const auto Executed = Graph.Execute();
+		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
+		ExpectWords(*Bytes, 128, 18);
+	}
+
+	/** Deliberately disagree with the operand schema to exercise the runtime contract boundary. */
+	template <bool bNarrowRange>
+	struct TArdaMismatchedCudaNode : TArdaCudaOperandNode<TArdaMismatchedCudaNode<bNarrowRange>, FArdaAddOperand>
+	{
+		using FArdaBase = TArdaCudaOperandNode<TArdaMismatchedCudaNode<bNarrowRange>, FArdaAddOperand>;
+		using FArdaParameters = typename FArdaBase::FArdaParameters;
+		using FArdaState = typename FArdaBase::FArdaState;
+
+		static FArdaDependencyNodeMetadata GetMetadata()
+		{
+			return {bNarrowRange ? "test.cuda.contract-range" : "test.cuda.contract-write", 1};
+		}
+
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)
+		{
+			auto Desc = FArdaBase::Describe(Parameters, State);
+			Desc.mbSideEffect = true;
+			if constexpr (bNarrowRange)
+			{
+				Desc.mAccesses.back().mBufferRange = {0, 256};
+			}
+			else
+			{
+				Desc.mAccesses.back().mAccess = EArdaDependencyAccess::Read;
+			}
+			return Desc;
+		}
+	};
+
+	ARDA_DECLARE_GRAPH_NODE(TArdaMismatchedCudaNode<false>, MismatchedCudaWrite);
+	ARDA_DEFINE_GRAPH_NODE(TArdaMismatchedCudaNode<false>, MismatchedCudaWrite);
+	ARDA_DECLARE_GRAPH_NODE(TArdaMismatchedCudaNode<true>, MismatchedCudaRange);
+	ARDA_DEFINE_GRAPH_NODE(TArdaMismatchedCudaNode<true>, MismatchedCudaRange);
+
+	TEST_P(FArdaCudaGpu, GraphRejectsActualOperandAccessAndRangeMismatchBeforeSubmission)
+	{
+		const auto Operand = eastl::make_shared<FArdaAddOperand>(mDevice);
+		const auto NativeInput = mDevice->CreateBuffer(BufferDesc(512));
+		const auto NativeOutput = mDevice->CreateBuffer(BufferDesc(512));
+		ASSERT_TRUE(NativeInput);
+		ASSERT_TRUE(NativeOutput);
+		for (const bool bNarrowRange : {false, true})
+		{
+			FArdaDependencyGraph Graph(mDevice);
+			FArdaGraphEdit Edit(Graph);
+			const auto Input = BindBuffer(Edit, NativeInput.mValue, "CUDA contract input");
+			const auto Output = BindBuffer(Edit, NativeOutput.mValue, "CUDA contract output");
+			ASSERT_TRUE(Input);
+			ASSERT_TRUE(Output);
+			TArdaDependencyCudaParameters<FArdaAddParameters> Parameters;
+			Parameters.mInput.mResource = Input;
+			Parameters.mOutput.mResource = Output;
+			Parameters.mCount = 128;
+			Parameters.mBias = 7;
+			if (bNarrowRange)
+			{
+				ASSERT_TRUE(MismatchedCudaRange(Edit, Operand, Parameters));
+			}
+			else
+			{
+				ASSERT_TRUE(MismatchedCudaWrite(Edit, Operand, Parameters));
+			}
+			ASSERT_TRUE(Edit.Commit());
+			const auto Compiled = Graph.Compile();
+			ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
+			const auto Executed = Graph.Execute();
+			EXPECT_FALSE(Executed.mStatus);
+			EXPECT_EQ(Executed.mSubmittedCommandListCount, 0u);
+			EXPECT_NE(Executed.mStatus.mMessage.find("writes outside"), eastl::string::npos)
+			    << Executed.mStatus.mMessage.c_str();
+		}
+	}
+
 	TEST_P(FArdaCudaGpu, PersistentGraphDerivesCudaDependenciesBeforeExecution)
 	{
 		ASSERT_TRUE(RegisterArdaBuiltinNodes());

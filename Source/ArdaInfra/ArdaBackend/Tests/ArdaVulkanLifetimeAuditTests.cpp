@@ -288,6 +288,7 @@ namespace arda
 				GTEST_SKIP() << "Vulkan sparse buffers are unavailable.";
 			}
 			FArdaRHIBufferDesc Desc;
+			Desc.mUsage = EArdaRHIBufferUsage::None;
 			Desc.mByteSize = 65536;
 			Desc.mbTiled = true;
 			auto Buffer = mDevice->CreateBuffer(Desc);
@@ -319,6 +320,7 @@ namespace arda
 				GTEST_SKIP() << "Vulkan sparse buffers are unavailable.";
 			}
 			FArdaRHIBufferDesc Desc;
+			Desc.mUsage = EArdaRHIBufferUsage::None;
 			Desc.mByteSize = 65536;
 			Desc.mbTiled = true;
 			auto Buffer = mDevice->CreateBuffer(Desc);
@@ -358,6 +360,7 @@ namespace arda
 				GTEST_SKIP() << "Vulkan sparse buffers are unavailable.";
 			}
 			FArdaRHIBufferDesc Desc;
+			Desc.mUsage = EArdaRHIBufferUsage::None;
 			Desc.mByteSize = 1024 * 1024;
 			Desc.mbTiled = true;
 			auto Buffer = mDevice->CreateBuffer(Desc);
@@ -410,6 +413,7 @@ namespace arda
 				GTEST_SKIP() << "Vulkan sparse buffers are unavailable.";
 			}
 			FArdaRHIBufferDesc Desc;
+			Desc.mUsage = EArdaRHIBufferUsage::None;
 			Desc.mByteSize = 1024 * 1024;
 			Desc.mbTiled = true;
 			auto Buffer = mDevice->CreateBuffer(Desc);
@@ -454,6 +458,7 @@ namespace arda
 				GTEST_SKIP() << "Vulkan sparse buffers are unavailable.";
 			}
 			FArdaRHIBufferDesc Desc;
+			Desc.mUsage = EArdaRHIBufferUsage::None;
 			Desc.mByteSize = 1024 * 1024;
 			Desc.mbTiled = true;
 			auto Buffer = mDevice->CreateBuffer(Desc);

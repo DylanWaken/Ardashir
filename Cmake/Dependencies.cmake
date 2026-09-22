@@ -70,6 +70,45 @@ if(NOT EXISTS "${ARDASHIR_DXC_EXECUTABLE}")
         "The downloaded DXC archive does not contain ${_ardashir_dxc_relative_path}.")
 endif()
 
+# Eigen is the project-wide CPU linear algebra library. The submodule pins
+# Eigen 5.0.1 (bc3b39870ecb690a623a3f49149a358b95c5781d); ArdaMath provides
+# the shared graphics matrix types and conventions on top of Eigen3::Eigen.
+set(_ardashir_eigen_dir "${PROJECT_SOURCE_DIR}/ThirdParty/Eigen")
+if(NOT EXISTS "${_ardashir_eigen_dir}/Eigen/Core")
+    message(FATAL_ERROR
+        "Eigen is missing. Run: git submodule update --init --recursive")
+endif()
+set(EIGEN_BUILD_TESTING OFF CACHE BOOL "Disable Eigen tests" FORCE)
+set(EIGEN_BUILD_DOC OFF CACHE BOOL "Disable Eigen documentation" FORCE)
+set(EIGEN_BUILD_DEMOS OFF CACHE BOOL "Disable Eigen demos" FORCE)
+set(EIGEN_BUILD_BLAS OFF CACHE BOOL "Disable Eigen BLAS library" FORCE)
+set(EIGEN_BUILD_LAPACK OFF CACHE BOOL "Disable Eigen LAPACK library" FORCE)
+set(EIGEN_BUILD_BTL OFF CACHE BOOL "Disable Eigen benchmarks" FORCE)
+set(EIGEN_BUILD_SPBENCH OFF CACHE BOOL "Disable Eigen sparse benchmarks" FORCE)
+set(EIGEN_BUILD_PKGCONFIG OFF CACHE BOOL "Disable Eigen pkg-config generation" FORCE)
+set(EIGEN_BUILD_CMAKE_PACKAGE OFF CACHE BOOL "Disable Eigen package generation" FORCE)
+# Eigen's unconditional cmake_dependent_option(BUILD_TESTING) hides an existing
+# parent CTest option. Restore its original cache metadata and value afterwards.
+get_property(_ardashir_has_build_testing CACHE BUILD_TESTING PROPERTY TYPE SET)
+if(_ardashir_has_build_testing)
+    get_property(_ardashir_build_testing_type CACHE BUILD_TESTING PROPERTY TYPE)
+    get_property(_ardashir_build_testing_help CACHE BUILD_TESTING PROPERTY HELPSTRING)
+    get_property(_ardashir_build_testing_value CACHE BUILD_TESTING PROPERTY VALUE)
+endif()
+add_subdirectory(
+    "${_ardashir_eigen_dir}"
+    "${PROJECT_BINARY_DIR}/ThirdParty/Eigen"
+    EXCLUDE_FROM_ALL)
+if(_ardashir_has_build_testing)
+    set(BUILD_TESTING "${_ardashir_build_testing_value}" CACHE
+        "${_ardashir_build_testing_type}" "${_ardashir_build_testing_help}" FORCE)
+else()
+    unset(BUILD_TESTING CACHE)
+endif()
+target_include_directories(eigen SYSTEM INTERFACE
+    "$<BUILD_INTERFACE:${_ardashir_eigen_dir}>")
+set_target_properties(eigen PROPERTIES FOLDER "ThirdParty/Eigen")
+
 # EASTL is the project-wide container and algorithm library. Its allocator is
 # configured through ArdaEASTLConfig.h so consumers do not need EA's extended
 # global operator-new overloads.

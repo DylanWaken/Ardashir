@@ -4,6 +4,7 @@
 #include "Graph/Node/ArdaDependencyBindings.h"
 #include "Graph/Node/ArdaDependencyRequirements.h"
 #include "Inductor/Rules/ArdaInductorPipeline.h"
+#include "Graph/Resources/ArdaGraphicsState.h"
 
 namespace arda
 {
@@ -20,6 +21,18 @@ namespace arda
 	/** Compile-time declaration returned by a registered node's parameter visitor. */
 	struct FArdaDependencyNodeDesc
 	{
+		/** Parameter-macro nodes require complete automatic bindings for their prepared shader contracts. */
+		bool mbDeclarativeParameters = false;
+		/** Filled by graphics stage templates; the preprocess assembler validates this typed connection. */
+		EArdaGraphicsStage mGraphicsStage = EArdaGraphicsStage::None;
+		FArdaGraphStageValue mGraphicsInput;
+		/** Optional vertex input layout; raster fixed state is supplied independently by the raster node. */
+		FArdaRHIInputLayoutRef mGraphicsInputLayout;
+		/** Reusable fixed-function nodes may let the compiler select traditional versus meshlet rasterization. */
+		bool mbAutomaticRasterFamily = false;
+		/** Ray stage providers connect explicitly to a ray-generation terminal. */
+		EArdaRHIShaderStage mRayStage = EArdaRHIShaderStage::None;
+		eastl::vector<FArdaGraphStageValue> mRayInputs;
 		eastl::vector<FArdaDependencyAccess> mAccesses;
 		/** Created after physical allocation and pipeline resolution, separately per frame slot. */
 		eastl::vector<FArdaDependencyShaderBindings> mShaderBindings;

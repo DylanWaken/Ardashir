@@ -407,6 +407,10 @@ namespace arda
 		bool mbRequireGeometryShaders = false;
 		/** When true, reject a device missing graphics hull/domain tessellation stages. */
 		bool mbRequireTessellationShaders = false;
+		/** Require storage writes and atomics from traditional pre-rasterization shader stages. */
+		bool mbRequireVertexShaderStoresAndAtomics = false;
+		/** Require storage writes and atomics from pixel shaders. */
+		bool mbRequireFragmentShaderStoresAndAtomics = false;
 		/** When true, reject a device missing unbounded descriptors. */
 		bool mbRequireUnboundedDescriptors = false;
 		/** When true, reject a device missing descriptor update-after-bind. */
@@ -625,6 +629,10 @@ namespace arda
 		bool mbGeometryShaders = false;
 		/** The graphics pipeline admits enabled hull/domain tessellation shader stages. */
 		bool mbTessellationShaders = false;
+		/** Vertex and other pre-rasterization shaders may write storage buffers and use atomics. */
+		bool mbVertexShaderStoresAndAtomics = false;
+		/** Pixel shaders may write storage buffers and use atomics. */
+		bool mbFragmentShaderStoresAndAtomics = false;
 		/** Conservative raster pipeline behavior is implemented and qualified when true. */
 		bool mbConservativeRasterization = false;
 		/** Variable shading-rate behavior is implemented and qualified when true. */
@@ -709,6 +717,12 @@ namespace arda
 			    "mesh shaders");
 			Need(R.mbRequireGeometryShaders, mbGeometryShaders, "geometry shaders");
 			Need(R.mbRequireTessellationShaders, mbTessellationShaders, "tessellation shaders");
+			Need(R.mbRequireVertexShaderStoresAndAtomics,
+			    mbVertexShaderStoresAndAtomics,
+			    "vertex shader storage and atomics");
+			Need(R.mbRequireFragmentShaderStoresAndAtomics,
+			    mbFragmentShaderStoresAndAtomics,
+			    "fragment shader storage and atomics");
 			Need(R.mbRequireUnboundedDescriptors, mDescriptors.mbUnboundedArrays, "unbounded descriptors");
 			Need(R.mbRequireUpdateAfterBind, mDescriptors.mbUpdateAfterBind, "descriptor update-after-bind");
 			Need(R.mbRequireDirectDescriptorIndexing,

@@ -83,7 +83,8 @@ namespace arda::inductor_detail
 	FArdaRHIStatus ValidateCompiledResult(const FArdaDependencyGraph::FArdaImpl&, const FArdaInductorCompileResult&);
 	FArdaRHIStatus PublishSchedule(FArdaScheduleSearch&, FArdaInductorCompileResult&);
 	FArdaRHIStatus ValidatePipelines(const FArdaDependencyGraph::FArdaImpl&, const eastl::vector<FArdaHandle>&);
-	FArdaRHIStatus ValidateResourceAccesses(const FArdaDependencyGraph::FArdaImpl&);
+	FArdaRHIStatus ValidateResourceAccesses(const FArdaDependencyGraph::FArdaImpl&, bool AllowAutomaticUsage = false);
+	FArdaRHIStatus ValidateResourceUsage(const FArdaDependencyGraph::FArdaImpl&);
 	FArdaRHIStatus ValidateQueueAssignment(const FArdaInductorQueueContext&, const FArdaInductorCompileResult&);
 	void BuildCudaBatches(const FArdaDependencyGraph::FArdaImpl&, FArdaInductorCompileResult&);
 }

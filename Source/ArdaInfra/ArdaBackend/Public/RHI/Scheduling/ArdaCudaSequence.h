@@ -73,6 +73,12 @@ namespace arda
 		/** Returns the compiled-kernel plus external-call count; NoWork steps are omitted. */
 		[[nodiscard]] size_t GetOperationCount() const noexcept;
 
+		/** Frozen operand resource requirements for an appended operation, excluding NoWork.
+		 * Operation must be less than GetOperationCount(); Add/AddPlan can invalidate the returned reference.
+		 * Graph schedulers use these schema-derived bindings to verify their declared resource contract.
+		 */
+		[[nodiscard]] const eastl::vector<FArdaCudaBinding>& GetOperationBindings(size_t Operation) const;
+
 		/** Records one native batch into an open caller-owned list without submitting it. */
 		[[nodiscard]] FArdaRHIStatus DispatchDeferred(IArdaRHICommandList& Commands) const;
 

@@ -502,7 +502,7 @@ class Validator:
         start = text.find(opener, start + len(marker))
         if start < 0:
             raise ValueError("opening %r not found after %r" % (opener, marker))
-        closer = {"{": "}", "[": "]"}[opener]
+        closer = {"{": "}", "[": "]", "(": ")"}[opener]
         depth = 0
         quote = ""
         escaped = False
@@ -1215,6 +1215,10 @@ class Validator:
                 text = re.sub(r"\bprotected:", "public:   ", text)
             text = self.mask_cpp_implementation(text)
             text = self.mask_template_parameters(text)
+            for start, _opening, _end, name, members in self.node_parameter_structs(text):
+                records.append((name, header, text.count("\n", 0, start) + 1, "type"))
+                records.extend((member, header, text.count("\n", 0, offset) + 1, "member")
+                    for member, offset, _signature in members)
             # Node declaration macros publish an extern const callable object.
             # Keep its source position at the macro so its adjacent contract survives.
             for match in re.finditer(
@@ -1269,6 +1273,39 @@ class Validator:
             key = (record[0], str(record[1]), record[2], record[3])
             unique[key] = record
         return list(unique.values())
+
+    @staticmethod
+    def node_parameter_structs(text: str) -> List[Tuple[int, int, int, str, List[Tuple[str, int, str]]]]:
+        """Retain aggregate ownership and field declarations authored through node macros."""
+        result = []
+        pattern = re.compile(
+            r"\bARDA_BEGIN_NODE_PARAMETER_STRUCT\s*\(\s*([A-Za-z_]\w*)\s*\)"
+            r"(?P<body>.*?)\bARDA_END_NODE_PARAMETER_STRUCT\s*\(\s*\)", re.S)
+        typed_fields = {"ARDA_NODE_PARAMETER", "ARDA_NODE_PARAMETER_WITH_DEFAULT",
+            "ARDA_NODE_STAGE_INPUT", "ARDA_NODE_STAGE_INPUTS"}
+        for match in pattern.finditer(text):
+            # #define's formal parameters are implementation, not a declared type.
+            line_start = text.rfind("\n", 0, match.start()) + 1
+            if text[line_start:match.start()].lstrip().startswith("#"):
+                continue
+            members = []
+            body = match.group("body")
+            for field in re.finditer(r"\b(ARDA_NODE_[A-Z_]+)\s*\(", body):
+                macro = field.group(1)
+                try:
+                    arguments = Validator.balanced(body[field.start():], macro, "(")
+                except ValueError:
+                    continue
+                parts = arguments[1:-1].split(",", 2)
+                index = 1 if macro in typed_fields else 0
+                if len(parts) <= index:
+                    continue
+                name = parts[index].strip()
+                if not re.fullmatch(r"[A-Za-z_]\w*", name):
+                    continue
+                members.append((name, match.start("body") + field.start(), macro + arguments))
+            result.append((match.start(), match.start("body"), match.end("body"), match.group(1), members))
+        return result
 
     def extract_enumerators(
         self, text: str, header: Path

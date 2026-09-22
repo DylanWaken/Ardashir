@@ -2,3 +2,4 @@
 
 #include "Graph/DefaultNodes/ArdaDependencyGraphNodes.h"
 #include "Graph/DefaultNodes/ArdaMemoryNodes.h"
+#include "Graph/DefaultNodes/ArdaGraphicsOperations.h"

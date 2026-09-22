@@ -13,6 +13,7 @@
 #include <cstring>
 #include <fstream>
 #include <filesystem>
+#include <limits>
 #include <regex>
 #include <string>
 #include <vector>
@@ -339,6 +340,7 @@ namespace
 		EXPECT_NE(Feedback.mValue->GetPhysicalIdentity(), nullptr);
 
 		FArdaRHITextureDesc DecodedDesc;
+		DecodedDesc.mUsage = EArdaRHITextureUsage::ShaderResource;
 		DecodedDesc.mDebugName = "Decoded sampler feedback";
 		DecodedDesc.mWidth = (PairedDesc.mWidth + FeedbackDesc.mMipRegionX - 1u) / FeedbackDesc.mMipRegionX;
 		DecodedDesc.mHeight = (PairedDesc.mHeight + FeedbackDesc.mMipRegionY - 1u) / FeedbackDesc.mMipRegionY;
@@ -1670,6 +1672,111 @@ namespace
 		EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 	}
 
+	void VerifyRasterStorageAndAtomics(const char* BackendName, bool bPixelStage)
+	{
+		using namespace arda;
+		ShutdownBackend();
+		FArdaExtendedDiagnosticCallback Diagnostics;
+		FArdaExtendedBackendCleanup Cleanup;
+		auto Configuration = MakeArdaTestBackendConfiguration();
+		Configuration.mBackendName = BackendName;
+		Configuration.mMessageCallback = &Diagnostics;
+		Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+		ASSERT_TRUE(ConfigureBackend(Configuration));
+		ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
+		auto Device = GetDevice();
+		ASSERT_TRUE(Device);
+		FArdaRHIFeatureRequirements Requirements;
+		Requirements.mbRequireVertexShaderStoresAndAtomics = !bPixelStage;
+		Requirements.mbRequireFragmentShaderStoresAndAtomics = bPixelStage;
+		const auto Admission = Device->RequireFeatures(Requirements);
+		ASSERT_TRUE(Admission) << Admission.mMessage.c_str();
+
+		auto Vertex = CreateExtendedShader(*Device,
+		    BackendName,
+		    bPixelStage ? "ArdaRasterStageVS" : "ArdaRasterStorageVS",
+		    bPixelStage ? "RasterStageVS" : "RasterStorageVS",
+		    EArdaRHIShaderStage::Vertex);
+		auto Pixel = CreateExtendedShader(*Device,
+		    BackendName,
+		    bPixelStage ? "ArdaRasterStoragePS" : "ArdaRasterStagePS",
+		    bPixelStage ? "RasterStoragePS" : "RasterStagePS",
+		    EArdaRHIShaderStage::Pixel);
+		ASSERT_TRUE(Vertex) << Vertex.mStatus.mMessage.c_str();
+		ASSERT_TRUE(Pixel) << Pixel.mStatus.mMessage.c_str();
+		FArdaRHIBindingLayoutDesc LayoutDesc;
+		LayoutDesc.mVisibility = bPixelStage ? EArdaRHIShaderStage::Pixel : EArdaRHIShaderStage::Vertex;
+		LayoutDesc.mItems.push_back({0, 1, EArdaRHIBindingType::StructuredBufferUAV});
+		auto Layout = Device->CreateBindingLayout(LayoutDesc);
+		ASSERT_TRUE(Layout) << Layout.mStatus.mMessage.c_str();
+		FArdaRHIGraphicsPipelineDesc PipelineDesc;
+		PipelineDesc.mVertexShader = Vertex.mValue;
+		PipelineDesc.mPixelShader = Pixel.mValue;
+		PipelineDesc.mBindingLayouts = {Layout.mValue};
+		PipelineDesc.mColorFormats = {EArdaRHIFormat::RGBA8UNorm};
+		PipelineDesc.mRasterState.mCullMode = EArdaRHICullMode::None;
+		PipelineDesc.mDepthStencilState.mbDepthTest = false;
+		PipelineDesc.mDepthStencilState.mbDepthWrite = false;
+		auto Pipeline = Device->CreateGraphicsPipeline(PipelineDesc);
+		ASSERT_TRUE(Pipeline) << Pipeline.mStatus.mMessage.c_str();
+
+		FArdaRHIBufferDesc OutputDesc;
+		OutputDesc.mByteSize = 17 * sizeof(uint32_t);
+		OutputDesc.mStructureStride = sizeof(uint32_t);
+		OutputDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess;
+		auto Output = Device->CreateBuffer(OutputDesc);
+		ASSERT_TRUE(Output) << Output.mStatus.mMessage.c_str();
+		FArdaRHIBindingSetDesc SetDesc;
+		SetDesc.mLayout = Layout.mValue;
+		FArdaRHIBindingItem Item;
+		Item.mType = EArdaRHIBindingType::StructuredBufferUAV;
+		Item.mResource = FArdaRHIResourceRef(Output.mValue.Get());
+		SetDesc.mItems.push_back(Item);
+		auto Set = Device->CreateBindingSet(SetDesc);
+		ASSERT_TRUE(Set) << Set.mStatus.mMessage.c_str();
+		FArdaRHITextureDesc TargetDesc;
+		TargetDesc.mWidth = TargetDesc.mHeight = 4;
+		TargetDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+		TargetDesc.mUsage = EArdaRHITextureUsage::RenderTarget;
+		TargetDesc.mInitialState = EArdaRHIResourceState::RenderTarget;
+		auto Target = Device->CreateTexture(TargetDesc);
+		ASSERT_TRUE(Target) << Target.mStatus.mMessage.c_str();
+		FArdaRHIFramebufferDesc FramebufferDesc;
+		FramebufferDesc.mColorAttachments.push_back({Target.mValue, {}});
+		auto Framebuffer = Device->CreateFramebuffer(FramebufferDesc);
+		ASSERT_TRUE(Framebuffer) << Framebuffer.mStatus.mMessage.c_str();
+
+		auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+		ASSERT_TRUE(Commands);
+		ASSERT_TRUE(Commands.mValue->Open());
+		const uint32_t Zero[17]{};
+		ASSERT_TRUE(Commands.mValue->WriteBuffer(*Output.mValue, Zero, sizeof(Zero)));
+		ASSERT_TRUE(Commands.mValue->SetBufferState(*Output.mValue, EArdaRHIResourceState::UnorderedAccess));
+		FArdaRHIGraphicsState State;
+		State.mPipeline = Pipeline.mValue;
+		State.mFramebuffer = Framebuffer.mValue;
+		State.mBindings = {Set.mValue};
+		State.mViewports = {{0, 4, 0, 4, 0, 1}};
+		State.mScissors = {{0, 4, 0, 4}};
+		ASSERT_TRUE(Commands.mValue->SetGraphicsState(State));
+		Commands.mValue->Draw({3});
+		eastl::vector<uint8_t> Readback;
+		ASSERT_TRUE(Commands.mValue->CopyBufferDeviceToHost(*Output.mValue, Readback, 0, sizeof(Zero)));
+		ASSERT_TRUE(Commands.mValue->Close());
+		ASSERT_TRUE(Device->ExecuteCommandList(Commands.mValue));
+		ASSERT_TRUE(Device->WaitForIdle());
+		ASSERT_EQ(Readback.size(), sizeof(Zero));
+		uint32_t Values[17];
+		std::memcpy(Values, Readback.data(), sizeof(Values));
+		const uint32_t RecordCount = bPixelStage ? 16 : 3;
+		EXPECT_GE(Values[0], RecordCount);
+		for (uint32_t Index = 0; Index < RecordCount; ++Index)
+		{
+			EXPECT_EQ(Values[Index + 1], 0xface0000u + Index);
+		}
+		EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+	}
+
 	void VerifyMeshPipelineCapabilityAndExecution(const char* BackendName, bool bBundle = false)
 	{
 		using namespace arda;
@@ -1870,6 +1977,7 @@ namespace
 		if (Capabilities.mQueues.mbCopy)
 		{
 			FArdaRHIBufferDesc BufferDesc;
+			BufferDesc.mUsage = EArdaRHIBufferUsage::None;
 			BufferDesc.mByteSize = sizeof(uint32_t);
 			BufferDesc.mInitialState = EArdaRHIResourceState::Common;
 			BufferDesc.mDebugName = "Queue breadth source";
@@ -2313,7 +2421,20 @@ namespace
 		ASSERT_TRUE(Miss) << Miss.mStatus.mMessage.c_str();
 		ASSERT_TRUE(ClosestHit) << ClosestHit.mStatus.mMessage.c_str();
 
-		const float Vertices[9] = {-1.f, -1.f, 0.f, 0.f, 1.f, 0.f, 1.f, -1.f, 0.f};
+		// Keep the world-space hit/miss oracle fixed while exercising an asymmetric
+		// affine matrix at the Eigen-to-native TLAS instance boundary. Incorrect
+		// column-major serialization leaves the triangle away from the hit ray.
+		FArdaAffineTransform3f ObjectToWorld = FArdaAffineTransform3f::Identity();
+		ObjectToWorld.matrix() << 2.f, 0.25f, 0.5f, 7.f, -0.5f, 1.5f, 0.25f, -3.f, 0.125f, -0.25f, 0.75f, 2.f, 0.f, 0.f,
+		    0.f, 1.f;
+		const FArdaAffineTransform3f WorldToObject = ObjectToWorld.inverse();
+		const FArdaVector3f WorldVertices[] = {{-1.f, -1.f, 0.f}, {0.f, 1.f, 0.f}, {1.f, -1.f, 0.f}};
+		float Vertices[9];
+		for (size_t Index = 0; Index < 3; ++Index)
+		{
+			const FArdaVector3f Position = WorldToObject * WorldVertices[Index];
+			std::memcpy(Vertices + Index * 3, Position.data(), sizeof(float) * 3);
+		}
 		FArdaRHIBufferDesc VertexDesc;
 		VertexDesc.mByteSize = sizeof(Vertices);
 		VertexDesc.mUsage = EArdaRHIBufferUsage::Vertex | EArdaRHIBufferUsage::AccelStructBuildInput;
@@ -2458,20 +2579,30 @@ namespace
 		ASSERT_TRUE(Commands.mValue->WriteBuffer(*VertexBuffer.mValue, Vertices, sizeof(Vertices), 0));
 		ASSERT_TRUE(Commands.mValue->BuildBottomLevelAccelStruct(*Blas.mValue, {Geometry}, BlasDesc.mBuildFlags));
 		FArdaRHIRayTracingInstanceDesc Instance;
+		Instance.mTransform = ObjectToWorld.matrix().topRows<3>();
 		Instance.mBottomLevelAccelStruct = Blas.mValue;
+		for (float InvalidValue : {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()})
+		{
+			auto InvalidInstance = Instance;
+			InvalidInstance.mTransform(1, 2) = InvalidValue;
+			EXPECT_EQ(
+			    Commands.mValue->BuildTopLevelAccelStruct(*Tlas.mValue, {InvalidInstance}, TlasDesc.mBuildFlags).mCode,
+			    EArdaRHIResult::InvalidArgument);
+		}
 		if (bInstanceBuffer)
 		{
 			// D3D12 and Vulkan both consume a 3x4 transform, two packed words,
 			// and a 64-bit BLAS address in each native instance record.
 			struct FArdaNativeInstance
 			{
-				float mTransform[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
+				float mTransform[12]{};
 				uint32_t mIdAndMask = 0xff000000;
 				uint32_t mContributionAndFlags = 0;
 				uint64_t mBlasAddress = 0;
 			} Native;
 
 			static_assert(sizeof(Native) == 64);
+			std::memcpy(Native.mTransform, Instance.mTransform.data(), sizeof(Native.mTransform));
 			Native.mBlasAddress = Blas.mValue->GetDeviceAddress();
 			ASSERT_NE(Native.mBlasAddress, 0u);
 			FArdaRHIBufferDesc InstancesDesc;
@@ -3218,6 +3349,7 @@ namespace
 
 		EXPECT_EQ(Device->GetTimerQuerySeconds(Timer.mValue).mStatus.mCode, EArdaRHIResult::InvalidState);
 		FArdaRHIBufferDesc TimedBufferDesc;
+		TimedBufferDesc.mUsage = EArdaRHIBufferUsage::None;
 		TimedBufferDesc.mByteSize = 1024 * 1024;
 		TimedBufferDesc.mInitialState = EArdaRHIResourceState::Common;
 		auto TimedBuffer = Device->CreateBuffer(TimedBufferDesc);
@@ -3269,6 +3401,7 @@ namespace
 		ASSERT_TRUE(Timer) << Timer.mStatus.mMessage.c_str();
 		const auto& Caps = Device->GetCapabilities().mQueues;
 		FArdaRHIBufferDesc Desc;
+		Desc.mUsage = EArdaRHIBufferUsage::None;
 		Desc.mByteSize = 2 * 1024 * 1024;
 		Desc.mInitialState = EArdaRHIResourceState::Common;
 		Desc.mbKeepInitialState = true;
@@ -3699,6 +3832,7 @@ namespace
 		EXPECT_TRUE(Color.mbTexture2D && Color.mbShaderResource && Color.mbFilterable && Color.mbColorAttachment);
 		EXPECT_NE(Color.mSampleCounts & 1, 0u);
 		FArdaRHITextureDesc TextureDesc;
+		TextureDesc.mUsage = EArdaRHITextureUsage::ShaderResource;
 		TextureDesc.mWidth = TextureDesc.mHeight = 4;
 		TextureDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
 		ASSERT_TRUE(Device->CreateTexture(TextureDesc));
@@ -3710,6 +3844,7 @@ namespace
 		if (Limits.mMaxBufferSize && Limits.mMaxBufferSize != UINT64_MAX)
 		{
 			FArdaRHIBufferDesc BufferDesc;
+			BufferDesc.mUsage = EArdaRHIBufferUsage::None;
 			BufferDesc.mByteSize = Limits.mMaxBufferSize + 1;
 			EXPECT_EQ(Device->CreateBuffer(BufferDesc).mStatus.mCode, EArdaRHIResult::Unsupported);
 		}
@@ -3742,6 +3877,8 @@ namespace
 		MeshShader,
 		GeometryShader,
 		TessellationShaders,
+		VertexStorage,
+		FragmentStorage,
 		RayTracingPipeline,
 		AccelerationStructure,
 		RayTracingScene,
@@ -3872,6 +4009,12 @@ namespace
 			return;
 		case EArdaCapabilityProbe::TessellationShaders:
 			VerifyRasterStageCapabilityAndExecution(TestCase.mBackendName, true);
+			return;
+		case EArdaCapabilityProbe::VertexStorage:
+			VerifyRasterStorageAndAtomics(TestCase.mBackendName, false);
+			return;
+		case EArdaCapabilityProbe::FragmentStorage:
+			VerifyRasterStorageAndAtomics(TestCase.mBackendName, true);
 			return;
 		case EArdaCapabilityProbe::PipelineCache:
 		{
@@ -4114,6 +4257,8 @@ namespace
 		    ARDA_CAPABILITY("StagingTextures", C.mbStagingTextures, ExtendedCommands),
 		    ARDA_CAPABILITY("GeometryShaders", C.mbGeometryShaders, GeometryShader),
 		    ARDA_CAPABILITY("TessellationShaders", C.mbTessellationShaders, TessellationShaders),
+		    ARDA_CAPABILITY("VertexShaderStoresAndAtomics", C.mbVertexShaderStoresAndAtomics, VertexStorage),
+		    ARDA_CAPABILITY("FragmentShaderStoresAndAtomics", C.mbFragmentShaderStoresAndAtomics, FragmentStorage),
 		    ARDA_CAPABILITY("TextureCopies", C.mbTextureCopies, ExtendedCommands),
 		    ARDA_CAPABILITY("TextureResolve", C.mbTextureResolve, Resolve),
 		    ARDA_CAPABILITY("ExplicitTransitions", C.mbExplicitTransitions, ExtendedCommands),

@@ -3,6 +3,7 @@
 
 #include "Graph/Node/ArdaDependencyNodeDesc.h"
 #include "Graph/Resources/ArdaDependencyResourceContext.h"
+#include "Graph/Resources/ArdaGraphValue.h"
 #include "RHI/Device/ArdaRHIDevice.h"
 #include <EASTL/functional.h>
 #include <EASTL/shared_ptr.h>
@@ -13,6 +14,7 @@ namespace arda
 {
 	class FArdaDependencyExecutionContext;
 	class FArdaCudaSequence;
+	class FArdaGraphEdit;
 
 	/** Framework-owned erased implementation generated only from the common class node contract.
 	 * Registry lookup exposes a const view for graph/compiler inspection; this is not an authoring API.
@@ -54,8 +56,15 @@ namespace arda
 		eastl::function<TArdaRHIResult<eastl::shared_ptr<const void>>(FArdaRHIDeviceRef, eastl::shared_ptr<const void>)>
 		    mPrepare;
 		eastl::function<eastl::string(const void*)> mCanonicalKey;
-		eastl::function<FArdaDependencyNodeDesc(const void*)> mDescribe;
+		eastl::function<TArdaRHIResult<FArdaDependencyNodeDesc>(const void*)> mDescribe;
 		eastl::function<FArdaRHIStatus(FArdaDependencyExecutionContext&, const void*)> mRecord;
+		/** Per-stage dynamic state, called once in each consuming draw with the terminal's resource context. */
+		eastl::function<FArdaRHIStatus(FArdaDependencyExecutionContext&, const void*, FArdaGraphicsWork&)>
+		    mConfigureGraphics;
+		/** Clone private mutable state for a particular assembled draw while sharing immutable preparation. */
+		eastl::function<TArdaRHIResult<eastl::shared_ptr<const void>>(const void*)> mCloneGraphicsParameters;
+		/** Optional explicit materialization adapter. It records real operations from the frozen public inputs. */
+		eastl::function<FArdaGraphBuffer(FArdaGraphEdit&, const void*, const FArdaStageBufferRequest&)> mFetchBuffer;
 		eastl::function<FArdaRHIStatus(FArdaDependencyExecutionContext&, const void*, FArdaCudaSequence&)> mPrepareCuda;
 	};
 

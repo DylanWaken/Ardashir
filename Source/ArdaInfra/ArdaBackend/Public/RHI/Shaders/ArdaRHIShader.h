@@ -12,6 +12,7 @@
 
 namespace arda
 {
+	class FArdaShaderParameterMetadata;
 	/** Enumerates shader stage values. */
 	enum class EArdaRHIShaderStage : uint16_t
 	{
@@ -40,15 +41,18 @@ namespace arda
 	{
 		return static_cast<EArdaRHIShaderStage>(static_cast<uint32_t>(A) | static_cast<uint32_t>(B));
 	}
+
 	constexpr EArdaRHIShaderStage operator&(EArdaRHIShaderStage A, EArdaRHIShaderStage B) noexcept
 	{
 		return static_cast<EArdaRHIShaderStage>(static_cast<uint32_t>(A) & static_cast<uint32_t>(B));
 	}
+
 	constexpr EArdaRHIShaderStage& operator|=(EArdaRHIShaderStage& A, EArdaRHIShaderStage B) noexcept
 	{
 		A = A | B;
 		return A;
 	}
+
 	constexpr bool HasAnyFlags(EArdaRHIShaderStage Value, EArdaRHIShaderStage Flags) noexcept
 	{
 		return static_cast<uint32_t>(Value & Flags) != 0;
@@ -75,6 +79,8 @@ namespace arda
 		eastl::string mEntryPoint = "main";
 		/** Stores the debug name. */
 		eastl::string mDebugName;
+		/** Optional immutable declared binding contract. Metadata must outlive the created shader. */
+		const FArdaShaderParameterMetadata* mParameterMetadata = nullptr;
 	};
 
 	/** Interface for shader. */
@@ -86,6 +92,12 @@ namespace arda
          * @return The requested value.
          */
 		[[nodiscard]] virtual EArdaRHIShaderStage GetStage() const noexcept = 0;
+
+		/** @return The declared parameter contract, or null for raw shaders without metadata. */
+		[[nodiscard]] virtual const FArdaShaderParameterMetadata* GetParameterMetadata() const noexcept
+		{
+			return nullptr;
+		}
 
 		/**
          * Returns a deterministic identity derived from bytecode, stage, and

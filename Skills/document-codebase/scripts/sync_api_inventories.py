@@ -152,6 +152,8 @@ def find_matching_brace(text: str, opening: int) -> int:
 def type_ranges(text: str) -> List[Tuple[int, int, str, str]]:
     text = Validator.mask_template_parameters(text)
     ranges: List[Tuple[int, int, str, str]] = []
+    ranges.extend((opening, end, name, "struct")
+        for _start, opening, end, name, _members in Validator.node_parameter_structs(text))
     pattern = re.compile(
         r"\b(?P<kind>class|struct|enum(?:\s+class)?)\s+"
         r"(?P<name>[A-Za-z_]\w*)[^;{}]*\{"
@@ -222,6 +224,14 @@ def callable_signature(text: str, name: str, offset: int) -> str:
 
 def declaration_signature(text: str, name: str, line: int, kind: str) -> str:
     offset = name_offset(text, name, line)
+    if kind in {"type", "member"}:
+        for start, opening, end, aggregate, members in Validator.node_parameter_structs(text):
+            if kind == "type" and name == aggregate and start <= offset < opening:
+                return "struct " + aggregate
+            if kind == "member" and opening <= offset < end:
+                for member, member_offset, signature in members:
+                    if member == name and text.count("\n", 0, member_offset) + 1 == line:
+                        return normalized(signature)
     if kind == "macro":
         # A macro's public signature is its name and formal arguments, not the
         # preceding declaration or its implementation's continuation lines.
@@ -346,7 +356,10 @@ def source_contract(raw: str, line: int) -> Dict[str, object]:
         return {}
     comment = comments[-1]
     # A completed earlier declaration means its comment belongs to another symbol.
-    if re.search(r"[;{}]", prefix[comment.end():]):
+    trailing = prefix[comment.end():]
+    if re.search(r"[;{}]", trailing) or re.search(
+        r"\bARDA_(?:NODE_[A-Z_]+|(?:BEGIN|END)_NODE_PARAMETER_STRUCT)\s*\(", trailing
+    ):
         return {}
     body = re.sub(r"(?m)^\s*\*\s?", "", comment.group(1)).strip()
     if body.startswith("@file"):

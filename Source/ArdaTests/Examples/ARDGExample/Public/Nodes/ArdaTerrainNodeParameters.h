@@ -1,4 +1,5 @@
 #pragma once
+#include "ArdaMath.h"
 #include "Graph/Node/ArdaDependencyNode.h"
 
 namespace arda
@@ -25,18 +26,12 @@ namespace arda
 		float mHeight;
 	};
 
-	struct alignas(16) FArdaTerrainCameraSettings
-	{
-		float mWorldToView[16];
-		float mProjection[16];
-	};
-
 	// These CPU inputs are deliberately dynamic. RenderFrame updates them only before
 	// synchronous Execute; graph topology, resource handles and pipeline settings stay frozen.
 	struct FArdaTerrainFrameInputs
 	{
 		FArdaTerrainSettings mSettings;
-		FArdaTerrainCameraSettings mCamera{};
+		FArdaCameraMatrices mCamera;
 		eastl::shared_ptr<eastl::vector<uint8_t>> mVertexReadback = eastl::make_shared<eastl::vector<uint8_t>>();
 		eastl::shared_ptr<eastl::vector<uint8_t>> mIndexReadback = eastl::make_shared<eastl::vector<uint8_t>>();
 	};

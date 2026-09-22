@@ -39,22 +39,18 @@ namespace arda
 
 		// Build the camera basis from the current view orientation.
 		const float cosPitch = std::cos(mCameraPitch);
-		const float forwardVector[3] = {std::cos(mCameraYaw) * cosPitch,
+		const FArdaVector3f forwardVector = {std::cos(mCameraYaw) * cosPitch,
 		    std::sin(mCameraYaw) * cosPitch,
 		    std::sin(mCameraPitch)};
-		const float rightVector[3] = {-std::sin(mCameraYaw), std::cos(mCameraYaw), 0.0f};
-		const float inputLength = std::sqrt(forward * forward + right * right);
+		const FArdaVector3f rightVector = {-std::sin(mCameraYaw), std::cos(mCameraYaw), 0.0f};
+		const float inputLength = FArdaVector2f(forward, right).norm();
 		if (inputLength > 1.0f)
 		{
 			forward /= inputLength;
 			right /= inputLength;
 		}
 		const float distance = MoveSpeed * eastl::min(deltaSeconds, 0.1f);
-		for (uint32_t component = 0; component < 3; ++component)
-		{
-			mCameraPosition[component] +=
-			    (forwardVector[component] * forward + rightVector[component] * right) * distance;
-		}
+		mCameraPosition += (forwardVector * forward + rightVector * right) * distance;
 	}
 
 	struct FArdaTerrainRenderer::FArdaFrameGraph
@@ -181,40 +177,18 @@ namespace arda
 
 		// Build the camera basis from the current view orientation.
 		const float cosPitch = std::cos(mCameraPitch);
-		const float forward[3] = {std::cos(mCameraYaw) * cosPitch,
+		const FArdaVector3f forward = {std::cos(mCameraYaw) * cosPitch,
 		    std::sin(mCameraYaw) * cosPitch,
 		    std::sin(mCameraPitch)};
-		const float right[3] = {-std::sin(mCameraYaw), std::cos(mCameraYaw), 0.0f};
-		const float up[3] = {forward[1] * right[2] - forward[2] * right[1],
-		    forward[2] * right[0] - forward[0] * right[2],
-		    forward[0] * right[1] - forward[1] * right[0]};
-		const float viewTranslation[3] = {
-		    -(mCameraPosition[0] * right[0] + mCameraPosition[1] * right[1] + mCameraPosition[2] * right[2]),
-		    -(mCameraPosition[0] * up[0] + mCameraPosition[1] * up[1] + mCameraPosition[2] * up[2]),
-		    -(mCameraPosition[0] * forward[0] + mCameraPosition[1] * forward[1] + mCameraPosition[2] * forward[2])};
 
-		// Use a reverse-depth projection while keeping CPU camera data separate from node setup.
+		// Preserve the horizontal field of view and infinite reverse-depth projection.
 		constexpr float NearPlane = 0.05f;
 		constexpr float HorizontalHalfFov = 0.78539816f;
-		const float xScale = 1.0f / std::tan(HorizontalHalfFov);
-		const float yScale = xScale * static_cast<float>(width) / static_cast<float>(height);
-		const FArdaTerrainCameraSettings cameraSettings = {{right[0],
-		                                                       up[0],
-		                                                       forward[0],
-		                                                       0.0f,
-		                                                       right[1],
-		                                                       up[1],
-		                                                       forward[1],
-		                                                       0.0f,
-		                                                       right[2],
-		                                                       up[2],
-		                                                       forward[2],
-		                                                       0.0f,
-		                                                       viewTranslation[0],
-		                                                       viewTranslation[1],
-		                                                       viewTranslation[2],
-		                                                       1.0f},
-		    {xScale, 0.0f, 0.0f, 0.0f, 0.0f, yScale, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, NearPlane, 0.0f}};
+		const float Aspect = static_cast<float>(width) / static_cast<float>(height);
+		const float VerticalFov = 2.0f * std::atan(std::tan(HorizontalHalfFov) / Aspect);
+		FArdaCameraMatrices cameraSettings;
+		cameraSettings.mWorldToView = MakeArdaViewMatrix(mCameraPosition, forward, FArdaVector3f::UnitZ());
+		cameraSettings.mViewToClip = MakeArdaInfinitePerspectiveProjection(VerticalFov, Aspect, NearPlane, true);
 
 		// Update retained frame inputs and execute the already-compiled operations.
 		Frame->mInputs->mSettings.mTime = mElapsedSeconds;

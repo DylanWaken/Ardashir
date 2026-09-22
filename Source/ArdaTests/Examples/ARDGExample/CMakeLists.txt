@@ -28,6 +28,7 @@ target_link_libraries(ARDGExample PRIVATE
     ArdaExampleNodes
     Ardashir::ArdaBackend
     Ardashir::ArdaDependencyGraph
+    Ardashir::ArdaMath
     glfw
 )
 
@@ -52,7 +53,7 @@ if(ARDASHIR_BUILD_TESTS)
     target_compile_features(ARDGExampleValidationTests PRIVATE cxx_std_17)
     target_include_directories(ARDGExampleValidationTests PRIVATE Private Public)
     target_link_libraries(ARDGExampleValidationTests PRIVATE
-        Ardashir::ArdaDependencyGraph GTest::gtest_main)
+        Ardashir::ArdaDependencyGraph Ardashir::ArdaMath GTest::gtest_main)
     set_target_properties(ARDGExampleValidationTests PROPERTIES
         FOLDER "Ardashir/Tests/Examples/ARDGExample")
     gtest_discover_tests(ARDGExampleValidationTests)

@@ -7,6 +7,9 @@ namespace arda
 	{
 		// Immutable defaults share identity across independently constructed option values.
 		static const eastl::vector<eastl::shared_ptr<const FArdaGraphPreprocessRule>> Preprocess = {
+		    MakeArdaGraphRule<FArdaAssembleGraphicsStagesRule>(),
+		    MakeArdaGraphRule<FArdaAssembleRayTracingStagesRule>(),
+		    MakeArdaGraphRule<FArdaDeduceResourceUsageRule>(),
 		    MakeArdaGraphRule<FArdaValidateResourceAccessesRule>(),
 		    MakeArdaGraphRule<FArdaResolveDependenciesRule>(),
 		    MakeArdaGraphRule<FArdaValidateAcyclicRule>()};

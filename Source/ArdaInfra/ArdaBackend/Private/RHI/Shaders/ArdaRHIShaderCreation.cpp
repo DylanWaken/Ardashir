@@ -1,5 +1,6 @@
 #include <mutex>
 #include "RHI/Device/ArdaRHIDeviceImpl.h"
+#include "RHI/Shaders/ArdaShaderParameters.h"
 
 namespace arda::detail
 {
@@ -8,6 +9,22 @@ namespace arda::detail
 		if (!Desc.mBytecode || Desc.mBytecodeSize == 0 || Desc.mStage == EArdaRHIShaderStage::None)
 		{
 			return Failure<FArdaRHIShaderRef>(Invalid("Shader bytecode and stage are required."));
+		}
+		if (Desc.mParameterMetadata)
+		{
+			eastl::vector<FArdaRHIBindingLayoutDesc> Layouts;
+			if (auto Status = Desc.mParameterMetadata->BuildBindingLayoutDescs(Layouts); !Status)
+			{
+				return Failure<FArdaRHIShaderRef>(Invalid(Status.mMessage.c_str()));
+			}
+			for (const auto& Layout : Layouts)
+			{
+				if (!HasAnyFlags(Layout.mVisibility, Desc.mStage))
+				{
+					return Failure<FArdaRHIShaderRef>(
+					    Invalid("Shader parameter visibility does not include its shader stage."));
+				}
+			}
 		}
 		auto Native = mDevice->CreateShader(Desc);
 		if (!Native)
@@ -25,13 +42,12 @@ namespace arda::detail
 		{
 			return Failure<FArdaRHIShaderLibraryRef>(Invalid("Shader-library bytecode is required."));
 		}
-		return {FArdaRHIShaderLibraryRef(
-		            new FArdaShaderLibrary(Bytecode, BytecodeSize, DebugName, this, mLifetimeTracker)),
+		return {
+		    FArdaRHIShaderLibraryRef(new FArdaShaderLibrary(Bytecode, BytecodeSize, DebugName, this, mLifetimeTracker)),
 		    {}};
 	}
 
-	TArdaRHIResult<FArdaRHIShaderRef> FArdaRHIDeviceImpl::GetShaderFromLibrary(
-	    const FArdaRHIShaderLibraryRef& Library,
+	TArdaRHIResult<FArdaRHIShaderRef> FArdaRHIDeviceImpl::GetShaderFromLibrary(const FArdaRHIShaderLibraryRef& Library,
 	    const char* EntryPoint,
 	    EArdaRHIShaderStage Stage,
 	    const char* DebugName)
@@ -69,8 +85,7 @@ namespace arda::detail
 			AttributeCount += Attribute.mArraySize;
 			if ((Limits.mMaxVertexBindings && Attribute.mBufferIndex >= Limits.mMaxVertexBindings) ||
 			    (Limits.mMaxVertexStride && Attribute.mElementStride > Limits.mMaxVertexStride) ||
-			    (GetCapabilities().mbFormatSupportReported &&
-			        !QueryFormatSupport(Attribute.mFormat).mbVertexBuffer))
+			    (GetCapabilities().mbFormatSupportReported && !QueryFormatSupport(Attribute.mFormat).mbVertexBuffer))
 			{
 				return Failure<FArdaRHIInputLayoutRef>(
 				    Invalid("Vertex attribute exceeds native binding, stride, or format support."));
@@ -78,8 +93,7 @@ namespace arda::detail
 		}
 		if (Limits.mMaxVertexAttributes && AttributeCount > Limits.mMaxVertexAttributes)
 		{
-			return Failure<FArdaRHIInputLayoutRef>(
-			    Invalid("Input layout exceeds the native vertex-attribute limit."));
+			return Failure<FArdaRHIInputLayoutRef>(Invalid("Input layout exceeds the native vertex-attribute limit."));
 		}
 		std::lock_guard<std::mutex> Lock(mCacheMutex);
 		if (auto Existing = mInputLayoutCache.Find(Desc))
@@ -125,8 +139,7 @@ namespace arda::detail
 		const auto& Capabilities = mDevice->GetCapabilities().mDescriptors;
 		if (Desc.mbUnbounded && !Capabilities.mbUnboundedArrays)
 		{
-			return UnsupportedResult<FArdaRHIBindingLayoutRef>(
-			    "Unbounded descriptors are unsupported by this device.");
+			return UnsupportedResult<FArdaRHIBindingLayoutRef>("Unbounded descriptors are unsupported by this device.");
 		}
 		if (Desc.mbUpdateAfterBind && !Capabilities.mbUpdateAfterBind)
 		{
@@ -216,8 +229,7 @@ namespace arda::detail
 		}
 		if (!Layout->mbBindless)
 		{
-			return Failure<FArdaRHIDescriptorTableRef>(
-			    Invalid("Descriptor tables require a bindless binding layout."));
+			return Failure<FArdaRHIDescriptorTableRef>(Invalid("Descriptor tables require a bindless binding layout."));
 		}
 		FArdaRHIBindingSetDesc Desc;
 		Desc.mLayout = LayoutRef;
@@ -363,8 +375,7 @@ namespace arda::detail
 		return {};
 	}
 
-	TArdaRHIResult<FArdaRHIBindingSetRef> FArdaRHIDeviceImpl::CreateBindingSet(
-	    const FArdaRHIBindingSetDesc& InputDesc)
+	TArdaRHIResult<FArdaRHIBindingSetRef> FArdaRHIDeviceImpl::CreateBindingSet(const FArdaRHIBindingSetDesc& InputDesc)
 	{
 		auto* Layout = Cast<FArdaBindingLayout>(InputDesc.mLayout.Get());
 		if (!Layout || !Owns(Layout))
@@ -394,8 +405,7 @@ namespace arda::detail
 			for (size_t Previous = 0; Previous < Index; ++Previous)
 			{
 				const auto& Other = Desc.mItems[Previous];
-				if (Other.mSlot == Item.mSlot && Other.mType == Item.mType &&
-				    Other.mArrayElement == Item.mArrayElement)
+				if (Other.mSlot == Item.mSlot && Other.mType == Item.mType && Other.mArrayElement == Item.mArrayElement)
 				{
 					return Failure<FArdaRHIBindingSetRef>(
 					    Invalid("Binding set contains a duplicate descriptor destination."));
@@ -447,8 +457,7 @@ namespace arda::detail
 		    {}};
 	}
 
-	TArdaRHIResult<FArdaRHIShaderBundleRef> FArdaRHIDeviceImpl::CreateShaderBundle(
-	    const FArdaRHIShaderBundleDesc& Desc)
+	TArdaRHIResult<FArdaRHIShaderBundleRef> FArdaRHIDeviceImpl::CreateShaderBundle(const FArdaRHIShaderBundleDesc& Desc)
 	{
 		if (!GetCapabilities().mbShaderBundleDispatch)
 		{
@@ -456,8 +465,7 @@ namespace arda::detail
 		}
 		if (!Desc.mMaxRecords)
 		{
-			return Failure<FArdaRHIShaderBundleRef>(
-			    Invalid("A shader bundle requires a non-zero record capacity."));
+			return Failure<FArdaRHIShaderBundleRef>(Invalid("A shader bundle requires a non-zero record capacity."));
 		}
 		return {FArdaRHIShaderBundleRef(new FArdaShaderBundle(Desc, this, mLifetimeTracker)), {}};
 	}
@@ -649,10 +657,8 @@ namespace arda::detail
 			{
 				return Failure<int>(Invalid("The shader table is at capacity."));
 			}
-			const auto Status = Device.GetProviderDevice().AddShaderTableEntry(Table->mNative,
-			    ExportName,
-			    NativeBindings,
-			    Category);
+			const auto Status =
+			    Device.GetProviderDevice().AddShaderTableEntry(Table->mNative, ExportName, NativeBindings, Category);
 			if (!Status)
 			{
 				return Failure<int>(Status);

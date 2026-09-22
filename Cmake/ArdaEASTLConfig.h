@@ -8,12 +8,16 @@
 #include <cstring>
 #include <limits>
 
+// EASTL make_shared requests ordinary allocation even for 16-byte-aligned
+// values. MSVC's max_align_t is only 8 bytes, so guarantee at least 16 here and
+// advertise that same minimum to containers which select an allocation path.
+#define EASTL_ALLOCATOR_MIN_ALIGNMENT ((alignof(std::max_align_t) > 16) ? alignof(std::max_align_t) : 16)
+
 // EASTL's narrow string formatting uses the platform C runtime. This project
 // does not link EAStdC, so provide EASTL's supported user formatting hook.
 #define EASTL_EASTDC_VSNPRINTF 0
 
-inline int Vsnprintf8(char* Destination, std::size_t Capacity,
-    const char* Format, std::va_list Arguments)
+inline int Vsnprintf8(char* Destination, std::size_t Capacity, const char* Format, std::va_list Arguments)
 {
 	return std::vsnprintf(Destination, Capacity, Format, Arguments);
 }
@@ -37,7 +41,7 @@ namespace eastl
 
 		[[nodiscard]] void* allocate(std::size_t Size, int = 0)
 		{
-			return AllocateAligned(Size, alignof(std::max_align_t), 0);
+			return AllocateAligned(Size, EASTL_ALLOCATOR_MIN_ALIGNMENT, 0);
 		}
 
 		[[nodiscard]] void* allocate(std::size_t Size, std::size_t Alignment, std::size_t AlignmentOffset, int = 0)

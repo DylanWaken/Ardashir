@@ -4,6 +4,10 @@ namespace arda::inductor_detail
 {
 	FArdaRHIStatus FArdaScheduleSearch::Initialize()
 	{
+		if (auto Status = ValidateResourceUsage(mGraph); !Status)
+		{
+			return Status;
+		}
 		mPred.resize(mNodes.size());
 		mNext.resize(mNodes.size());
 		mUses.resize(mNodes.size());
@@ -84,6 +88,7 @@ namespace arda::inductor_detail
 				Scratch.mKind = EArdaMemoryKind::Buffer;
 				Scratch.mBufferDesc.mByteSize = N.mDesc.mTransientWorkspaceBytes;
 				Scratch.mBufferDesc.mUsage = EArdaRHIBufferUsage::UnorderedAccess | EArdaRHIBufferUsage::Raw;
+				Scratch.mTextureDesc.mUsage = EArdaRHITextureUsage::None;
 				Scratch.mBufferDesc.mbCudaInterop = N.mDefinition->mKind == EArdaDependencyNodeKind::Cuda;
 				Scratch.mBufferDesc.mInitialState = EArdaRHIResourceState::Common;
 				Scratch.mbAllowHeapPlacement = N.mDefinition->mKind != EArdaDependencyNodeKind::Cuda;

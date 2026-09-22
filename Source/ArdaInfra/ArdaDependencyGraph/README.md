@@ -76,6 +76,44 @@ frame's construction; handles from an older revision are not inputs to a fresh
 construction. Removed or canceled resources cannot be reused, even if their
 storage slots are later recycled.
 
+## Automatic resource usage
+
+Buffer and texture descriptors default to `mUsage = AutoDeduction`. Specify the
+resource's shape, format and any structured-buffer stride; node declarations
+provide its access requirements. `FArdaDeduceResourceUsageRule` runs after stage
+assembly and before access validation and memory planning. It combines usages
+from resource states, shader bindings, framebuffer attachments and node output
+requirements across the construction.
+
+```cpp
+FArdaRHITextureDesc Desc;
+Desc.mWidth = Width;
+Desc.mHeight = Height;
+Desc.mFormat = EArdaRHIFormat::RGBA16Float;
+const auto Color = AllocateTexture(Edit, Desc); // AutoDeduction by default.
+Clear(Edit, Color, {0, 0, 0, 1});               // Requires RenderTarget.
+// A later shader SRV binding adds ShaderResource to this same allocation.
+```
+
+Assign a concrete `mUsage` to constrain the allocation explicitly. Missing flags
+are an error rather than silently added. Combine `AutoDeduction` with explicit
+flags to retain requirements such as `Raw`, `Structured` or `Typeless` while
+allowing the compiler to add the consumers' usages. A structured binding still
+requires a valid stride; deduction does not invent buffer element layouts.
+Read/write direction and access ranges remain node declarations and continue to
+control graph dependencies; usage deduction does not infer them from command code.
+Node parameter macros declare those requirements alongside each resource field,
+including shader bindings and graphics attachments, without a duplicate access
+list in `Describe`.
+
+Copy-only or unused resources can resolve to `None`, which is a concrete usage.
+Imported resources retain their native flags and must already support every
+consumer. Successful compilation leaves no unresolved `AutoDeduction` in the
+compiled resource descriptions. Custom rule programs must also satisfy this
+invariant, and direct RHI creation requires concrete usage flags because it has
+no graph of consumers to inspect. Deduction changes only the private compilation
+snapshot, so identical automatic declarations still reuse the construction cache.
+
 ## Frame construction and persistent revisions
 
 Keep one graph and describe the desired work each frame. Conditional operations
@@ -238,6 +276,59 @@ Macros establish one C++ callable object without startup registration; the first
 call registers on demand. Use `FArdaMyNode::Register()` explicitly for discovery
 before invocation. See [registering a graph node](../../../Docs/ArdaRDG/Registering-Nodes.md)
 for a complete header, implementation, linking and error-handling walkthrough.
+
+## Declare node parameters and dependencies together
+
+Use the macros in `Graph/Node/ArdaNodeParameters.h` (also included by
+`Graph/Node/ArdaNodeDefinition.h`) to define aggregate parameters with dependency
+metadata. For example, a pixel node that samples albedo and writes color/depth
+declares:
+
+```cpp
+ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaMeshPSParameters)
+    ARDA_NODE_STAGE_INPUT(FArdaGraphFragments, mInput)
+    ARDA_NODE_SHADER_TEXTURE(mAlbedo, FArdaMeshPixelShader::FArdaParameters, mAlbedo)
+    ARDA_NODE_COLOR_TARGET(mColor)
+    ARDA_NODE_DEPTH_TARGET(mDepth, EArdaDependencyAccess::ReadWrite)
+ARDA_END_NODE_PARAMETER_STRUCT()
+```
+
+The shader parameter metadata must be visible here and declare an albedo texture
+SRV with pixel-stage visibility. The node macros generate that binding and its
+read access, the fragment-stage dependency, and the color/depth attachments and
+accesses. They also generate canonical keys for supported field types. Both the
+parameter-struct form and `WriteMeshPixels(Edit, Fragments, Albedo, Color, Depth)`
+retain aggregate initialization and field order.
+
+`ARDA_NODE_SHADER_BUFFER` does the same for compute/VS buffer bindings.
+SRVs and constant buffers default to read access; UAVs default to write access.
+Declare a read/write UAV once in its shader schema with
+`ARDA_SHADER_BUFFER_UAV_ACCESS` or `ARDA_SHADER_TEXTURE_UAV_ACCESS`, passing
+`EArdaShaderResourceAccess::ReadWrite`; the node mapping inherits that access.
+Node `*_ACCESS` overrides can conservatively add UAV access but cannot narrow
+the shader contract. `ARDA_NODE_CUDA_BUFFER` / `ARDA_NODE_CUDA_TEXTURE` similarly
+derive resource kinds and access from an existing CUDA/compute parameter schema.
+`ARDA_NODE_BUFFER` and `ARDA_NODE_TEXTURE` declare non-shader accesses with an
+explicit access direction and RHI state. `ARDA_NODE_PARAMETER` and
+`ARDA_NODE_PARAMETER_WITH_DEFAULT` declare ordinary values.
+Declare every field through a parameter macro so it participates in metadata
+and generated identity. `ARDA_NODE_STAGE_INPUTS` declares ray-provider lists.
+Use `ARDA_NODE_COLOR_TARGET_ACCESS(..., EArdaDependencyAccess::ReadWrite)` for
+color attachments that consume previous contents, such as a second mesh drawing
+into a shared target. Custom value types can specialize `TArdaNodeParameterKey`
+or supply the node's complete `GetCanonicalKey`.
+
+`Describe` is optional when parameter metadata provides the entire description.
+Shader nodes retain a small `Describe` to contribute prepared shader stages and
+pipeline configuration; the generated resource declarations are appended
+automatically. Custom descriptions remain available for ranges, dynamic resource
+collections and other specialized requirements. Registration rejects malformed
+resource mappings, conflicting access declarations, and duplicate/out-of-range
+array bindings before device preparation. The canonical shader/CUDA schema is
+the source of required resource access; the graph does not infer hidden accesses
+from shader instructions or arbitrary native pointers. See the [parameter declaration
+guide](../../../Docs/ArdaRDG/Registering-Nodes.md#describe-dependencies-in-parameter-declarations)
+for the complete macro list and node examples.
 
 ## Module layout and compilation
 

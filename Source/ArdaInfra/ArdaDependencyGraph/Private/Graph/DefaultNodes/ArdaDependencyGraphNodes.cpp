@@ -1,4 +1,5 @@
 #include "Graph/DefaultNodes/ArdaDependencyGraphNodes.h"
+#include "Graph/DefaultNodes/ArdaGraphicsOperations.h"
 #include <mutex>
 
 namespace arda
@@ -221,6 +222,10 @@ namespace arda
 			    if (Status)
 			    {
 				    Status = FArdaGraphSyncNode::Register(Registry);
+			    }
+			    if (Status)
+			    {
+				    Status = FArdaRasterizeNode::Register(Registry);
 			    }
 			    if (Status)
 			    {

@@ -14,8 +14,8 @@ namespace arda
 		eastl::string mMember;
 		FArdaDependencyResourceHandle mResource;
 		uint32_t mArrayElement = 0;
-		/** UAV access; SRV and constant-buffer access is always Read. */
-		EArdaDependencyAccess mAccess = EArdaDependencyAccess::Write;
+		/** Inherits the shader schema by default. Explicit access must cover its requirements. */
+		EArdaDependencyAccess mAccess = EArdaDependencyAccess::AutoDeduction;
 		FArdaRHIViewDesc mView;
 		/** Samplers have no graph allocation or data dependency. */
 		FArdaRHISamplerRef mSampler;

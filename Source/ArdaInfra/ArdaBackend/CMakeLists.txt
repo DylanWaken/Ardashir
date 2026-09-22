@@ -1,6 +1,7 @@
 include(ArdaBackendLayout)
 ardashir_validate_backend_layout("${CMAKE_CURRENT_SOURCE_DIR}")
 ardashir_add_module(ArdaBackend Private/RHI/Config/ArdaBackendCorePch.h)
+target_link_libraries(ArdaBackend PUBLIC Ardashir::ArdaMath)
 
 target_compile_definitions(ArdaBackend PRIVATE
     $<$<BOOL:${WIN32}>:NOMINMAX>
@@ -68,7 +69,7 @@ foreach(ARDA_HEADER_VISIBILITY Public Private)
             target_include_directories(${ARDA_HEADER_TARGET} PRIVATE
                 "${CMAKE_CURRENT_SOURCE_DIR}/Private")
         endif()
-        target_link_libraries(${ARDA_HEADER_TARGET} PRIVATE Ardashir::EASTL)
+        target_link_libraries(${ARDA_HEADER_TARGET} PRIVATE Ardashir::EASTL Ardashir::ArdaMath)
         set_target_properties(${ARDA_HEADER_TARGET} PROPERTIES
             FOLDER "Ardashir/Tests/${ARDA_HEADER_VISIBILITY}Headers")
         list(APPEND ARDA_BACKEND_HEADER_TARGETS ${ARDA_HEADER_TARGET})

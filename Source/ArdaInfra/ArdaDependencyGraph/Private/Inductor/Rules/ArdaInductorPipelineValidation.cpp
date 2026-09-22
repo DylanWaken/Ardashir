@@ -1,9 +1,14 @@
 #include "Inductor/Rules/ArdaInductorPipelineInternal.h"
+#include "Inductor/Rules/ArdaInductorShaderContracts.h"
 
 namespace arda::pipeline_detail
 {
 	FArdaRHIStatus ValidatePattern(FArdaInductorPipelineConfiguration& C)
 	{
+		if (auto Status = ValidateArdaPipelineShaderContract(C); !Status)
+		{
+			return Status;
+		}
 		switch (C.mKind)
 		{
 		case EArdaPipelineStateKind::Compute:

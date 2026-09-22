@@ -190,6 +190,7 @@ namespace
 TEST_F(FArdaD3D12LifetimeAudit, ResetWhileSubmissionIsBlockedPreservesBothRecordings)
 {
 	FArdaRHIBufferDesc Desc;
+	Desc.mUsage = EArdaRHIBufferUsage::None;
 	Desc.mByteSize = sizeof(uint32_t);
 	auto First = mDevice->CreateBuffer(Desc);
 	auto Second = mDevice->CreateBuffer(Desc);
@@ -353,6 +354,7 @@ TEST_F(FArdaD3D12LifetimeAudit, SparseRemappingReleasesOnlyCompletelyUnmappedHea
 	}
 	constexpr uint64_t Tile = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
 	FArdaRHIBufferDesc BufferDesc;
+	BufferDesc.mUsage = EArdaRHIBufferUsage::None;
 	BufferDesc.mByteSize = Tile * 2;
 	BufferDesc.mbTiled = true;
 	auto Buffer = mDevice->CreateBuffer(BufferDesc);
@@ -416,6 +418,7 @@ TEST_F(FArdaD3D12LifetimeAudit, ReservedPrefixPreservesDataAcrossResizeAndExtrem
 	}
 	constexpr uint64_t Tile = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
 	FArdaRHIBufferDesc Desc;
+	Desc.mUsage = EArdaRHIBufferUsage::None;
 	Desc.mByteSize = Tile * 4;
 	Desc.mbTiled = true;
 	auto Buffer = mDevice->CreateBuffer(Desc);
@@ -691,6 +694,7 @@ TEST_F(FArdaD3D12LifetimeAudit, FailedSparseSignalRetainsIntermediateHeapAndShut
 	mDevice = GetDevice();
 	constexpr uint64_t Tile = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
 	FArdaRHIBufferDesc BufferDesc;
+	BufferDesc.mUsage = EArdaRHIBufferUsage::None;
 	BufferDesc.mByteSize = Tile;
 	BufferDesc.mbTiled = true;
 	auto Buffer = mDevice->CreateBuffer(BufferDesc);

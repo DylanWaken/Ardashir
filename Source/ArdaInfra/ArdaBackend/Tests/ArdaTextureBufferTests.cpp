@@ -9,6 +9,7 @@ namespace
 	TEST(ArdaTextureBuffer, ValidatesPitchedRegionsAndBufferBounds)
 	{
 		FArdaRHITextureDesc Texture;
+		Texture.mUsage = EArdaRHITextureUsage::ShaderResource;
 		Texture.mWidth = 75;
 		Texture.mHeight = 31;
 		Texture.mMipLevels = 2;
@@ -20,6 +21,7 @@ namespace
 		Slice.mWidth = 29;
 		Slice.mHeight = 11;
 		FArdaRHIBufferDesc Buffer;
+		Buffer.mUsage = EArdaRHIBufferUsage::None;
 		Buffer.mByteSize = 512 + 256 * 11;
 		FArdaRHITextureBufferLayout Layout{512, 256};
 		FArdaRHITextureCopyExtent Extent;
@@ -46,9 +48,11 @@ namespace
 	TEST(ArdaTextureBuffer, RejectsPitchAbovePortableSignedRowLimit)
 	{
 		FArdaRHITextureDesc Texture;
+		Texture.mUsage = EArdaRHITextureUsage::ShaderResource;
 		Texture.mWidth = Texture.mHeight = 1;
 		Texture.mFormat = EArdaRHIFormat::R32UInt;
 		FArdaRHIBufferDesc Buffer;
+		Buffer.mUsage = EArdaRHIBufferUsage::None;
 		Buffer.mByteSize = 4;
 		FArdaRHITextureBufferLayout Layout{0, uint32_t(INT32_MAX) & ~uint32_t(255)};
 		FArdaRHITextureCopyExtent Extent;
@@ -61,10 +65,12 @@ namespace
 	TEST(ArdaTextureBuffer, RejectsUnsupportedFormatsAndSubresources)
 	{
 		FArdaRHITextureDesc Texture;
+		Texture.mUsage = EArdaRHITextureUsage::ShaderResource;
 		Texture.mWidth = 8;
 		Texture.mHeight = 8;
 		Texture.mFormat = EArdaRHIFormat::R32UInt;
 		FArdaRHIBufferDesc Buffer;
+		Buffer.mUsage = EArdaRHIBufferUsage::None;
 		Buffer.mByteSize = 2048;
 		FArdaRHITextureBufferLayout Layout{0, 256};
 		FArdaRHITextureCopyExtent Extent;
@@ -88,9 +94,11 @@ namespace
 	TEST(ArdaTextureBuffer, RejectsInvalidTextureDimensions)
 	{
 		FArdaRHITextureDesc Texture;
+		Texture.mUsage = EArdaRHITextureUsage::ShaderResource;
 		Texture.mWidth = Texture.mHeight = 8;
 		Texture.mFormat = EArdaRHIFormat::R32UInt;
 		FArdaRHIBufferDesc Buffer;
+		Buffer.mUsage = EArdaRHIBufferUsage::None;
 		Buffer.mByteSize = 4096;
 		FArdaRHITextureCopyExtent Extent;
 		auto Check = [&](FArdaRHITextureDesc Invalid)

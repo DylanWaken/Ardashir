@@ -15,8 +15,15 @@ namespace arda::inductor_detail
 		    Valid(Range.mBasePlane, Range.mPlaneCount, GetArdaRHIFormatPlaneCount(Desc.mFormat));
 	}
 
-	FArdaRHIStatus ValidateResourceAccesses(const FArdaDependencyGraph::FArdaImpl& G)
+	FArdaRHIStatus ValidateResourceAccesses(const FArdaDependencyGraph::FArdaImpl& G, bool AllowAutomaticUsage)
 	{
+		if (!AllowAutomaticUsage)
+		{
+			if (auto Status = ValidateResourceUsage(G); !Status)
+			{
+				return Status;
+			}
+		}
 		for (auto H : G.mTopology.GetNodes())
 		{
 			const auto& Node = G.mTopology.TryGetNode(H)->mPayload;
@@ -24,7 +31,8 @@ namespace arda::inductor_detail
 			{
 				return Error("A graph node has no executable definition.");
 			}
-			if (Node.mDesc.mbPipelineStageOnly &&
+			if (Node.mDesc.mbPipelineStageOnly && Node.mDesc.mGraphicsStage == EArdaGraphicsStage::None &&
+			    Node.mDesc.mRayStage == EArdaRHIShaderStage::None &&
 			    (!Node.mDesc.mAccesses.empty() || !Node.mDesc.mColorTargets.empty() || Node.mDesc.mDepthTarget ||
 			        !Node.mDesc.mPipelines.empty()))
 			{
@@ -96,8 +104,9 @@ namespace arda::inductor_detail
 					return false;
 				}
 				const auto& Desc = G.mResources[Resource.mIndex].mTexture;
-				if (Depth ? !HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::DepthStencil)
-				          : !HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::RenderTarget))
+				if (!(AllowAutomaticUsage && HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::AutoDeduction)) &&
+				    (Depth ? !HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::DepthStencil)
+				           : !HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::RenderTarget)))
 				{
 					return false;
 				}

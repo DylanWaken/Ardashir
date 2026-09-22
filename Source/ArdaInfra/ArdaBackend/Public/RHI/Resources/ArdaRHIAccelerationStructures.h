@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "ArdaMath.h"
 #include "RHI/Resources/ArdaRHIBuffer.h"
 #include "RHI/Resources/ArdaRHIFormat.h"
 #include "RHI/Resources/ArdaRHIRef.h"
@@ -38,19 +39,25 @@ namespace arda
 		NoDuplicateAnyHitInvocation = 1u << 1
 	};
 
-	constexpr EArdaRHIRayTracingGeometryFlags operator|(EArdaRHIRayTracingGeometryFlags A, EArdaRHIRayTracingGeometryFlags B) noexcept
+	constexpr EArdaRHIRayTracingGeometryFlags operator|(EArdaRHIRayTracingGeometryFlags A,
+	    EArdaRHIRayTracingGeometryFlags B) noexcept
 	{
 		return static_cast<EArdaRHIRayTracingGeometryFlags>(static_cast<uint32_t>(A) | static_cast<uint32_t>(B));
 	}
-	constexpr EArdaRHIRayTracingGeometryFlags operator&(EArdaRHIRayTracingGeometryFlags A, EArdaRHIRayTracingGeometryFlags B) noexcept
+
+	constexpr EArdaRHIRayTracingGeometryFlags operator&(EArdaRHIRayTracingGeometryFlags A,
+	    EArdaRHIRayTracingGeometryFlags B) noexcept
 	{
 		return static_cast<EArdaRHIRayTracingGeometryFlags>(static_cast<uint32_t>(A) & static_cast<uint32_t>(B));
 	}
-	constexpr EArdaRHIRayTracingGeometryFlags& operator|=(EArdaRHIRayTracingGeometryFlags& A, EArdaRHIRayTracingGeometryFlags B) noexcept
+
+	constexpr EArdaRHIRayTracingGeometryFlags& operator|=(EArdaRHIRayTracingGeometryFlags& A,
+	    EArdaRHIRayTracingGeometryFlags B) noexcept
 	{
 		A = A | B;
 		return A;
 	}
+
 	constexpr bool HasAnyFlags(EArdaRHIRayTracingGeometryFlags Value, EArdaRHIRayTracingGeometryFlags Flags) noexcept
 	{
 		return static_cast<uint32_t>(Value & Flags) != 0;
@@ -69,19 +76,25 @@ namespace arda
 		AllowEmptyInstances = 1u << 7
 	};
 
-	constexpr EArdaRHIAccelStructBuildFlags operator|(EArdaRHIAccelStructBuildFlags A, EArdaRHIAccelStructBuildFlags B) noexcept
+	constexpr EArdaRHIAccelStructBuildFlags operator|(EArdaRHIAccelStructBuildFlags A,
+	    EArdaRHIAccelStructBuildFlags B) noexcept
 	{
 		return static_cast<EArdaRHIAccelStructBuildFlags>(static_cast<uint32_t>(A) | static_cast<uint32_t>(B));
 	}
-	constexpr EArdaRHIAccelStructBuildFlags operator&(EArdaRHIAccelStructBuildFlags A, EArdaRHIAccelStructBuildFlags B) noexcept
+
+	constexpr EArdaRHIAccelStructBuildFlags operator&(EArdaRHIAccelStructBuildFlags A,
+	    EArdaRHIAccelStructBuildFlags B) noexcept
 	{
 		return static_cast<EArdaRHIAccelStructBuildFlags>(static_cast<uint32_t>(A) & static_cast<uint32_t>(B));
 	}
-	constexpr EArdaRHIAccelStructBuildFlags& operator|=(EArdaRHIAccelStructBuildFlags& A, EArdaRHIAccelStructBuildFlags B) noexcept
+
+	constexpr EArdaRHIAccelStructBuildFlags& operator|=(EArdaRHIAccelStructBuildFlags& A,
+	    EArdaRHIAccelStructBuildFlags B) noexcept
 	{
 		A = A | B;
 		return A;
 	}
+
 	constexpr bool HasAnyFlags(EArdaRHIAccelStructBuildFlags Value, EArdaRHIAccelStructBuildFlags Flags) noexcept
 	{
 		return static_cast<uint32_t>(Value & Flags) != 0;
@@ -96,20 +109,27 @@ namespace arda
 		AllowCompaction = 1u << 2
 	};
 
-	constexpr EArdaRHIOpacityMicromapBuildFlags operator|(EArdaRHIOpacityMicromapBuildFlags A, EArdaRHIOpacityMicromapBuildFlags B) noexcept
+	constexpr EArdaRHIOpacityMicromapBuildFlags operator|(EArdaRHIOpacityMicromapBuildFlags A,
+	    EArdaRHIOpacityMicromapBuildFlags B) noexcept
 	{
 		return static_cast<EArdaRHIOpacityMicromapBuildFlags>(static_cast<uint32_t>(A) | static_cast<uint32_t>(B));
 	}
-	constexpr EArdaRHIOpacityMicromapBuildFlags operator&(EArdaRHIOpacityMicromapBuildFlags A, EArdaRHIOpacityMicromapBuildFlags B) noexcept
+
+	constexpr EArdaRHIOpacityMicromapBuildFlags operator&(EArdaRHIOpacityMicromapBuildFlags A,
+	    EArdaRHIOpacityMicromapBuildFlags B) noexcept
 	{
 		return static_cast<EArdaRHIOpacityMicromapBuildFlags>(static_cast<uint32_t>(A) & static_cast<uint32_t>(B));
 	}
-	constexpr EArdaRHIOpacityMicromapBuildFlags& operator|=(EArdaRHIOpacityMicromapBuildFlags& A, EArdaRHIOpacityMicromapBuildFlags B) noexcept
+
+	constexpr EArdaRHIOpacityMicromapBuildFlags& operator|=(EArdaRHIOpacityMicromapBuildFlags& A,
+	    EArdaRHIOpacityMicromapBuildFlags B) noexcept
 	{
 		A = A | B;
 		return A;
 	}
-	constexpr bool HasAnyFlags(EArdaRHIOpacityMicromapBuildFlags Value, EArdaRHIOpacityMicromapBuildFlags Flags) noexcept
+
+	constexpr bool HasAnyFlags(EArdaRHIOpacityMicromapBuildFlags Value,
+	    EArdaRHIOpacityMicromapBuildFlags Flags) noexcept
 	{
 		return static_cast<uint32_t>(Value & Flags) != 0;
 	}
@@ -296,8 +316,8 @@ namespace arda
 	/** Describes ray tracing instance desc. */
 	struct FArdaRHIRayTracingInstanceDesc
 	{
-		/** Stores the transform. */
-		float mTransform[12] = {1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f};
+		/** Object-to-world affine transform, stored as the native row-major 3x4 matrix. */
+		FArdaMatrix3x4f mTransform = FArdaMatrix3x4f::Identity();
 		/** Application-defined instance identifier. */
 		uint32_t mInstanceId = 0;
 		/** Visibility mask for the instance. */

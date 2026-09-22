@@ -77,8 +77,7 @@ namespace arda::detail
 			}
 			if (!GetCudaCapabilities().mbSurfaceAccess)
 			{
-				return UnsupportedResult<FArdaRHITextureRef>(
-				    GetCudaCapabilities().mSurfaceUnavailableReason.c_str());
+				return UnsupportedResult<FArdaRHITextureRef>(GetCudaCapabilities().mSurfaceUnavailableReason.c_str());
 			}
 			if (auto Status = ValidateArdaCudaTexture(Desc); !Status)
 			{
@@ -94,8 +93,7 @@ namespace arda::detail
 		    !(mDevice->GetCapabilities().mResidency.mbReservedTexture2D ||
 		        mDevice->GetCapabilities().mResidency.mbReservedTexture3D))
 		{
-			return UnsupportedResult<FArdaRHITextureRef>(
-			    "Tiled textures are unsupported by the backend providers.");
+			return UnsupportedResult<FArdaRHITextureRef>("Tiled textures are unsupported by the backend providers.");
 		}
 		auto Native = mAllocator.CreateTexture(Desc);
 		if (!Native)
@@ -267,8 +265,12 @@ namespace arda::detail
 		{
 			return Failure<FArdaRHIShaderResourceViewRef>(eastl::move(Status));
 		}
-		return {FArdaRHIShaderResourceViewRef(new FArdaShaderResourceView(Resource, Desc, this, mLifetimeTracker)),
-		    {}};
+		if (const auto* Texture = Cast<FArdaTexture>(Resource.Get());
+		    Texture && !HasAnyFlags(Texture->mDesc.mUsage, EArdaRHITextureUsage::ShaderResource))
+		{
+			return Failure<FArdaRHIShaderResourceViewRef>(Invalid("Texture SRVs require ShaderResource usage."));
+		}
+		return {FArdaRHIShaderResourceViewRef(new FArdaShaderResourceView(Resource, Desc, this, mLifetimeTracker)), {}};
 	}
 
 	TArdaRHIResult<FArdaRHIUnorderedAccessViewRef> FArdaRHIDeviceImpl::CreateUnorderedAccessView(
@@ -284,8 +286,12 @@ namespace arda::detail
 		{
 			return Failure<FArdaRHIUnorderedAccessViewRef>(eastl::move(Status));
 		}
-		return {
-		    FArdaRHIUnorderedAccessViewRef(new FArdaUnorderedAccessView(Resource, Desc, this, mLifetimeTracker)),
+		if (const auto* Texture = Cast<FArdaTexture>(Resource.Get());
+		    Texture && !HasAnyFlags(Texture->mDesc.mUsage, EArdaRHITextureUsage::UnorderedAccess))
+		{
+			return Failure<FArdaRHIUnorderedAccessViewRef>(Invalid("Texture UAVs require UnorderedAccess usage."));
+		}
+		return {FArdaRHIUnorderedAccessViewRef(new FArdaUnorderedAccessView(Resource, Desc, this, mLifetimeTracker)),
 		    {}};
 	}
 
@@ -331,11 +337,8 @@ namespace arda::detail
 		{
 			return Failure<FArdaRHISamplerFeedbackTextureRef>(eastl::move(Native.mStatus));
 		}
-		auto* Feedback = new FArdaSamplerFeedbackTexture(Desc,
-		    PairedTextureRef,
-		    eastl::move(Native.mValue),
-		    this,
-		    mLifetimeTracker);
+		auto* Feedback =
+		    new FArdaSamplerFeedbackTexture(Desc, PairedTextureRef, eastl::move(Native.mValue), this, mLifetimeTracker);
 		Feedback->mFacadeState = Desc.mInitialState;
 		Feedback->mbFacadeStateKnown = true;
 		return {FArdaRHISamplerFeedbackTextureRef(Feedback), {}};
@@ -367,8 +370,7 @@ namespace arda::detail
 		return mDevice->GetAccelStructBuildMemoryRequirements(Desc, Geometries.mValue);
 	}
 
-	TArdaRHIResult<FArdaRHIAccelStructRef> FArdaRHIDeviceImpl::CreateAccelStruct(
-	    const FArdaRHIAccelStructDesc& Desc)
+	TArdaRHIResult<FArdaRHIAccelStructRef> FArdaRHIDeviceImpl::CreateAccelStruct(const FArdaRHIAccelStructDesc& Desc)
 	{
 		auto Requirements = GetAccelStructBuildMemoryRequirements(Desc);
 		if (!Requirements)
@@ -400,8 +402,7 @@ namespace arda::detail
 	{
 		if (!mDevice->GetCapabilities().mRayTracing.mbOpacityMicromaps)
 		{
-			return UnsupportedResult<FArdaRHIOpacityMicromapRef>(
-			    "Opacity micromaps are unsupported by this device.");
+			return UnsupportedResult<FArdaRHIOpacityMicromapRef>("Opacity micromaps are unsupported by this device.");
 		}
 		if (Desc.mCounts.empty() || !Desc.mInputBuffer || !Desc.mPerMicromapDescBuffer)
 		{
@@ -417,8 +418,7 @@ namespace arda::detail
 		{
 			if (!Count.mCount)
 			{
-				return Failure<FArdaRHIOpacityMicromapRef>(
-				    Invalid("Opacity-micromap usage counts must be non-zero."));
+				return Failure<FArdaRHIOpacityMicromapRef>(Invalid("Opacity-micromap usage counts must be non-zero."));
 			}
 		}
 		auto* Input = Cast<FArdaBuffer>(Desc.mInputBuffer.Get());
@@ -478,8 +478,7 @@ namespace arda::detail
 		return mDevice->GetAccelStructCompactedSize(AccelStruct->mNative);
 	}
 
-	TArdaRHIResult<uint64_t> FArdaRHIDeviceImpl::GetOpacityMicromapCompactedSize(
-	    const FArdaRHIOpacityMicromapRef& Ref)
+	TArdaRHIResult<uint64_t> FArdaRHIDeviceImpl::GetOpacityMicromapCompactedSize(const FArdaRHIOpacityMicromapRef& Ref)
 	{
 		auto* Micromap = Cast<FArdaOpacityMicromap>(Ref.Get());
 		if (!Micromap || !Owns(Micromap))

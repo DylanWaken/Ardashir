@@ -99,10 +99,7 @@ namespace arda::detail
 		    FArdaProviderObjectRef Native,
 		    const void* Owner,
 		    eastl::shared_ptr<FArdaLifetimeTracker> LifetimeTracker)
-		    : FArdaResource(EArdaRHIResourceType::ShaderTable,
-		          Desc.mDebugName,
-		          Owner,
-		          eastl::move(LifetimeTracker)),
+		    : FArdaResource(EArdaRHIResourceType::ShaderTable, Desc.mDebugName, Owner, eastl::move(LifetimeTracker)),
 		      mDesc(eastl::move(Desc)),
 		      mPipeline(eastl::move(Pipeline)),
 		      mNative(eastl::move(Native)),
@@ -151,10 +148,7 @@ namespace arda::detail
 		FArdaShaderBundle(FArdaRHIShaderBundleDesc Desc,
 		    const void* Owner,
 		    eastl::shared_ptr<FArdaLifetimeTracker> LifetimeTracker)
-		    : FArdaResource(EArdaRHIResourceType::ShaderBundle,
-		          Desc.mDebugName,
-		          Owner,
-		          eastl::move(LifetimeTracker)),
+		    : FArdaResource(EArdaRHIResourceType::ShaderBundle, Desc.mDebugName, Owner, eastl::move(LifetimeTracker)),
 		      mDesc(eastl::move(Desc))
 		{
 		}
@@ -186,6 +180,7 @@ namespace arda::detail
 		      mStage(Desc.mStage),
 		      mEntryPoint(Desc.mEntryPoint),
 		      mPersistentCacheHash(PersistentShaderHash(Desc)),
+		      mParameterMetadata(Desc.mParameterMetadata),
 		      mNative(eastl::move(Native))
 		{
 		}
@@ -200,9 +195,15 @@ namespace arda::detail
 			return mPersistentCacheHash;
 		}
 
+		const FArdaShaderParameterMetadata* GetParameterMetadata() const noexcept override
+		{
+			return mParameterMetadata;
+		}
+
 		EArdaRHIShaderStage mStage = EArdaRHIShaderStage::None;
 		eastl::string mEntryPoint;
 		uint64_t mPersistentCacheHash = 0;
+		const FArdaShaderParameterMetadata* mParameterMetadata = nullptr;
 		FArdaProviderObjectRef mNative;
 	};
 
@@ -214,10 +215,7 @@ namespace arda::detail
 		    const char* Name,
 		    const void* Owner,
 		    eastl::shared_ptr<FArdaLifetimeTracker> LifetimeTracker)
-		    : FArdaResource(EArdaRHIResourceType::ShaderLibrary,
-		          Name ? Name : "",
-		          Owner,
-		          eastl::move(LifetimeTracker)),
+		    : FArdaResource(EArdaRHIResourceType::ShaderLibrary, Name ? Name : "", Owner, eastl::move(LifetimeTracker)),
 		      mBytecode(static_cast<const uint8_t*>(Bytecode), static_cast<const uint8_t*>(Bytecode) + Size)
 		{
 		}

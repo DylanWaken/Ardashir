@@ -332,22 +332,18 @@ namespace arda
 
 		// Derive the current camera basis before updating retained frame constants.
 		const float CosPitch = std::cos(mCameraPitch);
-		const float ForwardVector[3] = {std::cos(mCameraYaw) * CosPitch,
+		const FArdaVector3f ForwardVector = {std::cos(mCameraYaw) * CosPitch,
 		    std::sin(mCameraYaw) * CosPitch,
 		    std::sin(mCameraPitch)};
-		const float RightVector[3] = {-std::sin(mCameraYaw), std::cos(mCameraYaw), 0.0f};
-		const float InputLength = std::sqrt(Forward * Forward + Right * Right);
+		const FArdaVector3f RightVector = {-std::sin(mCameraYaw), std::cos(mCameraYaw), 0.0f};
+		const float InputLength = FArdaVector2f(Forward, Right).norm();
 		if (InputLength > 1.0f)
 		{
 			Forward /= InputLength;
 			Right /= InputLength;
 		}
 		const float Distance = MoveSpeed * eastl::min(DeltaSeconds, 0.1f);
-		for (uint32_t Component = 0; Component < 3; ++Component)
-		{
-			mCameraPosition[Component] +=
-			    (ForwardVector[Component] * Forward + RightVector[Component] * Right) * Distance;
-		}
+		mCameraPosition += (ForwardVector * Forward + RightVector * Right) * Distance;
 		ResetAccumulation();
 	}
 
@@ -566,26 +562,25 @@ namespace arda
 
 		// Derive the current camera basis before updating retained frame constants.
 		const float CosPitch = std::cos(mCameraPitch);
-		const float Forward[3] = {std::cos(mCameraYaw) * CosPitch,
+		const FArdaVector3f Forward = {std::cos(mCameraYaw) * CosPitch,
 		    std::sin(mCameraYaw) * CosPitch,
 		    std::sin(mCameraPitch)};
-		const float Right[3] = {-std::sin(mCameraYaw), std::cos(mCameraYaw), 0.0f};
-		const float Up[3] = {Forward[1] * Right[2] - Forward[2] * Right[1],
-		    Forward[2] * Right[0] - Forward[0] * Right[2],
-		    Forward[0] * Right[1] - Forward[1] * Right[0]};
+		const FArdaViewMatrix WorldToView = MakeArdaViewMatrix(mCameraPosition, Forward, FArdaVector3f::UnitZ());
+		const FArdaVector3f Right = WorldToView.block<1, 3>(0, 0).transpose();
+		const FArdaVector3f Up = WorldToView.block<1, 3>(1, 0).transpose();
 		constexpr float HorizontalHalfFov = 0.6981317008f;
 		const float TanHalfFovX = std::tan(HorizontalHalfFov);
 		const float TanHalfFovY = TanHalfFovX * static_cast<float>(Height) / static_cast<float>(Width);
 
 		// Capture camera, sampling, and material-independent controls for this frame's upload node.
 		FArdaCornellFrameConstants Constants;
-		Constants.mCameraPositionAndTanHalfFovX = {mCameraPosition[0],
-		    mCameraPosition[1],
-		    mCameraPosition[2],
+		Constants.mCameraPositionAndTanHalfFovX = {mCameraPosition.x(),
+		    mCameraPosition.y(),
+		    mCameraPosition.z(),
 		    TanHalfFovX};
-		Constants.mCameraForwardAndTanHalfFovY = {Forward[0], Forward[1], Forward[2], TanHalfFovY};
-		Constants.mCameraRightAndExposure = {Right[0], Right[1], Right[2], mSettings.mExposure};
-		Constants.mCameraUpAndLightArea = {Up[0], Up[1], Up[2], 0.7f * 0.6f};
+		Constants.mCameraForwardAndTanHalfFovY = {Forward.x(), Forward.y(), Forward.z(), TanHalfFovY};
+		Constants.mCameraRightAndExposure = {Right.x(), Right.y(), Right.z(), mSettings.mExposure};
+		Constants.mCameraUpAndLightArea = {Up.x(), Up.y(), Up.z(), 0.7f * 0.6f};
 		Constants.mImageAndSampling = {Width, Height, mAccumulatedSamples, DispatchSamples};
 		Constants.mPathAndSeed = {mSettings.mMaxBounces, mSettings.mSeed, mFrameIndex, mSettings.mMaxSamples};
 		Frame->mInput->mConstants = Constants;

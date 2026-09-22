@@ -33,7 +33,7 @@ namespace arda
 	public:
 		/** Constructs an empty operation. */
 		FArdaGraphOperation() = default;
-		/** Returns a read-only node identity for diagnostics. Use Edit.Order for operation ordering. */
+		/** Returns a read-only node identity for diagnostics. Stage connections use typed values. */
 		FArdaGraphNodeHandle GetHandle() const noexcept;
 		/** Tests whether invocation attached a node. */
 		explicit operator bool() const noexcept;
@@ -43,6 +43,13 @@ namespace arda
 		FArdaGraphTexture GetTexture(const eastl::string& Slot = "Destination") const;
 		/** Returns a declared acceleration-structure output; invalid slots fail the edit. */
 		FArdaGraphAccelerationStructure GetAccelerationStructure(const eastl::string& Slot = "Destination") const;
+		/** Typed logical stage outputs; a wrong stage fails the edit. */
+		FArdaGraphVertices GetVertices() const;
+		FArdaGraphFragments GetFragments() const;
+		FArdaGraphPixels GetPixels() const;
+		FArdaGraphControlPoints GetControlPoints() const;
+		FArdaGraphMeshPayload GetMeshPayload() const;
+		TArdaGraphStageValue<EArdaGraphStageValueKind::RayShader> GetRayShader() const;
 
 	private:
 		friend class FArdaGraphEdit;
@@ -92,6 +99,12 @@ namespace arda
 		 * Both must belong to this graph's current construction. Failures are retained for Commit.
 		 */
 		FArdaRHIStatus Order(const FArdaGraphOperation& Producer, const FArdaGraphOperation& Consumer);
+		/** Explicitly invoke the producer's registered materializer. Never allocates an implicit stage buffer.
+		 * A stage without a materializer returns Unsupported; its shader library must define a capture layout.
+		 */
+		FArdaGraphBuffer FetchBuffer(FArdaGraphStageValue Value, const FArdaStageBufferRequest& Request = {});
+		/** Retrieve a physical output explicitly declared by a stage, such as a pixel capture buffer. */
+		FArdaGraphBuffer GetStageBuffer(FArdaGraphStageValue Value, const eastl::string& Slot = "Destination");
 		/** Produce a fresh operation name within this construction; equivalent constructions repeat names. */
 		eastl::string MakeName(const eastl::string& Prefix);
 		/** Validates graph ownership, generation and buffer kind before constructing a typed value. */
@@ -193,6 +206,7 @@ namespace arda
 		friend class FArdaGraphOperation;
 		eastl::string ResolveOperationName(const eastl::string& Prefix, eastl::string Name);
 		bool ValidateResource(FArdaDependencyResourceHandle Resource, EArdaGraphResourceKind Kind);
+		bool ValidateStage(FArdaGraphStageValue Value);
 		FArdaDependencyGraph& mGraph;
 		FArdaRHIStatus mStatus;
 		uint64_t mGeneration = 0;
