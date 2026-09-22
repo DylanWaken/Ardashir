@@ -1154,6 +1154,7 @@ namespace arda::inductor_gpu_tests
 		FArdaRHITextureDesc TextureDesc;
 		TextureDesc.mWidth = TextureDesc.mHeight = 4;
 		TextureDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+		TextureDesc.mUsage = EArdaRHITextureUsage::ShaderResource;
 		auto Unused = mDevice->CreateTexture(TextureDesc);
 		ASSERT_TRUE(Unused) << Unused.mStatus.mMessage.c_str();
 		TextureDesc.mInitialState = EArdaRHIResourceState::Common;
@@ -1439,14 +1440,43 @@ namespace arda::inductor_gpu_tests
 
 	struct FArdaTableTestParameters
 	{
-		FArdaRHIShaderRef mRaygen, mMiss;
+		FArdaRHIShaderRef mRaygen;
+		eastl::vector<FArdaGraphRayShader> mShaders;
 		uint32_t mCase = 0;
 		eastl::shared_ptr<eastl::vector<FArdaRHIShaderTableRef>> mTrace;
 		FArdaDependencyResourceHandle mOutput;
 	};
 
+	struct FArdaRayMissParameters
+	{
+		FArdaRHIShaderRef mShader;
+	};
+
+	struct FArdaRayMissNode : TArdaNodeDefinition<FArdaRayMissNode, FArdaRayMissParameters, EArdaNodeType::RayMiss>
+	{
+		static FArdaDependencyNodeMetadata GetMetadata()
+		{
+			return {"test.automatic-ray-miss", 1};
+		}
+
+		static eastl::string GetCanonicalKey(const FArdaParameters& P)
+		{
+			return FArdaDependencyKeyBuilder().Value(P.mShader->GetPersistentCacheHash()).Build();
+		}
+
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters& P, const FArdaState&)
+		{
+			FArdaDependencyNodeDesc Desc;
+			Desc.mPipelineStages = {{P.mShader, {}, "miss"}};
+			return Desc;
+		}
+	};
+
+	ARDA_DECLARE_GRAPH_NODE(FArdaRayMissNode, RayTableMiss);
+	ARDA_DEFINE_GRAPH_NODE(FArdaRayMissNode, RayTableMiss);
+
 	struct FArdaRayTableTestNode
-	    : TArdaDependencyNode<FArdaRayTableTestNode, FArdaTableTestParameters, EArdaDependencyNodeKind::Graphics>
+	    : TArdaNodeDefinition<FArdaRayTableTestNode, FArdaTableTestParameters, EArdaNodeType::RayGeneration>
 	{
 		using FArdaParameters = FArdaTableTestParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -1462,7 +1492,6 @@ namespace arda::inductor_gpu_tests
 		{
 			return FArdaDependencyKeyBuilder{}
 			    .Value(P.mRaygen->GetPersistentCacheHash())
-			    .Value(P.mMiss->GetPersistentCacheHash())
 			    .Value(P.mCase)
 			    .Resource(P.mOutput)
 			    .Value(reinterpret_cast<uintptr_t>(P.mTrace.get()))
@@ -1474,7 +1503,7 @@ namespace arda::inductor_gpu_tests
 		{
 			FArdaDependencyNodeDesc N;
 			N.mbSideEffect = true;
-			N.mPipelineStages = {{P.mRaygen, {}, "raygen"}, {P.mMiss, {}, "miss"}};
+			N.mPipelineStages = {{P.mRaygen, {}, "raygen"}};
 			auto Config = eastl::make_shared<FArdaInductorPipelineConfiguration>();
 			Config->mKind = EArdaPipelineStateKind::RayTracing;
 			Config->mRayTracing.mDesc.mMaxPayloadSize = 4;
@@ -1549,7 +1578,12 @@ namespace arda::inductor_gpu_tests
 			SCOPED_TRACE(Case);
 			FArdaDependencyGraph G(mDevice);
 			FArdaGraphEdit Edit(G);
-			FArdaTableTestParameters P{Raygen, Miss, Case, eastl::make_shared<eastl::vector<FArdaRHIShaderTableRef>>()};
+			const auto MissStage = RayTableMiss(Edit, {Miss});
+			ASSERT_TRUE(MissStage);
+			FArdaTableTestParameters P{Raygen,
+			    {MissStage},
+			    Case,
+			    eastl::make_shared<eastl::vector<FArdaRHIShaderTableRef>>()};
 			auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
 			if (Case == 6)
 			{

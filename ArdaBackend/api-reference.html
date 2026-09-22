@@ -965,6 +965,7 @@
 <li><a href="#api-arda-fardacudasequence-endtimingregion-86f542cd">arda::FArdaCudaSequence::EndTimingRegion <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardacudasequence-getgraphcache-4b6444fa">arda::FArdaCudaSequence::GetGraphCache <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardacudasequence-getkernelcount-5db3b613">arda::FArdaCudaSequence::GetKernelCount <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacudasequence-getoperationbindings-931629a8">arda::FArdaCudaSequence::GetOperationBindings <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardacudasequence-getoperationcount-399f0b5f">arda::FArdaCudaSequence::GetOperationCount <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardacudasequence-getstatus-a28a4a2a">arda::FArdaCudaSequence::GetStatus <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardacudatimingquery-poll-bd65a90e">arda::FArdaCudaTimingQuery::Poll <span class="api-kind">method</span></a></li>
@@ -1474,6 +1475,7 @@
 <li><a href="#api-arda-eardarhiaccelstructbuildstate-updated-e3822e1e">arda::EArdaRHIAccelStructBuildState::Updated <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhibufferusage-accelstructbuildinput-1aee744b">arda::EArdaRHIBufferUsage::AccelStructBuildInput <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhibufferusage-accelstructstorage-db946a49">arda::EArdaRHIBufferUsage::AccelStructStorage <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardarhibufferusage-autodeduction-5f800015">arda::EArdaRHIBufferUsage::AutoDeduction <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhibufferusage-constant-7a4ad48f">arda::EArdaRHIBufferUsage::Constant <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhibufferusage-index-d8354448">arda::EArdaRHIBufferUsage::Index <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhibufferusage-indirect-760e1c1e">arda::EArdaRHIBufferUsage::Indirect <span class="api-kind">enumerator</span></a></li>
@@ -1631,6 +1633,7 @@
 <li><a href="#api-arda-rhi-eardarhitexturedimension-texturecube-0a8ca67f">arda::EArdaRHITextureDimension::TextureCube <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhitexturedimension-texturecubearray-d1df4146">arda::EArdaRHITextureDimension::TextureCubeArray <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhitexturedimension-unknown-bc7819b3">arda::EArdaRHITextureDimension::Unknown <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardarhitextureusage-autodeduction-b930eb47">arda::EArdaRHITextureUsage::AutoDeduction <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhitextureusage-depthstencil-d562722b">arda::EArdaRHITextureUsage::DepthStencil <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhitextureusage-none-042401ed">arda::EArdaRHITextureUsage::None <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhitextureusage-rendertarget-5effb0d9">arda::EArdaRHITextureUsage::RenderTarget <span class="api-kind">enumerator</span></a></li>
@@ -2174,6 +2177,7 @@
 <li><a href="#api-arda-fardarhicapabilities-mbcustompresent">arda::FArdaRHICapabilities::mbCustomPresent <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhicapabilities-mbexplicittransitions">arda::FArdaRHICapabilities::mbExplicitTransitions <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mbformatsupportreported-16eaf570">arda::FArdaRHICapabilities::mbFormatSupportReported <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhicapabilities-mbfragmentshaderstoresandatomics-8bccc2e6">arda::FArdaRHICapabilities::mbFragmentShaderStoresAndAtomics <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mbgeometryshaders-8f32fa5f">arda::FArdaRHICapabilities::mbGeometryShaders <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhicapabilities-mbheaps-b1aff575">arda::FArdaRHICapabilities::mbHeaps <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhicapabilities-mbindirectcommands">arda::FArdaRHICapabilities::mbIndirectCommands <span class="api-kind">member variable</span></a></li>
@@ -2189,6 +2193,7 @@
 <li><a href="#api-arda-rhi-fardarhicapabilities-mbtexturecopies">arda::FArdaRHICapabilities::mbTextureCopies <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhicapabilities-mbtextureresolve">arda::FArdaRHICapabilities::mbTextureResolve <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhicapabilities-mbvariablerateshading-676bc5d2">arda::FArdaRHICapabilities::mbVariableRateShading <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhicapabilities-mbvertexshaderstoresandatomics-0d5d8ca0">arda::FArdaRHICapabilities::mbVertexShaderStoresAndAtomics <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhicapabilities-mbvirtualresources-c5dd3485">arda::FArdaRHICapabilities::mbVirtualResources <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhidescriptorcapabilities-mmaxresourcedescriptors">arda::FArdaRHIDescriptorCapabilities::mMaxResourceDescriptors <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhidescriptorcapabilities-mmaxsamplerdescriptors">arda::FArdaRHIDescriptorCapabilities::mMaxSamplerDescriptors <span class="api-kind">member variable</span></a></li>
@@ -2257,6 +2262,7 @@
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequiredirectdescriptorindexing">arda::FArdaRHIFeatureRequirements::mbRequireDirectDescriptorIndexing <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequiredirectsamplerheapindexing-832d3b38">arda::FArdaRHIFeatureRequirements::mbRequireDirectSamplerHeapIndexing <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequireexplicittransitions-568884d7">arda::FArdaRHIFeatureRequirements::mbRequireExplicitTransitions <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhifeaturerequirements-mbrequirefragmentshaderstoresandatomics-d739b8c9">arda::FArdaRHIFeatureRequirements::mbRequireFragmentShaderStoresAndAtomics <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequiregeometryshaders-ad191d75">arda::FArdaRHIFeatureRequirements::mbRequireGeometryShaders <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequiregpuqueuewaits">arda::FArdaRHIFeatureRequirements::mbRequireGpuQueueWaits <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequiregraphicsqueue-38a4a854">arda::FArdaRHIFeatureRequirements::mbRequireGraphicsQueue <span class="api-kind">member variable</span></a></li>
@@ -2303,6 +2309,7 @@
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequireupdateunusedwhilepending-9d2521d2">arda::FArdaRHIFeatureRequirements::mbRequireUpdateUnusedWhilePending <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequirevariabledescriptorcount-1276b04f">arda::FArdaRHIFeatureRequirements::mbRequireVariableDescriptorCount <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequirevariablerateshading-6eb7cad5">arda::FArdaRHIFeatureRequirements::mbRequireVariableRateShading <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhifeaturerequirements-mbrequirevertexshaderstoresandatomics-015ef875">arda::FArdaRHIFeatureRequirements::mbRequireVertexShaderStoresAndAtomics <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequirevirtualresources-09256f91">arda::FArdaRHIFeatureRequirements::mbRequireVirtualResources <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequireworkgraphs">arda::FArdaRHIFeatureRequirements::mbRequireWorkGraphs <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturesupportreport-mmissingabilities">arda::FArdaRHIFeatureSupportReport::mMissingAbilities <span class="api-kind">member variable</span></a></li>
@@ -2495,6 +2502,7 @@
 <li><a href="#api-arda-backend-eardashaderdirectoryerror-47b1f57a">arda::EArdaShaderDirectoryError <span class="api-kind">enum</span></a></li>
 <li><a href="#api-arda-backend-eardashaderparameterkind-d81dcbd4">arda::EArdaShaderParameterKind <span class="api-kind">enum</span></a></li>
 <li><a href="#api-arda-backend-eardashaderregistrationerror-13a6cdf1">arda::EArdaShaderRegistrationError <span class="api-kind">enum</span></a></li>
+<li><a href="#api-arda-eardashaderresourceaccess-399d22d7">arda::EArdaShaderResourceAccess <span class="api-kind">enum</span></a></li>
 <li><a href="#api-arda-backend-eardashaderstructerror-0789ba68">arda::EArdaShaderStructError <span class="api-kind">enum</span></a></li>
 <li><a href="#api-arda-backend-eardabackendshadercompileresult-failure-0d7cd7ff">arda::EArdaBackendShaderCompileResult::Failure <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-backend-eardabackendshadercompileresult-nothandled-14ebfaa3">arda::EArdaBackendShaderCompileResult::NotHandled <span class="api-kind">enumerator</span></a></li>
@@ -2614,6 +2622,10 @@
 <li><a href="#api-arda-backend-eardashaderregistrationerror-missingvirtualsource-f6049778">arda::EArdaShaderRegistrationError::MissingVirtualSource <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-backend-eardashaderregistrationerror-none-6eef6648">arda::EArdaShaderRegistrationError::None <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-backend-eardashaderregistrationerror-registrymutation-5564f622">arda::EArdaShaderRegistrationError::RegistryMutation <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardashaderresourceaccess-autodeduction-223025d8">arda::EArdaShaderResourceAccess::AutoDeduction <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardashaderresourceaccess-read-9347d70e">arda::EArdaShaderResourceAccess::Read <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardashaderresourceaccess-readwrite-67fd6841">arda::EArdaShaderResourceAccess::ReadWrite <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardashaderresourceaccess-write-094966a9">arda::EArdaShaderResourceAccess::Write <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-backend-eardashaderstructerror-bindingcreationfailed-f3536d0e">arda::EArdaShaderStructError::BindingCreationFailed <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-backend-eardashaderstructerror-duplicateregister-7e7628fb">arda::EArdaShaderStructError::DuplicateRegister <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-backend-eardashaderstructerror-incompatiblevisibility-acb4a4e5">arda::EArdaShaderStructError::IncompatibleVisibility <span class="api-kind">enumerator</span></a></li>
@@ -2707,7 +2719,9 @@
 <li><a href="#api-arda-arda-shader-buffer-srv-fb046925">arda::ARDA_SHADER_BUFFER_SRV <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-arda-shader-buffer-srv-array-942dda13">arda::ARDA_SHADER_BUFFER_SRV_ARRAY <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-arda-shader-buffer-uav-9bf51ef0">arda::ARDA_SHADER_BUFFER_UAV <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-arda-shader-buffer-uav-access-41a05621">arda::ARDA_SHADER_BUFFER_UAV_ACCESS <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-arda-shader-buffer-uav-array-34fbad93">arda::ARDA_SHADER_BUFFER_UAV_ARRAY <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-arda-shader-buffer-uav-array-access-f4911740">arda::ARDA_SHADER_BUFFER_UAV_ARRAY_ACCESS <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-arda-shader-constant-buffer-3e4b6ac2">arda::ARDA_SHADER_CONSTANT_BUFFER <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-arda-shader-parameter-struct-2e45f324">arda::ARDA_SHADER_PARAMETER_STRUCT <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-arda-shader-parameter-value-a9c3ce00">arda::ARDA_SHADER_PARAMETER_VALUE <span class="api-kind">macro</span></a></li>
@@ -2719,7 +2733,9 @@
 <li><a href="#api-arda-arda-shader-texture-srv-363717d0">arda::ARDA_SHADER_TEXTURE_SRV <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-arda-shader-texture-srv-array-a8340790">arda::ARDA_SHADER_TEXTURE_SRV_ARRAY <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-arda-shader-texture-uav-d7c2408a">arda::ARDA_SHADER_TEXTURE_UAV <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-arda-shader-texture-uav-access-3b6f8342">arda::ARDA_SHADER_TEXTURE_UAV_ACCESS <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-arda-shader-texture-uav-array-627efb4f">arda::ARDA_SHADER_TEXTURE_UAV_ARRAY <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-arda-shader-texture-uav-array-access-dd0f7d21">arda::ARDA_SHADER_TEXTURE_UAV_ARRAY_ACCESS <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-arda-shader-uniform-buffer-026886cc">arda::ARDA_SHADER_UNIFORM_BUFFER <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-structtype-arda-end-compute-parameter-struct-59d9c5d3">arda::StructType::ARDA_END_COMPUTE_PARAMETER_STRUCT <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-structtype-arda-end-shader-parameter-struct-bd33e16d">arda::StructType::ARDA_END_SHADER_PARAMETER_STRUCT <span class="api-kind">macro</span></a></li>
@@ -2863,6 +2879,7 @@
 <li><a href="#api-arda-rhi-fardarhishaderdesc-mbytecodesize-1bf77aa0">arda::FArdaRHIShaderDesc::mBytecodeSize <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhishaderdesc-mdebugname-f969edaa">arda::FArdaRHIShaderDesc::mDebugName <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhishaderdesc-mentrypoint-06da6915">arda::FArdaRHIShaderDesc::mEntryPoint <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhishaderdesc-mparametermetadata-858a6460">arda::FArdaRHIShaderDesc::mParameterMetadata <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhishaderdesc-mstage-bc870f25">arda::FArdaRHIShaderDesc::mStage <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhishadertabledesc-mdebugname-f969edaa">arda::FArdaRHIShaderTableDesc::mDebugName <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhishadertabledesc-mmaxentries-4a62aa86">arda::FArdaRHIShaderTableDesc::mMaxEntries <span class="api-kind">member variable</span></a></li>
@@ -2942,6 +2959,7 @@
 <li><a href="#api-arda-backend-fardashaderparametermember-mnestedmetadata-58a09023">arda::FArdaShaderParameterMember::mNestedMetadata <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-backend-fardashaderparametermember-moffset-fd6a663a">arda::FArdaShaderParameterMember::mOffset <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-backend-fardashaderparametermember-mregisterspace-23fae859">arda::FArdaShaderParameterMember::mRegisterSpace <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardashaderparametermember-mresourceaccess-3beac6a7">arda::FArdaShaderParameterMember::mResourceAccess <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-backend-fardashaderparametermember-msize-5050da2b">arda::FArdaShaderParameterMember::mSize <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-backend-fardashaderparametermember-mslot-befdd5c2">arda::FArdaShaderParameterMember::mSlot <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-backend-fardashaderparametermember-mvisibility-25ef94a1">arda::FArdaShaderParameterMember::mVisibility <span class="api-kind">member variable</span></a></li>
@@ -3018,6 +3036,7 @@
 <li><a href="#api-arda-backend-fardashadercompileenvironment-setdefine-52b267e4">arda::FArdaShaderCompileEnvironment::SetDefine <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-fardashadercompileenvironment-setdefine-cb8d9b89">arda::FArdaShaderCompileEnvironment::SetDefine <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardashadercompileenvironment-setdefine-329a5add">arda::FArdaShaderCompileEnvironment::SetDefine <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardashaderparametermember-getresourceaccess-5e5fe082">arda::FArdaShaderParameterMember::GetResourceAccess <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-fardashaderparametermetadata-applypushconstants-f62c973e">arda::FArdaShaderParameterMetadata::ApplyPushConstants <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-fardashaderparametermetadata-buildbindinglayoutdescs-b4df1d86">arda::FArdaShaderParameterMetadata::BuildBindingLayoutDescs <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-fardashaderparametermetadata-buildbindingsetdesc-097d7746">arda::FArdaShaderParameterMetadata::BuildBindingSetDesc <span class="api-kind">method</span></a></li>
@@ -3067,6 +3086,7 @@
 <li><a href="#api-arda-rhi-iardarhidescriptortable-getcapacity-3eaa6cc0">arda::IArdaRHIDescriptorTable::GetCapacity <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rhi-iardarhidescriptortable-getfirstdescriptorindexinheap-a86e6b86">arda::IArdaRHIDescriptorTable::GetFirstDescriptorIndexInHeap <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rhi-iardarhiinputlayout-getdesc-2cc39474">arda::IArdaRHIInputLayout::GetDesc <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardarhishader-getparametermetadata-e46f5e10">arda::IArdaRHIShader::GetParameterMetadata <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rhi-iardarhishader-getpersistentcachehash-467cd741">arda::IArdaRHIShader::GetPersistentCacheHash <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rhi-iardarhishader-getstage-1644aa14">arda::IArdaRHIShader::GetStage <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhishaderbundle-getdesc-a576585b">arda::IArdaRHIShaderBundle::GetDesc <span class="api-kind">method</span></a></li>
@@ -5755,7 +5775,7 @@
 <dt>Ownership</dt><dd>Intrusive owning references retain resources with AddRef and release them with Release.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Pipelines/ArdaRHIComputePipeline.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-fardarhidepthstencilstate-mdepthfunc-5feee2de" tabindex="-1"><h5>arda::FArdaRHIDepthStencilState::mDepthFunc</h5><pre><code>EArdaRHIComparisonFunc mDepthFunc = EArdaRHIComparisonFunc::Less</code></pre><p>Stores the depth func.</p>
+<section class="api-entry" id="api-arda-rhi-fardarhidepthstencilstate-mdepthfunc-5feee2de" tabindex="-1"><h5>arda::FArdaRHIDepthStencilState::mDepthFunc</h5><pre><code>EArdaRHIComparisonFunc mDepthFunc = EArdaRHIComparisonFunc::GreaterOrEqual</code></pre><p>Stores the depth func.</p>
 <p>Stores the depth func. The public declaration initializes this field to EArdaRHIComparisonFunc::Less.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Pipelines/ArdaRHIFixedFunctionStates.h</dd>
@@ -8700,8 +8720,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Providers/ArdaProviderCommandTypes.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardaproviderraytracinginstance-mtransform-03022a5a" tabindex="-1"><h5>arda::FArdaProviderRayTracingInstance::mTransform</h5><pre><code>float mTransform[3][4]{}</code></pre><p>Stores transform in this public backend and RHI value.</p>
-<p>Stores transform in this public backend and RHI value. The signature is generated from the current public header.</p>
+<section class="api-entry" id="api-arda-fardaproviderraytracinginstance-mtransform-03022a5a" tabindex="-1"><h5>arda::FArdaProviderRayTracingInstance::mTransform</h5><pre><code>float mTransform[3][4]{}</code></pre><p>Native row-major coefficients; provider records retain their explicit scalar ABI.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
@@ -9591,6 +9610,14 @@
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Scheduling/ArdaCudaSequence.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-fardacudasequence-getkernelcount-5db3b613" tabindex="-1"><h5>arda::FArdaCudaSequence::GetKernelCount</h5><pre><code>[[nodiscard]] size_t GetKernelCount() const noexcept</code></pre><p>Returns the explicit compiled-kernel count; external calls and NoWork are omitted.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Scheduling/ArdaCudaSequence.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacudasequence-getoperationbindings-931629a8" tabindex="-1"><h5>arda::FArdaCudaSequence::GetOperationBindings</h5><pre><code>[[nodiscard]] const eastl::vector&lt;FArdaCudaBinding&gt;&amp; GetOperationBindings(size_t Operation) const</code></pre><p>Frozen operand resource requirements for an appended operation, excluding NoWork. Operation must be less than GetOperationCount(); Add/AddPlan can invalidate the returned reference. Graph schedulers use these schema-derived bindings to verify their declared resource contract.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -13896,6 +13923,13 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHIBuffer.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-eardarhibufferusage-autodeduction-5f800015" tabindex="-1"><h5>arda::EArdaRHIBufferUsage::AutoDeduction</h5><pre><code>AutoDeduction = 1u &lt;&lt; 15</code></pre><p>Graph compilation derives required usage flags; must be resolved before native creation.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHIBuffer.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-rhi-eardarhibufferusage-constant-7a4ad48f" tabindex="-1"><h5>arda::EArdaRHIBufferUsage::Constant</h5><pre><code>Constant = 1u &lt;&lt; 4</code></pre><p>Selects constant in arda::EArdaRHIBufferUsage.</p>
 <p>Selects constant in arda::EArdaRHIBufferUsage. Its explicit source initializer is 1u &lt;&lt; 4.</p>
 <dl>
@@ -14717,6 +14751,13 @@
 <section class="api-entry" id="api-arda-rhi-eardarhitexturedimension-unknown-bc7819b3" tabindex="-1"><h5>arda::EArdaRHITextureDimension::Unknown</h5><pre><code>Unknown</code></pre><p>Represents an unknown or unspecified value in arda::EArdaRHITextureDimension.</p>
 <p>Represents an unknown or unspecified value in arda::EArdaRHITextureDimension. Its numeric value follows declaration order because no explicit initializer is present.</p>
 <dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHITexture.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardarhitextureusage-autodeduction-b930eb47" tabindex="-1"><h5>arda::EArdaRHITextureUsage::AutoDeduction</h5><pre><code>AutoDeduction = 1u &lt;&lt; 15</code></pre><p>Graph compilation derives required usage flags; must be resolved before native creation.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHITexture.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-eardarhitextureusage-depthstencil-d562722b" tabindex="-1"><h5>arda::EArdaRHITextureUsage::DepthStencil</h5><pre><code>DepthStencil = 1u &lt;&lt; 3</code></pre><p>Selects depth stencil in arda::EArdaRHITextureUsage.</p>
@@ -15771,7 +15812,7 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHIBuffer.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-fardarhibufferdesc-musage-cec05093" tabindex="-1"><h5>arda::FArdaRHIBufferDesc::mUsage</h5><pre><code>EArdaRHIBufferUsage mUsage = EArdaRHIBufferUsage::None</code></pre><p>Stores the usage.</p>
+<section class="api-entry" id="api-arda-rhi-fardarhibufferdesc-musage-cec05093" tabindex="-1"><h5>arda::FArdaRHIBufferDesc::mUsage</h5><pre><code>EArdaRHIBufferUsage mUsage = EArdaRHIBufferUsage::AutoDeduction</code></pre><p>Stores the usage.</p>
 <p>Stores the usage. The public declaration initializes this field to EArdaRHIBufferUsage::None.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHIBuffer.h</dd>
@@ -16200,7 +16241,7 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHIAccelerationStructures.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-fardarhiraytracinginstancedesc-mtransform-efcc86be" tabindex="-1"><h5>arda::FArdaRHIRayTracingInstanceDesc::mTransform</h5><pre><code>float mTransform[12] = {1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f}</code></pre><p>Stores the transform.</p>
+<section class="api-entry" id="api-arda-rhi-fardarhiraytracinginstancedesc-mtransform-efcc86be" tabindex="-1"><h5>arda::FArdaRHIRayTracingInstanceDesc::mTransform</h5><pre><code>FArdaMatrix3x4f mTransform = FArdaMatrix3x4f::Identity()</code></pre><p>Stores the transform.</p>
 <p>Stores the transform. The public declaration initializes this field to { 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f }.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHIAccelerationStructures.h</dd>
@@ -16536,7 +16577,7 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHITexture.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-fardarhitexturedesc-musage-03113c68" tabindex="-1"><h5>arda::FArdaRHITextureDesc::mUsage</h5><pre><code>EArdaRHITextureUsage mUsage = EArdaRHITextureUsage::ShaderResource</code></pre><p>Stores the usage.</p>
+<section class="api-entry" id="api-arda-rhi-fardarhitexturedesc-musage-03113c68" tabindex="-1"><h5>arda::FArdaRHITextureDesc::mUsage</h5><pre><code>EArdaRHITextureUsage mUsage = EArdaRHITextureUsage::AutoDeduction</code></pre><p>Stores the usage.</p>
 <p>Stores the usage. The public declaration initializes this field to EArdaRHITextureUsage::ShaderResource.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHITexture.h</dd>
@@ -18351,6 +18392,13 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardarhicapabilities-mbfragmentshaderstoresandatomics-8bccc2e6" tabindex="-1"><h5>arda::FArdaRHICapabilities::mbFragmentShaderStoresAndAtomics</h5><pre><code>bool mbFragmentShaderStoresAndAtomics = false</code></pre><p>Pixel shaders may write storage buffers and use atomics.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-fardarhicapabilities-mbgeometryshaders-8f32fa5f" tabindex="-1"><h5>arda::FArdaRHICapabilities::mbGeometryShaders</h5><pre><code>bool mbGeometryShaders = false</code></pre><p>The graphics pipeline admits the enabled geometry shader stage.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -18439,6 +18487,13 @@
 <p>Stores the variable rate shading. The public declaration initializes this field to false.</p>
 <dl>
 <dt>Threading</dt><dd>No implicit cross-thread ordering is promised; synchronize command recording, submission, and resource lifetime externally.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhicapabilities-mbvertexshaderstoresandatomics-0d5d8ca0" tabindex="-1"><h5>arda::FArdaRHICapabilities::mbVertexShaderStoresAndAtomics</h5><pre><code>bool mbVertexShaderStoresAndAtomics = false</code></pre><p>Vertex and other pre-rasterization shaders may write storage buffers and use atomics.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-fardarhicapabilities-mbvirtualresources-c5dd3485" tabindex="-1"><h5>arda::FArdaRHICapabilities::mbVirtualResources</h5><pre><code>bool mbVirtualResources = false</code></pre><p>Stores the virtual resources.</p>
@@ -18896,6 +18951,13 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardarhifeaturerequirements-mbrequirefragmentshaderstoresandatomics-d739b8c9" tabindex="-1"><h5>arda::FArdaRHIFeatureRequirements::mbRequireFragmentShaderStoresAndAtomics</h5><pre><code>bool mbRequireFragmentShaderStoresAndAtomics = false</code></pre><p>Require storage writes and atomics from pixel shaders.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-fardarhifeaturerequirements-mbrequiregeometryshaders-ad191d75" tabindex="-1"><h5>arda::FArdaRHIFeatureRequirements::mbRequireGeometryShaders</h5><pre><code>bool mbRequireGeometryShaders = false</code></pre><p>When true, reject a device missing the graphics geometry shader stage.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -19196,6 +19258,13 @@
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-fardarhifeaturerequirements-mbrequirevariablerateshading-6eb7cad5" tabindex="-1"><h5>arda::FArdaRHIFeatureRequirements::mbRequireVariableRateShading</h5><pre><code>bool mbRequireVariableRateShading = false</code></pre><p>Variable-rate shading must be supported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhifeaturerequirements-mbrequirevertexshaderstoresandatomics-015ef875" tabindex="-1"><h5>arda::FArdaRHIFeatureRequirements::mbRequireVertexShaderStoresAndAtomics</h5><pre><code>bool mbRequireVertexShaderStoresAndAtomics = false</code></pre><p>Require storage writes and atomics from traditional pre-rasterization shader stages.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
@@ -20537,6 +20606,13 @@
 <dt>Errors</dt><dd>The returned status or error code identifies failure and may include diagnostic text.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderType.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-eardashaderresourceaccess-399d22d7" tabindex="-1"><h5>arda::EArdaShaderResourceAccess</h5><pre><code>enum class EArdaShaderResourceAccess : uint8_t</code></pre><p>Authoritative data access declared by a shader resource parameter.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-backend-eardashaderstructerror-0789ba68" tabindex="-1"><h5>arda::EArdaShaderStructError</h5><pre><code>enum class EArdaShaderStructError : uint8_t</code></pre><p>Identifies shader parameter validation or binding failures.</p>
 <p>Identifies shader parameter validation or binding failures. Every enumerator is inventoried separately so callers can deep-link to individual values.</p>
 <dl>
@@ -21263,6 +21339,38 @@
 <dt>Errors</dt><dd>Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.</dd>
 <dt>Threading</dt><dd>Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderType.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardashaderresourceaccess-autodeduction-223025d8" tabindex="-1"><h5>arda::EArdaShaderResourceAccess::AutoDeduction</h5><pre><code>AutoDeduction</code></pre><p>Selects the auto deduction backend and RHI value.</p>
+<p>Selects the auto deduction backend and RHI value. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardashaderresourceaccess-read-9347d70e" tabindex="-1"><h5>arda::EArdaShaderResourceAccess::Read</h5><pre><code>Read</code></pre><p>Selects the read backend and RHI value.</p>
+<p>Selects the read backend and RHI value. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardashaderresourceaccess-readwrite-67fd6841" tabindex="-1"><h5>arda::EArdaShaderResourceAccess::ReadWrite</h5><pre><code>ReadWrite</code></pre><p>Selects the read write backend and RHI value.</p>
+<p>Selects the read write backend and RHI value. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardashaderresourceaccess-write-094966a9" tabindex="-1"><h5>arda::EArdaShaderResourceAccess::Write</h5><pre><code>Write</code></pre><p>Selects the write backend and RHI value.</p>
+<p>Selects the write backend and RHI value. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-backend-eardashaderstructerror-bindingcreationfailed-f3536d0e" tabindex="-1"><h5>arda::EArdaShaderStructError::BindingCreationFailed</h5><pre><code>BindingCreationFailed</code></pre><p>Reports or selects the binding creation failed condition in arda::EArdaShaderStructError.</p>
 <p>Reports or selects the binding creation failed condition in arda::EArdaShaderStructError. Its numeric value follows declaration order because no explicit initializer is present.</p>
@@ -22036,7 +22144,21 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-arda-shader-buffer-uav-access-41a05621" tabindex="-1"><h5>arda::ARDA_SHADER_BUFFER_UAV_ACCESS</h5><pre><code>#define ARDA_SHADER_BUFFER_UAV_ACCESS(MemberName, Slot, Space, Visibility, Access)</code></pre><p>Declares a structured-buffer UAV&#x27;s required shader access explicitly.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-arda-shader-buffer-uav-array-34fbad93" tabindex="-1"><h5>arda::ARDA_SHADER_BUFFER_UAV_ARRAY</h5><pre><code>#define ARDA_SHADER_BUFFER_UAV_ARRAY(MemberName, Slot, Space, Count, Visibility)</code></pre><p>Declares a fixed-size structured-buffer UAV array with the specified binding and count.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-arda-shader-buffer-uav-array-access-f4911740" tabindex="-1"><h5>arda::ARDA_SHADER_BUFFER_UAV_ARRAY_ACCESS</h5><pre><code>#define ARDA_SHADER_BUFFER_UAV_ARRAY_ACCESS(MemberName, Slot, Space, Count, Visibility, Access)</code></pre><p>Declares a structured-buffer UAV array&#x27;s required shader access explicitly.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
@@ -22129,7 +22251,21 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-arda-shader-texture-uav-access-3b6f8342" tabindex="-1"><h5>arda::ARDA_SHADER_TEXTURE_UAV_ACCESS</h5><pre><code>#define ARDA_SHADER_TEXTURE_UAV_ACCESS(MemberName, Slot, Space, Visibility, Access)</code></pre><p>Declares a texture UAV&#x27;s required shader access explicitly.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-arda-shader-texture-uav-array-627efb4f" tabindex="-1"><h5>arda::ARDA_SHADER_TEXTURE_UAV_ARRAY</h5><pre><code>#define ARDA_SHADER_TEXTURE_UAV_ARRAY(MemberName, Slot, Space, Count, Visibility)</code></pre><p>Declares a fixed-size texture UAV array with the specified binding and count.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-arda-shader-texture-uav-array-access-dd0f7d21" tabindex="-1"><h5>arda::ARDA_SHADER_TEXTURE_UAV_ARRAY_ACCESS</h5><pre><code>#define ARDA_SHADER_TEXTURE_UAV_ARRAY_ACCESS(MemberName, Slot, Space, Count, Visibility, Access)</code></pre><p>Declares a texture UAV array&#x27;s required shader access explicitly.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
@@ -23116,6 +23252,13 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaRHIShader.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardarhishaderdesc-mparametermetadata-858a6460" tabindex="-1"><h5>arda::FArdaRHIShaderDesc::mParameterMetadata</h5><pre><code>const FArdaShaderParameterMetadata* mParameterMetadata = nullptr</code></pre><p>Optional immutable declared binding contract. Metadata must outlive the created shader.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaRHIShader.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-rhi-fardarhishaderdesc-mstage-bc870f25" tabindex="-1"><h5>arda::FArdaRHIShaderDesc::mStage</h5><pre><code>EArdaRHIShaderStage mStage = EArdaRHIShaderStage::None</code></pre><p>Stores the stage.</p>
 <p>Stores the stage. The public declaration initializes this field to EArdaRHIShaderStage::None.</p>
 <dl>
@@ -23683,6 +23826,13 @@
 <section class="api-entry" id="api-arda-backend-fardashaderparametermember-mregisterspace-23fae859" tabindex="-1"><h5>arda::FArdaShaderParameterMember::mRegisterSpace</h5><pre><code>uint32_t mRegisterSpace = 0</code></pre><p>Shader register space.</p>
 <p>Shader register space. The public declaration initializes this field to 0.</p>
 <dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardashaderparametermember-mresourceaccess-3beac6a7" tabindex="-1"><h5>arda::FArdaShaderParameterMember::mResourceAccess</h5><pre><code>EArdaShaderResourceAccess mResourceAccess = EArdaShaderResourceAccess::AutoDeduction</code></pre><p>AutoDeduction means Read for SRV/CBV and Write for UAV; annotate read-modify-write UAVs explicitly.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-backend-fardashaderparametermember-msize-5050da2b" tabindex="-1"><h5>arda::FArdaShaderParameterMember::mSize</h5><pre><code>size_t mSize = 0</code></pre><p>Total byte size of the declared member.</p>
@@ -24276,6 +24426,15 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderCompilerTypes.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardashaderparametermember-getresourceaccess-5e5fe082" tabindex="-1"><h5>arda::FArdaShaderParameterMember::GetResourceAccess</h5><pre><code>[[nodiscard]] EArdaShaderResourceAccess GetResourceAccess() const noexcept</code></pre><p>Performs get resource access through the public backend and RHI contract.</p>
+<p>Performs get resource access through the public backend and RHI contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>The concrete data access used by graph dependency inference.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaShaderParameters.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-backend-fardashaderparametermetadata-applypushconstants-f62c973e" tabindex="-1"><h5>arda::FArdaShaderParameterMetadata::ApplyPushConstants</h5><pre><code>[[nodiscard]] FArdaShaderStructStatus ApplyPushConstants(arda::IArdaRHICommandList&amp; CommandList, const void* Parameters, const arda::FArdaRHIBindingLayoutDesc&amp; Layout) const</code></pre><p>Applies this layout&#x27;s concrete push-constant block from a parameter instance.</p>
 <p>Applies this layout&#x27;s concrete push-constant block from a parameter instance. The operation does not mutate the observable state of the object through this interface.</p>
 <dl>
@@ -24665,6 +24824,15 @@
 <dt>Returns</dt><dd>A reference to the requested value.</dd>
 <dt>Ownership</dt><dd>Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaRHIInputLayout.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardarhishader-getparametermetadata-e46f5e10" tabindex="-1"><h5>arda::IArdaRHIShader::GetParameterMetadata</h5><pre><code>[[nodiscard]] virtual const FArdaShaderParameterMetadata* GetParameterMetadata() const noexcept</code></pre><p>Performs get parameter metadata through the public backend and RHI contract.</p>
+<p>Performs get parameter metadata through the public backend and RHI contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>The declared parameter contract, or null for raw shaders without metadata.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaRHIShader.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-iardarhishader-getpersistentcachehash-467cd741" tabindex="-1"><h5>arda::IArdaRHIShader::GetPersistentCacheHash</h5><pre><code>[[nodiscard]] virtual uint64_t GetPersistentCacheHash() const noexcept</code></pre><p>Declares arda::IArdaRHIShader::GetPersistentCacheHash in the current public backend API.</p>
 <p>The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.</p>
