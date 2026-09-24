@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Declare node hardware and environment requirements, reject unsupported attachments before setup, and understand the limits of automatic feature inference.">
+  <meta name="description" content="Declare node hardware and environment requirements, check support before setup and compilation, and supply explicit compute alternatives for CUDA operations.">
   <title>Node feature requirements | ArdaDependencyGraph | Ardashir</title>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
@@ -46,14 +46,15 @@
       <article>
         <header class="page-header">
           <p class="eyebrow">Self-contained node contracts</p>
-          <h1>Reject unsupported nodes at attachment</h1>
-          <p>An operation declares the hardware, features and environment it needs. The graph checks that contract before preparing a new instance and checks recognizable descriptor requirements before binding setup.</p>
+          <h1>Check node features before setup and compilation</h1>
+          <p>An operation declares the hardware, features and environment it needs. Public preflight checks that contract without preparation. The graph enforces it at attachment and compilation, including cached compilations, and checks recognizable descriptor requirements before binding setup.</p>
         </header>
         <nav class="toc" aria-label="On this page">
           <h2>On this page</h2>
           <a href="#objectives">Objectives and prerequisites</a>
           <a href="#fundamentals">Availability and resource effects</a>
           <a href="#worked-example">Override the node hook</a>
+          <a href="#preflight">Public preflight and compilation</a>
           <a href="#parameter-selection">Parameter-dependent requirements</a>
           <a href="#architecture">Two admission phases</a>
           <a href="#registration">One class registration contract</a>
@@ -104,6 +105,21 @@ if (!Work)
           <p>Registering the class with <code>FArdaWorkWriteNode::Register()</code> remains device-independent and performs no admission check. Registration publishes the operation for discovery; each graph attachment checks its own environment.</p>
         </section>
 
+		<section id="preflight">
+		  <h2>Check support before authoring an invocation</h2>
+		  <pre><code class="language-cpp">FArdaMyNode::FArdaParameters Parameters{};
+auto Status = FArdaMyNode::CheckRequiredFeatures(Device, Parameters);
+if (!Status)
+    return Status; // mCode and mMessage explain the failure.
+
+FArdaGraphEdit Edit(Graph);
+FArdaMyNode::Invoke(Edit, Parameters);
+if (auto S = Edit.Commit(); !S)
+    return S;
+return Graph.Compile();</code></pre>
+		  <p>Every node definition inherits this static function. It accepts either a retained <code>FArdaRHIDeviceRef</code> or a <code>const IArdaRHIDevice*</code>, returns <code>FArdaRHIStatus</code>, and performs no resource preparation, command recording, submission or wait. It checks the selected route's explicit requirements and intrinsic node/stage features. <code>Success</code> means those requirements passed; <code>Unsupported</code> reports missing abilities; malformed declarations return <code>InvalidArgument</code>; throwing requirement selectors or environment predicates return <code>BackendFailure</code>. Descriptor-derived requirements are checked later when descriptors exist. A null device does not prove an intrinsic feature available.</p>
+		  <p>The compiler runs <code>FArdaCheckRequiredFeaturesRule</code> before optimization and checks every authored node, including nodes later culled. Cached compilations and custom compiler rule lists retain mandatory feature validation. Environment changes after attachment therefore cause compilation to fail instead of reusing an obsolete support decision. Predicates can run multiple times and must remain read-only. The application must still keep the environment valid between compilation and execution.</p>
+		</section>
         <section id="parameter-selection">
           <h2>Select requirements from public parameters</h2>
           <p>A TLAS build node needs top-level acceleration structures. Its update and compaction requirements depend on the requested build flags. Cornell's independent TLAS node implements the following hook:</p>
@@ -129,7 +145,7 @@ FArdaCornellBuildTlasNode::GetRequirements(const FArdaParameters&amp; P)
           <h2>Two admission phases protect different boundaries</h2>
           <p>The attachment sequence is intentionally ordered. Explicit requirements prevent unsupported setup, while inference catches recognizable needs that become visible only after the node describes its operation.</p>
           <ol>
-            <li><strong>Check explicit requirements.</strong> After confirming the registered definition and public parameter type, the graph calls <code>GetRequirements</code> and checks it against its current device. This happens before <code>DeclareResources</code>, <code>Validate</code>, <code>Prepare</code> and <code>CreateInstance</code>. A CUDA-kind attachment with a real device also requires a qualified CUDA launch path.</li>
+            <li><strong>Check explicit requirements.</strong> After confirming the registered definition and public parameter type, the graph calls <code>GetRequirements</code> and checks it against its current device. This happens before <code>DeclareResources</code>, <code>Validate</code>, <code>Prepare</code> and <code>CreateInstance</code>. A selected CUDA route with a real device also requires a qualified CUDA launch path; an authored compute alternative is selected first when CUDA is unavailable.</li>
             <li><strong>Resolve outputs and identity.</strong> <code>DeclareResources</code> fills or validates logical outputs. The graph computes canonical identity. A matching existing node is checked again using its retained requirements and returned without running new preparation.</li>
             <li><strong>Prepare a new instance.</strong> The class base validates public parameters, obtains immutable device state and creates per-instance state. It then calls <code>Describe</code>.</li>
             <li><strong>Check inferred requirements.</strong> The graph combines explicit requirements with recognized pipeline, binding and resource facts. With a device, it checks that set before generating graph binding layouts or inserting the node. A failed check removes provisional output declarations from this attachment.</li>
@@ -173,9 +189,39 @@ FArdaPixelSortSortNode::GetRequirements(const FArdaParameters&amp;)
     return R;
 }</code></pre>
           <p>A buffer-only CUDA operation should not add the surface requirement. Layered surfaces have their own requirement, and minimum architecture, threads per block and dynamic shared memory can further constrain admission. A nonempty <a href="api-reference.html#api-arda-fardadependencynoderequirements-mallowedcudalaunchmodes-97f4b987"><code>mAllowedCudaLaunchModes</code></a> admits only those qualified modes. Leave it empty to accept any available framework mode; <code>None</code> is invalid as an allowed mode. Surface failure can coexist with a working buffer launch path. The hook does not create a CUDA context, change the selected mode, convert a surface kernel to a buffer kernel, or prove binary/capture compatibility.</p>
-          <p>The <code>TArdaCudaOperandNode</code> class specialization supplies this admission hook automatically. It checks CUDA launch support, surface use in the parameter schema, exact device identity and the operand's read-only <code>GetOperandSupport()</code> result, including native variant/library compatibility. Resource-dependent kernel selection still waits for physical resources during compilation. A wrong-device operand returns an unsupported-attachment diagnostic; it is not silently rebound to the graph's device.</p>
+          <p>The <code>TArdaCudaOperandNode&lt;Node, Operand&gt;</code> adapter supplies admission and recording for both routes when <code>Operand</code> derives from <code>FArdaComputeOperand</code>. On the CUDA route it checks launch support, schema surface requirements, device identity and <code>Operand::SelectDispatchRoute()</code>, which must select CUDA. When the device has no qualified CUDA launch mode, the adapter can use the operand's declared, supported compute alternative. It resolves logical arguments to physical resources at execution, calls <code>PrepareDispatch</code> and records the resulting compute plan. No additional node recording hook is needed. Older duck-typed adapters that do not derive from <code>FArdaComputeOperand</code> remain CUDA-only. A wrong-device operand is rejected rather than rebound.</p>
+          <p>Add the following hooks to the operand, implement the support check from established device/environment facts, and return a <code>FArdaComputeAlternativePlan</code> with retained compute state, owned push constant bytes and dispatch group counts. The existing <code>BindKernelVariants</code> and <code>SelectKernel</code> hooks remain; bindings may be empty when an alternative is declared, including builds without nvcc.</p>
+          <pre><code class="language-cpp">bool HasComputeAlternative() const noexcept override { return true; }
+FArdaRHIStatus CheckComputeAlternativeSupport() const override;
+TArdaRHIResult&lt;FArdaComputeAlternativePlan&gt; PrepareComputeAlternative(
+    const FArdaParameters&amp; Parameters, EArdaRHIQueueType Queue) const override;</code></pre>
+          <p>Check a registered adapter with its operand and logical graph arguments before invoking it:</p>
+          <pre><code class="language-cpp">FArdaMyCudaNode::FArdaParameters Parameters;
+Parameters.mOperation = Operand; // Retained device-bound operand.
+Parameters.mArguments = Arguments; // Its schema rebound to logical graph resources.
+if (auto Status = FArdaMyCudaNode::CheckRequiredFeatures(Device, Parameters); !Status)
+    return Status;
+FArdaMyCudaNode::Invoke(Edit, Parameters, "process");</code></pre>
+          <p>Graph route selection uses the device's qualified CUDA availability. It does not switch an already selected CUDA node to compute merely because the operand lacks a compatible native variant or CUDA surface support. Such an adapter fails admission. Direct operand dispatch has a broader preflight choice: <code>SelectDispatchRoute(Queue)</code> may select compute when CUDA is unavailable, its variants have no native coverage, or its CUDA mode cannot use that queue. Neither path retries another implementation after preparation, recording or execution fails. See <a href="../ArdaBackend/cuda-interop.html#fallback">operand alternative contracts</a>.</p>
           <p>For an application library, plugin version, driver qualification or another condition not represented by portable capabilities, add a named <a href="api-reference.html#api-arda-fardadependencyenvironmentrequirement-2bac463c"><code>FArdaDependencyEnvironmentRequirement</code></a> to <a href="api-reference.html#api-arda-fardadependencynoderequirements-menvironment-5e2abd6d"><code>mEnvironment</code></a>. Its callback receives a borrowed <code>const IArdaRHIDevice&amp;</code> and returns a status. Return success when the application condition is satisfied; otherwise return a useful reason. The graph combines that reason with the predicate name and other missing abilities.</p>
-          <p>Both requirement selection and predicates must be read-only: do not allocate GPU resources, load or initialize a mutable global service, submit commands, wait for the GPU, retain the borrowed device, or mutate external state. Query stable, already established environment facts. Predicates may be evaluated more than once while validating an invocation, so do not make them consume state. Admission occurs on attachment, not before every execution; the application must keep required libraries and device state valid for retained nodes.</p>
+          <p>Both requirement selection and predicates must be read-only: do not allocate GPU resources, load or initialize a mutable global service, submit commands, wait for the GPU, retain the borrowed device, or mutate external state. Query stable, already established environment facts. Predicates may be evaluated more than once during public preflight, attachment and compilation, so do not make them consume state. The application must keep required libraries and device state valid for retained nodes between compilation and execution.</p>
+          <h3>Optional compute shader alternative</h3>
+          <p>A directly authored CUDA node opts in by adding the following hook alongside <code>PrepareCuda</code>. Omit it to make CUDA mandatory. The operand adapter above already supplies this hook for real compute operands. CUDA remains preferred on devices with a qualified CUDA mode; when CUDA is unavailable, the graph selects the alternative before <code>DeclareResources</code>, <code>Prepare</code> or <code>CreateInstance</code>, and schedules an ordinary compute node.</p>
+          <pre><code class="language-cpp">static FArdaRHIStatus RecordComputeAlternative(
+    FArdaDependencyExecutionContext&amp; Context,
+    const FArdaParameters&amp; Parameters,
+    const FArdaState&amp; State,
+    FArdaInstanceState&amp; Instance);
+
+static FArdaDependencyNodeRequirements GetComputeAlternativeRequirements(
+    const FArdaParameters&amp; Parameters)
+{
+    FArdaDependencyNodeRequirements Requirements;
+    // Declare the compute implementation's portable/environment needs here.
+    return Requirements;
+}</code></pre>
+          <p>Implement the alternative hook with the normal Arda RHI compute state and dispatch APIs. Use inherited <code>UsesComputeAlternative(Device.Get())</code> in shared <code>Prepare</code> to create the selected route's state, and let <code>Describe</code> contribute that route's pipelines and bindings. During <code>DeclareResources</code>, <code>Context.GetDevice()</code> exposes a borrowed device pointer for choosing flags such as <code>mbCudaInterop</code>; the framework preserves explicit allocation flags. The public parameters and resource effects remain the same operation. CUDA parameter mappings describe UAV accesses shared by both routes; supply compute shader bindings explicitly in the selected description with compatible resource states. CUDA argument memory is not a shader constant layout.</p>
+          <p><code>GetRequirements</code> describes the CUDA route; <code>GetComputeAlternativeRequirements</code> independently describes the compute route and defaults to an empty explicit list. Declare common requirements in both lists. CUDA-specific requirements are never silently stripped from an authored list. <code>CheckRequiredFeatures</code> uses the same route selection. Missing CUDA with no alternative, or missing features on the selected alternative, returns <code>Unsupported</code>. A failure after CUDA recording or submission never triggers a compute retry. Device-free graph analysis retains its existing semantic-only policy and does not select an execution route.</p>
         </section>
 
         <section id="limits">
@@ -190,7 +236,7 @@ FArdaPixelSortSortNode::GetRequirements(const FArdaParameters&amp;)
           <h2>Failure, rollback and retry</h2>
           <p>Unsatisfied portable features, CUDA requirements and custom environment checks return an aggregated <code>Unsupported</code> status. The graph prefixes the diagnostic with the instance name and registered definition, making it possible to identify the operation in a large library. An empty predicate name, missing predicate function or invalid CUDA mode declaration is a malformed contract and returns <code>InvalidArgument</code>.</p>
           <p>An early explicit rejection happens before output declaration and preparation. A later inferred rejection can occur after preparation, but no node is inserted and provisional graph outputs from that attachment are rolled back. The edit retains its first error, so later operations and commit fail. Cancel it and start a fresh edit to recover. Previously queued edits and cached revisions remain intact. Rollback cannot undo arbitrary external side effects performed by an author's hooks, which is why those hooks must follow their side-effect rules.</p>
-          <p>Respond to an unsupported feature by selecting a compatible node or parameter variant, supplying a correctly qualified device, or cancelling the edit. Do not continue using an invalid returned handle. Failed checks are not cached as permanent rejection. Repeating attachment re-evaluates the current requirements and environment; matching successful nodes continue to reuse prepared state. The graph does not automatically downgrade an algorithm or choose an unrelated fallback implementation.</p>
+          <p>Respond to an unsupported feature by selecting a compatible node or parameter variant, supplying a correctly qualified device, or cancelling the edit. Do not continue using an invalid returned handle. Failed checks are not cached as permanent rejection. Repeating attachment re-evaluates the current requirements and environment; matching successful nodes continue to reuse prepared state. The optional CUDA compute alternative is an explicitly authored route; other unsupported algorithms are not automatically replaced.</p>
           <p>Three common authoring errors are particularly misleading:</p>
           <ul>
             <li><strong>Requirements only in <code>Describe().mRequirements</code>:</strong> the graph overwrites this output field. Move explicit requirements into <code>GetRequirements</code>.</li>
