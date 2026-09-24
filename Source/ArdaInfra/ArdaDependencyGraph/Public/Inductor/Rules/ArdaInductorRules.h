@@ -5,6 +5,7 @@
 #include "Inductor/Rules/ArdaInductorGraphicsRules.h"
 #include "Inductor/Rules/ArdaInductorCullingRules.h"
 #include "Inductor/Rules/ArdaInductorPipelineRules.h"
+#include "Inductor/Rules/ArdaInductorRequirementsRules.h"
 #include "Inductor/Rules/ArdaInductorRayTracingRules.h"
 #include "Inductor/Rules/ArdaInductorMemoryRules.h"
 #include "Inductor/Rules/ArdaInductorOrderingRules.h"

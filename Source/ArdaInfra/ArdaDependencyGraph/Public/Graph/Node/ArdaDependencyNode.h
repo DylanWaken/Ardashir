@@ -8,6 +8,7 @@
 #include <EASTL/functional.h>
 #include <EASTL/type_traits.h>
 #include <EASTL/utility.h>
+#include <exception>
 
 namespace arda
 {
@@ -61,6 +62,25 @@ namespace arda
 		FArdaDependencyNodeBase() = default;
 		template <class Node, class>
 		friend struct TArdaDependencyNodeContract;
+
+		template <class Node, class = void>
+		struct TArdaNodeComputeAlternativeHook : eastl::false_type
+		{
+		};
+
+		template <class Node>
+		struct TArdaNodeComputeAlternativeHook<Node,
+		    eastl::void_t<decltype(Node::RecordComputeAlternative(eastl::declval<FArdaDependencyExecutionContext&>(),
+		        eastl::declval<const typename Node::FArdaParameters&>(),
+		        eastl::declval<const typename Node::FArdaState&>(),
+		        eastl::declval<typename Node::FArdaInstanceState&>()))>>
+		    : eastl::is_same<FArdaRHIStatus,
+		          decltype(Node::RecordComputeAlternative(eastl::declval<FArdaDependencyExecutionContext&>(),
+		              eastl::declval<const typename Node::FArdaParameters&>(),
+		              eastl::declval<const typename Node::FArdaState&>(),
+		              eastl::declval<typename Node::FArdaInstanceState&>()))>
+		{
+		};
 
 		template <class Node, class = void>
 		struct TArdaNodeRecordHook : eastl::false_type
@@ -152,6 +172,7 @@ namespace arda
 	                      !FArdaDependencyNodeBase::TArdaNodeRecordHook<Node>::value
 	                                                        : !FArdaDependencyNodeBase::TArdaNodeCudaHook<
 	                                                              Node>::value &&
+	                      !FArdaDependencyNodeBase::TArdaNodeComputeAlternativeHook<Node>::value &&
 	                      (FArdaDependencyNodeBase::TArdaNodeRecordHook<Node>::value ||
 	                          Node::mKind == EArdaDependencyNodeKind::Synchronization))>
 	{
@@ -218,6 +239,81 @@ namespace arda
 		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters&)
 		{
 			return {};
+		}
+
+		/** Requirements for the optional compute alternative, independent of the CUDA route's list.
+		 * Declare shared requirements in both lists. The framework never silently drops an authored requirement.
+		 */
+		static FArdaDependencyNodeRequirements GetComputeAlternativeRequirements(const FArdaParameters&)
+		{
+			return {};
+		}
+
+		static constexpr bool HasComputeAlternative()
+		{
+			return Kind == EArdaDependencyNodeKind::Cuda &&
+			    FArdaDependencyNodeBase::TArdaNodeComputeAlternativeHook<Derived>::value;
+		}
+
+		/** Route selection is fixed before DeclareResources/Prepare. CUDA stays preferred when available.
+		 * No fallback is attempted after recording/submission failure. Null-device analysis keeps the authored domain.
+		 */
+		static bool UsesComputeAlternative(const IArdaRHIDevice* Device)
+		{
+			return HasComputeAlternative() && Device && !Device->GetCudaCapabilities();
+		}
+
+		static void AddIntrinsicRequirements(FArdaDependencyNodeRequirements& Requirements)
+		{
+			AddArdaNodeIntrinsicRequirements(Requirements, Kind, Derived::mGraphicsStage, Derived::mRayStage);
+		}
+
+		/** Read-only user preflight; returns Success, Unsupported (with missing abilities), or InvalidArgument.
+		 * Checks the selected route's declarations and intrinsic domain requirements without preparing resources.
+		 * Descriptor-derived requirements are additionally checked by attachment and compilation.
+		 */
+		[[nodiscard]] static FArdaRHIStatus CheckRequiredFeatures(const IArdaRHIDevice* Device,
+		    const FArdaParameters& Value)
+		{
+			FArdaRHIStatus Status;
+			try
+			{
+				const bool bAlternative = UsesComputeAlternative(Device);
+				auto Requirements =
+				    bAlternative ? Derived::GetComputeAlternativeRequirements(Value) : Derived::GetRequirements(Value);
+				if (bAlternative)
+				{
+					AddArdaNodeIntrinsicRequirements(Requirements,
+					    EArdaDependencyNodeKind::Compute,
+					    EArdaGraphicsStage::None,
+					    EArdaRHIShaderStage::None);
+				}
+				else
+				{
+					Derived::AddIntrinsicRequirements(Requirements);
+				}
+				Status = Requirements.Check(Device);
+			}
+			catch (const std::exception& Error)
+			{
+				Status = FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what());
+			}
+			catch (...)
+			{
+				Status = FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+				    "A required-feature selector threw an exception.");
+			}
+			if (!Status)
+			{
+				Status.mMessage = "Node '" + Derived::GetMetadata().mName + "': " + Status.mMessage;
+			}
+			return Status;
+		}
+
+		[[nodiscard]] static FArdaRHIStatus CheckRequiredFeatures(const FArdaRHIDeviceRef& Device,
+		    const FArdaParameters& Value)
+		{
+			return CheckRequiredFeatures(Device.Get(), Value);
 		}
 
 		/** Declare outputs from logical inputs and scalar settings. Empty output handles are filled
@@ -346,6 +442,10 @@ namespace arda
 			Definition.mGetRequirements = [](const void* Value)
 			{
 				return Derived::GetRequirements(*static_cast<const Parameters*>(Value));
+			};
+			Definition.mAddIntrinsicRequirements = [](FArdaDependencyNodeRequirements& Requirements)
+			{
+				Derived::AddIntrinsicRequirements(Requirements);
 			};
 			Definition.mResolveResources =
 			    [](FArdaDependencyResourceContext& Context,
@@ -490,6 +590,33 @@ namespace arda
 				};
 			}
 
+			if constexpr (HasComputeAlternative())
+			{
+				auto Alternative =
+				    eastl::shared_ptr<FArdaDependencyNodeExecutable>(new FArdaDependencyNodeExecutable(Definition));
+				Alternative->mKind = EArdaDependencyNodeKind::Compute;
+				Alternative->mPrepareCuda = {};
+				Alternative->mGetRequirements = [](const void* Value)
+				{
+					return Derived::GetComputeAlternativeRequirements(*static_cast<const Parameters*>(Value));
+				};
+				Alternative->mAddIntrinsicRequirements = [](FArdaDependencyNodeRequirements& Requirements)
+				{
+					AddArdaNodeIntrinsicRequirements(Requirements,
+					    EArdaDependencyNodeKind::Compute,
+					    EArdaGraphicsStage::None,
+					    EArdaRHIShaderStage::None);
+				};
+				Alternative->mRecord = [](FArdaDependencyExecutionContext& Context, const void* Value)
+				{
+					const auto& P = *static_cast<const FArdaBound*>(Value);
+					return Derived::RecordComputeAlternative(Context,
+					    *P.mParameters,
+					    *P.mPrepared->mState,
+					    *P.mInstance);
+				};
+				Definition.mComputeAlternative = eastl::move(Alternative);
+			}
 			return Registry.RegisterExecutable(eastl::move(Definition));
 		}
 
@@ -605,6 +732,7 @@ namespace arda
 		{
 			FArdaRHIDeviceRef mDevice;
 			eastl::shared_ptr<const typename Node::FArdaState> mState;
+			bool mbComputeAlternative = false;
 		};
 
 		template <class Node>
@@ -622,11 +750,12 @@ namespace arda
 			static std::mutex Mutex;
 			static eastl::vector<eastl::weak_ptr<const TArdaPreparedState<Node>>> States;
 			std::lock_guard<std::mutex> Lock(Mutex);
+			const bool bComputeAlternative = Node::UsesComputeAlternative(Device.Get());
 			for (auto It = States.begin(); It != States.end();)
 			{
 				if (auto Existing = It->lock())
 				{
-					if (Existing->mDevice == Device)
+					if (Existing->mDevice == Device && Existing->mbComputeAlternative == bComputeAlternative)
 					{
 						return {eastl::move(Existing), {}};
 					}
@@ -650,6 +779,7 @@ namespace arda
 			auto Owner = eastl::make_shared<TArdaPreparedState<Node>>();
 			Owner->mDevice = eastl::move(Device);
 			Owner->mState = eastl::move(State.mValue);
+			Owner->mbComputeAlternative = bComputeAlternative;
 			eastl::shared_ptr<const TArdaPreparedState<Node>> Prepared = eastl::move(Owner);
 			States.push_back(Prepared);
 			return {eastl::move(Prepared), {}};

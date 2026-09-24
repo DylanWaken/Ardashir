@@ -90,10 +90,26 @@ namespace arda
 
 	/** Uniform CRTP authoring entry. All specializations share registration, parameter snapshots,
 	 * structured/positional invocation and ARDA_DECLARE_GRAPH_NODE/ARDA_DEFINE_GRAPH_NODE globals.
-	 * Compute/native operations implement Record; CUDA implements PrepareCuda. Graphics stages implement
+	 * Compute/native operations implement Record; CUDA implements PrepareCuda and may supply
+	 * RecordComputeAlternative for devices without CUDA. All nodes inherit CheckRequiredFeatures.
+	 * Graphics stages implement
 	 * ConfigureGraphics and return typed state. Ray providers return typed shader references, and a
 	 * ray-generation terminal implements Record to dispatch its assembled pipeline and shader table.
 	 */
 	template <class Node, class Parameters, EArdaNodeType Type = EArdaNodeType::Compute>
-	using TArdaNodeDefinition = typename TArdaNodeDefinitionTraits<Type>::template FArdaBase<Node, Parameters>;
+	class TArdaNodeDefinition : public TArdaNodeDefinitionTraits<Type>::template FArdaBase<Node, Parameters>
+	{
+	public:
+		static constexpr EArdaNodeType mNodeType = Type;
+
+		static void AddIntrinsicRequirements(FArdaDependencyNodeRequirements& Requirements)
+		{
+			using FArdaBase = typename TArdaNodeDefinitionTraits<Type>::template FArdaBase<Node, Parameters>;
+			FArdaBase::AddIntrinsicRequirements(Requirements);
+			Requirements.mFeatures.mbRequireMeshShaders |= Type == EArdaNodeType::Meshlet;
+			Requirements.mFeatures.mbRequireRayTracingPipelines |= Type == EArdaNodeType::RayTracing;
+			Requirements.mFeatures.mbRequirePersistentShaderTables |= Type == EArdaNodeType::RayTracing;
+			Requirements.mFeatures.mbRequireWorkGraphs |= Type == EArdaNodeType::WorkGraph;
+		}
+	};
 }

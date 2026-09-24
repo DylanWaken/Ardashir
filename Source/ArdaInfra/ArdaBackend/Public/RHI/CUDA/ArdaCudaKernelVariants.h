@@ -3,6 +3,7 @@
 #include <EASTL/utility.h>
 #include "RHI/CUDA/ArdaCudaParameters.h"
 #include "RHI/Device/ArdaRHIDevice.h"
+#include "RHI/Pipelines/ArdaRHIComputePipeline.h"
 
 namespace arda
 {
@@ -79,11 +80,11 @@ namespace arda
 			    eastl::move(Variant.mCall)});
 		}
 
-		/** Seals bindings without initializing CUDA. */
-		FArdaRHIStatus Freeze()
+		/** Seals bindings without initializing CUDA. Empty registries are allowed only for an explicit compute alternative. */
+		FArdaRHIStatus Freeze(bool bAllowEmpty = false)
 		{
 			mbFrozen = true;
-			if (mStatus && mVariants.empty())
+			if (mStatus && mVariants.empty() && !bAllowEmpty)
 			{
 				mStatus = FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "No CUDA operation variants were bound.");
 			}
@@ -100,10 +101,16 @@ namespace arda
 			return mVariants;
 		}
 
-		/** Filters native targets and execution requirements without launching work. */
-		FArdaVariants GetCompatibleVariants(const FArdaCudaCapabilities& C) const
+		/** Filters native targets and execution requirements without launching work.
+		 * OutStatus preserves registry and external support-hook errors; Unsupported variants are simply excluded.
+		 */
+		FArdaVariants GetCompatibleVariants(const FArdaCudaCapabilities& C, FArdaRHIStatus* OutStatus = nullptr) const
 		{
 			FArdaVariants Result;
+			if (OutStatus)
+			{
+				*OutStatus = mStatus;
+			}
 			if (!mStatus || !C)
 			{
 				return Result;
@@ -117,9 +124,18 @@ namespace arda
 				}
 				if (V.mExternalCall)
 				{
-					if (V.mExternalCall->CheckSupport(C))
+					const auto Status = V.mExternalCall->CheckSupport(C);
+					if (Status)
 					{
 						Result.push_back(V);
+					}
+					else if (Status.mCode != EArdaRHIResult::Unsupported)
+					{
+						if (OutStatus)
+						{
+							*OutStatus = Status;
+						}
+						return {};
 					}
 					continue;
 				}
@@ -215,12 +231,42 @@ namespace arda
 		bool mbNoWork = false;
 	};
 
-	/** Frozen values/resources/selection. Returned as shared_ptr<const> by operand preparation. */
+	/** The selected implementation is fixed before resource preparation and command recording. */
+	enum class EArdaComputeDispatchRoute : uint8_t
+	{
+		Cuda,
+		ComputeAlternative
+	};
+
+	/** Frozen compute implementation authored explicitly for the operand's resource/value schema. */
+	struct FArdaComputeAlternativePlan
+	{
+		/** Retained pipeline and immutable binding sets; CUDA arguments are not shader bindings. */
+		FArdaRHIComputeState mState;
+		/** Owned shader constants copied during preparation; empty when the pipeline has no constants. */
+		eastl::vector<uint8_t> mPushConstants;
+		/** Work-group count on the X axis. */
+		uint32_t mGroupsX = 1;
+		/** Work-group count on the Y axis. */
+		uint32_t mGroupsY = 1;
+		/** Work-group count on the Z axis. */
+		uint32_t mGroupsZ = 1;
+		/** Explicit empty mathematical operation; no pipeline or GPU work is required. */
+		bool mbNoWork = false;
+	};
+
+	/** Frozen values/resources/selection. Returned as shared_ptr<const> by operand preparation.
+	 * CUDA sequences admit only the Cuda route; schedulers must lower ComputeAlternative to ordinary compute work.
+	 */
 	struct FArdaCudaDispatchPlan
 	{
 		FArdaRHIDeviceRef mDevice;
 		EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics;
 		FArdaCudaKernelSelection mSelection;
 		FArdaCudaDispatch mDispatch;
+		/** Selected implementation; never changed after a recording or execution failure. */
+		EArdaComputeDispatchRoute mRoute = EArdaComputeDispatchRoute::Cuda;
+		/** Populated only when mRoute is ComputeAlternative. */
+		FArdaComputeAlternativePlan mComputeAlternative;
 	};
 }

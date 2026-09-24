@@ -1,9 +1,33 @@
 #include "Graph/Node/ArdaDependencyRequirements.h"
+#include "Graph/Node/ArdaDependencyNodeDesc.h"
 #include "RHI/Device/ArdaRHIDevice.h"
 #include <EASTL/algorithm.h>
+#include <exception>
 
 namespace arda
 {
+	void AddArdaNodeIntrinsicRequirements(FArdaDependencyNodeRequirements& Requirements,
+	    EArdaDependencyNodeKind Kind,
+	    EArdaGraphicsStage GraphicsStage,
+	    EArdaRHIShaderStage RayStage) noexcept
+	{
+		auto& Features = Requirements.mFeatures;
+		Requirements.mbRequireCuda |= Kind == EArdaDependencyNodeKind::Cuda;
+		Features.mbRequireGraphicsQueue |=
+		    Kind == EArdaDependencyNodeKind::Graphics || GraphicsStage != EArdaGraphicsStage::None;
+		Features.mbRequireGeometryShaders |= GraphicsStage == EArdaGraphicsStage::Geometry;
+		Features.mbRequireTessellationShaders |=
+		    GraphicsStage == EArdaGraphicsStage::Hull || GraphicsStage == EArdaGraphicsStage::Domain;
+		Features.mbRequireMeshShaders |=
+		    GraphicsStage == EArdaGraphicsStage::Mesh || GraphicsStage == EArdaGraphicsStage::Amplification;
+		if (GraphicsStage == EArdaGraphicsStage::Amplification)
+		{
+			Features.mMinMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+		}
+		Features.mbRequireRayTracingPipelines |= RayStage != EArdaRHIShaderStage::None;
+		Features.mbRequirePersistentShaderTables |= RayStage == EArdaRHIShaderStage::RayGeneration;
+	}
+
 	FArdaRHIStatus FArdaDependencyNodeRequirements::Check(const IArdaRHIDevice* Device) const
 	{
 		for (const auto Mode : mAllowedCudaLaunchModes)
@@ -72,10 +96,28 @@ namespace arda
 			{
 				Report.mMissingAbilities.push_back(Requirement.mName + " (no device)");
 			}
-			else if (const auto Status = Requirement.mCheck(*Device); !Status)
+			else
 			{
-				Report.mMissingAbilities.push_back(
-				    Requirement.mName + (Status.mMessage.empty() ? eastl::string{} : ": " + Status.mMessage));
+				FArdaRHIStatus Status;
+				try
+				{
+					Status = Requirement.mCheck(*Device);
+				}
+				catch (const std::exception& Error)
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+					    (Requirement.mName + ": " + Error.what()).c_str());
+				}
+				catch (...)
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+					    (Requirement.mName + ": environment requirement threw an exception.").c_str());
+				}
+				if (!Status)
+				{
+					Report.mMissingAbilities.push_back(
+					    Requirement.mName + (Status.mMessage.empty() ? eastl::string{} : ": " + Status.mMessage));
+				}
 			}
 		}
 		return Report.ToStatus();

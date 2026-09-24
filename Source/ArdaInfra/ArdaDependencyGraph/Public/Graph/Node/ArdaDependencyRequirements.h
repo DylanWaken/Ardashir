@@ -6,6 +6,9 @@
 namespace arda
 {
 	class IArdaRHIDevice;
+	enum class EArdaDependencyNodeKind : uint8_t;
+	enum class EArdaGraphicsStage : uint8_t;
+	enum class EArdaRHIShaderStage : uint16_t;
 
 	/** Named read-only admission predicate for library/driver constraints absent from portable capabilities.
 	 * Must not allocate GPU resources, submit work, mutate external state or retain the borrowed device.
@@ -49,8 +52,18 @@ namespace arda
 		/** Read-only admission, without GPU work or waits.
 		 * Returns Unsupported with all missing portable/CUDA abilities and named environment failures.
 		 * Malformed predicates or launch-mode declarations return InvalidArgument.
+		 * A throwing environment predicate returns BackendFailure with its diagnostic name.
 		 * A null device is useful only for requirements which do not request environment capabilities.
 		 */
 		[[nodiscard]] FArdaRHIStatus Check(const IArdaRHIDevice* Device) const;
 	};
+
+	/** Adds requirements intrinsic to the selected execution domain and typed shader stage.
+	 * Native compute/copy work may use the graphics queue, so this does not require independent queues.
+	 * A selected compute alternative must pass Compute rather than the original CUDA domain.
+	 */
+	void AddArdaNodeIntrinsicRequirements(FArdaDependencyNodeRequirements& Requirements,
+	    EArdaDependencyNodeKind Kind,
+	    EArdaGraphicsStage GraphicsStage,
+	    EArdaRHIShaderStage RayStage) noexcept;
 }

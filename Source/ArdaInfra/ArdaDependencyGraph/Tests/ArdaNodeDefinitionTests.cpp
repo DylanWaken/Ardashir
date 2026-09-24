@@ -59,6 +59,10 @@ namespace arda::node_definition_tests
 	{
 		using FArdaNode = TArdaDefinitionNode<Type>;
 		static_assert(TArdaDependencyNodeContract<FArdaNode>::value);
+		static_assert(
+		    eastl::is_same_v<decltype(FArdaNode::CheckRequiredFeatures(static_cast<const IArdaRHIDevice*>(nullptr),
+		                         typename FArdaNode::FArdaParameters{})),
+		        FArdaRHIStatus>);
 		const auto Status = FArdaNode::Register();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		const auto Registered = FArdaNodeRegistry::Get().Find(FArdaNode::GetMetadata().mName);

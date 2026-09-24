@@ -46,6 +46,7 @@ namespace arda
 
 	private:
 		friend class FArdaGraphEdit;
+		friend class FArdaDependencyResourceContext;
 
 		explicit TArdaGraphValue(FArdaDependencyResourceHandle Handle)
 		    : mHandle(Handle)

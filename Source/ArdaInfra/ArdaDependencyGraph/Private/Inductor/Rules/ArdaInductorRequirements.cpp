@@ -149,7 +149,7 @@ namespace arda
 	    FArdaDependencyNodeDesc& D)
 	{
 		auto& R = D.mRequirements.mFeatures;
-		D.mRequirements.mbRequireCuda |= Kind == EArdaDependencyNodeKind::Cuda && !D.mbPipelineStageOnly;
+		AddArdaNodeIntrinsicRequirements(D.mRequirements, Kind, D.mGraphicsStage, D.mRayStage);
 		const auto* Caps = G.mDevice ? &G.mDevice->GetCapabilities() : nullptr;
 		const auto Resource = [&](FArdaDependencyResourceHandle H)
 		{

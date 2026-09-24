@@ -14,5 +14,7 @@ namespace arda
 		EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics;
 		uint64_t mInstance = 0;
 		FArdaCudaKernelSelection mSelection;
+		/** Implementation recorded for this submission; compute alternatives have no CUDA variant ID. */
+		EArdaComputeDispatchRoute mRoute = EArdaComputeDispatchRoute::Cuda;
 	};
 }

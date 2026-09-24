@@ -6,6 +6,9 @@
 #include <gtest/gtest.h>
 #include <string>
 #include <type_traits>
+#include <stdexcept>
+#include "Graph/Node/ArdaNodeDefinition.h"
+#include "Inductor/Rules/ArdaInductorRequirementsRules.h"
 
 namespace arda::requirements_tests
 {
@@ -18,6 +21,8 @@ namespace arda::requirements_tests
 		FArdaRHICapabilities mCapabilities;
 		FArdaCudaCapabilities mCuda;
 		uint32_t mNativeAttempts = 0, mWaits = 0;
+		bool mbAllowBufferDescriptorQueries = false;
+		uint32_t mBufferDescriptorQueries = 0;
 
 		static FArdaRHIStatus Unexpected()
 		{
@@ -63,6 +68,18 @@ namespace arda::requirements_tests
 		ARDA_ADMISSION_NO_OBJECT(CreateGraphicsPipeline, FArdaProviderGraphicsPipelineCreateInfo)
 		ARDA_ADMISSION_NO_OBJECT(CreateComputePipeline, FArdaProviderComputePipelineCreateInfo)
 #undef ARDA_ADMISSION_NO_OBJECT
+
+		TArdaRHIResult<FArdaRHIMemoryRequirements> QueryBufferMemoryRequirements(
+		    const FArdaRHIBufferDesc& Desc) override
+		{
+			if (!mbAllowBufferDescriptorQueries)
+			{
+				return IArdaRHIProviderDevice::QueryBufferMemoryRequirements(Desc);
+			}
+			++mBufferDescriptorQueries;
+			// Exact memory model of this host-only provider; querying never creates a native object.
+			return {{(Desc.mByteSize + 63) & ~uint64_t(63), 64, 1}, {}};
+		}
 
 		TArdaRHIResult<FArdaRHIMemoryRequirements> GetTextureMemoryRequirements(const FArdaProviderObjectRef&,
 		    const FArdaRHITextureDesc&) override
@@ -708,6 +725,9 @@ namespace arda::requirements_tests
 
 		FArdaCudaAdmissionNode::mPrepared = 0;
 		mDefinitions.push_back(FArdaCudaAdmissionNode::GetMetadata().mName);
+		EXPECT_FALSE(FArdaCudaAdmissionNode::HasComputeAlternative());
+		EXPECT_EQ(FArdaCudaAdmissionNode::CheckRequiredFeatures(mDevice.Get(), {}).mCode, EArdaRHIResult::Unsupported);
+		EXPECT_EQ(FArdaCudaAdmissionNode::CheckRequiredFeatures(nullptr, {}).mCode, EArdaRHIResult::Unsupported);
 		FArdaDependencyGraph Graph(mDevice);
 		const auto Missing = RejectAdmission(Graph,
 		    [](FArdaGraphEdit& Edit)
@@ -1384,5 +1404,510 @@ namespace arda::requirements_tests
 		EXPECT_EQ(R.Check(mDevice.Get()).mCode, EArdaRHIResult::InvalidArgument);
 		R.mAllowedCudaLaunchModes = {static_cast<EArdaCudaLaunchMode>(255)};
 		EXPECT_EQ(R.Check(mDevice.Get()).mCode, EArdaRHIResult::InvalidArgument);
+	}
+
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaAdmissionValueParameters)
+		ARDA_NODE_PARAMETER(uint32_t, mValue)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	TEST_F(FArdaDependencyRequirementsTest, PublicFeatureCheckDoesNotPrepareOrRegisterANode)
+	{
+		const auto Missing = FArdaAdmissionNode::CheckRequiredFeatures(mDevice.Get(), {});
+		EXPECT_EQ(Missing.mCode, EArdaRHIResult::Unsupported);
+		EXPECT_NE(Missing.mMessage.find("mesh shaders"), eastl::string::npos);
+		EXPECT_FALSE(FArdaNodeRegistry::Get().Find(FArdaAdmissionNode::GetMetadata().mName));
+		ExpectNoSetup();
+		EXPECT_EQ(FArdaAdmissionNode::CheckRequiredFeatures(nullptr, {}).mCode, EArdaRHIResult::Unsupported);
+		EXPECT_TRUE(FArdaAdmissionNode::CheckRequiredFeatures(nullptr, {{}, false, false}));
+		mProvider->mCapabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+		EXPECT_TRUE(FArdaAdmissionNode::CheckRequiredFeatures(mDevice.Get(), {}));
+		ExpectNoSetup();
+	}
+
+	template <EArdaNodeType Type>
+	struct TArdaIntrinsicFeatureNode
+	    : TArdaNodeDefinition<TArdaIntrinsicFeatureNode<Type>, FArdaAdmissionValueParameters, Type>
+	{
+		using FArdaParameters = FArdaAdmissionValueParameters;
+		using FArdaState = FArdaEmptyDependencyNodeState;
+		using FArdaInstanceState = FArdaEmptyDependencyNodeState;
+		inline static uint32_t mPrepared = 0;
+
+		static FArdaDependencyNodeMetadata GetMetadata()
+		{
+			return {eastl::string("test.requirements.intrinsic.") + eastl::to_string(uint32_t(Type)), 1};
+		}
+
+		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef)
+		{
+			++mPrepared;
+			return {eastl::make_shared<const FArdaState>(), {}};
+		}
+
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&, const FArdaState&)
+		{
+			return {};
+		}
+
+		static FArdaRHIStatus Record(FArdaDependencyExecutionContext&,
+		    const FArdaParameters&,
+		    const FArdaState&,
+		    FArdaInstanceState&)
+		{
+			return {};
+		}
+	};
+
+	TEST_F(FArdaDependencyRequirementsTest, TypedStageIntrinsicFeaturesRejectBeforePreparation)
+	{
+		const auto Reject = [&](auto Node)
+		{
+			using FArdaNode = decltype(Node);
+			FArdaNode::mPrepared = 0;
+			mDefinitions.push_back(FArdaNode::GetMetadata().mName);
+			EXPECT_EQ(FArdaNode::CheckRequiredFeatures(mDevice.Get(), {}).mCode, EArdaRHIResult::Unsupported);
+			FArdaDependencyGraph Graph(mDevice);
+			FArdaGraphEdit Edit(Graph);
+			EXPECT_FALSE(Node(Edit, FArdaAdmissionValueParameters{}, "unsupported intrinsic"));
+			EXPECT_EQ(Edit.GetStatus().mCode, EArdaRHIResult::Unsupported);
+			EXPECT_EQ(FArdaNode::mPrepared, 0u);
+			EXPECT_EQ(Graph.GetTopology().GetNodeCount(), 0u);
+		};
+		Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::Meshlet>{});
+		Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::WorkGraph>{});
+		Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::RayTracing>{});
+		Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::Geometry>{});
+		Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::Hull>{});
+		Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::Domain>{});
+		Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::Mesh>{});
+		Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::Amplification>{});
+		Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::RayGeneration>{});
+		Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::RayMiss>{});
+		mProvider->mCapabilities.mQueues.mbGraphics = false;
+		Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::Graphics>{});
+	}
+
+	struct FArdaOptionalCudaNode
+	    : TArdaNodeDefinition<FArdaOptionalCudaNode, FArdaAdmissionValueParameters, EArdaNodeType::Cuda>
+	{
+		inline static uint32_t mPrepared = 0, mComputeRecords = 0, mCudaRecords = 0;
+
+		static FArdaDependencyNodeMetadata GetMetadata()
+		{
+			return {"test.requirements.optional-cuda", 1};
+		}
+
+		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters&)
+		{
+			FArdaDependencyNodeRequirements Requirements;
+			Requirements.mbRequireCudaSurfaces = true;
+			return Requirements;
+		}
+
+		static FArdaDependencyNodeRequirements GetComputeAlternativeRequirements(const FArdaParameters& Parameters)
+		{
+			FArdaDependencyNodeRequirements Requirements;
+			Requirements.mFeatures.mbRequireNativeFloat16 = Parameters.mValue == 13;
+			return Requirements;
+		}
+
+		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef)
+		{
+			++mPrepared;
+			return {eastl::make_shared<const FArdaState>(), {}};
+		}
+
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&, const FArdaState&)
+		{
+			FArdaDependencyNodeDesc Description;
+			Description.mbSideEffect = true;
+			return Description;
+		}
+
+		static FArdaRHIStatus RecordComputeAlternative(FArdaDependencyExecutionContext&,
+		    const FArdaParameters& Parameters,
+		    const FArdaState&,
+		    FArdaInstanceState&)
+		{
+			++mComputeRecords;
+			EXPECT_EQ(Parameters.mValue, 7u);
+			return {};
+		}
+
+		static FArdaRHIStatus PrepareCuda(FArdaDependencyExecutionContext&,
+		    const FArdaParameters& Parameters,
+		    const FArdaState&,
+		    FArdaInstanceState&,
+		    FArdaCudaSequence&)
+		{
+			++mCudaRecords;
+			EXPECT_EQ(Parameters.mValue, 7u);
+			return {};
+		}
+	};
+
+	TEST_F(FArdaDependencyRequirementsTest, MissingCudaLowersExplicitAlternativeToNativeCompute)
+	{
+		mDefinitions.push_back(FArdaOptionalCudaNode::GetMetadata().mName);
+		FArdaOptionalCudaNode::mPrepared = FArdaOptionalCudaNode::mComputeRecords =
+		    FArdaOptionalCudaNode::mCudaRecords = 0;
+		ASSERT_TRUE(FArdaOptionalCudaNode::CheckRequiredFeatures(mDevice.Get(), {7}));
+		EXPECT_EQ(FArdaOptionalCudaNode::mPrepared, 0u);
+		FArdaDependencyGraph Graph(mDevice);
+		FArdaGraphEdit Edit(Graph);
+		const auto Operation = FArdaOptionalCudaNode{}(Edit, FArdaAdmissionValueParameters{7}, "alternative");
+		ASSERT_TRUE(Operation) << Edit.GetStatus().mMessage.c_str();
+		const auto& Node = Graph.GetTopology().TryGetNode(Operation.GetHandle())->mPayload;
+		EXPECT_EQ(Node.mDefinition->mKind, EArdaDependencyNodeKind::Compute);
+		EXPECT_FALSE(Node.mDesc.mRequirements.mbRequireCuda);
+		EXPECT_FALSE(Node.mDesc.mRequirements.mbRequireCudaSurfaces);
+		ASSERT_TRUE(Node.mDefinition->mRecord);
+		EXPECT_FALSE(Node.mDefinition->mPrepareCuda);
+		FArdaDependencyExecutionContext Context;
+		EXPECT_TRUE(Node.mDefinition->mRecord(Context, Node.mParameters.get()));
+		EXPECT_EQ(FArdaOptionalCudaNode::mComputeRecords, 1u);
+		EXPECT_EQ(FArdaOptionalCudaNode::mCudaRecords, 0u);
+		ASSERT_TRUE(Edit.Commit());
+		const auto Compiled = Graph.Compile();
+		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
+		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), 1u);
+		EXPECT_TRUE(Graph.GetCompileResult().mCudaBatches.empty());
+		ASSERT_EQ(Graph.GetCompileResult().mDispatches.size(), 1u);
+		EXPECT_EQ(Graph.GetCompileResult().mDispatches.front().mCudaStream, UINT32_MAX);
+	}
+
+	TEST_F(FArdaDependencyRequirementsTest, AvailableCudaKeepsCudaAndDoesNotRequireAlternativeFeatures)
+	{
+		mDefinitions.push_back(FArdaOptionalCudaNode::GetMetadata().mName);
+		mProvider->mCuda.mLaunchMode = EArdaCudaLaunchMode::ContextSwitch;
+		mProvider->mCuda.mbSurfaceAccess = true;
+		EXPECT_TRUE(FArdaOptionalCudaNode::CheckRequiredFeatures(mDevice.Get(), {13}));
+		FArdaOptionalCudaNode::mComputeRecords = FArdaOptionalCudaNode::mCudaRecords = 0;
+		FArdaDependencyGraph Graph(mDevice);
+		FArdaGraphEdit Edit(Graph);
+		const auto Operation = FArdaOptionalCudaNode{}(Edit, FArdaAdmissionValueParameters{7}, "cuda");
+		ASSERT_TRUE(Operation) << Edit.GetStatus().mMessage.c_str();
+		const auto& Node = Graph.GetTopology().TryGetNode(Operation.GetHandle())->mPayload;
+		EXPECT_EQ(Node.mDefinition->mKind, EArdaDependencyNodeKind::Cuda);
+		EXPECT_TRUE(Node.mDesc.mRequirements.mbRequireCuda);
+		EXPECT_TRUE(Node.mDesc.mRequirements.mbRequireCudaSurfaces);
+		EXPECT_FALSE(Node.mDefinition->mRecord);
+		ASSERT_TRUE(Node.mDefinition->mPrepareCuda);
+		FArdaDependencyExecutionContext Context;
+		FArdaCudaSequence Sequence({});
+		EXPECT_TRUE(Node.mDefinition->mPrepareCuda(Context, Node.mParameters.get(), Sequence));
+		EXPECT_EQ(FArdaOptionalCudaNode::mComputeRecords, 0u);
+		EXPECT_EQ(FArdaOptionalCudaNode::mCudaRecords, 1u);
+		ASSERT_TRUE(Edit.Commit());
+		const auto Compiled = Graph.Compile();
+		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
+		ASSERT_EQ(Graph.GetCompileResult().mCudaBatches.size(), 1u);
+		EXPECT_EQ(Graph.GetCompileResult().mCudaBatches.front().size(), 1u);
+	}
+
+	TEST_F(FArdaDependencyRequirementsTest, UnavailableComputeAlternativeRejectsBeforePreparation)
+	{
+		mDefinitions.push_back(FArdaOptionalCudaNode::GetMetadata().mName);
+		FArdaOptionalCudaNode::mPrepared = 0;
+		const auto Checked = FArdaOptionalCudaNode::CheckRequiredFeatures(mDevice.Get(), {13});
+		EXPECT_EQ(Checked.mCode, EArdaRHIResult::Unsupported);
+		FArdaDependencyGraph Graph(mDevice);
+		const auto Rejected = RejectAdmission(Graph,
+		    [](FArdaGraphEdit& Edit)
+		    {
+			    return FArdaOptionalCudaNode{}(Edit, FArdaAdmissionValueParameters{13}, "unavailable alternative");
+		    });
+		EXPECT_EQ(Rejected.mCode, EArdaRHIResult::Unsupported);
+		EXPECT_EQ(FArdaOptionalCudaNode::mPrepared, 0u);
+		EXPECT_EQ(Graph.GetTopology().GetNodeCount(), 0u);
+	}
+
+	TEST_F(FArdaDependencyRequirementsTest, PreparedStateCacheSeparatesCudaAndComputeRoutes)
+	{
+		mDefinitions.push_back(FArdaOptionalCudaNode::GetMetadata().mName);
+		FArdaOptionalCudaNode::mPrepared = 0;
+		FArdaDependencyGraph ComputeGraph(mDevice);
+		FArdaGraphEdit ComputeEdit(ComputeGraph);
+		ASSERT_TRUE(FArdaOptionalCudaNode{}(ComputeEdit, FArdaAdmissionValueParameters{7}, "compute"));
+		ASSERT_TRUE(ComputeEdit.Commit());
+		EXPECT_EQ(FArdaOptionalCudaNode::mPrepared, 1u);
+
+		// Keep the first graph's prepared state alive while CUDA qualification changes.
+		mProvider->mCuda.mLaunchMode = EArdaCudaLaunchMode::ContextSwitch;
+		mProvider->mCuda.mbSurfaceAccess = true;
+		FArdaDependencyGraph CudaGraph(mDevice);
+		FArdaGraphEdit CudaEdit(CudaGraph);
+		ASSERT_TRUE(FArdaOptionalCudaNode{}(CudaEdit, FArdaAdmissionValueParameters{7}, "cuda"));
+		ASSERT_TRUE(CudaEdit.Commit());
+		EXPECT_EQ(FArdaOptionalCudaNode::mPrepared, 2u);
+
+		// Returning to the compute route reuses its own retained preparation.
+		mProvider->mCuda = {};
+		FArdaDependencyGraph SecondComputeGraph(mDevice);
+		FArdaGraphEdit SecondEdit(SecondComputeGraph);
+		ASSERT_TRUE(FArdaOptionalCudaNode{}(SecondEdit, FArdaAdmissionValueParameters{7}, "compute again"));
+		ASSERT_TRUE(SecondEdit.Commit());
+		EXPECT_EQ(FArdaOptionalCudaNode::mPrepared, 2u);
+	}
+
+	struct FArdaMutableFeatureNode : TArdaNodeDefinition<FArdaMutableFeatureNode, FArdaAdmissionValueParameters>
+	{
+		inline static bool mbAvailable = true;
+		inline static bool mbThrowEnvironment = false;
+
+		static FArdaDependencyNodeMetadata GetMetadata()
+		{
+			return {"test.requirements.mutable-environment", 1};
+		}
+
+		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters& Parameters)
+		{
+			if (Parameters.mValue == 99)
+			{
+				throw std::runtime_error("Feature declaration failed.");
+			}
+			FArdaDependencyNodeRequirements Requirements;
+			Requirements.mEnvironment.push_back({"mutable-library",
+			    [](const IArdaRHIDevice&)
+			    {
+				    if (mbThrowEnvironment)
+				    {
+					    throw std::runtime_error("Environment lookup failed.");
+				    }
+				    return mbAvailable ? FArdaRHIStatus{}
+				                       : FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Library removed.");
+			    }});
+			return Requirements;
+		}
+
+		static FArdaRHIStatus Record(FArdaDependencyExecutionContext&,
+		    const FArdaParameters&,
+		    const FArdaState&,
+		    FArdaInstanceState&)
+		{
+			ADD_FAILURE() << "The unconsumed feature-check node must be culled before recording.";
+			return {};
+		}
+	};
+
+	TEST_F(FArdaDependencyRequirementsTest, CompileRechecksUnconsumedNodesAfterEnvironmentChanges)
+	{
+		mDefinitions.push_back(FArdaMutableFeatureNode::GetMetadata().mName);
+		FArdaMutableFeatureNode::mbAvailable = true;
+		FArdaDependencyGraph Graph(mDevice);
+		FArdaGraphEdit Edit(Graph);
+		ASSERT_TRUE(FArdaMutableFeatureNode{}(Edit, FArdaAdmissionValueParameters{}, "unconsumed"));
+		ASSERT_TRUE(Edit.Commit());
+		FArdaMutableFeatureNode::mbAvailable = false;
+		const auto Compiled = Graph.Compile();
+		EXPECT_EQ(Compiled.mCode, EArdaRHIResult::Unsupported);
+		EXPECT_NE(Compiled.mMessage.find("mutable-library"), eastl::string::npos);
+		EXPECT_NE(Compiled.mMessage.find("unconsumed"), eastl::string::npos);
+		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 0u);
+		FArdaMutableFeatureNode::mbAvailable = true;
+		EXPECT_TRUE(Graph.Compile());
+	}
+
+	TEST_F(FArdaDependencyRequirementsTest, CachedRevisionCannotReuseAChangedFeatureVerdict)
+	{
+		mDefinitions.push_back(FArdaMutableFeatureNode::GetMetadata().mName);
+		FArdaMutableFeatureNode::mbAvailable = true;
+		FArdaDependencyGraph Graph(mDevice);
+		for (uint32_t Frame = 0; Frame < 2; ++Frame)
+		{
+			FArdaGraphEdit Edit(Graph);
+			ASSERT_TRUE(FArdaMutableFeatureNode{}(Edit, FArdaAdmissionValueParameters{}, "cached"));
+			ASSERT_TRUE(Edit.Commit());
+			if (Frame)
+			{
+				FArdaMutableFeatureNode::mbAvailable = false;
+				EXPECT_EQ(Graph.Compile().mCode, EArdaRHIResult::Unsupported);
+				EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 0u);
+				FArdaMutableFeatureNode::mbAvailable = true;
+			}
+			const auto Compiled = Graph.Compile();
+			ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
+			EXPECT_TRUE(Graph.GetCompileResult().mExecutionOrder.empty());
+			ASSERT_TRUE(Graph.Execute().mStatus);
+		}
+		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 1u);
+		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 1u);
+		FArdaMutableFeatureNode::mbAvailable = false;
+		EXPECT_EQ(Graph.Compile().mCode, EArdaRHIResult::Unsupported);
+	}
+
+	TEST_F(FArdaDependencyRequirementsTest, OmittingFeatureRuleCannotBypassCompilationSafety)
+	{
+		mDefinitions.push_back(FArdaMutableFeatureNode::GetMetadata().mName);
+		FArdaMutableFeatureNode::mbAvailable = true;
+		FArdaDependencyGraph Graph(mDevice);
+		FArdaGraphEdit Edit(Graph);
+		FArdaInductorOptions Options;
+		auto& Rules = Options.mRules.mCompileRules;
+		const auto InitialCount = Rules.size();
+		Rules.erase(eastl::remove_if(Rules.begin(),
+		                Rules.end(),
+		                [](const auto& Rule)
+		                {
+			                return dynamic_cast<const FArdaCheckRequiredFeaturesRule*>(Rule.get()) != nullptr;
+		                }),
+		    Rules.end());
+		ASSERT_EQ(Rules.size() + 1, InitialCount);
+		ASSERT_TRUE(Edit.SetOptions(Options));
+		ASSERT_TRUE(FArdaMutableFeatureNode{}(Edit, FArdaAdmissionValueParameters{}, "custom rules"));
+		ASSERT_TRUE(Edit.Commit());
+		FArdaMutableFeatureNode::mbAvailable = false;
+		EXPECT_EQ(Graph.Compile().mCode, EArdaRHIResult::Unsupported);
+		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 0u);
+	}
+
+	class FArdaLegacyAlternativeOperand final : public TArdaComputeOperand<FArdaAdmissionCudaBufferParameters, uint32_t>
+	{
+	public:
+		using TArdaComputeOperand::TArdaComputeOperand;
+		bool mbHasAlternative = true;
+		FArdaRHIStatus mAlternativeStatus;
+		mutable uint32_t mPreparations = 0;
+
+		const char* GetName() const noexcept override
+		{
+			return "test.legacy.compute-alternative";
+		}
+
+		void BindKernelVariants(FArdaRegistry&) const override
+		{
+		}
+
+		TArdaRHIResult<FArdaCudaKernelSelection> SelectKernel(const FArdaParameters&,
+		    const FArdaCudaSelectionContext&,
+		    const FArdaVariants&) const override
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, "Native selection must not run.")};
+		}
+
+		bool HasComputeAlternative() const noexcept override
+		{
+			return mbHasAlternative;
+		}
+
+		FArdaRHIStatus CheckComputeAlternativeSupport() const override
+		{
+			return mAlternativeStatus;
+		}
+
+		TArdaRHIResult<FArdaComputeAlternativePlan> PrepareComputeAlternative(const FArdaParameters&,
+		    EArdaRHIQueueType) const override
+		{
+			++mPreparations;
+			FArdaComputeAlternativePlan Plan;
+			Plan.mbNoWork = true;
+			return {Plan, {}};
+		}
+	};
+
+	struct FArdaLegacyAlternativeNode : TArdaCudaOperandNode<FArdaLegacyAlternativeNode, FArdaLegacyAlternativeOperand>
+	{
+		using FArdaBase = TArdaCudaOperandNode<FArdaLegacyAlternativeNode, FArdaLegacyAlternativeOperand>;
+
+		static FArdaDependencyNodeMetadata GetMetadata()
+		{
+			return {"test.requirements.legacy-alternative", 1};
+		}
+
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)
+		{
+			auto Description = FArdaBase::Describe(Parameters, State);
+			Description.mbSideEffect = true;
+			return Description;
+		}
+	};
+
+	static_assert(FArdaLegacyAlternativeNode::HasComputeAlternative());
+	static_assert(!FArdaAdmissionCudaBufferNode::HasComputeAlternative());
+
+	TEST_F(FArdaDependencyRequirementsTest, LegacyOperandAlternativeLowersWithoutCudaStorageOrPreparation)
+	{
+		mDefinitions.push_back(FArdaLegacyAlternativeNode::GetMetadata().mName);
+		auto Operand = eastl::make_shared<FArdaLegacyAlternativeOperand>(mDevice);
+		FArdaLegacyAlternativeNode::FArdaParameters Parameters;
+		Parameters.mOperation = Operand;
+		ASSERT_TRUE(FArdaLegacyAlternativeNode::CheckRequiredFeatures(mDevice.Get(), Parameters));
+		EXPECT_EQ(Operand->mPreparations, 0u);
+		FArdaDependencyGraph Graph(mDevice);
+		FArdaGraphEdit Edit(Graph);
+		FArdaRHIBufferDesc Description;
+		Description.mByteSize = 64;
+		Description.mStructureStride = 4;
+		Description.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess;
+		const auto Output = AllocateBuffer(Edit, Description, "output");
+		ASSERT_TRUE(Output);
+		Parameters.mArguments.mOutput.mResource = Output.GetHandle();
+		const auto Operation = FArdaLegacyAlternativeNode{}(Edit, Parameters, "legacy alternative");
+		ASSERT_TRUE(Operation) << Edit.GetStatus().mMessage.c_str();
+		const auto& Node = Graph.GetTopology().TryGetNode(Operation.GetHandle())->mPayload;
+		EXPECT_EQ(Node.mDefinition->mKind, EArdaDependencyNodeKind::Compute);
+		EXPECT_FALSE(Node.mDesc.mRequirements.mbRequireCuda);
+		EXPECT_TRUE(Node.mDefinition->mRecord);
+		EXPECT_FALSE(Node.mDefinition->mPrepareCuda);
+		ASSERT_TRUE(Edit.Commit());
+		EXPECT_EQ(mProvider->mBufferDescriptorQueries, 0u);
+		mProvider->mbAllowBufferDescriptorQueries = true;
+		const auto Compiled = Graph.Compile();
+		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
+		EXPECT_TRUE(Graph.GetCompileResult().mCudaBatches.empty());
+		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), 1u);
+		EXPECT_GT(mProvider->mBufferDescriptorQueries, 0u);
+		EXPECT_EQ(Operand->mPreparations, 0u);
+	}
+
+	TEST_F(FArdaDependencyRequirementsTest, LegacyOperandMissingAlternativeOrWrongDeviceRejectsBeforePreparation)
+	{
+		mDefinitions.push_back(FArdaLegacyAlternativeNode::GetMetadata().mName);
+		auto Operand = eastl::make_shared<FArdaLegacyAlternativeOperand>(mDevice);
+		FArdaLegacyAlternativeNode::FArdaParameters Parameters;
+		Parameters.mOperation = Operand;
+		Operand->mbHasAlternative = false;
+		const auto Missing = FArdaLegacyAlternativeNode::CheckRequiredFeatures(mDevice.Get(), Parameters);
+		EXPECT_EQ(Missing.mCode, EArdaRHIResult::Unsupported);
+		EXPECT_NE(Missing.mMessage.find("No compute alternative"), eastl::string::npos);
+		FArdaDependencyGraph Graph(mDevice);
+		const auto Rejected = RejectAdmission(Graph,
+		    [&](FArdaGraphEdit& Edit)
+		    {
+			    return FArdaLegacyAlternativeNode{}(Edit, Parameters, "missing alternative");
+		    });
+		EXPECT_EQ(Rejected.mCode, EArdaRHIResult::Unsupported);
+		EXPECT_EQ(Graph.GetTopology().GetNodeCount(), 0u);
+		Operand->mbHasAlternative = true;
+		auto OtherProvider = eastl::make_shared<FArdaAdmissionProvider>();
+		auto OtherDevice = CreateArdaRHIDevice(OtherProvider);
+		const auto WrongDevice = FArdaLegacyAlternativeNode::CheckRequiredFeatures(OtherDevice.Get(), Parameters);
+		EXPECT_EQ(WrongDevice.mCode, EArdaRHIResult::Unsupported);
+		EXPECT_NE(WrongDevice.mMessage.find("another device"), eastl::string::npos);
+		Operand->mAlternativeStatus =
+		    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Alternative feature missing.");
+		const auto Unsupported = FArdaLegacyAlternativeNode::CheckRequiredFeatures(mDevice.Get(), Parameters);
+		EXPECT_EQ(Unsupported.mCode, EArdaRHIResult::Unsupported);
+		EXPECT_NE(Unsupported.mMessage.find("Alternative feature missing"), eastl::string::npos);
+		EXPECT_EQ(Operand->mPreparations, 0u);
+	}
+
+	TEST_F(FArdaDependencyRequirementsTest, FeatureExceptionsReportBackendFailureWithoutEscaping)
+	{
+		mDefinitions.push_back(FArdaMutableFeatureNode::GetMetadata().mName);
+		const auto Direct = FArdaMutableFeatureNode::CheckRequiredFeatures(mDevice.Get(), {99});
+		EXPECT_EQ(Direct.mCode, EArdaRHIResult::BackendFailure);
+		EXPECT_NE(Direct.mMessage.find("Feature declaration failed"), eastl::string::npos);
+		FArdaMutableFeatureNode::mbAvailable = true;
+		FArdaDependencyGraph Graph(mDevice);
+		FArdaGraphEdit Edit(Graph);
+		ASSERT_TRUE(FArdaMutableFeatureNode{}(Edit, FArdaAdmissionValueParameters{}, "throwing environment"));
+		ASSERT_TRUE(Edit.Commit());
+		FArdaMutableFeatureNode::mbThrowEnvironment = true;
+		const auto Compiled = Graph.Compile();
+		FArdaMutableFeatureNode::mbThrowEnvironment = false;
+		EXPECT_EQ(Compiled.mCode, EArdaRHIResult::BackendFailure);
+		EXPECT_NE(Compiled.mMessage.find("Environment lookup failed"), eastl::string::npos);
+		EXPECT_NE(Compiled.mMessage.find("throwing environment"), eastl::string::npos);
 	}
 }

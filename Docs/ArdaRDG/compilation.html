@@ -94,6 +94,7 @@
   <pre><code class="language-cpp">FArdaInductorOptions Options;
 Options.mRules.mCompileRules = {
     MakeArdaGraphRule&lt;FArdaFlattenGraphRule&gt;(),
+    MakeArdaGraphRule&lt;FArdaCheckRequiredFeaturesRule&gt;(),
     MakeArdaGraphRule&lt;FArdaCullUnreachableRule&gt;(),
     MakeArdaGraphRule&lt;FArdaInferPipelinesRule&gt;(),
     MakeArdaGraphRule&lt;FArdaMinimizeMemoryRule&gt;(128),

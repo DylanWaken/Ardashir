@@ -183,10 +183,65 @@ namespace arda
 						        "Registered CUDA operand belongs to another device.");
 					    }
 
-					    return Operation->GetOperandSupport();
+					    if constexpr (eastl::is_base_of_v<FArdaComputeOperand, Operand>)
+					    {
+						    const auto Route = Operation->SelectDispatchRoute();
+						    if (!Route)
+						    {
+							    return Route.mStatus;
+						    }
+						    if (Route.mValue != EArdaComputeDispatchRoute::Cuda)
+						    {
+							    return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+							        "CUDA graph route requires a compatible native CUDA operand variant.");
+						    }
+						    return FArdaRHIStatus{};
+					    }
+					    else
+					    {
+						    return Operation->GetOperandSupport();
+					    }
 				    }});
 			}
 
+			return Requirements;
+		}
+
+		/** The compute route checks its own supplied implementation, without inheriting CUDA-only requirements. */
+		static FArdaDependencyNodeRequirements GetComputeAlternativeRequirements(const FArdaParameters& Parameters)
+		{
+			FArdaDependencyNodeRequirements Requirements;
+			if constexpr (eastl::is_base_of_v<FArdaComputeOperand, Operand>)
+			{
+				Requirements.mEnvironment.push_back({"registered compute operand alternative",
+				    [Operation = Parameters.mOperation](const IArdaRHIDevice& Device)
+				    {
+					    if (!Operation)
+					    {
+						    return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+						        "CUDA nodes require an operand.");
+					    }
+					    if (Operation->GetDevice().Get() != &Device)
+					    {
+						    return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+						        "Registered compute operand belongs to another device.");
+					    }
+					    if (!Operation->HasComputeAlternative())
+					    {
+						    return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+						        "No compute alternative was supplied for the registered operand.");
+					    }
+					    const auto Route = Operation->SelectDispatchRoute();
+					    if (!Route)
+					    {
+						    return Route.mStatus;
+					    }
+					    return Route.mValue == EArdaComputeDispatchRoute::ComputeAlternative
+					        ? FArdaRHIStatus{}
+					        : FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+					              "Compute graph route cannot record a native CUDA operand plan.");
+				    }});
+			}
 			return Requirements;
 		}
 
@@ -226,13 +281,48 @@ namespace arda
 				    "Registered CUDA operand belongs to another device.");
 			}
 
-			FArdaHostParameters Host;
+			auto Host = ResolveGraphHost(Context, Parameters);
+			return Sequence.Add(*Parameters.mOperation, Host);
+		}
+
+		/** Available only for real compute operands; legacy duck-typed CUDA adapters keep their original contract. */
+		template <class T = Operand, eastl::enable_if_t<eastl::is_base_of_v<FArdaComputeOperand, T>, int> = 0>
+		static FArdaRHIStatus RecordComputeAlternative(FArdaDependencyExecutionContext& Context,
+		    const FArdaParameters& Parameters,
+		    const FArdaState&,
+		    FArdaInstanceState&)
+		{
+			if (!Parameters.mOperation || Parameters.mOperation->GetDevice() != Context.GetDevice())
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+				    "Registered compute operand belongs to another device.");
+			}
+			auto Host = ResolveGraphHost(Context, Parameters);
+			auto& Commands = Context.GetCommands();
+			const auto Plan = Parameters.mOperation->PrepareDispatch(Host, Commands.GetQueueType());
+			if (!Plan)
+			{
+				return Plan.mStatus;
+			}
+			if (!Plan.mValue || Plan.mValue->mRoute != EArdaComputeDispatchRoute::ComputeAlternative)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "Compute graph route cannot record a native CUDA operand plan.");
+			}
+			return Operand::RecordPlan(Commands, Plan.mValue);
+		}
+
+	private:
+		static FArdaHostParameters ResolveGraphHost(FArdaDependencyExecutionContext& Context,
+		    const FArdaParameters& Parameters)
+		{
+			FArdaHostParameters Host{};
 			FArdaDependencyCudaVisitors::FArdaResolve Visitor{reinterpret_cast<const uint8_t*>(&Parameters.mArguments),
 			    reinterpret_cast<uint8_t*>(&Host),
 			    FArdaHostParameters::GetCudaMetadata().GetMembers(),
 			    Context};
 			FArdaGraphArguments::VisitMembers(Visitor);
-			return Sequence.Add(*Parameters.mOperation, Host);
+			return Host;
 		}
 	};
 }

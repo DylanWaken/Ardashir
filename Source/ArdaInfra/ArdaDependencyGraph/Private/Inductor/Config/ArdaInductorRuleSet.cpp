@@ -15,6 +15,7 @@ namespace arda
 		    MakeArdaGraphRule<FArdaValidateAcyclicRule>()};
 		static const eastl::vector<eastl::shared_ptr<const FArdaGraphCompileRule>> Compile = {
 		    MakeArdaGraphRule<FArdaFlattenGraphRule>(),
+		    MakeArdaGraphRule<FArdaCheckRequiredFeaturesRule>(),
 		    MakeArdaGraphRule<FArdaCullUnreachableRule>(),
 		    MakeArdaGraphRule<FArdaInferPipelinesRule>(),
 		    MakeArdaGraphRule<FArdaSearchOrderRule>(),

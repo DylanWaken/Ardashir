@@ -32,12 +32,22 @@ namespace arda
 			Status.mMessage = "Node '" + Name + "' (" + Definition + "): " + Status.mMessage;
 			return TArdaRHIResult<FArdaGraphNodeHandle>{{}, eastl::move(Status)};
 		};
+		// Lower an optional CUDA alternative before resource declarations, state caching and scheduling.
+		if (D->mKind == EArdaDependencyNodeKind::Cuda && G.mDevice && !G.mDevice->GetCudaCapabilities())
+		{
+			if (!D->mComputeAlternative)
+			{
+				return AdmissionError(FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+				    "CUDA is unavailable and this node has no compute shader alternative."));
+			}
+			D = D->mComputeAlternative;
+		}
 		// Admit explicit requirements before invoking any resource or device setup hook.
 		auto Requirements = D->mGetRequirements(Parameters.get());
 		// Device-less graphs support semantic analysis, but explicit requirements never assume support.
-		if (G.mDevice && D->mKind == EArdaDependencyNodeKind::Cuda)
+		if (G.mDevice)
 		{
-			Requirements.mbRequireCuda = true;
+			D->mAddIntrinsicRequirements(Requirements);
 		}
 		if (auto S = Requirements.Check(G.mDevice.Get()); !S)
 		{
@@ -153,6 +163,8 @@ namespace arda
 			return {Existing, {}};
 		}
 
+		const auto SourceParameters = Parameters;
+
 		// Prepare a new instance only after identity checks; retain its state for every replay.
 		{
 			auto Prepared = D->mPrepare(G.mDevice, Parameters);
@@ -261,6 +273,7 @@ namespace arda
 		{
 			return {{}, GraphInvalid("Cannot allocate another graph node.")};
 		}
+		G.mTopology.TryGetNode(H)->mPayload.mSourceParameters = SourceParameters;
 		++G.mNextAttachmentOrder;
 		G.mNames.emplace(eastl::move(Name), H);
 		Rollback.mbCommitted = true;

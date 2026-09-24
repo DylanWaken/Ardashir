@@ -16,11 +16,14 @@ namespace arda
 	public:
 		virtual ~FArdaComputeOperand() = default;
 		virtual const char* GetName() const noexcept = 0;
+		/** Checks required features for at least one supplied implementation without preparing or submitting GPU work. */
+		virtual FArdaRHIStatus CheckRequiredFeatures() const = 0;
+		/** Equivalent to CheckRequiredFeatures(). */
 		virtual FArdaRHIStatus GetOperandSupport() const = 0;
 		virtual const FArdaComputeParameterMetadata& GetParameterMetadata() const = 0;
 	};
 
-	/** Authors supply BindKernelVariants and SelectKernel. Dispatch cannot be overridden.
+	/** Authors supply CUDA binding/selection and, optionally, an explicit compute shader alternative. Dispatch cannot be overridden.
      * Binding is synchronized once per operand. Selection must have no GPU/host side effects.
      * Each dispatch retains its own frozen values/resources independently of the operand.
      */
@@ -52,6 +55,29 @@ namespace arda
 		    const FArdaCudaSelectionContext& Context,
 		    const FArdaVariants& Candidates) const = 0;
 
+		/** Declares an authored compute alternative, permitting an empty CUDA registry in builds without native kernels. */
+		virtual bool HasComputeAlternative() const noexcept
+		{
+			return false;
+		}
+
+		/** Checks the alternative's feature requirements without allocation, recording, or submission.
+		 * Override together with HasComputeAlternative and PrepareComputeAlternative; default is Unsupported.
+		 */
+		virtual FArdaRHIStatus CheckComputeAlternativeSupport() const
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "No supported compute alternative was supplied.");
+		}
+
+		/** Freezes shader resources, shader-specific constants, and dispatch dimensions for the supplied parameters.
+		 * Called only after feature preflight selects the alternative. Must not record or submit GPU work.
+		 */
+		virtual TArdaRHIResult<FArdaComputeAlternativePlan> PrepareComputeAlternative(const FArdaParameters&,
+		    EArdaRHIQueueType) const
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "No compute alternative was supplied.")};
+		}
+
 		/** Initializes and returns a read-only registry with operand lifetime. */
 		TArdaRHIResult<const FArdaRegistry*> GetKernelVariants() const
 		{
@@ -59,16 +85,32 @@ namespace arda
 			return {S ? &mRegistry : nullptr, S};
 		}
 
-		/** Validates schema, immutable registry, device CUDA support and native target coverage.
+		/** Validates schema, immutable registry, and feature support for a supplied CUDA or compute implementation.
          * Does not validate a particular resource allocation/view or launch a kernel.
          * @errors Returns the first binding error, InvalidArgument for no device, or Unsupported for missing mode/native coverage.
          * @threading Safe for concurrent inspection; binding initializes once without calling CUDA.
          */
+		FArdaRHIStatus CheckRequiredFeatures() const final
+		{
+			return SelectDispatchRoute().mStatus;
+		}
+
+		/** Equivalent to CheckRequiredFeatures(); retained for existing operand callers. */
 		FArdaRHIStatus GetOperandSupport() const final
 		{
-			FArdaCudaSelectionContext Context;
+			return CheckRequiredFeatures();
+		}
+
+		/** Selects the implementation from immutable host metadata for graph lowering before resource allocation.
+		 * Prefers compatible CUDA; only Unsupported feature results may select an explicit compute alternative.
+		 * Schema/binding errors are never hidden. The alternative is not retried after preparation or execution fails.
+		 */
+		TArdaRHIResult<EArdaComputeDispatchRoute> SelectDispatchRoute(
+		    EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics) const
+		{
+			FArdaCudaSelectionContext Context{{}, Queue};
 			FArdaVariants Candidates;
-			return GetSelectionCandidates(Context, Candidates);
+			return SelectDispatchRoute(Context, Candidates);
 		}
 
 		/** Freezes a validated launch plan. Parameters can be changed/destroyed after return. */
@@ -77,21 +119,44 @@ namespace arda
 		{
 			FArdaCudaSelectionContext Context{{}, Queue};
 			FArdaVariants Candidates;
-			if (auto S = GetSelectionCandidates(Context, Candidates); !S)
+			const auto Route = SelectDispatchRoute(Context, Candidates);
+			if (!Route)
 			{
-				return {{}, S};
-			}
-			if (Queue == EArdaRHIQueueType::Copy ||
-			    (Context.mCapabilities.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG &&
-			        Queue != EArdaRHIQueueType::Graphics))
-			{
-				return {{},
-				    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
-				        "CUDA execution mode does not support this queue.")};
+				return {{}, Route.mStatus};
 			}
 			auto Plan = eastl::make_shared<FArdaCudaDispatchPlan>();
 			Plan->mDevice = mDevice;
 			Plan->mQueue = Queue;
+			Plan->mRoute = Route.mValue;
+			if (Route.mValue == EArdaComputeDispatchRoute::ComputeAlternative)
+			{
+				TArdaRHIResult<FArdaComputeAlternativePlan> Alternative;
+				try
+				{
+					Alternative = PrepareComputeAlternative(Parameters, Queue);
+				}
+				catch (const std::exception& E)
+				{
+					return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, E.what())};
+				}
+				catch (...)
+				{
+					return {{},
+					    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+					        "Compute alternative preparation threw an exception.")};
+				}
+				if (!Alternative)
+				{
+					return {{}, Alternative.mStatus};
+				}
+				if (auto Status = ValidateComputeAlternative(Alternative.mValue); !Status)
+				{
+					return {{}, Status};
+				}
+				Plan->mSelection.mbNoWork = Alternative.mValue.mbNoWork;
+				Plan->mComputeAlternative = eastl::move(Alternative.mValue);
+				return {Plan, {}};
+			}
 			if (auto S = ParameterType::GetCudaMetadata().Prepare(&Parameters, Plan->mDispatch); !S)
 			{
 				return {{}, S};
@@ -160,7 +225,30 @@ namespace arda
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 				    "CUDA plan belongs to another queue type.");
 			}
-			return Plan->mSelection.mbNoWork ? FArdaRHIStatus{} : Commands.DispatchCuda(Plan->mDispatch);
+			if (Plan->mRoute != EArdaComputeDispatchRoute::Cuda &&
+			    Plan->mRoute != EArdaComputeDispatchRoute::ComputeAlternative)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Unknown compute operand route.");
+			}
+			if (Plan->mSelection.mbNoWork)
+			{
+				return {};
+			}
+			if (Plan->mRoute == EArdaComputeDispatchRoute::ComputeAlternative)
+			{
+				const auto& Alternative = Plan->mComputeAlternative;
+				if (auto Status = Commands.SetComputeState(Alternative.mState); !Status)
+				{
+					return Status;
+				}
+				if (!Alternative.mPushConstants.empty())
+				{
+					Commands.SetPushConstants(Alternative.mPushConstants.data(), Alternative.mPushConstants.size());
+				}
+				Commands.Dispatch(Alternative.mGroupsX, Alternative.mGroupsY, Alternative.mGroupsZ);
+				return {};
+			}
+			return Commands.DispatchCuda(Plan->mDispatch);
 		}
 
 		/** Records one selected kernel or library operation into the caller-owned list; RDG uses this path. */
@@ -180,7 +268,7 @@ namespace arda
 			{
 				return {{}, Plan.mStatus};
 			}
-			FArdaCudaSubmission Result{mDevice, Queue, 0, Plan.mValue->mSelection};
+			FArdaCudaSubmission Result{mDevice, Queue, 0, Plan.mValue->mSelection, Plan.mValue->mRoute};
 			if (Plan.mValue->mSelection.mbNoWork)
 			{
 				return {Result, {}};
@@ -217,27 +305,142 @@ namespace arda
 		}
 
 	private:
+		TArdaRHIResult<EArdaComputeDispatchRoute> SelectDispatchRoute(FArdaCudaSelectionContext& Context,
+		    FArdaVariants& Candidates) const
+		{
+			const auto CudaStatus = GetSelectionCandidates(Context, Candidates);
+			if (CudaStatus)
+			{
+				return {EArdaComputeDispatchRoute::Cuda, {}};
+			}
+			if (CudaStatus.mCode != EArdaRHIResult::Unsupported)
+			{
+				return {{}, CudaStatus};
+			}
+			if (!HasComputeAlternative())
+			{
+				auto Status = CudaStatus;
+				Status.mMessage += " No compute alternative was supplied.";
+				return {{}, Status};
+			}
+			if ((Context.mQueue != EArdaRHIQueueType::Graphics && Context.mQueue != EArdaRHIQueueType::Compute) ||
+			    !mDevice->GetCapabilities().IsQueueSupported(Context.mQueue))
+			{
+				return {{},
+				    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+				        "Compute alternative requires an available graphics or compute queue.")};
+			}
+			FArdaRHIStatus AlternativeStatus;
+			try
+			{
+				AlternativeStatus = CheckComputeAlternativeSupport();
+			}
+			catch (const std::exception& E)
+			{
+				return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, E.what())};
+			}
+			catch (...)
+			{
+				return {{},
+				    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+				        "Compute alternative feature check threw an exception.")};
+			}
+			if (!AlternativeStatus)
+			{
+				if (AlternativeStatus.mCode == EArdaRHIResult::Unsupported)
+				{
+					AlternativeStatus.mMessage =
+					    "CUDA: " + CudaStatus.mMessage + "; compute alternative: " + AlternativeStatus.mMessage;
+				}
+				return {{}, AlternativeStatus};
+			}
+			return {EArdaComputeDispatchRoute::ComputeAlternative, {}};
+		}
+
+		FArdaRHIStatus ValidateComputeAlternative(const FArdaComputeAlternativePlan& Plan) const
+		{
+			if (Plan.mbNoWork)
+			{
+				return {};
+			}
+			if (!Plan.mState.mPipeline)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+				    "Compute alternative requires a compute pipeline or explicit NoWork.");
+			}
+			const uint32_t Groups[] = {Plan.mGroupsX, Plan.mGroupsY, Plan.mGroupsZ};
+			const auto& Limits = mDevice->GetCapabilities().mLimits;
+			for (size_t Axis = 0; Axis != 3; ++Axis)
+			{
+				if (!Groups[Axis] || Groups[Axis] > Limits.mMaxComputeWorkGroupCount[Axis])
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+					    "Compute alternative work-group counts exceed reported limits; use explicit NoWork for empty work.");
+				}
+			}
+			if (!Plan.mPushConstants.empty())
+			{
+				size_t Capacity = SIZE_MAX;
+				for (const auto& Layout : Plan.mState.mPipeline->GetDesc().mBindingLayouts)
+				{
+					if (!Layout)
+					{
+						return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+						    "Compute alternative pipeline has a null binding layout.");
+					}
+					for (const auto& Item : Layout->GetDesc().mItems)
+					{
+						if (Item.mType == EArdaRHIBindingType::PushConstants && Item.mArraySize < Capacity)
+						{
+							Capacity = Item.mArraySize;
+						}
+					}
+				}
+				if (Capacity == SIZE_MAX || Plan.mPushConstants.size() > Capacity ||
+				    Plan.mPushConstants.size() % sizeof(uint32_t))
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+					    "Compute alternative constants must be DWORD-aligned and fit every pipeline push block.");
+				}
+			}
+			return {};
+		}
+
 		FArdaRHIStatus GetSelectionCandidates(FArdaCudaSelectionContext& Context, FArdaVariants& Candidates) const
 		{
+			if (!mDevice)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Compute operand has no device.");
+			}
 			if (auto S = EnsureBindings(); !S)
 			{
 				return S;
-			}
-			if (!mDevice)
-			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA operand has no device.");
 			}
 			Context.mCapabilities = mDevice->GetCudaCapabilities();
 			if (!Context.mCapabilities)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
-				    Context.mCapabilities.mUnavailableReason.c_str());
+				    Context.mCapabilities.mUnavailableReason.empty()
+				        ? "CUDA is unavailable on this device."
+				        : Context.mCapabilities.mUnavailableReason.c_str());
 			}
-			Candidates = mRegistry.GetCompatibleVariants(Context.mCapabilities);
+			FArdaRHIStatus CandidateStatus;
+			Candidates = mRegistry.GetCompatibleVariants(Context.mCapabilities, &CandidateStatus);
+			if (!CandidateStatus)
+			{
+				return CandidateStatus;
+			}
 			if (Candidates.empty())
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
 				    "No bound CUDA variant has compatible native code and execution requirements.");
+			}
+			if ((Context.mQueue != EArdaRHIQueueType::Graphics && Context.mQueue != EArdaRHIQueueType::Compute) ||
+			    (Context.mCapabilities.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG &&
+			        Context.mQueue != EArdaRHIQueueType::Graphics))
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+				    "CUDA execution mode does not support this queue.");
 			}
 			return {};
 		}
@@ -255,7 +458,7 @@ namespace arda
 				    try
 				    {
 					    BindKernelVariants(mRegistry);
-					    mBindingStatus = mRegistry.Freeze();
+					    mBindingStatus = mRegistry.Freeze(HasComputeAlternative());
 				    }
 				    catch (const std::exception& E)
 				    {

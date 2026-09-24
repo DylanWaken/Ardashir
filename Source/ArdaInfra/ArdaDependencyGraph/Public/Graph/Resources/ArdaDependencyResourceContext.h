@@ -2,11 +2,13 @@
 #pragma once
 
 #include "Graph/Resources/ArdaDependencyResource.h"
+#include "Graph/Resources/ArdaGraphValue.h"
 #include <EASTL/vector.h>
 
 namespace arda
 {
 	class FArdaDependencyGraph;
+	class IArdaRHIDevice;
 
 	/** One named output exposed by a node's resource declaration. */
 	struct FArdaDependencyNodeOutput
@@ -25,8 +27,16 @@ namespace arda
 	class FArdaDependencyResourceContext
 	{
 	public:
+		/** Borrowed device for read-only capability and execution-route decisions during DeclareResources.
+		 * Null denotes device-independent analysis. The graph owns the device; do not retain this pointer
+		 * beyond the declaration callback or use it to allocate, submit, wait, or mutate native state.
+		 */
+		[[nodiscard]] const IArdaRHIDevice* GetDevice() const;
 		FArdaRHIStatus Buffer(FArdaDependencyResourceHandle& Output, eastl::string Name, FArdaRHIBufferDesc Desc);
 		FArdaRHIStatus Texture(FArdaDependencyResourceHandle& Output, eastl::string Name, FArdaRHITextureDesc Desc);
+		/** Preserve the typed facade while declaring or validating a named node output. */
+		FArdaRHIStatus Buffer(FArdaGraphBuffer& Output, eastl::string Name, FArdaRHIBufferDesc Desc);
+		FArdaRHIStatus Texture(FArdaGraphTexture& Output, eastl::string Name, FArdaRHITextureDesc Desc);
 		const FArdaDependencyResourceDesc* Find(FArdaDependencyResourceHandle Input) const;
 
 	private:

@@ -45,6 +45,10 @@ namespace arda::inductor_detail
 
 	FArdaRHIStatus ValidateCompiledResult(const FArdaDependencyGraph::FArdaImpl& G, const FArdaInductorCompileResult& R)
 	{
+		if (auto Status = CheckArdaGraphRequiredFeatures(G); !Status)
+		{
+			return Status;
+		}
 		if (auto Status = ValidateResourceAccesses(G); !Status)
 		{
 			return Status;

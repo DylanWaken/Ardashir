@@ -42,6 +42,11 @@ namespace arda
 			return mStatus = FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 			           "CUDA sequence step belongs to another queue.");
 		}
+		if (Plan->mRoute != EArdaComputeDispatchRoute::Cuda)
+		{
+			return mStatus = FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+			           "CUDA sequences cannot contain compute alternatives; record them as ordinary compute work.");
+		}
 		if (Plan->mSelection.mbNoWork)
 		{
 			if (!Plan->mDispatch.mKernels.empty() || !Plan->mDispatch.mBindings.empty())

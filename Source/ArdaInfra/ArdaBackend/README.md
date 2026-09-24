@@ -52,3 +52,46 @@ declared module dependencies.
 exercise backend behavior and downstream integration. CUDA registration's
 `ArdaCudaKernelBinding.cuh` is intended for nvcc and is exercised by CUDA kernel
 targets rather than the host-only header checks.
+
+## Optional compute alternatives
+
+`TArdaComputeOperand<Parameters, Payload>` can supply an ordinary compute shader
+implementation through three public hooks:
+
+- `HasComputeAlternative()` declares that the implementation exists.
+- `CheckComputeAlternativeSupport()` checks its device feature requirements,
+  without creating resources, recording commands, or submitting work.
+- `PrepareComputeAlternative(Parameters, Queue)` returns
+  `TArdaRHIResult<FArdaComputeAlternativePlan>` containing the retained compute
+  pipeline and binding sets, owned push constant bytes, and work-group counts.
+  It may create bindings but must not record or submit work. Set `mbNoWork` only
+  when the operand's mathematical contract permits an empty operation.
+
+`CheckRequiredFeatures()` is callable through `FArdaComputeOperand` and validates
+the schema, variant registry, and at least one supplied implementation.
+`GetOperandSupport()` has the same behavior. `SelectDispatchRoute(Queue)` exposes
+the chosen `EArdaComputeDispatchRoute` before allocating graph resources.
+Compatible CUDA is preferred; an `Unsupported` CUDA feature/coverage result
+selects a supplied, supported compute alternative. Malformed schemas and variant
+bindings remain errors. Without either implementation, preflight returns an
+error. An alternative permits an empty CUDA registry, so the same operand can
+build with `ARDASHIR_ENABLE_CUDA=OFF` and `ARDASHIR_BUILD_CUDA_KERNELS=OFF`.
+
+The author maps the host schema explicitly to shader bindings and constants;
+CUDA argument bytes are not a shader constant layout. Ordinary graphics buffers
+need no CUDA sharing on the compute route. `PrepareDispatch` freezes the chosen
+route in `FArdaCudaDispatchPlan::mRoute` and retains the alternative state in
+`mComputeAlternative`. Both immediate and deferred dispatch use that frozen
+plan. Submission reports the same route in `FArdaCudaSubmission::mRoute`.
+Resource validation, preparation, recording, and execution failures never
+trigger another implementation or retry partially written output.
+
+`FArdaCudaSequence` remains CUDA-only and explicitly rejects alternative plans,
+including empty ones. Graph schedulers must lower the chosen route to ordinary
+compute work before CUDA batching. Command-list errors from void RHI methods
+remain observable at `Close()`, as for other RHI compute recording.
+
+`Tests/ArdaComputeAlternativeTests.cpp` demonstrates frozen resources/constants,
+immediate and deferred compute dispatch, preflight failures, native preference,
+and CUDA sequence rejection. Its compute output checks run on Vulkan and D3D12
+with CUDA providers and native kernels disabled.

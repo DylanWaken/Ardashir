@@ -42,6 +42,12 @@ namespace arda
 		const char* Applying = "Compiler validation";
 		try
 		{
+			Applying = "FArdaCheckRequiredFeaturesRule";
+			if (auto Status = CheckArdaGraphRequiredFeatures(G); !Status)
+			{
+				Status.mMessage = eastl::string(Applying) + ": " + Status.mMessage;
+				return Status;
+			}
 			auto Input = FArdaInductorGraphAccess::View(G);
 			for (const auto& Rule : G.mOptions.mRules.mPreprocessRules)
 			{

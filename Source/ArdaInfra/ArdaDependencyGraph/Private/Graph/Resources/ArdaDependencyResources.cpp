@@ -186,6 +186,11 @@ namespace arda
 		return mGraph.FindResource(Input);
 	}
 
+	const IArdaRHIDevice* FArdaDependencyResourceContext::GetDevice() const
+	{
+		return mGraph.GetDevice().Get();
+	}
+
 	FArdaRHIStatus FArdaDependencyResourceContext::Buffer(FArdaDependencyResourceHandle& Output,
 	    eastl::string Name,
 	    FArdaRHIBufferDesc Desc)
@@ -193,6 +198,32 @@ namespace arda
 		FArdaDependencyResourceDesc D;
 		D.mBuffer = eastl::move(Desc);
 		return Declare(Output, eastl::move(Name), eastl::move(D));
+	}
+
+	FArdaRHIStatus FArdaDependencyResourceContext::Buffer(FArdaGraphBuffer& Output,
+	    eastl::string Name,
+	    FArdaRHIBufferDesc Desc)
+	{
+		auto Handle = Output.GetHandle();
+		auto Status = Buffer(Handle, eastl::move(Name), eastl::move(Desc));
+		if (Status)
+		{
+			Output = FArdaGraphBuffer(Handle);
+		}
+		return Status;
+	}
+
+	FArdaRHIStatus FArdaDependencyResourceContext::Texture(FArdaGraphTexture& Output,
+	    eastl::string Name,
+	    FArdaRHITextureDesc Desc)
+	{
+		auto Handle = Output.GetHandle();
+		auto Status = Texture(Handle, eastl::move(Name), eastl::move(Desc));
+		if (Status)
+		{
+			Output = FArdaGraphTexture(Handle);
+		}
+		return Status;
 	}
 
 	FArdaRHIStatus FArdaDependencyResourceContext::Texture(FArdaDependencyResourceHandle& Output,

@@ -28,7 +28,7 @@ namespace arda
 
 		FArdaDependencyNodeExecutable() = default;
 		FArdaDependencyNodeExecutable(FArdaDependencyNodeExecutable&&) = default;
-		FArdaDependencyNodeExecutable(const FArdaDependencyNodeExecutable&) = delete;
+		FArdaDependencyNodeExecutable(const FArdaDependencyNodeExecutable&) = default;
 		FArdaDependencyNodeExecutable& operator=(const FArdaDependencyNodeExecutable&) = delete;
 
 	public:
@@ -46,6 +46,10 @@ namespace arda
 		 * Empty means no explicit requirements. Called on matching reattachment as well.
 		 */
 		eastl::function<FArdaDependencyNodeRequirements(const void*)> mGetRequirements;
+		/** Intrinsic execution-domain/stage requirements, separate from device-independent author requirements. */
+		eastl::function<void(FArdaDependencyNodeRequirements&)> mAddIntrinsicRequirements;
+		/** Optional immutable compute lowering of a CUDA definition. Selected before any preparation. */
+		eastl::shared_ptr<const FArdaDependencyNodeExecutable> mComputeAlternative;
 		/** Resolves node-owned outputs before canonical identity and preparation. */
 		eastl::function<TArdaRHIResult<eastl::shared_ptr<const void>>(FArdaDependencyResourceContext&,
 		    eastl::shared_ptr<const void>)>

@@ -4,6 +4,7 @@
 #include "Graph/Node/ArdaDependencyKey.h"
 #include "Graph/Node/ArdaDependencyGraphStatus.h"
 #include "Inductor/Compiler/ArdaInductor.h"
+#include "Inductor/Rules/ArdaInductorRequirements.h"
 
 namespace arda
 {
@@ -252,6 +253,14 @@ namespace arda
 			}
 		}
 		const auto Draft = mImpl;
+		// Capability/environment verdicts are never cached with compiled topology. Check every
+		// attached node before revision retirement can wait or a cached result can be published.
+		const auto FeatureSource =
+		    Selected ? Selected : (!State.mQueue.empty() ? State.mQueue.back().mSnapshot : Draft);
+		if (auto Status = CheckArdaGraphRequiredFeatures(*FeatureSource); !Status)
+		{
+			return Status;
+		}
 		// A revision switch must retire shared imports and mutable node state before another runtime uses them.
 		if (State.mPersistent && State.mPersistent != Selected)
 		{

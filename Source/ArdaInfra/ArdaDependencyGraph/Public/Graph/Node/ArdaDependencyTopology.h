@@ -30,6 +30,8 @@ namespace arda
 		bool mbRayTracingLowered = false;
 		/** A successful explicit buffer materializer consumes this logical stage without requiring a pixel terminal. */
 		bool mbStageMaterialized = false;
+		/** Frozen public inputs retained for read-only required-feature revalidation. */
+		eastl::shared_ptr<const void> mSourceParameters;
 	};
 
 	/** Value dependencies drive removal; overwrite hazards constrain execution without consuming a value. */
