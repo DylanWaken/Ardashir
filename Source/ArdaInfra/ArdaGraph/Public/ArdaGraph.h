@@ -143,11 +143,7 @@ namespace arda
 	};
 
 	/** Returns a process-local graph identity without depending on a rendering subsystem. */
-	inline uint64_t AllocateArdaGraphIdentity() noexcept
-	{
-		static eastl::atomic<uint64_t> Next{1};
-		return Next.fetch_add(1, eastl::memory_order_relaxed);
-	}
+	uint64_t AllocateArdaGraphIdentity() noexcept;
 
 	/** Mutable simple directed graph; self-edges are allowed and duplicate endpoint pairs are idempotent.
 	 * Nodes and edges own arbitrary payloads. One outgoing-neighbor index identifies every endpoint pair;

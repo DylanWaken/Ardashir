@@ -115,7 +115,7 @@ namespace arda
 				{
 					mContext = mPrevious;
 				}
-			} Scope(FArdaDependencyKeyBuilder::mConstructionContext, Context);
+			} Scope(FArdaDependencyKeyBuilder::GetConstructionContext(), Context);
 
 			ConstructionKey = D->mCanonicalKey(Parameters.get());
 		}

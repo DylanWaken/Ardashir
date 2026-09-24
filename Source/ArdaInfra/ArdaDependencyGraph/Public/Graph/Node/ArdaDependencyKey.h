@@ -37,10 +37,10 @@ namespace arda
 		{
 			// Construction identity follows logical slots across fresh frame descriptions.
 			// Ordinary keys retain generations so attachment and stale-handle checks stay strict.
-			if (mConstructionContext)
+			if (const auto* Context = GetConstructionContext())
 			{
-				const bool bValid = Handle.mGraph == mConstructionContext->mGraphIdentity &&
-				    mConstructionContext->mValidate(mConstructionContext->mGraph, Handle);
+				const bool bValid =
+				    Handle.mGraph == Context->mGraphIdentity && Context->mValidate(Context->mGraph, Handle);
 				// Keep invalid serialized handles disjoint from a normalized valid resource.
 				Value(bValid);
 				if (bValid)
@@ -61,9 +61,9 @@ namespace arda
 		{
 			const auto Handle = Input.GetProducer();
 			Value(Input.GetKind());
-			if (mConstructionContext)
+			if (const auto* Context = GetConstructionContext())
 			{
-				const bool bValid = mConstructionContext->mValidateStage(mConstructionContext->mGraph, Handle);
+				const bool bValid = Context->mValidateStage(Context->mGraph, Handle);
 				Value(bValid);
 				if (bValid)
 				{
@@ -117,8 +117,8 @@ namespace arda
 			bool (*mValidateStage)(const void*, FArdaGraphNodeHandle);
 		};
 
-		/** Scoped by attachment while asking a node for its construction identity. */
-		inline static thread_local const FArdaConstructionResourceContext* mConstructionContext = nullptr;
+		/** Returns module-owned thread-local state shared with external node callbacks during attachment. */
+		static const FArdaConstructionResourceContext*& GetConstructionContext() noexcept;
 		eastl::string mBytes;
 	};
 }

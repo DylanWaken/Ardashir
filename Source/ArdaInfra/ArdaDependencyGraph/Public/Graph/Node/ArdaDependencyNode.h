@@ -186,6 +186,11 @@ namespace arda
 	class TArdaDependencyNode : public FArdaDependencyNodeBase
 	{
 	public:
+		/** Constructs the stateless callable through its protected base, including C++20 brace initialization. */
+		constexpr TArdaDependencyNode() noexcept
+		{
+		}
+
 		/** Exact CRTP base used by typed graph attachment; do not replace in the derived class. */
 		using FArdaNodeBase = TArdaDependencyNode<Derived, Parameters, Kind>;
 		/** Concrete class validated by the attachment contract. */
