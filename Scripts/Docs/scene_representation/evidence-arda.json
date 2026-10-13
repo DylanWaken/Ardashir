@@ -1,0 +1,5 @@
+[
+  {"id":"arda-modules","repository":"arda","path":"Source/ArdaInfra/CMakeLists.txt","line":1,"end_line":10,"symbol":"Arda infrastructure modules","claim":"Current infrastructure module registration contains math, backend/providers, generic graph and dependency graph; no scene module is added."},
+  {"id":"arda-bindings","repository":"arda","path":"Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyGraph.h","line":24,"end_line":86,"symbol":"FArdaDependencyGraph external bindings","claim":"Raw external pointers are borrowed while shared/native references are retained; replacing resource bindings invalidates executables."},
+  {"id":"arda-submit","repository":"arda","path":"Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyGraph.h","line":135,"end_line":158,"symbol":"FArdaDependencyGraph execution","claim":"Persistent graph supports compile, submit, wait and execute interfaces; scene-specific lifetime ownership still needs an explicit contract."}
+]

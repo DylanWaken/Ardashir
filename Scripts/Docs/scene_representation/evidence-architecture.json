@@ -1,0 +1,330 @@
+[
+  {
+    "id": "arch-scene",
+    "path": "Engine/Source/Runtime/Renderer/Private/ScenePrivate.h",
+    "line": 1619,
+    "end_line": 1635,
+    "symbol": "FScene",
+    "claim": "Persistent renderer state, independent of view or frame; optional UWorld; derives FSceneInterface."
+  },
+  {
+    "id": "arch-world",
+    "path": "Engine/Source/Runtime/Engine/Classes/Engine/World.h",
+    "line": 1498,
+    "end_line": 1507,
+    "symbol": "UWorld::Scene",
+    "claim": "World exposes an FSceneInterface pointer for renderer scene."
+  },
+  {
+    "id": "arch-actor-root",
+    "path": "Engine/Source/Runtime/Engine/Classes/GameFramework/Actor.h",
+    "line": 1021,
+    "end_line": 1024,
+    "symbol": "AActor::RootComponent",
+    "claim": "Actor root component defines its transform."
+  },
+  {
+    "id": "arch-component-tree",
+    "path": "Engine/Source/Runtime/Engine/Classes/Components/SceneComponent.h",
+    "line": 82,
+    "end_line": 119,
+    "symbol": "USceneComponent",
+    "claim": "Transform and attachment hierarchy, explicitly no rendering/collision on base scene component."
+  },
+  {
+    "id": "arch-primitive-component",
+    "path": "Engine/Source/Runtime/Engine/Classes/Components/PrimitiveComponent.h",
+    "line": 2391,
+    "end_line": 2398,
+    "symbol": "UPrimitiveComponent::CreateSceneProxy",
+    "claim": "Virtual proxy factory defines primitive rendering representation; base returns null."
+  },
+  {
+    "id": "arch-proxy",
+    "path": "Engine/Source/Runtime/Engine/Public/PrimitiveSceneProxy.h",
+    "line": 286,
+    "end_line": 304,
+    "symbol": "FPrimitiveSceneProxy",
+    "claim": "Mirrors primitive data for rendering parallel to game thread."
+  },
+  {
+    "id": "arch-scene-info",
+    "path": "Engine/Source/Runtime/Renderer/Public/PrimitiveSceneInfo.h",
+    "line": 266,
+    "end_line": 339,
+    "symbol": "FPrimitiveSceneInfo",
+    "claim": "One-to-one renderer bookkeeping for proxy; stable component ID; cached meshes; distance-field and Lumen associations."
+  },
+  {
+    "id": "arch-register",
+    "path": "Engine/Source/Runtime/Engine/Private/Components/PrimitiveComponent.cpp",
+    "line": 620,
+    "end_line": 650,
+    "symbol": "UPrimitiveComponent::CreateRenderState_Concurrent",
+    "claim": "Update bounds and conditionally add component through context or world scene interface."
+  },
+  {
+    "id": "arch-add-prepare",
+    "path": "Engine/Source/Runtime/Renderer/Private/RendererScene.cpp",
+    "line": 1445,
+    "end_line": 1490,
+    "symbol": "FScene::BatchAddPrimitivesInternal",
+    "claim": "Obtain/create proxy, skip null, construct scene info and copy initial transform/bounds into creation command."
+  },
+  {
+    "id": "arch-add-enqueue",
+    "path": "Engine/Source/Runtime/Renderer/Private/RendererScene.cpp",
+    "line": 1504,
+    "end_line": 1519,
+    "symbol": "ENQUEUE_RENDER_COMMAND(AddPrimitiveCommand)",
+    "claim": "Ordered render command sets transform, creates RT resources, and adds scene info."
+  },
+  {
+    "id": "arch-packed-arrays",
+    "path": "Engine/Source/Runtime/Renderer/Private/ScenePrivate.h",
+    "line": 1689,
+    "end_line": 1719,
+    "symbol": "FScene::Primitives / PrimitiveTransforms / PrimitiveBounds",
+    "claim": "Dense CPU scene arrays are indexed by FPrimitiveSceneInfo::PackedIndex."
+  },
+  {
+    "id": "arch-interface",
+    "path": "Engine/Source/Runtime/Engine/Public/SceneInterface.h",
+    "line": 115,
+    "end_line": 169,
+    "symbol": "FSceneInterface",
+    "claim": "Engine public scene interface for add/remove/transform/instance updates."
+  },
+  {
+    "id": "arch-transform-entry",
+    "path": "Engine/Source/Runtime/Engine/Private/Components/PrimitiveComponent.cpp",
+    "line": 655,
+    "end_line": 667,
+    "symbol": "UPrimitiveComponent::SendRenderTransform_Concurrent",
+    "claim": "Update bounds and notify scene transform update."
+  },
+  {
+    "id": "arch-transform-update",
+    "path": "Engine/Source/Runtime/Renderer/Private/RendererScene.cpp",
+    "line": 1613,
+    "end_line": 1643,
+    "symbol": "FScene::UpdatePrimitiveTransformInternal",
+    "claim": "Proxy recreation conditional; update payload includes transform, bounds, attachment root, and previous transform."
+  },
+  {
+    "id": "arch-remove",
+    "path": "Engine/Source/Runtime/Renderer/Private/RendererScene.cpp",
+    "line": 2022,
+    "end_line": 2067,
+    "symbol": "FScene::BatchRemovePrimitivesInternal",
+    "claim": "Disassociate proxy and enqueue scene removal/resource teardown."
+  },
+  {
+    "id": "arch-proxy-callback",
+    "path": "Engine/Source/Runtime/Engine/Public/PrimitiveSceneProxy.h",
+    "line": 492,
+    "end_line": 504,
+    "symbol": "FPrimitiveSceneProxy::GetDynamicMeshElements",
+    "claim": "Dynamic collection thread safety, mirroring requirement, callback immutability and referenced-memory lifetime."
+  },
+  {
+    "id": "arch-extensions",
+    "path": "Engine/Source/Runtime/Renderer/Private/SceneExtensions.h",
+    "line": 23,
+    "end_line": 107,
+    "symbol": "ISceneExtension / ISceneExtensionUpdater / ISceneExtensionRenderer",
+    "claim": "Persistent extension, change-set updater, view/render hooks and previsibility-before-GPU-update caveat."
+  },
+  {
+    "id": "arch-gpu-buffers",
+    "path": "Engine/Source/Runtime/Renderer/Private/GPUScene.h",
+    "line": 337,
+    "end_line": 354,
+    "symbol": "FGPUScene persistent buffers",
+    "claim": "Pooled primitive, instance, payload, lightmap buffers with scatter upload helpers."
+  },
+  {
+    "id": "arch-gpu-update-contract",
+    "path": "Engine/Source/Runtime/Renderer/Private/GPUScene.h",
+    "line": 254,
+    "end_line": 281,
+    "symbol": "FGPUScene::Update / AddPrimitiveToUpdate",
+    "claim": "Pending primitive/instance updates and cumulative dirty flags."
+  },
+  {
+    "id": "arch-primitive-shader-params",
+    "path": "Engine/Source/Runtime/Engine/Public/PrimitiveUniformShaderParameters.h",
+    "line": 14,
+    "end_line": 71,
+    "symbol": "FPrimitiveUniformShaderParameters",
+    "claim": "Primitive instance offsets/counts, current/previous transforms, bounds, flags, and related shader parameters."
+  },
+  {
+    "id": "arch-primitive-packed",
+    "path": "Engine/Source/Runtime/Engine/Public/PrimitiveSceneShaderData.h",
+    "line": 14,
+    "end_line": 37,
+    "symbol": "FPrimitiveSceneShaderData",
+    "claim": "Fixed-stride FVector4f primitive packing and BuildDataFromProxy."
+  },
+  {
+    "id": "arch-shader-primitive",
+    "path": "Engine/Shaders/Private/SceneData.ush",
+    "line": 350,
+    "end_line": 374,
+    "symbol": "GetPrimitiveData",
+    "claim": "GPU primitive lookup indexes by PrimitiveId and equates it to PersistentPrimitiveIndex in the buffer path."
+  },
+  {
+    "id": "arch-instance-struct",
+    "path": "Engine/Shaders/Private/SceneData.ush",
+    "line": 227,
+    "end_line": 261,
+    "symbol": "FInstanceSceneData",
+    "claim": "Decoded instance contains IDs, transforms, bounds and feature data."
+  },
+  {
+    "id": "arch-instance-decode",
+    "path": "Engine/Shaders/Private/SceneData.ush",
+    "line": 1111,
+    "end_line": 1165,
+    "symbol": "GetInstanceSceneDataInternal",
+    "claim": "Conditional compressed transforms, primitive lookup, derived fields; layout synchronization requirement."
+  },
+  {
+    "id": "arch-instance-payload",
+    "path": "Engine/Shaders/Private/SceneData.ush",
+    "line": 999,
+    "end_line": 1055,
+    "symbol": "GetInstancePayloadDataOffsets",
+    "claim": "Payload address is base + relative instance ID * stride; field presence controlled by flags."
+  },
+  {
+    "id": "arch-identities",
+    "path": "Engine/Source/Runtime/Renderer/Public/PrimitiveSceneInfo.h",
+    "line": 451,
+    "end_line": 476,
+    "symbol": "GetIndex / GetPersistentIndex",
+    "claim": "Packed index can change on scene add/remove; persistent index remains stable only while primitive remains registered."
+  },
+  {
+    "id": "arch-gpu-allocation",
+    "path": "Engine/Source/Runtime/Renderer/Private/GPUScene.h",
+    "line": 239,
+    "end_line": 252,
+    "symbol": "FGPUScene::AllocateInstanceSceneDataSlots / FreeInstanceSceneDataSlots",
+    "claim": "Instance-range allocation/free and reuse."
+  },
+  {
+    "id": "arch-dirty",
+    "path": "Engine/Source/Runtime/Renderer/Private/GPUScene.cpp",
+    "line": 1755,
+    "end_line": 1778,
+    "symbol": "FGPUScene::AddPrimitiveToUpdate",
+    "claim": "Dirty list deduplication and flag accumulation by persistent primitive index."
+  },
+  {
+    "id": "arch-instance-history",
+    "path": "Engine/Shaders/Private/SceneData.ush",
+    "line": 1211,
+    "end_line": 1237,
+    "symbol": "FInstanceSceneData previous transform decode",
+    "claim": "Dynamic previous transform payload or derivation from primitive WorldToPreviousWorld."
+  },
+  {
+    "id": "arch-instance-culling",
+    "path": "Engine/Source/Runtime/Renderer/Public/InstanceCulling/InstanceCullingContext.h",
+    "line": 99,
+    "end_line": 113,
+    "symbol": "FInstanceCullingContext",
+    "claim": "GPU-Scene-capable draw culling context; HZB occlusion depends on provided HZB and setting."
+  },
+  {
+    "id": "arch-culling-shader",
+    "path": "Engine/Shaders/Private/InstanceCulling/BuildInstanceDrawCommands.usf",
+    "line": 117,
+    "end_line": 230,
+    "symbol": "IsInstanceVisible",
+    "claim": "Conditional instance distance/screen-size/frustum/HZB tests with instance bounds."
+  },
+  {
+    "id": "arch-mesh-batch",
+    "path": "Engine/Source/Runtime/Engine/Public/MeshBatch.h",
+    "line": 361,
+    "end_line": 405,
+    "symbol": "FMeshBatch",
+    "claim": "Geometry-independent draw description with vertex factory/material proxy, elements, pass flags and primitive type."
+  },
+  {
+    "id": "arch-mesh-element",
+    "path": "Engine/Source/Runtime/Engine/Public/MeshBatch.h",
+    "line": 231,
+    "end_line": 301,
+    "symbol": "FMeshBatchElement",
+    "claim": "Index buffer/ranges, instance counts, indirect args, and dynamic primitive-data lifetime."
+  },
+  {
+    "id": "arch-vertex-factory",
+    "path": "Engine/Source/Runtime/RenderCore/Public/VertexFactory.h",
+    "line": 652,
+    "end_line": 676,
+    "symbol": "FVertexFactory",
+    "claim": "Vertex data-source adapter and input streams."
+  },
+  {
+    "id": "arch-mesh-processor",
+    "path": "Engine/Source/Runtime/Renderer/Public/MeshPassProcessor.h",
+    "line": 2255,
+    "end_line": 2319,
+    "symbol": "FMeshPassProcessor",
+    "claim": "Transforms FMeshBatch descriptions into FMeshDrawCommand; pass shaders/material/render state supplied."
+  },
+  {
+    "id": "arch-mesh-command",
+    "path": "Engine/Source/Runtime/Renderer/Public/MeshPassProcessor.h",
+    "line": 1272,
+    "end_line": 1319,
+    "symbol": "FMeshDrawCommand",
+    "claim": "Cached bindings/state/draw parameters; external resource lifetime responsibility and instancing caveat."
+  },
+  {
+    "id": "arch-proxy-static",
+    "path": "Engine/Source/Runtime/Engine/Public/PrimitiveSceneProxy.h",
+    "line": 434,
+    "end_line": 439,
+    "symbol": "FPrimitiveSceneProxy::DrawStaticElements",
+    "claim": "Static elements submitted once at proxy creation, rendered when statically relevant."
+  },
+  {
+    "id": "arch-static-mesh-batches",
+    "path": "Engine/Source/Runtime/Engine/Private/StaticMeshSceneProxy.cpp",
+    "line": 1402,
+    "end_line": 1458,
+    "symbol": "FStaticMeshSceneProxy::DrawStaticElements",
+    "claim": "Static mesh describes LOD/section mesh batches and uses GetMeshElement."
+  },
+  {
+    "id": "arch-scene-command-families",
+    "path": "Engine/Source/Runtime/Renderer/Private/ScenePrivate.h",
+    "line": 1650,
+    "end_line": 1670,
+    "symbol": "FScene cached mesh commands and Nanite pipelines",
+    "claim": "Conventional cached draw lists coexist with separate Nanite raster/shading pipelines."
+  },
+  {
+    "id": "arch-rdg",
+    "path": "Engine/Source/Runtime/RenderCore/Public/RenderGraphBuilder.h",
+    "line": 45,
+    "end_line": 50,
+    "symbol": "FRDGBuilder",
+    "claim": "Pass parameters govern resource barriers/lifetimes; graph compiled/culled/executed by Execute."
+  },
+  {
+    "id": "arch-gpu-rdg",
+    "path": "Engine/Source/Runtime/Renderer/Private/GPUScene.cpp",
+    "line": 1031,
+    "end_line": 1042,
+    "symbol": "FGPUScene::RegisterBuffers",
+    "claim": "Persistent pooled GPU Scene buffers registered into a graph."
+  }
+]

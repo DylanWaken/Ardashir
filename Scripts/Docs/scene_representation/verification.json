@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-13",
+  "article": "Docs/Unreal/scene-representation.html",
+  "unreal_version": "5.8.1",
+  "unreal_commit": "71fe36aac5a8df5ccd66c763ffc902b29b6a9c43",
+  "checks": {
+    "reproducible_article_and_evidence": "pass",
+    "local_source_range_hashes": {
+      "result": "pass",
+      "count": 124
+    },
+    "focused_static_validation": {
+      "result": "pass",
+      "sections": 15,
+      "source_and_content_anchors": 204,
+      "links": 440,
+      "svg_diagrams": 12,
+      "attributed_images": 5
+    },
+    "documentation_tooling_unittests": {
+      "result": "pass",
+      "tests": 27
+    },
+    "browser": {
+      "result": "pass",
+      "engine": "Installed Chrome through Playwright",
+      "css_viewport_widths": [
+        1440,
+        768,
+        390,
+        640
+      ],
+      "coverage": [
+        "Non-root /Docs/ hosting",
+        "External network blocked for reading page",
+        "No horizontal page overflow",
+        "Mobile menu and chapter toggle",
+        "Keyboard skip link",
+        "Chapter search and empty results",
+        "Source deep links",
+        "Glossary focus description",
+        "Light/dark themes",
+        "SVG text within viewBox",
+        "No JavaScript console exceptions",
+        "JavaScript-disabled reading and evidence navigation",
+        "No-JavaScript primary header navigation with committed shared assets"
+      ],
+      "zoom_note": "640 CSS pixels exercise reflow equivalent to a 1280-pixel display at 200% zoom; physical browser zoom and a live screen reader were not exercised."
+    },
+    "repository_wide_docs": {
+      "result": "pre-existing failures unchanged",
+      "before_errors": 152,
+      "after_errors": 152,
+      "new_errors": 0,
+      "comparison": "Compared the complete error lines before and after this work; sets match. Existing failures concern out-of-root links and stale API coverage in other modules."
+    },
+    "commit_snapshot": {
+      "result": "pass",
+      "base_commit": "e5b40a519082c39054e12d9db7cf96719cd8a6aa",
+      "static_validation": "pass",
+      "documentation_tooling_unittests": 7,
+      "browser": "pass, including no-JavaScript primary navigation",
+      "note": "Exported the staged tree with committed shared assets and API pages; unrelated local edits were excluded. The 27-test result above describes the research working tree."
+    }
+  },
+  "reader_acceptance": [
+    {
+      "reader": "isolated beginner 1",
+      "access": "Docs only; no engine source or research notes",
+      "result": "Core architecture passed; vocabulary and navigation gaps found",
+      "corrections": [
+        "Added graphics vocabulary bridge and an early crate trace",
+        "Explained float4, offsets, strides and texture-coordinate bias",
+        "Explained coordinate spaces, inverse transpose and bind pose with a numeric skinning example",
+        "Normalized chapter numbers",
+        "Fixed hierarchy diagram label overlap and shared child",
+        "Added math glossary chapter links and corrected static term count"
+      ]
+    },
+    {
+      "reader": "independent fresh beginner 2",
+      "access": "Docs only; no engine source or research notes",
+      "result": "PASS: all eight conceptual transfer tasks answered with chapter evidence; no blocking gaps",
+      "final_nits_addressed": [
+        "Shared DAG edges use the same relation style",
+        "Attachment diagram qualifies inherited motion as the default"
+      ]
+    }
+  ],
+  "scope_limits": [
+    "Documentation and source inspection only; editor exercises and GPU performance measurements were not executed.",
+    "Arda scene contracts and pseudocode are explicitly proposed, not implemented APIs.",
+    "Primary reference images include historical Unreal versions and are labeled accordingly."
+  ],
+  "commands": [
+    "python Scripts/Docs/scene_representation/build.py --check --verify-source D:/UnrealEngine",
+    "python Scripts/Docs/scene_representation/validate.py",
+    "node Scripts/Docs/scene_representation/browser_qa.cjs (with NODE_PATH, ARDA_BROWSER and the local static server configured)",
+    "python -m unittest discover -s Skills/document-codebase/scripts -p test_*.py",
+    "python Skills/document-codebase/scripts/validate_docs.py Docs --repo-root ."
+  ]
+}

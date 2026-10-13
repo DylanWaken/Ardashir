@@ -7,6 +7,17 @@ import re
 # Topic links belong to the static chapter index; definitions remain in the
 # six-field glossary-data.js rows shared with tooltips and the offline validator.
 TOPIC_LINKS = {
+    **{slug: ("Unreal/scene-representation.html#" + chapter, "Unreal scene representation study")
+       for chapter, slugs in {
+           "mental-model": ["scene-asset", "scene-instance", "scene-primitive", "render-view", "render-frame"],
+           "ownership": ["render-proxy"], "gpu-scene": ["gpu-scene"],
+           "geometry": ["mesh-section", "heightfield"], "nanite": ["geometry-cluster", "lod"],
+           "deformation": ["skinning", "transform", "matrix", "surface-normal", "surface-tangent"],
+           "graphics-bridge": ["uv-coordinates", "rasterization"], "mesh-pipeline": ["vertex-factory"],
+           "materials": ["brdf"], "deferred": ["gbuffer"],
+           "lumen": ["global-illumination", "surface-cache", "screen-trace", "blas", "tlas"],
+           "arda-design": ["generational-handle"],
+       }.items() for slug in slugs},
     "topological-order": ("ArdaRDG/compilation.html#objectives", "Compilation objectives and legal orders"),
     "critical-path": ("ArdaRDG/compilation.html#seeds", "Critical-path scheduling seeds"),
     "list-scheduling": ("ArdaRDG/compilation.html#seeds", "Constructing scheduling seeds"),
@@ -52,4 +63,6 @@ def synchronize_glossary_page(page, glossary):
     page, count = re.subn(pattern, lambda match: match[1] + "\n" + "\n".join(entries) + match[2], page, flags=re.S)
     if count != 1:
         raise ValueError("Expected exactly one static glossary list")
+    page = re.sub(r'(<p[^>]*data-glossary-count[^>]*>).*?(</p>)',
+                  lambda m: m[1] + f"{len(glossary)} of {len(glossary)} terms shown" + m[2], page)
     return page

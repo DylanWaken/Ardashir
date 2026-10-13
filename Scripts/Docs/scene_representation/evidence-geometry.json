@@ -1,0 +1,306 @@
+[
+  {
+    "id": "geo-static-section",
+    "path": "Engine/Source/Runtime/Engine/Public/StaticMeshResources.h",
+    "line": 193,
+    "end_line": 220,
+    "symbol": "FStaticMeshSection",
+    "claim": "Static-mesh sections hold a material index, first index, triangle count, and rendering flags."
+  },
+  {
+    "id": "geo-nanite-reduction",
+    "path": "Engine/Source/Developer/NaniteBuilder/Private/ClusterDAG.cpp",
+    "line": 1464,
+    "end_line": 1584,
+    "symbol": "FClusterDAG::ReduceGroup",
+    "claim": "Triangle child clusters are merged, simplified, split into parent clusters, and assigned parent LOD error."
+  },
+  {
+    "id": "geo-static-streams",
+    "path": "Engine/Source/Runtime/Engine/Public/StaticMeshResources.h",
+    "line": 311,
+    "end_line": 320,
+    "symbol": "FStaticMeshVertexBuffers",
+    "claim": "Static-mesh vertex data is split into vertex attributes, positions, and colors."
+  },
+  {
+    "id": "geo-static-lod",
+    "path": "Engine/Source/Runtime/Engine/Public/StaticMeshResources.h",
+    "line": 417,
+    "end_line": 484,
+    "symbol": "FStaticMeshLODResources",
+    "claim": "A conventional static-mesh LOD has sections, vertex buffers, and index buffers."
+  },
+  {
+    "id": "geo-static-asset",
+    "path": "Engine/Source/Runtime/Engine/Classes/Engine/StaticMesh.h",
+    "line": 602,
+    "end_line": 646,
+    "symbol": "UStaticMesh::RenderData",
+    "claim": "The static-mesh asset owns FStaticMeshRenderData."
+  },
+  {
+    "id": "geo-static-nanite",
+    "path": "Engine/Source/Runtime/Engine/Public/StaticMeshResources.h",
+    "line": 771,
+    "end_line": 792,
+    "symbol": "FStaticMeshRenderData",
+    "claim": "Conventional LOD resources, vertex factories, Nanite resources, and a ray-tracing proxy coexist as distinct fields."
+  },
+  {
+    "id": "geo-skeletal-data",
+    "path": "Engine/Source/Runtime/Engine/Public/Rendering/SkeletalMeshLODRenderData.h",
+    "line": 136,
+    "end_line": 161,
+    "symbol": "FSkeletalMeshLODRenderData",
+    "claim": "Skeletal LOD data has index/vertex streams, skin weights, cloth mapping, and morph data."
+  },
+  {
+    "id": "geo-landscape",
+    "path": "Engine/Source/Runtime/Landscape/Classes/LandscapeComponent.h",
+    "line": 568,
+    "end_line": 580,
+    "symbol": "ULandscapeComponent::HeightmapTexture",
+    "claim": "Landscape component stores heightmap and weightmap textures."
+  },
+  {
+    "id": "geo-procedural",
+    "path": "Engine/Plugins/Runtime/ProceduralMeshComponent/Source/ProceduralMeshComponent/Public/ProceduralMeshComponent.h",
+    "line": 149,
+    "end_line": 218,
+    "symbol": "UProceduralMeshComponent::CreateMeshSection",
+    "claim": "Procedural mesh creation accepts indexed vertex attributes; section updates preserve topology."
+  },
+  {
+    "id": "geo-dynamic",
+    "path": "Engine/Source/Runtime/GeometryFramework/Public/Components/DynamicMeshComponent.h",
+    "line": 159,
+    "end_line": 171,
+    "symbol": "UDynamicMeshComponent",
+    "claim": "The component wraps UDynamicMesh/FDynamicMesh3 and supports partial render updates and chunking."
+  },
+  {
+    "id": "geo-cache",
+    "path": "Engine/Plugins/Runtime/GeometryCache/Source/GeometryCache/Classes/GeometryCache.h",
+    "line": 23,
+    "end_line": 72,
+    "symbol": "UGeometryCache",
+    "claim": "Geometry-cache assets store material references and tracks."
+  },
+  {
+    "id": "geo-cache-component",
+    "path": "Engine/Plugins/Runtime/GeometryCache/Source/GeometryCache/Classes/GeometryCacheComponent.h",
+    "line": 232,
+    "end_line": 239,
+    "symbol": "UGeometryCacheComponent::TickAtThisTime",
+    "claim": "Geometry-cache playback accepts a time and playback flags."
+  },
+  {
+    "id": "geo-ism",
+    "path": "Engine/Source/Runtime/Engine/Classes/Components/InstancedStaticMeshComponent.h",
+    "line": 158,
+    "end_line": 177,
+    "symbol": "UInstancedStaticMeshComponent",
+    "claim": "ISM derives from static-mesh component and has per-instance data and previous transforms."
+  },
+  {
+    "id": "geo-hism",
+    "path": "Engine/Source/Runtime/Engine/Classes/Components/HierarchicalInstancedStaticMeshComponent.h",
+    "line": 135,
+    "end_line": 163,
+    "symbol": "UHierarchicalInstancedStaticMeshComponent::ClusterTreePtr",
+    "claim": "HISM adds a cluster tree and mapping between tree and per-instance data order."
+  },
+  {
+    "id": "geo-spline",
+    "path": "Engine/Source/Runtime/Engine/Classes/Components/SplineMeshComponent.h",
+    "line": 119,
+    "end_line": 125,
+    "symbol": "USplineMeshComponent::SplineParams",
+    "claim": "Spline meshes derive from static-mesh components and add spline parameters."
+  },
+  {
+    "id": "geo-collection",
+    "path": "Engine/Source/Runtime/Experimental/GeometryCollectionEngine/Public/GeometryCollection/GeometryCollectionComponent.h",
+    "line": 865,
+    "end_line": 877,
+    "symbol": "UGeometryCollectionComponent::SetRestCollection",
+    "claim": "A Geometry Collection component references a rest collection."
+  },
+  {
+    "id": "geo-niagara-sprite",
+    "path": "Engine/Plugins/FX/Niagara/Source/Niagara/Public/NiagaraSpriteRendererProperties.h",
+    "line": 110,
+    "end_line": 117,
+    "symbol": "UNiagaraSpriteRendererProperties",
+    "claim": "Niagara has a distinct sprite-renderer property type."
+  },
+  {
+    "id": "geo-niagara-ribbon",
+    "path": "Engine/Plugins/FX/Niagara/Source/Niagara/Public/NiagaraRibbonRendererProperties.h",
+    "line": 193,
+    "end_line": 201,
+    "symbol": "UNiagaraRibbonRendererProperties",
+    "claim": "Niagara has a distinct ribbon-renderer property type."
+  },
+  {
+    "id": "geo-niagara-mesh",
+    "path": "Engine/Plugins/FX/Niagara/Source/Niagara/Public/NiagaraMeshRendererProperties.h",
+    "line": 126,
+    "end_line": 134,
+    "symbol": "UNiagaraMeshRendererProperties",
+    "claim": "Niagara has a distinct mesh-renderer property type."
+  },
+  {
+    "id": "geo-lidar",
+    "path": "Engine/Plugins/Enterprise/LidarPointCloud/Source/LidarPointCloudRuntime/Public/LidarPointCloudComponent.h",
+    "line": 24,
+    "end_line": 71,
+    "symbol": "ULidarPointCloudComponent",
+    "claim": "The LiDAR plugin has a point-cloud component with point shape and orientation settings."
+  },
+  {
+    "id": "geo-volume",
+    "path": "Engine/Source/Runtime/Engine/Classes/Components/HeterogeneousVolumeComponent.h",
+    "line": 20,
+    "end_line": 72,
+    "symbol": "UHeterogeneousVolumeComponent",
+    "claim": "The volume component has SVT streaming controls and a dynamic material instance."
+  },
+  {
+    "id": "geo-svt",
+    "path": "Engine/Source/Runtime/Engine/Classes/SparseVolumeTexture/SparseVolumeTexture.h",
+    "line": 38,
+    "end_line": 52,
+    "symbol": "SparseVolumeTexture page-table fields",
+    "claim": "SVT data contains 3D page-table resolution and bounds."
+  },
+  {
+    "id": "geo-nanite-dag",
+    "path": "Engine/Source/Developer/NaniteBuilder/Private/ClusterDAG.h",
+    "line": 65,
+    "end_line": 102,
+    "symbol": "FClusterDAG",
+    "claim": "Nanite build data supports adding meshes, reduction, and finding a cut through cluster/group relationships."
+  },
+  {
+    "id": "geo-nanite-resources",
+    "path": "Engine/Source/Runtime/Engine/Public/Rendering/NaniteResources.h",
+    "line": 452,
+    "end_line": 466,
+    "symbol": "Nanite::FResources",
+    "claim": "Root pages load with resources; remaining pages stream; hierarchy and dependency data are stored separately."
+  },
+  {
+    "id": "geo-nanite-instance-cull",
+    "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp",
+    "line": 802,
+    "end_line": 904,
+    "symbol": "FInstanceCull_CS",
+    "claim": "Nanite instance-culling compute shader registration."
+  },
+  {
+    "id": "geo-nanite-cluster-cull",
+    "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp",
+    "line": 939,
+    "end_line": 1023,
+    "symbol": "FNodeAndClusterCull_CS",
+    "claim": "Nanite hierarchy-node and cluster-culling compute shader registration."
+  },
+  {
+    "id": "geo-nanite-cull-data",
+    "path": "Engine/Shaders/Private/Nanite/NaniteClusterCulling.usf",
+    "line": 258,
+    "end_line": 279,
+    "symbol": "ShouldVisitChildInternal",
+    "claim": "View and instance-dependent projected scale is compared with hierarchy LOD error."
+  },
+  {
+    "id": "geo-nanite-raster-switch",
+    "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp",
+    "line": 79,
+    "end_line": 90,
+    "symbol": "CVarNaniteComputeRasterization",
+    "claim": "Compute rasterization can be disabled so work uses hardware; programmable rasterization is separately controlled."
+  },
+  {
+    "id": "geo-nanite-raster-shaders",
+    "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp",
+    "line": 1708,
+    "end_line": 1715,
+    "symbol": "FMicropolyRasterizeCS",
+    "claim": "Nanite's micropolygon rasterizer is implemented as a compute shader; hardware raster shader registrations appear at 1911, 2059, and 2226 in the same file."
+  },
+  {
+    "id": "geo-nanite-shading-build",
+    "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteShading.cpp",
+    "line": 654,
+    "end_line": 665,
+    "symbol": "BuildShadingCommands",
+    "claim": "Nanite builds shading commands independently of geometry culling/rasterization."
+  },
+  {
+    "id": "geo-nanite-shading-dispatch",
+    "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteShading.cpp",
+    "line": 1670,
+    "end_line": 1728,
+    "symbol": "DispatchBasePass",
+    "claim": "Nanite base-pass dispatch takes raster results and uses VisBuffer64."
+  },
+  {
+    "id": "geo-nanite-feature-gates",
+    "path": "Engine/Source/Runtime/Engine/Private/Rendering/NaniteResources.cpp",
+    "line": 100,
+    "end_line": 140,
+    "symbol": "Nanite capability console variables",
+    "claim": "Spline and skinned support default on; translucency, foliage, assemblies, voxels, and curves default off. Translucency is labeled Heavy WIP / R&D."
+  },
+  {
+    "id": "geo-nanite-skinned-gate",
+    "path": "Engine/Source/Runtime/Engine/Private/Components/SkinnedMeshComponent.cpp",
+    "line": 148,
+    "end_line": 151,
+    "symbol": "USkinnedMeshComponent::ShouldRenderNaniteSkinnedMeshes",
+    "claim": "Nanite skinned selection checks support and a render switch."
+  },
+  {
+    "id": "geo-nanite-tessellation",
+    "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp",
+    "line": 93,
+    "end_line": 102,
+    "symbol": "CVarNaniteTessellation",
+    "claim": "Runtime tessellation is an explicitly controlled renderer feature."
+  },
+  {
+    "id": "geo-nanite-raytracing",
+    "path": "Engine/Source/Runtime/Engine/Private/Rendering/NaniteResources.cpp",
+    "line": 192,
+    "end_line": 204,
+    "symbol": "CVarNaniteRayTracingMode",
+    "claim": "Local mode defaults to fallback 0 and lists streamed-out mesh 1 and CLAS 2."
+  },
+  {
+    "id": "geo-scene-transform",
+    "path": "Engine/Source/Runtime/Engine/Classes/Components/SceneComponent.h",
+    "line": 107,
+    "end_line": 181,
+    "symbol": "USceneComponent transform and attachment members",
+    "claim": "Scene components store attachment, relative translation/rotation/scale, and absolute-transform flags."
+  },
+  {
+    "id": "geo-skin-dynamic",
+    "path": "Engine/Source/Runtime/Engine/Private/SkeletalRenderGPUSkin.h",
+    "line": 64,
+    "end_line": 112,
+    "symbol": "FDynamicSkelMeshObjectDataGPUSkin",
+    "claim": "Skeletal dynamic render data stores current and previous reference-to-local transforms and active morph weights."
+  },
+  {
+    "id": "geo-instance-history",
+    "path": "Engine/Shaders/Private/LocalVertexFactory.ush",
+    "line": 642,
+    "end_line": 679,
+    "symbol": "Local vertex-factory instance transforms",
+    "claim": "The vertex factory carries current and previous instance-to-world transformations."
+  }
+]
