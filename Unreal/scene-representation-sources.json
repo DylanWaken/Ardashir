@@ -1,0 +1,1127 @@
+{
+  "engine_version": "5.8.1",
+  "unreal_commit": "71fe36aac5a8df5ccd66c763ffc902b29b6a9c43",
+  "research_date": "2026-10-13",
+  "unreal_root_hint": "D:/UnrealEngine",
+  "evidence": [
+    {
+      "id": "arch-scene",
+      "path": "Engine/Source/Runtime/Renderer/Private/ScenePrivate.h",
+      "line": 1619,
+      "end_line": 1635,
+      "symbol": "FScene",
+      "claim": "Persistent renderer state, independent of view or frame; optional UWorld; derives FSceneInterface.",
+      "sha256": "6c1397d46ba1b8fffa110f7bd60017d3eb5f5bb31d95cdb2c8f064673a66bdf7"
+    },
+    {
+      "id": "arch-world",
+      "path": "Engine/Source/Runtime/Engine/Classes/Engine/World.h",
+      "line": 1498,
+      "end_line": 1507,
+      "symbol": "UWorld::Scene",
+      "claim": "World exposes an FSceneInterface pointer for renderer scene.",
+      "sha256": "ab3fef9a6a4a3294948d010e3d35a0252828e1850b0c09564dcb792aadf0d594"
+    },
+    {
+      "id": "arch-actor-root",
+      "path": "Engine/Source/Runtime/Engine/Classes/GameFramework/Actor.h",
+      "line": 1021,
+      "end_line": 1024,
+      "symbol": "AActor::RootComponent",
+      "claim": "Actor root component defines its transform.",
+      "sha256": "795ae599d161a380ed3958ea436398d762c9d09db0852c409976300cc2724de6"
+    },
+    {
+      "id": "arch-component-tree",
+      "path": "Engine/Source/Runtime/Engine/Classes/Components/SceneComponent.h",
+      "line": 82,
+      "end_line": 119,
+      "symbol": "USceneComponent",
+      "claim": "Transform and attachment hierarchy, explicitly no rendering/collision on base scene component.",
+      "sha256": "9fcbe4dc7328f20714415886fbb0f0727c7449ff9d6e7976d4aa12398f9d2c0d"
+    },
+    {
+      "id": "arch-primitive-component",
+      "path": "Engine/Source/Runtime/Engine/Classes/Components/PrimitiveComponent.h",
+      "line": 2391,
+      "end_line": 2398,
+      "symbol": "UPrimitiveComponent::CreateSceneProxy",
+      "claim": "Virtual proxy factory defines primitive rendering representation; base returns null.",
+      "sha256": "0c2bade8d3f3883ba07af5e7a85cfda7dc14cc96e8c494c262d622f2491b8b53"
+    },
+    {
+      "id": "arch-proxy",
+      "path": "Engine/Source/Runtime/Engine/Public/PrimitiveSceneProxy.h",
+      "line": 286,
+      "end_line": 304,
+      "symbol": "FPrimitiveSceneProxy",
+      "claim": "Mirrors primitive data for rendering parallel to game thread.",
+      "sha256": "829ebc6af5be3de7be1351e0a3c788270d7777ce075ebb5af638cf7ea3ad95e3"
+    },
+    {
+      "id": "arch-scene-info",
+      "path": "Engine/Source/Runtime/Renderer/Public/PrimitiveSceneInfo.h",
+      "line": 266,
+      "end_line": 339,
+      "symbol": "FPrimitiveSceneInfo",
+      "claim": "One-to-one renderer bookkeeping for proxy; stable component ID; cached meshes; distance-field and Lumen associations.",
+      "sha256": "6c2a6531d2c7b4cc3e200c7dc845b43f4ca75a640eb3677212a0529a386a2d36"
+    },
+    {
+      "id": "arch-register",
+      "path": "Engine/Source/Runtime/Engine/Private/Components/PrimitiveComponent.cpp",
+      "line": 620,
+      "end_line": 650,
+      "symbol": "UPrimitiveComponent::CreateRenderState_Concurrent",
+      "claim": "Update bounds and conditionally add component through context or world scene interface.",
+      "sha256": "abb7986c23406eec7d8046dfdfdde4decb644e2ea910a82557a7838e94157e28"
+    },
+    {
+      "id": "arch-add-prepare",
+      "path": "Engine/Source/Runtime/Renderer/Private/RendererScene.cpp",
+      "line": 1445,
+      "end_line": 1490,
+      "symbol": "FScene::BatchAddPrimitivesInternal",
+      "claim": "Obtain/create proxy, skip null, construct scene info and copy initial transform/bounds into creation command.",
+      "sha256": "92cd5da405dce4f68a5aae5b9aaad435cc5971a66131127b32ba13e36887086e"
+    },
+    {
+      "id": "arch-add-enqueue",
+      "path": "Engine/Source/Runtime/Renderer/Private/RendererScene.cpp",
+      "line": 1504,
+      "end_line": 1519,
+      "symbol": "ENQUEUE_RENDER_COMMAND(AddPrimitiveCommand)",
+      "claim": "Ordered render command sets transform, creates RT resources, and adds scene info.",
+      "sha256": "701fca13b22b8d2eae9e1d5fb064943bb4a74c3fb9a30dae1da53ac6ace3897f"
+    },
+    {
+      "id": "arch-packed-arrays",
+      "path": "Engine/Source/Runtime/Renderer/Private/ScenePrivate.h",
+      "line": 1689,
+      "end_line": 1719,
+      "symbol": "FScene::Primitives / PrimitiveTransforms / PrimitiveBounds",
+      "claim": "Dense CPU scene arrays are indexed by FPrimitiveSceneInfo::PackedIndex.",
+      "sha256": "e97bda5992c0a8292948b3b21cd57be3ba360186a382bb01234573e24e281812"
+    },
+    {
+      "id": "arch-interface",
+      "path": "Engine/Source/Runtime/Engine/Public/SceneInterface.h",
+      "line": 115,
+      "end_line": 169,
+      "symbol": "FSceneInterface",
+      "claim": "Engine public scene interface for add/remove/transform/instance updates.",
+      "sha256": "fbed89c80396b26cf4201633006312b24e5abfad0cae5e12f7c4421a7b752e6b"
+    },
+    {
+      "id": "arch-transform-entry",
+      "path": "Engine/Source/Runtime/Engine/Private/Components/PrimitiveComponent.cpp",
+      "line": 655,
+      "end_line": 667,
+      "symbol": "UPrimitiveComponent::SendRenderTransform_Concurrent",
+      "claim": "Update bounds and notify scene transform update.",
+      "sha256": "36ae73f2961cc34c11831218792e43e2f252f58d8ab49851fbf65f3039e3f6c7"
+    },
+    {
+      "id": "arch-transform-update",
+      "path": "Engine/Source/Runtime/Renderer/Private/RendererScene.cpp",
+      "line": 1613,
+      "end_line": 1643,
+      "symbol": "FScene::UpdatePrimitiveTransformInternal",
+      "claim": "Proxy recreation conditional; update payload includes transform, bounds, attachment root, and previous transform.",
+      "sha256": "a25b10a4a5c9aba0b19188c7ab77b23b2d32ab59620cd1ca9302922081ef388e"
+    },
+    {
+      "id": "arch-remove",
+      "path": "Engine/Source/Runtime/Renderer/Private/RendererScene.cpp",
+      "line": 2022,
+      "end_line": 2067,
+      "symbol": "FScene::BatchRemovePrimitivesInternal",
+      "claim": "Disassociate proxy and enqueue scene removal/resource teardown.",
+      "sha256": "e4f6e2e46277b60391b15b1b1fd845d7c544e42c90710a4d2940d52e39c1318d"
+    },
+    {
+      "id": "arch-proxy-callback",
+      "path": "Engine/Source/Runtime/Engine/Public/PrimitiveSceneProxy.h",
+      "line": 492,
+      "end_line": 504,
+      "symbol": "FPrimitiveSceneProxy::GetDynamicMeshElements",
+      "claim": "Dynamic collection thread safety, mirroring requirement, callback immutability and referenced-memory lifetime.",
+      "sha256": "48cca01e4b0aba15b17563d4be92999f0add2bc989276b23e030ac7e20d06033"
+    },
+    {
+      "id": "arch-extensions",
+      "path": "Engine/Source/Runtime/Renderer/Private/SceneExtensions.h",
+      "line": 23,
+      "end_line": 107,
+      "symbol": "ISceneExtension / ISceneExtensionUpdater / ISceneExtensionRenderer",
+      "claim": "Persistent extension, change-set updater, view/render hooks and previsibility-before-GPU-update caveat.",
+      "sha256": "a3f8a933ff93cbe989b06febd6430d525daeac384d2544395f93c86f923a7f53"
+    },
+    {
+      "id": "arch-gpu-buffers",
+      "path": "Engine/Source/Runtime/Renderer/Private/GPUScene.h",
+      "line": 337,
+      "end_line": 354,
+      "symbol": "FGPUScene persistent buffers",
+      "claim": "Pooled primitive, instance, payload, lightmap buffers with scatter upload helpers.",
+      "sha256": "b3d29efbf5442d6d84c35451e607c4940b27ed61b6b954f3eb662fc072ba5121"
+    },
+    {
+      "id": "arch-gpu-update-contract",
+      "path": "Engine/Source/Runtime/Renderer/Private/GPUScene.h",
+      "line": 254,
+      "end_line": 281,
+      "symbol": "FGPUScene::Update / AddPrimitiveToUpdate",
+      "claim": "Pending primitive/instance updates and cumulative dirty flags.",
+      "sha256": "c5b4cc1a95a72df6b7a2d28c2b1a417724c7774d0e3129a633cb11d364ac95a7"
+    },
+    {
+      "id": "arch-primitive-shader-params",
+      "path": "Engine/Source/Runtime/Engine/Public/PrimitiveUniformShaderParameters.h",
+      "line": 14,
+      "end_line": 71,
+      "symbol": "FPrimitiveUniformShaderParameters",
+      "claim": "Primitive instance offsets/counts, current/previous transforms, bounds, flags, and related shader parameters.",
+      "sha256": "ca5511f46d9acc8e69ff8ea4cdf53d8dc950f2e126ac2381f19f26db63ae25af"
+    },
+    {
+      "id": "arch-primitive-packed",
+      "path": "Engine/Source/Runtime/Engine/Public/PrimitiveSceneShaderData.h",
+      "line": 14,
+      "end_line": 37,
+      "symbol": "FPrimitiveSceneShaderData",
+      "claim": "Fixed-stride FVector4f primitive packing and BuildDataFromProxy.",
+      "sha256": "1d8e9236183732a8d5b0e276227e2f628a525d5f99e1efb9670b970cd8ae914b"
+    },
+    {
+      "id": "arch-shader-primitive",
+      "path": "Engine/Shaders/Private/SceneData.ush",
+      "line": 350,
+      "end_line": 374,
+      "symbol": "GetPrimitiveData",
+      "claim": "GPU primitive lookup indexes by PrimitiveId and equates it to PersistentPrimitiveIndex in the buffer path.",
+      "sha256": "3ff2231c522dea7f41469e4dffa482db50f4dce929d37a4af75f063e553a85ba"
+    },
+    {
+      "id": "arch-instance-struct",
+      "path": "Engine/Shaders/Private/SceneData.ush",
+      "line": 227,
+      "end_line": 261,
+      "symbol": "FInstanceSceneData",
+      "claim": "Decoded instance contains IDs, transforms, bounds and feature data.",
+      "sha256": "582014f23dc4609793a9c4f6eb3c5b399c120b54f4ada015b36a5733b12fe22c"
+    },
+    {
+      "id": "arch-instance-decode",
+      "path": "Engine/Shaders/Private/SceneData.ush",
+      "line": 1111,
+      "end_line": 1165,
+      "symbol": "GetInstanceSceneDataInternal",
+      "claim": "Conditional compressed transforms, primitive lookup, derived fields; layout synchronization requirement.",
+      "sha256": "8af15f8d4ebe82e88ffbbc1ff5dc945cf7bef726271e4181a495367dc7f7e98b"
+    },
+    {
+      "id": "arch-instance-payload",
+      "path": "Engine/Shaders/Private/SceneData.ush",
+      "line": 999,
+      "end_line": 1055,
+      "symbol": "GetInstancePayloadDataOffsets",
+      "claim": "Payload address is base + relative instance ID * stride; field presence controlled by flags.",
+      "sha256": "c7e3410f4ef15dc18023c6244b10c15bd09c011e1532fc889d9cbe6e8e9d2087"
+    },
+    {
+      "id": "arch-identities",
+      "path": "Engine/Source/Runtime/Renderer/Public/PrimitiveSceneInfo.h",
+      "line": 451,
+      "end_line": 476,
+      "symbol": "GetIndex / GetPersistentIndex",
+      "claim": "Packed index can change on scene add/remove; persistent index remains stable only while primitive remains registered.",
+      "sha256": "53f92a44c5ba06a74b7f085ec2fd28a524800fac48b1e049c8a1f556ef637245"
+    },
+    {
+      "id": "arch-gpu-allocation",
+      "path": "Engine/Source/Runtime/Renderer/Private/GPUScene.h",
+      "line": 239,
+      "end_line": 252,
+      "symbol": "FGPUScene::AllocateInstanceSceneDataSlots / FreeInstanceSceneDataSlots",
+      "claim": "Instance-range allocation/free and reuse.",
+      "sha256": "021d59ff030ff39c0e56837444d98726e980e8d9ccb7c9e74b0f87256924e323"
+    },
+    {
+      "id": "arch-dirty",
+      "path": "Engine/Source/Runtime/Renderer/Private/GPUScene.cpp",
+      "line": 1755,
+      "end_line": 1778,
+      "symbol": "FGPUScene::AddPrimitiveToUpdate",
+      "claim": "Dirty list deduplication and flag accumulation by persistent primitive index.",
+      "sha256": "6a26b61a8bb4ab0d65d71d3a822f2c80813ad0aa06976a97b8d1cf8781d43172"
+    },
+    {
+      "id": "arch-instance-history",
+      "path": "Engine/Shaders/Private/SceneData.ush",
+      "line": 1211,
+      "end_line": 1237,
+      "symbol": "FInstanceSceneData previous transform decode",
+      "claim": "Dynamic previous transform payload or derivation from primitive WorldToPreviousWorld.",
+      "sha256": "880d3161c95863d1ba15945beae7d976e5c2fa7a3739bfd80e75e4836fcfe1de"
+    },
+    {
+      "id": "arch-instance-culling",
+      "path": "Engine/Source/Runtime/Renderer/Public/InstanceCulling/InstanceCullingContext.h",
+      "line": 99,
+      "end_line": 113,
+      "symbol": "FInstanceCullingContext",
+      "claim": "GPU-Scene-capable draw culling context; HZB occlusion depends on provided HZB and setting.",
+      "sha256": "835377f3bf80502d8149bc3ff41912593c34d906af5bec2f9cbcfbac844deddf"
+    },
+    {
+      "id": "arch-culling-shader",
+      "path": "Engine/Shaders/Private/InstanceCulling/BuildInstanceDrawCommands.usf",
+      "line": 117,
+      "end_line": 230,
+      "symbol": "IsInstanceVisible",
+      "claim": "Conditional instance distance/screen-size/frustum/HZB tests with instance bounds.",
+      "sha256": "f09643f1980a0eb4efa531cf993ec80a96c7692e0a5cbbd4cac5ce5fc75695c0"
+    },
+    {
+      "id": "arch-mesh-batch",
+      "path": "Engine/Source/Runtime/Engine/Public/MeshBatch.h",
+      "line": 361,
+      "end_line": 405,
+      "symbol": "FMeshBatch",
+      "claim": "Geometry-independent draw description with vertex factory/material proxy, elements, pass flags and primitive type.",
+      "sha256": "1beb6c314bb52bb6e4daeb9f54d40607b491230560dc517088dabd161763903a"
+    },
+    {
+      "id": "arch-mesh-element",
+      "path": "Engine/Source/Runtime/Engine/Public/MeshBatch.h",
+      "line": 231,
+      "end_line": 301,
+      "symbol": "FMeshBatchElement",
+      "claim": "Index buffer/ranges, instance counts, indirect args, and dynamic primitive-data lifetime.",
+      "sha256": "03ead1205622faaf337f3aeaa3c0a9f1883607a277f211a9999556cdbd39ce9c"
+    },
+    {
+      "id": "arch-vertex-factory",
+      "path": "Engine/Source/Runtime/RenderCore/Public/VertexFactory.h",
+      "line": 652,
+      "end_line": 676,
+      "symbol": "FVertexFactory",
+      "claim": "Vertex data-source adapter and input streams.",
+      "sha256": "5f906cba501abb8d50bf5a001628516523e6f499e1dccd011883e2652e8da0e8"
+    },
+    {
+      "id": "arch-mesh-processor",
+      "path": "Engine/Source/Runtime/Renderer/Public/MeshPassProcessor.h",
+      "line": 2255,
+      "end_line": 2319,
+      "symbol": "FMeshPassProcessor",
+      "claim": "Transforms FMeshBatch descriptions into FMeshDrawCommand; pass shaders/material/render state supplied.",
+      "sha256": "3d574af72790cdba1ced20250ae091804e0872665fa11f84ebda49b90d1eb8ff"
+    },
+    {
+      "id": "arch-mesh-command",
+      "path": "Engine/Source/Runtime/Renderer/Public/MeshPassProcessor.h",
+      "line": 1272,
+      "end_line": 1319,
+      "symbol": "FMeshDrawCommand",
+      "claim": "Cached bindings/state/draw parameters; external resource lifetime responsibility and instancing caveat.",
+      "sha256": "6768f7ffbdb15b6757662d31f0baff43edff0c8867f16e7f39e353543961d853"
+    },
+    {
+      "id": "arch-proxy-static",
+      "path": "Engine/Source/Runtime/Engine/Public/PrimitiveSceneProxy.h",
+      "line": 434,
+      "end_line": 439,
+      "symbol": "FPrimitiveSceneProxy::DrawStaticElements",
+      "claim": "Static elements submitted once at proxy creation, rendered when statically relevant.",
+      "sha256": "9356b376a965a8f57bb7a175e97f943756bce834d2872e0354ad7e665a6bfc77"
+    },
+    {
+      "id": "arch-static-mesh-batches",
+      "path": "Engine/Source/Runtime/Engine/Private/StaticMeshSceneProxy.cpp",
+      "line": 1402,
+      "end_line": 1458,
+      "symbol": "FStaticMeshSceneProxy::DrawStaticElements",
+      "claim": "Static mesh describes LOD/section mesh batches and uses GetMeshElement.",
+      "sha256": "e52e12b60d5cdc3949d6906adb83ff745b8b6b1e21eb73c26fd5615277218062"
+    },
+    {
+      "id": "arch-scene-command-families",
+      "path": "Engine/Source/Runtime/Renderer/Private/ScenePrivate.h",
+      "line": 1650,
+      "end_line": 1670,
+      "symbol": "FScene cached mesh commands and Nanite pipelines",
+      "claim": "Conventional cached draw lists coexist with separate Nanite raster/shading pipelines.",
+      "sha256": "b096d4284e8c0d693ed446b5179f397888d666a52fa330e6835fa5bac6637e34"
+    },
+    {
+      "id": "arch-rdg",
+      "path": "Engine/Source/Runtime/RenderCore/Public/RenderGraphBuilder.h",
+      "line": 45,
+      "end_line": 50,
+      "symbol": "FRDGBuilder",
+      "claim": "Pass parameters govern resource barriers/lifetimes; graph compiled/culled/executed by Execute.",
+      "sha256": "3c8f9c6c01dec9cf62dd159ba01d5576291df33da240b342cfe0a0b863960c41"
+    },
+    {
+      "id": "arch-gpu-rdg",
+      "path": "Engine/Source/Runtime/Renderer/Private/GPUScene.cpp",
+      "line": 1031,
+      "end_line": 1042,
+      "symbol": "FGPUScene::RegisterBuffers",
+      "claim": "Persistent pooled GPU Scene buffers registered into a graph.",
+      "sha256": "573c715cd14321e2f119e51eeef5c972bcf15fb480cf2580fc025fe08d44b9b6"
+    },
+    {
+      "id": "arda-modules",
+      "repository": "arda",
+      "path": "Source/ArdaInfra/CMakeLists.txt",
+      "line": 1,
+      "end_line": 10,
+      "symbol": "Arda infrastructure modules",
+      "claim": "Current infrastructure module registration contains math, backend/providers, generic graph and dependency graph; no scene module is added.",
+      "sha256": "5af0ccdde03a15f864693e3c3eb5b692392baafbbfaade5b76328e40b5ba2e78"
+    },
+    {
+      "id": "arda-bindings",
+      "repository": "arda",
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyGraph.h",
+      "line": 24,
+      "end_line": 86,
+      "symbol": "FArdaDependencyGraph external bindings",
+      "claim": "Raw external pointers are borrowed while shared/native references are retained; replacing resource bindings invalidates executables.",
+      "sha256": "cd5849d06f54027a10e30e1d00ab70749b50da24814958bbbf5273c4ae0f2cc6"
+    },
+    {
+      "id": "arda-submit",
+      "repository": "arda",
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyGraph.h",
+      "line": 135,
+      "end_line": 158,
+      "symbol": "FArdaDependencyGraph execution",
+      "claim": "Persistent graph supports compile, submit, wait and execute interfaces; scene-specific lifetime ownership still needs an explicit contract.",
+      "sha256": "572a89e8d955eddf03f0cd7a5a01f599e2a941487f18101af73f0bfabe5bf9d2"
+    },
+    {
+      "id": "geo-static-section",
+      "path": "Engine/Source/Runtime/Engine/Public/StaticMeshResources.h",
+      "line": 193,
+      "end_line": 220,
+      "symbol": "FStaticMeshSection",
+      "claim": "Static-mesh sections hold a material index, first index, triangle count, and rendering flags.",
+      "sha256": "9c73a74629318c6fd363a7c2c7fcd259bbc20f3e1c67a8aafd2a6d146c411524"
+    },
+    {
+      "id": "geo-nanite-reduction",
+      "path": "Engine/Source/Developer/NaniteBuilder/Private/ClusterDAG.cpp",
+      "line": 1464,
+      "end_line": 1584,
+      "symbol": "FClusterDAG::ReduceGroup",
+      "claim": "Triangle child clusters are merged, simplified, split into parent clusters, and assigned parent LOD error.",
+      "sha256": "645d135f8cfb2f7b0c226c069c4ac9b3e0b0bf08737ef1de26de890d4ebe4c32"
+    },
+    {
+      "id": "geo-static-streams",
+      "path": "Engine/Source/Runtime/Engine/Public/StaticMeshResources.h",
+      "line": 311,
+      "end_line": 320,
+      "symbol": "FStaticMeshVertexBuffers",
+      "claim": "Static-mesh vertex data is split into vertex attributes, positions, and colors.",
+      "sha256": "5ccd148c2c8095c924c5c4e1aa5b1dc3ae2bc91f06f133dbd569ba351b36c8c4"
+    },
+    {
+      "id": "geo-static-lod",
+      "path": "Engine/Source/Runtime/Engine/Public/StaticMeshResources.h",
+      "line": 417,
+      "end_line": 484,
+      "symbol": "FStaticMeshLODResources",
+      "claim": "A conventional static-mesh LOD has sections, vertex buffers, and index buffers.",
+      "sha256": "a789f63499356b3279f7be3b0237c07c9aeba03e24751a93bb7326b2ef7eecdb"
+    },
+    {
+      "id": "geo-static-asset",
+      "path": "Engine/Source/Runtime/Engine/Classes/Engine/StaticMesh.h",
+      "line": 602,
+      "end_line": 646,
+      "symbol": "UStaticMesh::RenderData",
+      "claim": "The static-mesh asset owns FStaticMeshRenderData.",
+      "sha256": "60d5ea3127db547f53d540042ecafaa899aa1d832605d4353f3203e006c2bad4"
+    },
+    {
+      "id": "geo-static-nanite",
+      "path": "Engine/Source/Runtime/Engine/Public/StaticMeshResources.h",
+      "line": 771,
+      "end_line": 792,
+      "symbol": "FStaticMeshRenderData",
+      "claim": "Conventional LOD resources, vertex factories, Nanite resources, and a ray-tracing proxy coexist as distinct fields.",
+      "sha256": "7a08c4abe7a6a5b5656651baeebe7c2169e78443ebc3e245bd4e0e446e7b2c1e"
+    },
+    {
+      "id": "geo-skeletal-data",
+      "path": "Engine/Source/Runtime/Engine/Public/Rendering/SkeletalMeshLODRenderData.h",
+      "line": 136,
+      "end_line": 161,
+      "symbol": "FSkeletalMeshLODRenderData",
+      "claim": "Skeletal LOD data has index/vertex streams, skin weights, cloth mapping, and morph data.",
+      "sha256": "efa55dad4a53625b3b22e59186d103e11bdb5cd0c708122e59bd67a3c909021f"
+    },
+    {
+      "id": "geo-landscape",
+      "path": "Engine/Source/Runtime/Landscape/Classes/LandscapeComponent.h",
+      "line": 568,
+      "end_line": 580,
+      "symbol": "ULandscapeComponent::HeightmapTexture",
+      "claim": "Landscape component stores heightmap and weightmap textures.",
+      "sha256": "1fbb90135cd6bbab298ba6965ab4254b86c2e6bba167e757ec0c048418d3f13a"
+    },
+    {
+      "id": "geo-procedural",
+      "path": "Engine/Plugins/Runtime/ProceduralMeshComponent/Source/ProceduralMeshComponent/Public/ProceduralMeshComponent.h",
+      "line": 149,
+      "end_line": 218,
+      "symbol": "UProceduralMeshComponent::CreateMeshSection",
+      "claim": "Procedural mesh creation accepts indexed vertex attributes; section updates preserve topology.",
+      "sha256": "7ce19259eeaa9ab5fe2e264eaed71bf94ab50e87236125c4df17a9584344761d"
+    },
+    {
+      "id": "geo-dynamic",
+      "path": "Engine/Source/Runtime/GeometryFramework/Public/Components/DynamicMeshComponent.h",
+      "line": 159,
+      "end_line": 171,
+      "symbol": "UDynamicMeshComponent",
+      "claim": "The component wraps UDynamicMesh/FDynamicMesh3 and supports partial render updates and chunking.",
+      "sha256": "0c932402334a5fdc0898dac7b7a22b0e9813a79b7884a6403fe6d93b39a46ff4"
+    },
+    {
+      "id": "geo-cache",
+      "path": "Engine/Plugins/Runtime/GeometryCache/Source/GeometryCache/Classes/GeometryCache.h",
+      "line": 23,
+      "end_line": 72,
+      "symbol": "UGeometryCache",
+      "claim": "Geometry-cache assets store material references and tracks.",
+      "sha256": "5587ea826b0fef9453f046d36d740942b0db7577e4283abb1530e5282403cbd3"
+    },
+    {
+      "id": "geo-cache-component",
+      "path": "Engine/Plugins/Runtime/GeometryCache/Source/GeometryCache/Classes/GeometryCacheComponent.h",
+      "line": 232,
+      "end_line": 239,
+      "symbol": "UGeometryCacheComponent::TickAtThisTime",
+      "claim": "Geometry-cache playback accepts a time and playback flags.",
+      "sha256": "dc1d060810dd8448f982aff0396ed3a1daa5a1043e0b0d33255ab953637c0c5a"
+    },
+    {
+      "id": "geo-ism",
+      "path": "Engine/Source/Runtime/Engine/Classes/Components/InstancedStaticMeshComponent.h",
+      "line": 158,
+      "end_line": 177,
+      "symbol": "UInstancedStaticMeshComponent",
+      "claim": "ISM derives from static-mesh component and has per-instance data and previous transforms.",
+      "sha256": "3f83c5ae2d0fbcff5d3a9b17f764ebe69f2e87cdb8ad88d8d9c7df3045041228"
+    },
+    {
+      "id": "geo-hism",
+      "path": "Engine/Source/Runtime/Engine/Classes/Components/HierarchicalInstancedStaticMeshComponent.h",
+      "line": 135,
+      "end_line": 163,
+      "symbol": "UHierarchicalInstancedStaticMeshComponent::ClusterTreePtr",
+      "claim": "HISM adds a cluster tree and mapping between tree and per-instance data order.",
+      "sha256": "3b172eebb88c74d92be4a3de393d1d96ef65e2e2b4db47ae365da43573e4a6ec"
+    },
+    {
+      "id": "geo-spline",
+      "path": "Engine/Source/Runtime/Engine/Classes/Components/SplineMeshComponent.h",
+      "line": 119,
+      "end_line": 125,
+      "symbol": "USplineMeshComponent::SplineParams",
+      "claim": "Spline meshes derive from static-mesh components and add spline parameters.",
+      "sha256": "dabbe0f373d7ce607c4e261d843a1597c9ce89b3008952ab570ce51cf22ddd05"
+    },
+    {
+      "id": "geo-collection",
+      "path": "Engine/Source/Runtime/Experimental/GeometryCollectionEngine/Public/GeometryCollection/GeometryCollectionComponent.h",
+      "line": 865,
+      "end_line": 877,
+      "symbol": "UGeometryCollectionComponent::SetRestCollection",
+      "claim": "A Geometry Collection component references a rest collection.",
+      "sha256": "ec25ecf5e8795063ce5137d7caf479c7e73fbfd29276fd8f45a15aa73a34b69e"
+    },
+    {
+      "id": "geo-niagara-sprite",
+      "path": "Engine/Plugins/FX/Niagara/Source/Niagara/Public/NiagaraSpriteRendererProperties.h",
+      "line": 110,
+      "end_line": 117,
+      "symbol": "UNiagaraSpriteRendererProperties",
+      "claim": "Niagara has a distinct sprite-renderer property type.",
+      "sha256": "d4f0f8e98ead2785cd4131bfc666482584bd1e99410d3821bd7eb472d9f9cc9c"
+    },
+    {
+      "id": "geo-niagara-ribbon",
+      "path": "Engine/Plugins/FX/Niagara/Source/Niagara/Public/NiagaraRibbonRendererProperties.h",
+      "line": 193,
+      "end_line": 201,
+      "symbol": "UNiagaraRibbonRendererProperties",
+      "claim": "Niagara has a distinct ribbon-renderer property type.",
+      "sha256": "658bd0e7d951f6d7b77d8b2dce6c5685c194de600478fc3f236cf70853f6daa9"
+    },
+    {
+      "id": "geo-niagara-mesh",
+      "path": "Engine/Plugins/FX/Niagara/Source/Niagara/Public/NiagaraMeshRendererProperties.h",
+      "line": 126,
+      "end_line": 134,
+      "symbol": "UNiagaraMeshRendererProperties",
+      "claim": "Niagara has a distinct mesh-renderer property type.",
+      "sha256": "701d4adcb1160a840aff7359c65b31b312c4c2b7f8d5a9183aa4713ee1c309e2"
+    },
+    {
+      "id": "geo-lidar",
+      "path": "Engine/Plugins/Enterprise/LidarPointCloud/Source/LidarPointCloudRuntime/Public/LidarPointCloudComponent.h",
+      "line": 24,
+      "end_line": 71,
+      "symbol": "ULidarPointCloudComponent",
+      "claim": "The LiDAR plugin has a point-cloud component with point shape and orientation settings.",
+      "sha256": "9a2c280c976cfe312aedc83c6a1f32358b55f714db9197dd1ba09fa1a22f831b"
+    },
+    {
+      "id": "geo-volume",
+      "path": "Engine/Source/Runtime/Engine/Classes/Components/HeterogeneousVolumeComponent.h",
+      "line": 20,
+      "end_line": 72,
+      "symbol": "UHeterogeneousVolumeComponent",
+      "claim": "The volume component has SVT streaming controls and a dynamic material instance.",
+      "sha256": "feb46b0b8638528e90fd6c26496dc52224fd93f27b09f55233a048f422921fb3"
+    },
+    {
+      "id": "geo-svt",
+      "path": "Engine/Source/Runtime/Engine/Classes/SparseVolumeTexture/SparseVolumeTexture.h",
+      "line": 38,
+      "end_line": 52,
+      "symbol": "SparseVolumeTexture page-table fields",
+      "claim": "SVT data contains 3D page-table resolution and bounds.",
+      "sha256": "c1e40b097f2af16e073dd01b4ebb9c07f70f69eaeecde4d9fbd617b56c95eb42"
+    },
+    {
+      "id": "geo-nanite-dag",
+      "path": "Engine/Source/Developer/NaniteBuilder/Private/ClusterDAG.h",
+      "line": 65,
+      "end_line": 102,
+      "symbol": "FClusterDAG",
+      "claim": "Nanite build data supports adding meshes, reduction, and finding a cut through cluster/group relationships.",
+      "sha256": "c18c0ff0b47af461a211b8f9004f1dcb57b0767a4bdffa40249761656f410518"
+    },
+    {
+      "id": "geo-nanite-resources",
+      "path": "Engine/Source/Runtime/Engine/Public/Rendering/NaniteResources.h",
+      "line": 452,
+      "end_line": 466,
+      "symbol": "Nanite::FResources",
+      "claim": "Root pages load with resources; remaining pages stream; hierarchy and dependency data are stored separately.",
+      "sha256": "9f60679f23be8f042a735cb338f998a199598d1a97b10579afa401e2ff96f45d"
+    },
+    {
+      "id": "geo-nanite-instance-cull",
+      "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp",
+      "line": 802,
+      "end_line": 904,
+      "symbol": "FInstanceCull_CS",
+      "claim": "Nanite instance-culling compute shader registration.",
+      "sha256": "f0bd4ff02a5ac29e9e812728264a03170ad6218ce5301449843d841ab89d1d70"
+    },
+    {
+      "id": "geo-nanite-cluster-cull",
+      "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp",
+      "line": 939,
+      "end_line": 1023,
+      "symbol": "FNodeAndClusterCull_CS",
+      "claim": "Nanite hierarchy-node and cluster-culling compute shader registration.",
+      "sha256": "266d2663109557081163bfaf0286ecf0c23aefae2a6ddb311aa19c21bc3bac89"
+    },
+    {
+      "id": "geo-nanite-cull-data",
+      "path": "Engine/Shaders/Private/Nanite/NaniteClusterCulling.usf",
+      "line": 258,
+      "end_line": 279,
+      "symbol": "ShouldVisitChildInternal",
+      "claim": "View and instance-dependent projected scale is compared with hierarchy LOD error.",
+      "sha256": "f7eef4e43f94c8e20da4e08068e3d118b013fb26dbd85f49f7cb0ea2d33647a6"
+    },
+    {
+      "id": "geo-nanite-raster-switch",
+      "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp",
+      "line": 79,
+      "end_line": 90,
+      "symbol": "CVarNaniteComputeRasterization",
+      "claim": "Compute rasterization can be disabled so work uses hardware; programmable rasterization is separately controlled.",
+      "sha256": "8096ed4cab9cf0181c2479eb203f3aafd525227e1ec1a314dab5559d54ca6522"
+    },
+    {
+      "id": "geo-nanite-raster-shaders",
+      "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp",
+      "line": 1708,
+      "end_line": 1715,
+      "symbol": "FMicropolyRasterizeCS",
+      "claim": "Nanite's micropolygon rasterizer is implemented as a compute shader; hardware raster shader registrations appear at 1911, 2059, and 2226 in the same file.",
+      "sha256": "885202a9b9f492895b74b0dae65a6c221d5a21a32b14be70e75830da32115208"
+    },
+    {
+      "id": "geo-nanite-shading-build",
+      "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteShading.cpp",
+      "line": 654,
+      "end_line": 665,
+      "symbol": "BuildShadingCommands",
+      "claim": "Nanite builds shading commands independently of geometry culling/rasterization.",
+      "sha256": "89522fdc7f0f582d5585ab7a06290a163d787f22c16a1a45d2364fee51e933fa"
+    },
+    {
+      "id": "geo-nanite-shading-dispatch",
+      "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteShading.cpp",
+      "line": 1670,
+      "end_line": 1728,
+      "symbol": "DispatchBasePass",
+      "claim": "Nanite base-pass dispatch takes raster results and uses VisBuffer64.",
+      "sha256": "d48aa7f0d85f1d9ae5bb8dd279e2808fb4b78aacd5892148937ff009e52ceeb9"
+    },
+    {
+      "id": "geo-nanite-feature-gates",
+      "path": "Engine/Source/Runtime/Engine/Private/Rendering/NaniteResources.cpp",
+      "line": 100,
+      "end_line": 140,
+      "symbol": "Nanite capability console variables",
+      "claim": "Spline and skinned support default on; translucency, foliage, assemblies, voxels, and curves default off. Translucency is labeled Heavy WIP / R&D.",
+      "sha256": "14fc94dc7cbef50947589dfa5ba2738ae56164ca9418bf82a920a2ba50a00866"
+    },
+    {
+      "id": "geo-nanite-skinned-gate",
+      "path": "Engine/Source/Runtime/Engine/Private/Components/SkinnedMeshComponent.cpp",
+      "line": 148,
+      "end_line": 151,
+      "symbol": "USkinnedMeshComponent::ShouldRenderNaniteSkinnedMeshes",
+      "claim": "Nanite skinned selection checks support and a render switch.",
+      "sha256": "196c7b732e19496c581aaae3920c5f5a44e3ff50ac68588b67433bd3479e5b09"
+    },
+    {
+      "id": "geo-nanite-tessellation",
+      "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp",
+      "line": 93,
+      "end_line": 102,
+      "symbol": "CVarNaniteTessellation",
+      "claim": "Runtime tessellation is an explicitly controlled renderer feature.",
+      "sha256": "557ed7c0a52ef40596ce09097629d661ccb52e14180951ef606804578db3aa23"
+    },
+    {
+      "id": "geo-nanite-raytracing",
+      "path": "Engine/Source/Runtime/Engine/Private/Rendering/NaniteResources.cpp",
+      "line": 192,
+      "end_line": 204,
+      "symbol": "CVarNaniteRayTracingMode",
+      "claim": "Local mode defaults to fallback 0 and lists streamed-out mesh 1 and CLAS 2.",
+      "sha256": "62aa70a16d87cf312a6d9d5fde6e596761394957a4a6fe81b56b1dd3da3a3cac"
+    },
+    {
+      "id": "geo-scene-transform",
+      "path": "Engine/Source/Runtime/Engine/Classes/Components/SceneComponent.h",
+      "line": 107,
+      "end_line": 181,
+      "symbol": "USceneComponent transform and attachment members",
+      "claim": "Scene components store attachment, relative translation/rotation/scale, and absolute-transform flags.",
+      "sha256": "1b1b7644b4019b0fcf2d66a0c1d4fc88633636309c5ce8011614fb9ff604ca4d"
+    },
+    {
+      "id": "geo-skin-dynamic",
+      "path": "Engine/Source/Runtime/Engine/Private/SkeletalRenderGPUSkin.h",
+      "line": 64,
+      "end_line": 112,
+      "symbol": "FDynamicSkelMeshObjectDataGPUSkin",
+      "claim": "Skeletal dynamic render data stores current and previous reference-to-local transforms and active morph weights.",
+      "sha256": "cc171581bbf15b9f8c04e653ff98fce8533386b7213c6ae7c92a30a57bb5ccdd"
+    },
+    {
+      "id": "geo-instance-history",
+      "path": "Engine/Shaders/Private/LocalVertexFactory.ush",
+      "line": 642,
+      "end_line": 679,
+      "symbol": "Local vertex-factory instance transforms",
+      "claim": "The vertex factory carries current and previous instance-to-world transformations.",
+      "sha256": "4e18a0761f6ada10068cf17a208ae5a06be43097fa31359f81f3e0e6bbab88f8"
+    },
+    {
+      "id": "shade-gbuffer",
+      "path": "Engine/Shaders/Private/DeferredShadingCommon.ush",
+      "line": 379,
+      "end_line": 439,
+      "symbol": "FGBufferData",
+      "claim": "Logical decoded surface data separates normal, diffuse/specular/base color, roughness, model identity, depth, and optional velocity; world position can be reconstructed from depth.",
+      "sha256": "0e4f6be600f236f61c55198acd7e462818eb781ccc08d7e56c3b187b6a1fb24e"
+    },
+    {
+      "id": "shade-bxdf",
+      "path": "Engine/Shaders/Private/ShadingModels.ush",
+      "line": 1137,
+      "end_line": 1166,
+      "symbol": "IntegrateBxDF",
+      "claim": "Traditional shading dispatch selects separate lighting responses using ShadingModelID.",
+      "sha256": "3f7d0c9295376a79046cd0cb20997ca11670afa95e1e08d710bc8f7ccc42d0b2"
+    },
+    {
+      "id": "shade-material",
+      "path": "Engine/Source/Runtime/Engine/Public/Materials/Material.h",
+      "line": 448,
+      "end_line": 840,
+      "symbol": "UMaterial",
+      "claim": "Authoring asset stores material domain, blend mode, shading model and geometry usage flags separately.",
+      "sha256": "f34151b7037c705a32d2508c9fd3c7ae2c0069da6ed434e638a380af0c91a780"
+    },
+    {
+      "id": "shade-instance",
+      "path": "Engine/Source/Runtime/Engine/Public/Materials/MaterialInstance.h",
+      "line": 626,
+      "end_line": 858,
+      "symbol": "UMaterialInstance",
+      "claim": "Instances have a parent material interface, runtime parameter values, and static parameter data.",
+      "sha256": "babfb3a5b5c9bb058546977be9ca6cea90f79c79514a8cb88312d2b2d9461e96"
+    },
+    {
+      "id": "shade-shadermap-id",
+      "path": "Engine/Source/Runtime/Engine/Public/MaterialShared.h",
+      "line": 1303,
+      "end_line": 1348,
+      "symbol": "FMaterialShaderMapId",
+      "claim": "Shader-map identity includes source material identity, quality, feature level, usage, and static switches.",
+      "sha256": "e68c19988796e744acc68f5a0b6f666b1869c9d607ca61ed0ba0d849db3073eb"
+    },
+    {
+      "id": "shade-meshmaterial",
+      "path": "Engine/Source/Runtime/Engine/Public/MeshMaterialShaderType.h",
+      "line": 22,
+      "end_line": 54,
+      "symbol": "FMeshMaterialShaderType",
+      "claim": "Mesh-material shader types combine material-linked shaders with a vertex factory and permutation identity.",
+      "sha256": "09bef14c4652839c407fd11b976eba80212c2fb9afc5a4cbbc584ca562a72300"
+    },
+    {
+      "id": "shade-resource",
+      "path": "Engine/Source/Runtime/Engine/Public/MaterialShared.h",
+      "line": 3211,
+      "end_line": 3221,
+      "symbol": "FMaterialResource",
+      "claim": "FMaterialResource derives from FMaterial.",
+      "sha256": "7d3fb4112a23a1a234ede35b83f4b8eab3c57591ce6ff9cd956a6f8c76dfc4e2"
+    },
+    {
+      "id": "shade-proxy",
+      "path": "Engine/Source/Runtime/Engine/Public/Materials/MaterialRenderProxy.h",
+      "line": 103,
+      "end_line": 164,
+      "symbol": "FMaterialRenderProxy",
+      "claim": "Render proxy caches uniform expressions, provides render-thread shader-map fallback, and documents cached uniform-buffer pointer invalidation on recompilation.",
+      "sha256": "60c54543111893e0cfb575514f62482444864cb2789c29079359b70b7973f555"
+    },
+    {
+      "id": "shade-batch",
+      "path": "Engine/Source/Runtime/Engine/Public/MeshBatch.h",
+      "line": 361,
+      "end_line": 400,
+      "symbol": "FMeshBatch",
+      "claim": "Mesh batch binds elements, a vertex factory and a material render proxy, including material-pass eligibility.",
+      "sha256": "f6224a11fb8f4099a7d8edd0147b9e5ad682cf19ec6bcdc359d29e302ce9a92e"
+    },
+    {
+      "id": "shade-material-lifetime",
+      "path": "Engine/Source/Runtime/Engine/Public/MaterialShared.h",
+      "line": 3080,
+      "end_line": 3092,
+      "symbol": "FMaterial::GameThreadShaderMap / RenderingThreadShaderMap",
+      "claim": "Separate thread-tracked shader maps use refcounting and deferred deletion, with explicit synchronized updates.",
+      "sha256": "bd5e80c735190d25ce830cbdc79b4fa602445affe69de5c96213f40c8d83fffd"
+    },
+    {
+      "id": "shade-substrate-settings",
+      "path": "Engine/Source/Runtime/RenderCore/Private/RenderUtils.cpp",
+      "line": 2068,
+      "end_line": 2090,
+      "symbol": "CVarSubstrate / CVarSubstrateProjectGBufferFormat",
+      "claim": "Comments describe new-template defaults and existing-project retention; Blendable limits closures and Adaptive uses bitstream storage with fallback on unsupported platforms.",
+      "sha256": "991f749b30692d273d2797c66fe1ed83ef21be83901e80e65005fe2341859c2e"
+    },
+    {
+      "id": "shade-substrate-storage",
+      "path": "Engine/Source/Runtime/Renderer/Private/Substrate/Substrate.h",
+      "line": 95,
+      "end_line": 181,
+      "symbol": "Substrate scene data",
+      "claim": "Substrate tracks byte and closure budgets and owns classification and closure tile buffers.",
+      "sha256": "19256959d1fee87ffe6f1b480a88a056610592365d446172c38ff289f164ef7a"
+    },
+    {
+      "id": "shade-create-mid",
+      "path": "Engine/Source/Runtime/Engine/Private/Components/PrimitiveComponent.cpp",
+      "line": 2620,
+      "end_line": 2643,
+      "symbol": "UPrimitiveComponent::CreateDynamicMaterialInstance",
+      "claim": "Creates and installs a dynamic material instance when needed, reuses an existing MID, and reports missing material index.",
+      "sha256": "2c32c51bcdcba5fc46aec8434128a389ade8a621ee282b63aa53d76fcf3d2194"
+    },
+    {
+      "id": "shade-mid-parameter",
+      "path": "Engine/Source/Runtime/Engine/Public/Materials/MaterialInstanceDynamic.h",
+      "line": 106,
+      "end_line": 121,
+      "symbol": "UMaterialInstanceDynamic::SetVectorParameterValue",
+      "claim": "Runtime vector parameter setter accepts FName and FLinearColor.",
+      "sha256": "d2fe9c93ee631ba7ea0def27a99ee42f80278c594e44579281c6ab7348dbb503"
+    },
+    {
+      "id": "shade-invalidate-api",
+      "path": "Engine/Source/Runtime/Engine/Classes/Components/PrimitiveComponent.h",
+      "line": 423,
+      "end_line": 425,
+      "symbol": "UPrimitiveComponent::InvalidateLumenSurfaceCache",
+      "claim": "Explicit component method invalidates the Surface Cache for more responsive material updates.",
+      "sha256": "92a917fa63627068dff48e3ee0a68f30251f169fe0f5bc3bbf0b71dbefe78319"
+    },
+    {
+      "id": "shade-basepass",
+      "path": "Engine/Shaders/Private/BasePassPixelShader.usf",
+      "line": 946,
+      "end_line": 1064,
+      "symbol": "Base pass material evaluation",
+      "claim": "Base pass evaluates material parameters then reads base color, roughness, other surface inputs with conditional Substrate paths; later output code encodes GBuffer.",
+      "sha256": "81ee28ec7ff13608b39dd544505b930c44bc914a36fa5744fa200094b1717d13"
+    },
+    {
+      "id": "shade-deferred-early",
+      "path": "Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.cpp",
+      "line": 2925,
+      "end_line": 3059,
+      "symbol": "FDeferredShadingSceneRenderer::Render",
+      "claim": "Shadow rendering, before-base-pass composition, Lumen scene lighting and base-pass submission appear as conditional dependencies; base pass accepts Nanite shading and raster results.",
+      "sha256": "cb32de7084e7ad275ffde4660710117c9744ec92c4c336cceddf9353c8dc0d7c"
+    },
+    {
+      "id": "shade-deferred-lighting",
+      "path": "Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.cpp",
+      "line": 3388,
+      "end_line": 3525,
+      "symbol": "Deferred lighting scheduling",
+      "claim": "Deferred composition, indirect lighting/AO, and direct RenderLights have conditional and asynchronous scheduling.",
+      "sha256": "f5956cd79ea183d2323e033fdd100c0f02a5e65db6d9c46100f11a237d63b8d0"
+    },
+    {
+      "id": "shade-deferred-late",
+      "path": "Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.cpp",
+      "line": 3995,
+      "end_line": 4318,
+      "symbol": "Translucency and post processing",
+      "claim": "Separate Lumen front-layer reflections, translucency, velocity, visualization, and post-processing stages are explicit.",
+      "sha256": "13c1a83a76ab679d70d52813fc9bac634580643a8904d923065daa98de022083"
+    },
+    {
+      "id": "shade-nanite-binning",
+      "path": "Engine/Source/Runtime/Renderer/Private/Nanite/NaniteShading.cpp",
+      "line": 1784,
+      "end_line": 1822,
+      "symbol": "Nanite base-pass shading preparation",
+      "claim": "Nanite prepares shading bins from raster results and material shading commands before dispatch preparation.",
+      "sha256": "9c7c6b06ec43d8b448ee2ed2c42273ed75b2b10c86f4be2ef4cb1f9ce3d40811"
+    },
+    {
+      "id": "shade-light-proxy",
+      "path": "Engine/Source/Runtime/Engine/Public/LightSceneProxy.h",
+      "line": 202,
+      "end_line": 244,
+      "symbol": "FLightSceneProxy",
+      "claim": "Proxy exposes light color, volumetric contribution, light functions, IES profiles, shadow flags, and lighting channels.",
+      "sha256": "a19af1addf9015ac1dcb5d278c45d975f27698175be33608726aa66e358d0e3b"
+    },
+    {
+      "id": "shade-light-scene",
+      "path": "Engine/Source/Runtime/Renderer/Private/RendererScene.cpp",
+      "line": 2305,
+      "end_line": 2365,
+      "symbol": "FScene::AddLight / BatchAddLights",
+      "claim": "Light scene descriptors produce render proxies and queued render-side light registration.",
+      "sha256": "51c5571b7603a806efdca5387dc26e114b29d9da2969134039f97b2d759eb9bc"
+    },
+    {
+      "id": "shade-wpo",
+      "path": "Engine/Shaders/Private/BasePassVertexShader.usf",
+      "line": 48,
+      "end_line": 83,
+      "symbol": "Base-pass world-position offset",
+      "claim": "Material WPO is added after vertex-factory world position; the shader also evaluates previous WPO in its later velocity path at line 264.",
+      "sha256": "2d5765ddb6c9128dd5cc1a57f020c256ae2604cb8478e61251117f5e39928293"
+    },
+    {
+      "id": "shade-niagara",
+      "path": "Engine/Plugins/FX/Niagara/Source/Niagara/Private/NiagaraRendererMeshes.cpp",
+      "line": 1113,
+      "end_line": 1402,
+      "symbol": "FNiagaraRendererMeshes::SetupElementForGPUScene / CreateMeshBatchForSection / GetDynamicMeshElements",
+      "claim": "Niagara mesh renderer adapts particle data into GPU Scene and conventional mesh batches; separate ray-tracing collection exists at line 1619.",
+      "sha256": "72bb8b71136b6df17efbc7edad72d1ef65e6b7a4f421142b24c71cf6f5b73e71"
+    },
+    {
+      "id": "shade-fog",
+      "path": "Engine/Source/Runtime/Renderer/Private/VolumetricFog.cpp",
+      "line": 318,
+      "end_line": 493,
+      "symbol": "Volumetric fog injection shaders",
+      "claim": "Volumetric fog has grid injection parameters and shadowed light injection work distinct from opaque surface shading.",
+      "sha256": "812dfb50ff617973ba13683f3485199485f8ea52b18e94416b3c1a0bf8d9cc03"
+    },
+    {
+      "id": "shade-lumen-trace",
+      "path": "Engine/Source/Runtime/Renderer/Private/Lumen/LumenScreenProbeTracing.cpp",
+      "line": 678,
+      "end_line": 933,
+      "symbol": "TraceScreenProbes",
+      "claim": "Screen-probe tracing reads radiance-cache inputs, attempts screen tracing, branches into hardware or software mesh-SDF/heightfield tracing, then traces global SDF and applies radiance cache as configured.",
+      "sha256": "2a42bb7a8e68fb497137ed3630b1d1330ba9f7c3bf7186cf2990a86cd4a4474e"
+    },
+    {
+      "id": "shade-rt-scene",
+      "path": "Engine/Source/Runtime/Renderer/Private/RayTracing/RayTracingScene.cpp",
+      "line": 497,
+      "end_line": 535,
+      "symbol": "FRayTracingScene build dependencies",
+      "claim": "Render-graph declarations sequence top-level builds after required BLAS/CLAS writes via barriers.",
+      "sha256": "b7568b4ab90fae59211a239ba14f305ac6135e249970d5f3e272b57b891608e5"
+    },
+    {
+      "id": "shade-rt-renderer",
+      "path": "Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.cpp",
+      "line": 1134,
+      "end_line": 1137,
+      "symbol": "RayTracingScene.Update / Build",
+      "claim": "Renderer explicitly updates and builds the ray-tracing scene.",
+      "sha256": "21e6629d3295c95c779cbac75c95b6d254c2ed133f9962ba10d3bf8aafa83720"
+    },
+    {
+      "id": "shade-hwrt-mode",
+      "path": "Engine/Source/Runtime/Renderer/Private/Lumen/LumenHardwareRayTracingCommon.cpp",
+      "line": 16,
+      "end_line": 47,
+      "symbol": "CVarLumenUseHardwareRayTracing / CVarLumenHardwareRayTracingLightingMode",
+      "claim": "Default HWRT request is 1 when available; separate modes select cache lighting, hit lighting GI+reflections, or hit lighting reflections only, retaining specified cache contributions.",
+      "sha256": "5c98fe1e6b2af7fae97e3dd812201006bacf63b4ad946ad7af71aec2e39f72e6"
+    },
+    {
+      "id": "shade-nanite-rt",
+      "path": "Engine/Source/Runtime/Engine/Private/Rendering/NaniteResources.cpp",
+      "line": 192,
+      "end_line": 203,
+      "symbol": "CVarNaniteRayTracingMode",
+      "claim": "Default Nanite ray-tracing mode is fallback mesh; source also defines StreamOut and CLAS modes.",
+      "sha256": "755c4332b1b8a99045ee4d106c4f652f0caf0187de6481e151d680f35671c1ef"
+    },
+    {
+      "id": "shade-lumen-atlases",
+      "path": "Engine/Source/Runtime/Renderer/Private/Lumen/LumenSceneData.h",
+      "line": 995,
+      "end_line": 1035,
+      "symbol": "FLumenSceneFrameTemporaries",
+      "claim": "Frame bindings distinguish material-attribute atlases, lighting/history atlases, cards, pages, and radiance-cache indirection.",
+      "sha256": "f80c117ac210fc62fded4c8dd7a75cdfbcd98ea88328c0a9b918842c7a756765"
+    },
+    {
+      "id": "shade-skeletal-cards",
+      "path": "Engine/Source/Runtime/Engine/Private/SkeletalMeshSceneProxy.cpp",
+      "line": 757,
+      "end_line": 783,
+      "symbol": "FSkeletalMeshSceneProxy::UpdateLumenCardsFromBounds",
+      "claim": "Skeletal cards derive from pre-skinned bounds with explicit warning about animation mismatch.",
+      "sha256": "c032bd6d52ed90738a44677d2999e3cb381fd3a1ad794b8ead5d851f71c54dba"
+    },
+    {
+      "id": "shade-skeletal-cards-default",
+      "path": "Engine/Source/Runtime/Engine/Private/SkeletalMeshSceneProxy.cpp",
+      "line": 73,
+      "end_line": 78,
+      "symbol": "CVarMeshCardRepresentationSkeletalMesh",
+      "claim": "The skeletal mesh card generation capability defaults to enabled in this checkout.",
+      "sha256": "f2fe66847ea3486068a4ce1517b30aeacc3801ca2938750bad9114b26cc743b8"
+    },
+    {
+      "id": "shade-lumen-history",
+      "path": "Engine/Source/Runtime/Renderer/Private/Lumen/LumenScreenProbeGather.cpp",
+      "line": 158,
+      "end_line": 247,
+      "symbol": "Screen-probe temporal filter controls",
+      "claim": "Temporal accumulation exposes distance, normal, moving-lighting, fast-update, and frame-count controls.",
+      "sha256": "56b2e992d3d175278bdb435aa9b06beac6833dea815485d3df18cd6993f1f5c3"
+    },
+    {
+      "id": "shade-lumen-invalidation",
+      "path": "Engine/Source/Runtime/Renderer/Private/Lumen/LumenScene.cpp",
+      "line": 1500,
+      "end_line": 1522,
+      "symbol": "PendingSurfaceCacheInvalidationOperations processing",
+      "claim": "Queued primitive invalidations resolve primitive groups and invalidate their card cache data.",
+      "sha256": "0e1dcf01122a318bbe27e1240cced37064ef165060654025b8536875432c53c6"
+    },
+    {
+      "id": "shade-lumen-history-speed",
+      "path": "Engine/Source/Runtime/Renderer/Private/Lumen/LumenScreenProbeGather.cpp",
+      "line": 570,
+      "end_line": 575,
+      "symbol": "Lumen screen-probe temporal accumulation scaling",
+      "claim": "Final-gather lighting update speed changes the maximum accumulated-frame scale.",
+      "sha256": "4535631f24a17cded863c815b8a5db3eef3de6aef3369ee729f22ccd134848f1"
+    },
+    {
+      "id": "shade-light-update",
+      "path": "Engine/Source/Runtime/Renderer/Private/RendererScene.cpp",
+      "line": 3502,
+      "end_line": 3540,
+      "symbol": "FScene::UpdateLightInternal / UpdateLightColorAndBrightness",
+      "claim": "Light transform and color/intensity changes enqueue rendering-side update payloads.",
+      "sha256": "400c89c6c767b258c57c4d29293bb7da89d5a30dfc7eb94c68c223957628fe49"
+    },
+    {
+      "id": "shade-local-light",
+      "path": "Engine/Source/Runtime/Engine/Classes/Components/LocalLightComponent.h",
+      "line": 18,
+      "end_line": 57,
+      "symbol": "ULocalLightComponent",
+      "claim": "Local lights distinguish intensity units and attenuation radius.",
+      "sha256": "79cf8177c08727cc663ed4d91f6ac7332dfb1072434062ed952ae2e6ee5ba6ac"
+    },
+    {
+      "id": "shade-rect-light",
+      "path": "Engine/Source/Runtime/Engine/Classes/Components/RectLightComponent.h",
+      "line": 24,
+      "end_line": 40,
+      "symbol": "URectLightComponent",
+      "claim": "Rect lights derive from local lights and expose source width and height.",
+      "sha256": "b14ffc1ca8cc7cfbb1611d5bb106b187ed5064d37b673c94b38bc93004c3f5c9"
+    },
+    {
+      "id": "shade-sky-light",
+      "path": "Engine/Source/Runtime/Engine/Classes/Components/SkyLightComponent.h",
+      "line": 84,
+      "end_line": 131,
+      "symbol": "USkyLightComponent / ESkyLightSourceType",
+      "claim": "Sky Light derives from LightComponentBase and supports captured-scene or cubemap environment data.",
+      "sha256": "993be02b6f9fd87fda61f48b8752e154bec76a1d7e84a9d90328362da74ca281"
+    },
+    {
+      "id": "shade-light-mobility",
+      "path": "Engine/Source/Runtime/Engine/Private/Components/LightComponent.cpp",
+      "line": 293,
+      "end_line": 301,
+      "symbol": "ULightComponentBase::HasStaticLighting / HasStaticShadowing",
+      "claim": "Static lighting requires Static mobility, while static shadowing permits non-Movable mobility.",
+      "sha256": "94753883110c315e167c06160bfcf94d8b38f3a1ea4eabd6d24266b69a8b2672"
+    },
+    {
+      "id": "shade-hair-types",
+      "path": "Engine/Source/Runtime/Renderer/Public/HairStrandsInterface.h",
+      "line": 198,
+      "end_line": 205,
+      "symbol": "EHairGeometryType",
+      "claim": "Hair geometry choice distinguishes None, Strands, Cards, and Meshes.",
+      "sha256": "8d3ac081e196d30442c0c3d335c861c23009fc6eb389c83578d7e3280af892d9"
+    }
+  ]
+}
