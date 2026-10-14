@@ -22,7 +22,6 @@
           <li><a href="ArdaRDG/index.html">ArdaRDG</a></li>
           <li><a href="Unreal/scene-representation.html">Scene representation</a></li>
           <li><a href="glossary.html">Glossary</a></li>
-          <li><a href="Unreal/scene-types.html">Unreal atlas</a></li>
         </ul>
       </nav>
       <button class="theme-toggle" type="button" data-theme-toggle>Dark theme</button>
@@ -59,25 +58,14 @@
     </section>
 
     <section aria-labelledby="unreal-heading">
-      <h2 id="unreal-heading">Explore Unreal's rendering architecture</h2>
-      <p class="section-intro">Source-pinned guides to Unreal Engine 5.8.1. Define the scene data your renderer must ingest, walk a deferred frame with Nanite, Lumen and virtual shadow maps, and plan material graph compilation for Ardashir.</p>
-      <div class="card-grid">
-        <article class="card card--featured">
-          <p class="eyebrow">Scene input guide</p>
-          <h3><a href="Unreal/scene-types.html">Scene representation for your renderer</a></h3>
-          <p>Geometry families, executable material behavior, textures, lights, environments, views and update contracts—with explicit conversion and fidelity choices.</p>
-        </article>
-        <article class="card card--featured">
-          <p class="eyebrow">Interactive rendering timeline</p>
-          <h3><a href="Unreal/deferred-pipeline.html">Deferred rendering with Nanite &amp; Lumen</a></h3>
-          <p>Follow stages from left to right, compare tracing and shadow alternatives, and inspect algorithms, implementation operations and correctness criteria.</p>
-        </article>
-        <article class="card card--featured">
-          <p class="eyebrow">Research &amp; implementation plan</p>
-          <h3><a href="Unreal/material-compiler.html">Unreal material graph compiler</a></h3>
-          <p>How Unreal compiles materials, how to adapt its graph semantics to Ardashir, and 24 proposed implementation tasks with dependencies, acceptance criteria and source references.</p>
-        </article>
-      </div>
+      <h2 id="unreal-heading">Unreal rendering tech blogs</h2>
+      <p class="section-intro">Three independent, long-form articles that build from first principles to Unreal Engine 5.8.1 implementation, with chapter navigation, diagrams and worked examples. Each article stands on its own.</p>
+      <h3><a href="Unreal/scene-representation.html">Scene Representation in Unreal Engine</a></h3>
+      <p>Follow a courtyard scene from geometry and component ownership to GPU data, materials, animation and lighting. Explore the geometry families a compatible renderer must support, then derive a proposed scene architecture for Arda.</p>
+      <h3><a href="Unreal/nanite-and-lumen.html">Nanite and Lumen, from First Principles</a></h3>
+      <p>Develop the algorithms behind virtualized geometry, visibility and real-time global illumination through visual explanations of clusters, streaming, surface caches and light transport.</p>
+      <h3><a href="Unreal/material-compiler.html">How Unreal Compiles a Material Graph</a></h3>
+      <p>Follow an expression graph from the Material Editor through translation, shader compilation, permutations, caching and the GPU programs that shade a surface.</p>
     </section>
 
     <section aria-labelledby="start-heading">
@@ -118,16 +106,6 @@
         </article>
       </div>
       <p>The <a href="ArdaScene/README.md">archived scene representation plan</a> and Unreal research guides describe possible future layers. Scene, GI, physics, deep-learning and standalone interop modules are outside the current source tree; device and resource interop remains part of ArdaBackend.</p>
-    </section>
-
-    <section aria-labelledby="scene-study-heading">
-      <h2 id="scene-study-heading">Research the next layer: scene representation</h2>
-      <article class="card card--featured">
-        <p class="eyebrow">Source-backed study · Unreal 5.8.1</p>
-        <h3><a href="Unreal/scene-representation.html">How Unreal represents a scene</a></h3>
-        <p>A single-page engineering study of scene ownership, GPU data, geometry, Nanite, animation, materials, deferred rendering and Lumen, with original diagrams, Unreal reference images, and proposed contracts for Arda's future scene layer.</p>
-        <p><a href="Unreal/scene-representation.html">Read the scene representation study</a></p>
-      </article>
     </section>
 
     <section aria-labelledby="reading-heading">

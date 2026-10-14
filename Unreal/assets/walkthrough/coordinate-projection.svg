@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 650" role="img" aria-labelledby="title desc"><title id="title">Compute the same triangle in local, world, and image space</title><desc id="desc">The slab triangle is translated three meters, then a pinhole camera computes screen position by dividing by camera depth. All plotted points are computed from the printed coordinates.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#237665"/></marker></defs>
+<rect width="1040" height="650" fill="#fcfaf5"/>
+<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">Compute the same triangle in local, world, and image space</text>
+<text x="173" y="86" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="middle" font-weight="normal">Local coordinates</text>
+<text x="173" y="115" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="middle" font-weight="normal">asset-centered axes</text>
+<line x1="55" y1="321" x2="300" y2="321" stroke="#53665f" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="80" y1="347" x2="80" y2="135" stroke="#53665f" stroke-width="2" marker-end="url(#arrow)"/>
+<polygon points="80.00,321.00 250.00,321.00 250.00,151.00" fill="#e3eadd" stroke="#237665" stroke-width="2"/>
+<text x="509" y="86" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="middle" font-weight="normal">World coordinates</text>
+<text x="509" y="115" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="middle" font-weight="normal">translation + (300,0,0) cm</text>
+<line x1="389" y1="321" x2="665" y2="321" stroke="#53665f" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="389" y1="347" x2="389" y2="164" stroke="#53665f" stroke-width="2" marker-end="url(#arrow)"/>
+<polygon points="554.00,321.00 609.00,321.00 609.00,266.00" fill="#e4dcc5" stroke="#ac7420" stroke-width="2"/>
+<text x="389" y="374" font-family="Arial, sans-serif" font-size="18" fill="#263a36" text-anchor="middle" font-weight="normal">(0,0)</text>
+<text x="554" y="356" font-family="Arial, sans-serif" font-size="18" fill="#263a36" text-anchor="middle" font-weight="normal">300</text>
+<text x="609" y="356" font-family="Arial, sans-serif" font-size="18" fill="#263a36" text-anchor="middle" font-weight="normal">400</text>
+<text x="853" y="86" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="middle" font-weight="normal">Image coordinates</text>
+<text x="853" y="115" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="middle" font-weight="normal">x = cx + f X / Z</text>
+<rect x="711" y="158" width="301" height="231" rx="0" fill="#e7ece7" stroke="#53665f" stroke-width="1"/>
+<polygon points="889.72,273.50 946.16,273.50 946.16,215.75" fill="#d5e4ee" stroke="#326f96" stroke-width="2"/>
+<circle cx="80.0" cy="321.0" r="7" fill="#bd4939" stroke="#bd4939" stroke-width="2"/>
+<circle cx="250.0" cy="321.0" r="7" fill="#287c6b" stroke="#287c6b" stroke-width="2"/>
+<circle cx="250.0" cy="151.0" r="7" fill="#3d72b0" stroke="#3d72b0" stroke-width="2"/>
+<circle cx="554.0" cy="321.0" r="7" fill="#bd4939" stroke="#bd4939" stroke-width="2"/>
+<circle cx="609.0" cy="321.0" r="7" fill="#287c6b" stroke="#287c6b" stroke-width="2"/>
+<circle cx="609.0" cy="266.0" r="7" fill="#3d72b0" stroke="#3d72b0" stroke-width="2"/>
+<circle cx="889.71875" cy="273.5" r="7" fill="#bd4939" stroke="#bd4939" stroke-width="2"/>
+<circle cx="946.15625" cy="273.5" r="7" fill="#287c6b" stroke="#287c6b" stroke-width="2"/>
+<circle cx="946.15625" cy="215.75" r="7" fill="#3d72b0" stroke="#3d72b0" stroke-width="2"/>
+<text x="32" y="441" font-family="Arial, sans-serif" font-size="24" fill="#263a36" text-anchor="start" font-weight="normal">Track the red vertex v0:</text>
+<text x="50" y="481" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="normal">Local: (0,0,0)</text>
+<text x="50" y="510" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="normal">World: (300,0,0) cm</text>
+<text x="362" y="467" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Camera coordinates: (50,0,400)</text>
+<text x="362" y="496" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">positive forward depth = 400 cm</text>
+<text x="362" y="525" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">f = 240 px; center = (160,120)</text>
+<text x="763" y="481" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Image: (190,120)</text>
+<text x="763" y="510" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">240 × 50 / 400 = 30 px</text>
+<text x="32" y="582" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="start" font-weight="normal">Computed mathematical projection. Same vertex identity; three different coordinate systems.</text>
+<text x="32" y="611" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="start" font-weight="normal">Camera at (250,0,400) cm, looking along −Z; image Y increases downward.</text>
+</svg>
