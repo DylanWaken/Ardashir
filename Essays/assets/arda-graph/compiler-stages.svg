@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 460" role="img" aria-labelledby="title desc">
+<title id="title">Two transformations with different outputs</title><desc id="desc">Preprocessing creates a graph with explicit effects and dependencies. Compilation consumes the preprocessed graph and creates a separate execution plan. Standalone calls operate on private copies.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="460" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Two transformations with different outputs</text>
+<rect x="40" y="90" width="265" height="100" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="172.5" y="122.0" class="label" text-anchor="middle">Authored graph</text>
+<text x="172.5" y="146.0" class="small" text-anchor="middle">Upload · Transform · Readback</text>
+<text x="172.5" y="170.0" class="small" text-anchor="middle">optional Debug</text>
+<rect x="370" y="90" width="265" height="100" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="502.5" y="122.0" class="label" text-anchor="middle">Preprocessed graph</text>
+<text x="502.5" y="146.0" class="small" text-anchor="middle">edges · stage assembly</text>
+<text x="502.5" y="170.0" class="small" text-anchor="middle">live / culled annotations</text>
+<rect x="700" y="90" width="265" height="100" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="832.5" y="122.0" class="label" text-anchor="middle">Compiled plan</text>
+<text x="832.5" y="146.0" class="small" text-anchor="middle">order · memory · queues</text>
+<text x="832.5" y="170.0" class="small" text-anchor="middle">dispatches · fences</text>
+<path d="M315 140L360 140" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M645 140L690 140" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="234" class="small">Standalone Preprocess returns a graph. Standalone Compile returns a plan.</text>
+<rect x="40" y="280" width="265" height="70" rx="7" fill="#ecece6" stroke="#829079" stroke-width="1.5"/>
+<text x="172.5" y="321.0" class="label" text-anchor="middle">Original authored graph</text>
+<rect x="700" y="280" width="265" height="70" rx="7" fill="#ecece6" stroke="#829079" stroke-width="1.5"/>
+<text x="832.5" y="321.0" class="label" text-anchor="middle">Retained compile snapshot</text>
+<text x="352" y="322" class="small">private copies preserve the input</text>
+<text x="36" y="433" class="small muted">Graph.Compile() orchestrates preprocessing, compilation and persistent-revision selection.</text>
+</svg>

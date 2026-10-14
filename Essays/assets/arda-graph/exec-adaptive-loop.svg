@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" role="img" aria-labelledby="title desc">
+<title id="title">Measurements propose a new schedule, not a new program</title><desc id="desc">Collected GPU timings feed smoothed cost estimates. An immutable snapshot is searched under fixed resource constraints. Revision, epoch, readiness and improvement gates control adoption; rejected proposals preserve the incumbent.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="520" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Measurements propose a new schedule, not a new program</text>
+<rect x="40" y="90" width="260" height="90" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="170.0" y="129.0" class="label" text-anchor="middle">GPU samples</text>
+<text x="170.0" y="153.0" class="small" text-anchor="middle">collected regions</text>
+<path d="M310 135L360 135" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="370" y="90" width="260" height="90" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="500.0" y="129.0" class="label" text-anchor="middle">Smooth costs</text>
+<text x="500.0" y="153.0" class="small" text-anchor="middle">EMA / valid identity</text>
+<path d="M640 135L690 135" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="700" y="90" width="260" height="90" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="830.0" y="129.0" class="label" text-anchor="middle">Candidate search</text>
+<text x="830.0" y="153.0" class="small" text-anchor="middle">fixed pool constraints</text>
+<rect x="700" y="270" width="260" height="90" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="830.0" y="297.0" class="label" text-anchor="middle">Adoption gate</text>
+<text x="830.0" y="321.0" class="small" text-anchor="middle">revision · epoch · ready</text>
+<text x="830.0" y="345.0" class="small" text-anchor="middle">modeled improvement</text>
+<path d="M830 190L830 260" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="270" width="260" height="90" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="170.0" y="309.0" class="label" text-anchor="middle">Current schedule</text>
+<text x="170.0" y="333.0" class="small" text-anchor="middle">keep or replace</text>
+<path d="M690 315L310 315" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="384" y="297" class="small">validated proposal only</text>
+<path d="M170 270 L170 190" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="40" y="424" class="label">Illustrative EMA: 10 + 0.2 × (14 − 10) = 10.8 ms</text>
+<text x="36" y="493" class="small muted">Measurements refine costs. Semantic dependencies, alias constraints and output values stay invariant.</text>
+</svg>

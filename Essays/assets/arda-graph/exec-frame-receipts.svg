@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" role="img" aria-labelledby="title desc">
+<title id="title">Frame slots are reusable storage; tickets are receipts</title><desc id="desc">Frames 0 and 1 occupy two slots and return separate tickets. Frame 2 must retire frame 0 before reusing slot 0. IsComplete polls readiness; Wait drains readbacks and publishes CPU data.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="520" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Frame slots are reusable storage; tickets are receipts</text>
+<text x="40" y="97" class="small">CPU submission order →</text>
+<rect x="40" y="120" width="260" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="170.0" y="158.5" class="label" text-anchor="middle">F0 → slot 0</text>
+<rect x="370" y="120" width="260" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="500.0" y="158.5" class="label" text-anchor="middle">F1 → slot 1</text>
+<rect x="700" y="120" width="260" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="830.0" y="158.5" class="label" text-anchor="middle">F2 → slot 0</text>
+<rect x="40" y="245" width="260" height="65" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="170.0" y="283.5" class="label" text-anchor="middle">Ticket T0</text>
+<path d="M170 195L170 235" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="370" y="245" width="260" height="65" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="500.0" y="283.5" class="label" text-anchor="middle">Ticket T1</text>
+<path d="M500 195L500 235" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="700" y="245" width="260" height="65" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="830.0" y="283.5" class="label" text-anchor="middle">Ticket T2</text>
+<path d="M830 195L830 235" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="690" y="222" class="small">first retire F0</text>
+<text x="40" y="360" class="label">T0 can remain a completed receipt after slot 0 is reused.</text>
+<rect x="40" y="395" width="420" height="65" rx="7" fill="#ecece6" stroke="#829079" stroke-width="1.5"/>
+<text x="250.0" y="433.5" class="label" text-anchor="middle">IsComplete: query readiness</text>
+<rect x="540" y="395" width="420" height="65" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="750.0" y="433.5" class="label" text-anchor="middle">Wait: completion + drain results</text>
+<text x="36" y="493" class="small muted">Submit may block on occupied slots. Failed Submit can still return a valid ticket for already accepted GPU work.</text>
+</svg>

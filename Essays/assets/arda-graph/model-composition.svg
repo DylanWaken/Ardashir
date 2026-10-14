@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 460" role="img" aria-labelledby="title desc">
+<title id="title">Composition stays inside the same semantic model</title><desc id="desc">A Transform subgraph expands to Normalize, Scale and Clamp with declared interfaces. A serialized graph loads external slots that must be bound before compilation.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="460" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Composition stays inside the same semantic model</text>
+<rect x="40" y="90" width="230" height="90" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="155.0" y="141.0" class="label" text-anchor="middle">Transform(A) → B</text>
+<path d="M280 135L340 135" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="355" y="90" width="180" height="90" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="445.0" y="129.0" class="label" text-anchor="middle">Normalize</text>
+<text x="445.0" y="153.0" class="small" text-anchor="middle">A → T</text>
+<path d="M540 135L560 135" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="565" y="90" width="180" height="90" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="655.0" y="129.0" class="label" text-anchor="middle">Scale</text>
+<text x="655.0" y="153.0" class="small" text-anchor="middle">T → U</text>
+<path d="M750 135L770 135" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="775" y="90" width="180" height="90" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="865.0" y="129.0" class="label" text-anchor="middle">Clamp</text>
+<text x="865.0" y="153.0" class="small" text-anchor="middle">U → B</text>
+<text x="40" y="225" class="small">Expand the body, remap logical handles, preserve the interface.</text>
+<rect x="40" y="285" width="260" height="90" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="170.0" y="324.0" class="label" text-anchor="middle">Graph archive</text>
+<text x="170.0" y="348.0" class="small" text-anchor="middle">semantic declarations</text>
+<path d="M310 330L360 330" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="370" y="285" width="260" height="90" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="500.0" y="324.0" class="label" text-anchor="middle">Load + Bind</text>
+<text x="500.0" y="348.0" class="small" text-anchor="middle">named external slots</text>
+<path d="M640 330L690 330" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="700" y="285" width="260" height="90" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="830.0" y="324.0" class="label" text-anchor="middle">Compile</text>
+<text x="830.0" y="348.0" class="small" text-anchor="middle">execution plan</text>
+<text x="36" y="433" class="small muted">A graph archive and a specialized .ardagpu kernel package are different serialization boundaries.</text>
+</svg>

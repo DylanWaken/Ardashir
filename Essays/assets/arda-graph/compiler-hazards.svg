@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 550" role="img" aria-labelledby="title desc">
+<title id="title">Which contents does a reader observe?</title><desc id="desc">With one writer, dependency resolution orders the writer before the reader even if authored later. With repeated overlapping writes, attachment order establishes each read version; readers precede the next overwrite.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="550" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Which contents does a reader observe?</text>
+<text x="40" y="98" class="small">ONE WRITER: author Read A first, Upload A second</text>
+<rect x="70" y="122" width="250" height="70" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="195.0" y="163.0" class="label" text-anchor="middle">Upload A</text>
+<rect x="570" y="122" width="250" height="70" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="695.0" y="163.0" class="label" text-anchor="middle">Read A</text>
+<path d="M330 157L560 157" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="356" y="139" class="small">execution dependency</text>
+<text x="40" y="255" class="small">REPEATED WRITES: successful attachment order defines the observed contents</text>
+<rect x="40" y="340" width="170" height="70" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="125.0" y="381.0" class="label" text-anchor="middle">Write B₀</text>
+<rect x="300" y="285" width="170" height="60" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="385.0" y="321.0" class="label" text-anchor="middle">Read B₀ / R₁</text>
+<rect x="300" y="395" width="170" height="60" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="385.0" y="431.0" class="label" text-anchor="middle">Read B₀ / R₂</text>
+<rect x="560" y="340" width="170" height="70" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="645.0" y="381.0" class="label" text-anchor="middle">Write B₁</text>
+<rect x="810" y="340" width="150" height="70" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="885.0" y="381.0" class="label" text-anchor="middle">Read B₁</text>
+<path d="M210 360L290 315" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M210 390L290 425" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M480 315L550 360" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<path d="M480 425L550 390" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<path d="M740 375L800 375" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M125 340 L125 274 L645 274 L645 330" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="36" y="523" class="small muted">Solid = produced value. Dashed = overwrite hazard. No reader-to-reader dependency is required.</text>
+</svg>

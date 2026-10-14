@@ -1,0 +1,366 @@
+{
+  "title": "Arda graph, Inductor and offline compiler source study",
+  "snapshot_date": "2026-10-14",
+  "base_commit": "4f55fb953f65ca9db3014e76ffcff2ccd1d89297",
+  "source_scope": "Local working tree including uncommitted changes; not identical to base_commit or published source.",
+  "hash_convention": "Full-file SHA-256 hashes are over raw file bytes; evidence range hashes use UTF-8 decoded lines joined with LF and no trailing LF.",
+  "evidence_ranges": 124,
+  "files": [
+    {
+      "path": "Source/ArdaInfra/ArdaBackend/Public/RHI/Memory/ArdaMemoryPlanner.h",
+      "sha256": "cdb2e06e385f98d6645d37712510f6ab82b47844b307810133d0d1f7ef680a56"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaBackend/Public/RHI/Providers/ArdaRHIProviderDevice.h",
+      "sha256": "9670b40ebf5929e493ddf8b6c8be636555a60f1916d8ce436a91783343d58a98"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaBackendImpls/D3D12/ArdaD3D12Backend.cpp",
+      "sha256": "10b8f4de7393471b8f4d983e3f533deb5b215937f9fa65ce6b506bcd0038ec05"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaBackendImpls/Vulkan/ArdaVulkanBackend.cpp",
+      "sha256": "cb722752a0a8948e04837e866a2c8734f2bb664289bb66ae975d93c9bb159377"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Graph/Node/ArdaGraphPackage.cpp",
+      "sha256": "34403719764732e595eb7a5370407d544860fd2d75206b249f442c7854922c39"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductor.cpp",
+      "sha256": "dfe07bedd7a9d06de491df987bd67312290bd7360ebd1792c5135d149687212b"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorBatchingRules.cpp",
+      "sha256": "73222abf013ad1230fcca584bf99f434dd1c4e3181100cea6a0319160f44e9bd"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorCommandProgram.cpp",
+      "sha256": "426f3643df04fff9df125bfbfc5acc7e9e64336021cc9416eea3af4dd6720af7"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorCommandProgram.h",
+      "sha256": "4696ea1c3c64f33446f05a3ddeb87938a56f33b306aef56144d5e901279f8440"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorDispatchRules.cpp",
+      "sha256": "10d1d01f901f7ac930867a3e7ced1bbfdee9a3ee033cebd8c25c9a9d1bfdf3df"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorFrameBoundary.cpp",
+      "sha256": "1ed6e95a30d88d9e2489e1f123c20e5a217fcc09f752bf8cbc683853354ea11a"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorFrameLowering.cpp",
+      "sha256": "a9ef062774b34fadc6556f587b9dc19fdef65bfc8e61eeb2e4e8070318a0dab2"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorInstancingRules.cpp",
+      "sha256": "a99cf5bf22ae1456d4f084db6aa1e6167a9a0ef467950f8bc0925ec60b5188b5"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorMemoryRules.cpp",
+      "sha256": "273524605af31ad285697e0ed251cf65bdc81c05942288dc5eaf29b31c45fa06"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorNodePreparation.cpp",
+      "sha256": "455b2a379aef0a7322cc8518910fbd02ee5f995aa5a9cdc20f97594e7b045fa4"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorOrderingRules.cpp",
+      "sha256": "9954605d21c4a6c3cd71630de2a3f09390fff4f2d632264d1d2db7d45432a1cf"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorPipelineInference.cpp",
+      "sha256": "f5a00aab348570e56b4ccefcda13da6fb264c9621f37f7dfdf0ad9762b786043"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorPipelineRules.cpp",
+      "sha256": "3ebb9e225f40a6268e082c85f247791e72814204fac60db53aa707da7eb5f365"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorQueueRules.cpp",
+      "sha256": "41db4ac738fc58e7f150bbafd05c96666080e20fa85ef35dcdcc88a9d91d60f0"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorRequirementsRules.cpp",
+      "sha256": "6d8f43415d2c364e405cff367abdb721d919430086a6b682a9a8a8efefa11769"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorRuleValidation.cpp",
+      "sha256": "0b5bce4aaacf80659b622ab16267239ded8a740e76dd4fe07a3db99fcddba945"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorScheduleCost.cpp",
+      "sha256": "0d675d829f40908cb3471f34997d662ee0b10abd68261501c22405568df1f3ad"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorScheduleEvaluation.cpp",
+      "sha256": "68e2fc0de67733e69757a9383b024842c56e505e7d7765b1744b1bd3e12c6221"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Config/ArdaInductorRuleSet.cpp",
+      "sha256": "2be390cab3b906242d0e4f9a97deb56df34b9b8dbbb72a45f1e86d01c0b7eeff"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Preprocess/ArdaInductorCullingRules.cpp",
+      "sha256": "1cabfb74581d9988ffc8ba071df846f7a7b8b274fe2f2aaf12625750834dcce0"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Preprocess/ArdaInductorDependencyRules.cpp",
+      "sha256": "da6ca4b85ce5ec25dc9ff3dfbd70a09fece4c1bdf80868d5ccf48ac271ab3fbc"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Preprocess/ArdaInductorResourceUsageRules.cpp",
+      "sha256": "b3a9161d077c5cc80f2bd9806dc55bcac24a3c90e0c2363ff96272d7a15b21cd"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Preprocess/ArdaPreprocessor.cpp",
+      "sha256": "9b1fe8d85c71d1c744a67d75e30921428970ec39f9494f69be8d3c7cb9663a97"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaDependencyHazards.cpp",
+      "sha256": "db916248a0968d279a47aab2accfa43884702b8e17168ac62ce0f2c866aead45"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaInductorSearchRules.cpp",
+      "sha256": "71098dba843c2c70586f116692fba622ba6fc89980fc289f3e9dccfaeedc8a42"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaInductorShaderContracts.cpp",
+      "sha256": "506a93c73596e0afaad2ade3840413e8d0a26abada6c7fc0b6e16369f3675312"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaGraphExecutor.cpp",
+      "sha256": "ceb8b4f6e51373cb357a485ebe66362729be0cf16c2aabc8eb205b4052a97d14"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorAdaptiveRuntime.cpp",
+      "sha256": "90ba439346c9de0f3c1d3ffe9e9515a44ae824a54e3a8700547a641840543113"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorCommandExecutor.cpp",
+      "sha256": "673217e00ad62518425349d140b282984f1e1e1e79691c0eb176bb735a65ba1a"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorCudaContract.cpp",
+      "sha256": "7c2b0fd421360c045df094bfcf4e7e73dd8b2907574daf71daa6050a4e99be0d"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorExecutionState.h",
+      "sha256": "9b4f9bd114892dfef55a66eb1a148d98f8bb06dcbb7078df09dcefa9010265c5"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorFrame.h",
+      "sha256": "4d43c8e7881b540589b9176ef27b20edfe5b2bca7d1c5f72fe070ab5710ad1e7"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorFrameTicketState.h",
+      "sha256": "1b56b7ae92144eb8259d2e6d320fa02ff8cd33534954a65cf4ac8c274ecba899"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorInstancing.cpp",
+      "sha256": "1d1f2a308f6d208b10c520b735ad1fd993418c8138b2d11c60c9a6c65c0b7e10"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPhysicalTransitions.cpp",
+      "sha256": "cff163f9cff5e1fe4de9f2d23d2ecd37ab93407caf39de0738e16edcef4093f0"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPreparation.cpp",
+      "sha256": "fdb36aeb108a318f4773b0d801a27ce9b1dc01d5808117c3c636536bb7709515"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorReadbackCompletions.cpp",
+      "sha256": "bb761305036322bde555698a164032c4936ce36b34b14fe034301e1a15e18f37"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorSubmission.cpp",
+      "sha256": "46f89ac14ad24a045b2b26cde917fbed0699a183d2c9c7aa2268fb0f21041eb9"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorTimingAccumulator.cpp",
+      "sha256": "e8f309b53d1db6b0f5de72f8876aeff6b45e19c557fb8d3b89990c86170d1fd6"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/DefaultNodes/ArdaGraphOperations.h",
+      "sha256": "652d306300f91001d94decffdde6a50547dd3752acf84fd0c37a153ec7dbccfc"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyGraph.h",
+      "sha256": "3e53a97abcbbdd8931c09efdc7ec9e00f5097fdc82903fbb31d7823ad2ff06eb"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyKey.h",
+      "sha256": "8dfe7a66384f9fc75d933a0a22134857bcba086fed161a88f95d196fb10645ab"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNode.h",
+      "sha256": "66505af4b959b61b874ae7adfb8cbd92572a20ea0023dc51b0dbe39273fbe625"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNodeDesc.h",
+      "sha256": "d610a3c50a16d599225e8619205bcf29571630635f0d6b75fe50d45d8bdab819"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNodeRegistry.h",
+      "sha256": "5d0d2f83ceeb987279faf6c09d784feb6fb628136d1692f2d177ec8499e8f514"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyRequirements.h",
+      "sha256": "512cd08b4426e7fdec638b6fde8d033336a6fe12be5cb627656af11f1ddb0451"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyTopology.h",
+      "sha256": "d8dad14f38b7f5febd5cc890bf2733241fe85f342fe34c8f77c77c53f5dc8bf4"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaGraphEdit.h",
+      "sha256": "beb5e180aef90ea47497497a629c7b53d52aaa653525cb426f054eaf6f126f8a"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaGraphPackage.h",
+      "sha256": "9439061072cbcd26b053509eed8b89c576974846342bee62397905ae947439bc"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaGraphSerialization.h",
+      "sha256": "19b8486d1e58da57fa0799245ce10b50af365dc40ed25daa2053011f094d764b"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaInductorGraph.h",
+      "sha256": "1f7ba9d097ebc12838f7e958443e1e9ef3d84c61ec56f4d3573f26f26efe64cd"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaNodeDefinition.h",
+      "sha256": "89412c8d8836fe74d483eb5dabc0922ab470f61f1ac567f841cb7255d9218502"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaNodeParameters.h",
+      "sha256": "02c86a95a6cc2296fcbb8a079e4c9f400a24efbdbe0cf1bcd11ff9a9e6be5e6e"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaRuntimeNodeDefinition.h",
+      "sha256": "e9188dbbb021cf42b50601d8ee0b493e5ca1451a1c8ed00b748fdaa343210062"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaSubgraph.h",
+      "sha256": "5c28078deb4abe55be55bcfa165574b7bc798bd478f2a575dad5d1df2be29720"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Resources/ArdaDependencyResource.h",
+      "sha256": "4f1a9e66f6d02938feda11b23af44cdde7cb8231a551594a6db70254a04b5470"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Resources/ArdaGraphTensor.h",
+      "sha256": "1233aa05b2dc28e5bf36ac4d93797fa3ae6ad1d472325afdf00699f86f0d98ea"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Resources/ArdaGraphValue.h",
+      "sha256": "8d61c6eb2bb37e76cd79b7226e61227fdced67a8ad8aae460d324a8f49e4e2c8"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Compiler/ArdaGraphCompileRule.h",
+      "sha256": "529a798e30917ea75757c71b9eb8b7a112a6589cd71955248d759d02b40c6d17"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Compiler/ArdaInductorCompileResult.h",
+      "sha256": "904123b2594c79fe0ee067744f45b21b41b19f3f0ee2818b029da07f2a215d06"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Config/ArdaInductorConfig.h",
+      "sha256": "652dc6320cc573e2edfeb92392e8b9a9323f7cd38ad49908d3709c51f6063124"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Config/ArdaInductorRuleSet.h",
+      "sha256": "7d00ada83656acba39ae5e79920f5eed246e8a271da8d666815d9aebabe05239"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Preprocess/ArdaGraphPreprocessRule.h",
+      "sha256": "dac0bc48dc6f3e30363ef168e9be0b8995c90e30ba8a4226b9b26abe6f8df603"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaGraphRule.h",
+      "sha256": "6ceb8f9162219e45fc58b895ad7c00642771d84d3bb94e8edc13a33c68798ba5"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorPipeline.h",
+      "sha256": "afea64503ac1e4658e06e5817f622032e9e50e46c014a481d2d527744641d7d9"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Runtime/ArdaDependencyGraphExecution.h",
+      "sha256": "fad431b7122a45847c052ff3e8f56f3ab059a67e5c29f46c4d416fbf72a6f9c5"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Runtime/ArdaInductorTiming.h",
+      "sha256": "0badd01178cff93c28d94b2559336899d09f4a2d87e9033b7cb6e1fc1c21b989"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphConcurrentEditTests.cpp",
+      "sha256": "d80050b08e26c5623db7f35f3d007add45e58acb340df588ae9d60fc16bb4879"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphOperationsTests.cpp",
+      "sha256": "6367b8015f96f70f0c3348c48423cf21bb3980c03d8feda8e9db8496d8c0b4b4"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphPackageBindingTests.cpp",
+      "sha256": "26ccf16610ed5af983c3875ff6b5ab8c9154a36861a2e1ad5a88dd3a65a97b2a"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphRevisionTests.cpp",
+      "sha256": "5ec6b285a83fe9da14a347d7245d5931c24b4ed00ad48925451f2f495b07c9f9"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorAdaptiveScheduleTests.cpp",
+      "sha256": "485f1578fafadcc2c94b574dc9a1f54abf594b694ddfec997f9b4d68ec2ee528"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorCompletionTests.cpp",
+      "sha256": "abc4bc8eaee4858aa203a8f9e730fe7c03ed9991edba9acd14ec5a72001d8393"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorInstancingTests.cpp",
+      "sha256": "107696c2a8171e163e636eb499a22bff8c41e3f0436c63ff0c048f44d4749924"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorLifecycleTests.cpp",
+      "sha256": "8ed8ada45307765aece831609ac6d48ed46da52fc8cf22fb3d2cbccab5fe8fa2"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorRuleTests.cpp",
+      "sha256": "c827a9c50a87ae878371c65575db0701a188169e55017b9944f967ee4696594d"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorTests.cpp",
+      "sha256": "13793abee50c463ed63890b6359d7bef0e459fc4f82d5a32e9d23326890b38a0"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaPreprocessorTests.cpp",
+      "sha256": "2cffad0964980099fb598c3f31b33c9d723d7a64720ba902a769cc0a03d16cef"
+    },
+    {
+      "path": "Source/ArdaInfra/ArdaGraph/Public/ArdaGraph.h",
+      "sha256": "5ecfa7ffe6b7c18348307de25b9b6bf2d46cea0fbeefb13ff2956445b6ab1cf3"
+    },
+    {
+      "path": "Tools/ModelExport/ArdaDTypes.py",
+      "sha256": "6f977c5381bb59c8a4c6ab90c2d964dd16ce254a3bba0e4e8227cf91746d17c5"
+    },
+    {
+      "path": "Tools/ModelExport/ArdaIreeExport.py",
+      "sha256": "cfd03d2cacd1724d1fc7329742fd11f18e1e54556c54427122852edf4cf4a681"
+    },
+    {
+      "path": "Tools/ModelExport/ArdaModelPackage.py",
+      "sha256": "fa6c54b397697fe56aa73cb5cc0534246a9829ab38f77ed6f87af4bf687058c5"
+    },
+    {
+      "path": "Tools/ModelExport/arda/_export.py",
+      "sha256": "377a6b780299b7d5795f69321850a765aece77313d984ffc109ec7d31676f6f2"
+    },
+    {
+      "path": "Tools/ModelExport/test_arda_export.py",
+      "sha256": "c5a14d2520d74747799152a8e23f307cb78230cf623598abb06b5c0fd439de23"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+/* Additional reading styles for the Arda graph essay; shared essay styles are reused. */
+.prose table { min-width: 40rem; }
+.prose caption { text-align: left; font-weight: 600; margin-bottom: .7rem; }
+.source-note { scroll-margin-top: 6rem; border-bottom: 1px solid var(--rule); font: .8rem/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.source-note code { font-size: .9em; }
+.source-note small { color: var(--muted); }
+.source-note:target { background: var(--wash); }
+.prose .snapshot-note { border-left: 2px solid var(--accent); padding-left: 1rem; font-size: .88em; color: var(--muted); }
+@media print { .prose table { min-width: 0; } .source-note { break-inside: avoid; } }
