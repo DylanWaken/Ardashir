@@ -39996,7 +39996,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 10
+    "sourceLine": 11
   },
   {
     "id": "api-arda-fardacudakernelrequirements-mminimumcomputecapability-94bd3733",
@@ -40017,7 +40017,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelRequirements"
     ],
-    "sourceLine": 12
+    "sourceLine": 13
   },
   {
     "id": "api-arda-fardacudakernelrequirements-mlaunchmodes-c75e0036",
@@ -40038,7 +40038,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelRequirements"
     ],
-    "sourceLine": 14
+    "sourceLine": 15
   },
   {
     "id": "api-arda-tardacudakernelvariant-ead6eac2",
@@ -40059,7 +40059,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 19
+    "sourceLine": 20
   },
   {
     "id": "api-arda-tardacudakernelvariant-mentry-cbcc75e6",
@@ -40080,7 +40080,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelVariant"
     ],
-    "sourceLine": 21
+    "sourceLine": 22
   },
   {
     "id": "api-arda-tardacudakernelvariant-mpayload-b2a35a42",
@@ -40101,7 +40101,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelVariant"
     ],
-    "sourceLine": 22
+    "sourceLine": 23
   },
   {
     "id": "api-arda-tardacudakernelvariant-mname-97276ad9",
@@ -40122,7 +40122,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelVariant"
     ],
-    "sourceLine": 23
+    "sourceLine": 24
   },
   {
     "id": "api-arda-tardacudakernelvariant-mrequirements-bc24dc7d",
@@ -40143,7 +40143,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelVariant"
     ],
-    "sourceLine": 24
+    "sourceLine": 25
   },
   {
     "id": "api-arda-tardacudaexternalcallvariant-9d056835",
@@ -40164,7 +40164,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 29
+    "sourceLine": 30
   },
   {
     "id": "api-arda-tardacudaexternalcallvariant-mcall-a9db80e6",
@@ -40185,7 +40185,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaExternalCallVariant"
     ],
-    "sourceLine": 32
+    "sourceLine": 33
   },
   {
     "id": "api-arda-tardacudaexternalcallvariant-mpayload-837c3914",
@@ -40206,7 +40206,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaExternalCallVariant"
     ],
-    "sourceLine": 34
+    "sourceLine": 35
   },
   {
     "id": "api-arda-tardacudaexternalcallvariant-mname-71e7d0a0",
@@ -40227,7 +40227,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaExternalCallVariant"
     ],
-    "sourceLine": 36
+    "sourceLine": 37
   },
   {
     "id": "api-arda-tardacudaexternalcallvariant-mrequirements-f8780788",
@@ -40248,7 +40248,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaExternalCallVariant"
     ],
-    "sourceLine": 38
+    "sourceLine": 39
   },
   {
     "id": "api-arda-tardacudakernelregistry-17cd772b",
@@ -40269,7 +40269,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 43
+    "sourceLine": 44
   },
   {
     "id": "api-arda-tardacudakernelregistry-fvariant-9ac7dec9",
@@ -40290,7 +40290,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 46
+    "sourceLine": 47
   },
   {
     "id": "api-arda-fvariant-mid-18d6167b",
@@ -40311,7 +40311,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaVariant"
     ],
-    "sourceLine": 48
+    "sourceLine": 49
   },
   {
     "id": "api-arda-fvariant-mentry-7cce4ae7",
@@ -40332,7 +40332,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaVariant"
     ],
-    "sourceLine": 49
+    "sourceLine": 50
   },
   {
     "id": "api-arda-fvariant-mpayload-926be985",
@@ -40353,7 +40353,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaVariant"
     ],
-    "sourceLine": 50
+    "sourceLine": 51
   },
   {
     "id": "api-arda-fvariant-mname-c4cff3d0",
@@ -40374,7 +40374,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaVariant"
     ],
-    "sourceLine": 51
+    "sourceLine": 52
   },
   {
     "id": "api-arda-fvariant-mrequirements-591ac147",
@@ -40395,7 +40395,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaVariant"
     ],
-    "sourceLine": 52
+    "sourceLine": 53
   },
   {
     "id": "api-arda-fvariant-mexternalcall-babab920",
@@ -40416,7 +40416,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaVariant"
     ],
-    "sourceLine": 54
+    "sourceLine": 55
   },
   {
     "id": "api-arda-tardacudakernelregistry-fvariants-a4ace94e",
@@ -40437,7 +40437,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 57
+    "sourceLine": 58
   },
   {
     "id": "api-arda-tardacudakernelregistry-add-2ecfa1d0",
@@ -40458,7 +40458,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 61
+    "sourceLine": 62
   },
   {
     "id": "api-arda-tardacudakernelregistry-add-e742c2cb",
@@ -40479,7 +40479,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 72
+    "sourceLine": 73
   },
   {
     "id": "api-arda-tardacudakernelregistry-freeze-6c728f0c",
@@ -40488,9 +40488,9 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "shaders",
     "page": "api-reference.html",
-    "signature": "FArdaRHIStatus Freeze()",
-    "summary": "Seals bindings without initializing CUDA.",
-    "details": "Seals bindings without initializing CUDA.",
+    "signature": "FArdaRHIStatus Freeze(bool bAllowEmpty = false)",
+    "summary": "Seals bindings without initializing CUDA. Empty registries are allowed only for an explicit compute alternative.",
+    "details": "Seals bindings without initializing CUDA. Empty registries are allowed only for an explicit compute alternative.",
     "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -40500,7 +40500,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 83
+    "sourceLine": 84
   },
   {
     "id": "api-arda-tardacudakernelregistry-getstatus-850f1b5a",
@@ -40521,7 +40521,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 93
+    "sourceLine": 94
   },
   {
     "id": "api-arda-tardacudakernelregistry-getvariants-8daa90d6",
@@ -40542,7 +40542,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 98
+    "sourceLine": 99
   },
   {
     "id": "api-arda-tardacudakernelregistry-getcompatiblevariants-0dedf1de",
@@ -40551,9 +40551,9 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "shaders",
     "page": "api-reference.html",
-    "signature": "FArdaVariants GetCompatibleVariants(const FArdaCudaCapabilities& C) const",
-    "summary": "Filters native targets and execution requirements without launching work.",
-    "details": "Filters native targets and execution requirements without launching work.",
+    "signature": "FArdaVariants GetCompatibleVariants(const FArdaCudaCapabilities& C, FArdaRHIStatus* OutStatus = nullptr) const",
+    "summary": "Filters native targets and execution requirements without launching work. OutStatus preserves registry and external support-hook errors; Unsupported variants are simply excluded.",
+    "details": "Filters native targets and execution requirements without launching work. OutStatus preserves registry and external support-hook errors; Unsupported variants are simply excluded.",
     "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -40563,7 +40563,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 104
+    "sourceLine": 107
   },
   {
     "id": "api-arda-foreachardacudapermutation-73777c63",
@@ -40584,7 +40584,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 204
+    "sourceLine": 220
   },
   {
     "id": "api-arda-fardacudakernelselection-af4ca8b4",
@@ -40605,7 +40605,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 210
+    "sourceLine": 226
   },
   {
     "id": "api-arda-fardacudakernelselection-mvariantid-054e23fe",
@@ -40626,7 +40626,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSelection"
     ],
-    "sourceLine": 212
+    "sourceLine": 228
   },
   {
     "id": "api-arda-fardacudakernelselection-mlaunch-11154ebc",
@@ -40647,7 +40647,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSelection"
     ],
-    "sourceLine": 213
+    "sourceLine": 229
   },
   {
     "id": "api-arda-fardacudakernelselection-mbnowork-2c062b29",
@@ -40668,18 +40668,18 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSelection"
     ],
-    "sourceLine": 215
+    "sourceLine": 231
   },
   {
-    "id": "api-arda-fardacudadispatchplan-31e70bad",
-    "name": "FArdaCudaDispatchPlan",
-    "qualifiedName": "arda::FArdaCudaDispatchPlan",
-    "kind": "struct",
+    "id": "api-arda-eardacomputedispatchroute-8703d5d2",
+    "name": "EArdaComputeDispatchRoute",
+    "qualifiedName": "arda::EArdaComputeDispatchRoute",
+    "kind": "enum",
     "component": "shaders",
     "page": "api-reference.html",
-    "signature": "struct FArdaCudaDispatchPlan",
-    "summary": "Frozen values/resources/selection. Returned as shared_ptr<const> by operand preparation.",
-    "details": "Frozen values/resources/selection. Returned as shared_ptr<const> by operand preparation.",
+    "signature": "enum class EArdaComputeDispatchRoute : uint8_t",
+    "summary": "The selected implementation is fixed before resource preparation and command recording.",
+    "details": "The selected implementation is fixed before resource preparation and command recording.",
     "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "",
@@ -40689,7 +40689,217 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 219
+    "sourceLine": 235
+  },
+  {
+    "id": "api-arda-eardacomputedispatchroute-cuda-05897ac5",
+    "name": "Cuda",
+    "qualifiedName": "arda::EArdaComputeDispatchRoute::Cuda",
+    "kind": "enumerator",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "Cuda",
+    "summary": "Selects the cuda backend and RHI value.",
+    "details": "Selects the cuda backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::EArdaComputeDispatchRoute"
+    ],
+    "sourceLine": 237
+  },
+  {
+    "id": "api-arda-eardacomputedispatchroute-computealternative-8332cb07",
+    "name": "ComputeAlternative",
+    "qualifiedName": "arda::EArdaComputeDispatchRoute::ComputeAlternative",
+    "kind": "enumerator",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "ComputeAlternative",
+    "summary": "Selects the compute alternative backend and RHI value.",
+    "details": "Selects the compute alternative backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::EArdaComputeDispatchRoute"
+    ],
+    "sourceLine": 238
+  },
+  {
+    "id": "api-arda-fardacomputealternativeplan-0a8fbb2f",
+    "name": "FArdaComputeAlternativePlan",
+    "qualifiedName": "arda::FArdaComputeAlternativePlan",
+    "kind": "struct",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "struct FArdaComputeAlternativePlan",
+    "summary": "Frozen compute implementation authored explicitly for the operand's resource/value schema.",
+    "details": "Frozen compute implementation authored explicitly for the operand's resource/value schema.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 242
+  },
+  {
+    "id": "api-arda-fardacomputealternativeplan-mstate-f2156d04",
+    "name": "mState",
+    "qualifiedName": "arda::FArdaComputeAlternativePlan::mState",
+    "kind": "member variable",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIComputeState mState",
+    "summary": "Retained pipeline and immutable binding sets; CUDA arguments are not shader bindings.",
+    "details": "Retained pipeline and immutable binding sets; CUDA arguments are not shader bindings.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaComputeAlternativePlan"
+    ],
+    "sourceLine": 245
+  },
+  {
+    "id": "api-arda-fardacomputealternativeplan-mpushconstants-eae87105",
+    "name": "mPushConstants",
+    "qualifiedName": "arda::FArdaComputeAlternativePlan::mPushConstants",
+    "kind": "member variable",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<uint8_t> mPushConstants",
+    "summary": "Owned shader constants copied during preparation; empty when the pipeline has no constants.",
+    "details": "Owned shader constants copied during preparation; empty when the pipeline has no constants.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaComputeAlternativePlan"
+    ],
+    "sourceLine": 247
+  },
+  {
+    "id": "api-arda-fardacomputealternativeplan-mgroupsx-29ce9a42",
+    "name": "mGroupsX",
+    "qualifiedName": "arda::FArdaComputeAlternativePlan::mGroupsX",
+    "kind": "member variable",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "uint32_t mGroupsX = 1",
+    "summary": "Work-group count on the X axis.",
+    "details": "Work-group count on the X axis.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaComputeAlternativePlan"
+    ],
+    "sourceLine": 249
+  },
+  {
+    "id": "api-arda-fardacomputealternativeplan-mgroupsy-33d24cb8",
+    "name": "mGroupsY",
+    "qualifiedName": "arda::FArdaComputeAlternativePlan::mGroupsY",
+    "kind": "member variable",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "uint32_t mGroupsY = 1",
+    "summary": "Work-group count on the Y axis.",
+    "details": "Work-group count on the Y axis.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaComputeAlternativePlan"
+    ],
+    "sourceLine": 251
+  },
+  {
+    "id": "api-arda-fardacomputealternativeplan-mgroupsz-f6885732",
+    "name": "mGroupsZ",
+    "qualifiedName": "arda::FArdaComputeAlternativePlan::mGroupsZ",
+    "kind": "member variable",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "uint32_t mGroupsZ = 1",
+    "summary": "Work-group count on the Z axis.",
+    "details": "Work-group count on the Z axis.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaComputeAlternativePlan"
+    ],
+    "sourceLine": 253
+  },
+  {
+    "id": "api-arda-fardacomputealternativeplan-mbnowork-f30e9975",
+    "name": "mbNoWork",
+    "qualifiedName": "arda::FArdaComputeAlternativePlan::mbNoWork",
+    "kind": "member variable",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "bool mbNoWork = false",
+    "summary": "Explicit empty mathematical operation; no pipeline or GPU work is required.",
+    "details": "Explicit empty mathematical operation; no pipeline or GPU work is required.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaComputeAlternativePlan"
+    ],
+    "sourceLine": 255
+  },
+  {
+    "id": "api-arda-fardacudadispatchplan-31e70bad",
+    "name": "FArdaCudaDispatchPlan",
+    "qualifiedName": "arda::FArdaCudaDispatchPlan",
+    "kind": "struct",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaDispatchPlan",
+    "summary": "Frozen values/resources/selection. Returned as shared_ptr<const> by operand preparation. CUDA sequences admit only the Cuda route; schedulers must lower ComputeAlternative to ordinary compute work.",
+    "details": "Frozen values/resources/selection. Returned as shared_ptr<const> by operand preparation. CUDA sequences admit only the Cuda route; schedulers must lower ComputeAlternative to ordinary compute work.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 261
   },
   {
     "id": "api-arda-fardacudadispatchplan-mdevice-05d203af",
@@ -40710,7 +40920,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 221
+    "sourceLine": 263
   },
   {
     "id": "api-arda-fardacudadispatchplan-mqueue-c50b1a54",
@@ -40731,7 +40941,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 222
+    "sourceLine": 264
   },
   {
     "id": "api-arda-fardacudadispatchplan-mselection-2420b2de",
@@ -40752,7 +40962,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 223
+    "sourceLine": 265
   },
   {
     "id": "api-arda-fardacudadispatchplan-mdispatch-4d70e563",
@@ -40773,7 +40983,49 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 224
+    "sourceLine": 266
+  },
+  {
+    "id": "api-arda-fardacudadispatchplan-mroute-1a16d56e",
+    "name": "mRoute",
+    "qualifiedName": "arda::FArdaCudaDispatchPlan::mRoute",
+    "kind": "member variable",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "EArdaComputeDispatchRoute mRoute = EArdaComputeDispatchRoute::Cuda",
+    "summary": "Selected implementation; never changed after a recording or execution failure.",
+    "details": "Selected implementation; never changed after a recording or execution failure.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaDispatchPlan"
+    ],
+    "sourceLine": 268
+  },
+  {
+    "id": "api-arda-fardacudadispatchplan-mcomputealternative-b2ad4fab",
+    "name": "mComputeAlternative",
+    "qualifiedName": "arda::FArdaCudaDispatchPlan::mComputeAlternative",
+    "kind": "member variable",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "FArdaComputeAlternativePlan mComputeAlternative",
+    "summary": "Populated only when mRoute is ComputeAlternative.",
+    "details": "Populated only when mRoute is ComputeAlternative.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/CUDA/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaDispatchPlan"
+    ],
+    "sourceLine": 270
   },
   {
     "id": "api-arda-isardacudasurfaceelementsupported-225b757b",
@@ -61516,6 +61768,27 @@ window.ArdaBackendApi = {
     "sourceLine": 16
   },
   {
+    "id": "api-arda-fardacudasubmission-mroute-7d51b442",
+    "name": "mRoute",
+    "qualifiedName": "arda::FArdaCudaSubmission::mRoute",
+    "kind": "member variable",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "EArdaComputeDispatchRoute mRoute = EArdaComputeDispatchRoute::Cuda",
+    "summary": "Implementation recorded for this submission; compute alternatives have no CUDA variant ID.",
+    "details": "Implementation recorded for this submission; compute alternatives have no CUDA variant ID.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/Scheduling/ArdaCudaSubmission.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSubmission"
+    ],
+    "sourceLine": 18
+  },
+  {
     "id": "api-arda-fardacudatimingregionsample-79049837",
     "name": "FArdaCudaTimingRegionSample",
     "qualifiedName": "arda::FArdaCudaTimingRegionSample",
@@ -63553,15 +63826,15 @@ window.ArdaBackendApi = {
     "sourceLine": 18
   },
   {
-    "id": "api-arda-fardacomputeoperand-getoperandsupport-1f1a9251",
-    "name": "GetOperandSupport",
-    "qualifiedName": "arda::FArdaComputeOperand::GetOperandSupport",
+    "id": "api-arda-fardacomputeoperand-checkrequiredfeatures-30571ae9",
+    "name": "CheckRequiredFeatures",
+    "qualifiedName": "arda::FArdaComputeOperand::CheckRequiredFeatures",
     "kind": "method",
     "component": "shaders",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus GetOperandSupport() const = 0",
-    "summary": "Performs get operand support through the public backend and RHI contract.",
-    "details": "Performs get operand support through the public backend and RHI contract. The signature is generated from the current public header.",
+    "signature": "virtual FArdaRHIStatus CheckRequiredFeatures() const = 0",
+    "summary": "Checks required features for at least one supplied implementation without preparing or submitting GPU work.",
+    "details": "Checks required features for at least one supplied implementation without preparing or submitting GPU work.",
     "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaComputeOperand.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -63571,7 +63844,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeOperand"
     ],
-    "sourceLine": 19
+    "sourceLine": 20
+  },
+  {
+    "id": "api-arda-fardacomputeoperand-getoperandsupport-1f1a9251",
+    "name": "GetOperandSupport",
+    "qualifiedName": "arda::FArdaComputeOperand::GetOperandSupport",
+    "kind": "method",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus GetOperandSupport() const = 0",
+    "summary": "Equivalent to CheckRequiredFeatures().",
+    "details": "Equivalent to CheckRequiredFeatures().",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaComputeOperand"
+    ],
+    "sourceLine": 22
   },
   {
     "id": "api-arda-fardacomputeoperand-getparametermetadata-11165187",
@@ -63592,7 +63886,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeOperand"
     ],
-    "sourceLine": 20
+    "sourceLine": 23
   },
   {
     "id": "api-arda-tardacomputeoperand-2d0c708f",
@@ -63602,8 +63896,8 @@ window.ArdaBackendApi = {
     "component": "shaders",
     "page": "api-reference.html",
     "signature": "template <class ParameterType, class VariantPayload> class TArdaComputeOperand : public FArdaComputeOperand",
-    "summary": "Authors supply BindKernelVariants and SelectKernel. Dispatch cannot be overridden. Binding is synchronized once per operand. Selection must have no GPU/host side effects. Each dispatch retains its own frozen values/resources independently of the operand.",
-    "details": "Authors supply BindKernelVariants and SelectKernel. Dispatch cannot be overridden. Binding is synchronized once per operand. Selection must have no GPU/host side effects. Each dispatch retains its own frozen values/resources independently of the operand.",
+    "summary": "Authors supply CUDA binding/selection and, optionally, an explicit compute shader alternative. Dispatch cannot be overridden. Binding is synchronized once per operand. Selection must have no GPU/host side effects. Each dispatch retains its own frozen values/resources independently of the operand.",
+    "details": "Authors supply CUDA binding/selection and, optionally, an explicit compute shader alternative. Dispatch cannot be overridden. Binding is synchronized once per operand. Selection must have no GPU/host side effects. Each dispatch retains its own frozen values/resources independently of the operand.",
     "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaComputeOperand.h",
     "params": [],
     "returns": "",
@@ -63613,7 +63907,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 28
+    "sourceLine": 31
   },
   {
     "id": "api-arda-tardacomputeoperand-fparameters-e7e28412",
@@ -63634,7 +63928,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 31
+    "sourceLine": 34
   },
   {
     "id": "api-arda-tardacomputeoperand-fkernelparameters-30c48ae6",
@@ -63655,7 +63949,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 32
+    "sourceLine": 35
   },
   {
     "id": "api-arda-tardacomputeoperand-fregistry-dea98490",
@@ -63676,7 +63970,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 33
+    "sourceLine": 36
   },
   {
     "id": "api-arda-tardacomputeoperand-fvariants-76f17a54",
@@ -63697,7 +63991,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 34
+    "sourceLine": 37
   },
   {
     "id": "api-arda-tardacomputeoperand-fplan-7df69ee3",
@@ -63718,7 +64012,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 35
+    "sourceLine": 38
   },
   {
     "id": "api-arda-tardacomputeoperand-tardacomputeoperand-e0c5a309",
@@ -63739,7 +64033,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 37
+    "sourceLine": 40
   },
   {
     "id": "api-arda-tardacomputeoperand-getparametermetadata-f1cf0ff0",
@@ -63760,7 +64054,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 42
+    "sourceLine": 45
   },
   {
     "id": "api-arda-tardacomputeoperand-bindkernelvariants-42a7bd31",
@@ -63781,7 +64075,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 48
+    "sourceLine": 51
   },
   {
     "id": "api-arda-tardacomputeoperand-selectkernel-b4fcaedd",
@@ -63802,7 +64096,70 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 51
+    "sourceLine": 54
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-hascomputealternative-edcb03f2",
+    "name": "HasComputeAlternative",
+    "qualifiedName": "arda::TArdaComputeOperand::HasComputeAlternative",
+    "kind": "method",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "virtual bool HasComputeAlternative() const noexcept",
+    "summary": "Declares an authored compute alternative, permitting an empty CUDA registry in builds without native kernels.",
+    "details": "Declares an authored compute alternative, permitting an empty CUDA registry in builds without native kernels.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 59
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-checkcomputealternativesupport-73717e56",
+    "name": "CheckComputeAlternativeSupport",
+    "qualifiedName": "arda::TArdaComputeOperand::CheckComputeAlternativeSupport",
+    "kind": "method",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus CheckComputeAlternativeSupport() const",
+    "summary": "Checks the alternative's feature requirements without allocation, recording, or submission. Override together with HasComputeAlternative and PrepareComputeAlternative; default is Unsupported.",
+    "details": "Checks the alternative's feature requirements without allocation, recording, or submission. Override together with HasComputeAlternative and PrepareComputeAlternative; default is Unsupported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 67
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-preparecomputealternative-1e90ed86",
+    "name": "PrepareComputeAlternative",
+    "qualifiedName": "arda::TArdaComputeOperand::PrepareComputeAlternative",
+    "kind": "method",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "virtual TArdaRHIResult<FArdaComputeAlternativePlan> PrepareComputeAlternative(const FArdaParameters&, EArdaRHIQueueType) const",
+    "summary": "Freezes shader resources, shader-specific constants, and dispatch dimensions for the supplied parameters. Called only after feature preflight selects the alternative. Must not record or submit GPU work.",
+    "details": "Freezes shader resources, shader-specific constants, and dispatch dimensions for the supplied parameters. Called only after feature preflight selects the alternative. Must not record or submit GPU work.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 75
   },
   {
     "id": "api-arda-tardacomputeoperand-getkernelvariants-1c542e64",
@@ -63823,18 +64180,18 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 56
+    "sourceLine": 82
   },
   {
-    "id": "api-arda-tardacomputeoperand-getoperandsupport-6d4a80d3",
-    "name": "GetOperandSupport",
-    "qualifiedName": "arda::TArdaComputeOperand::GetOperandSupport",
+    "id": "api-arda-tardacomputeoperand-checkrequiredfeatures-9f02abd3",
+    "name": "CheckRequiredFeatures",
+    "qualifiedName": "arda::TArdaComputeOperand::CheckRequiredFeatures",
     "kind": "method",
     "component": "shaders",
     "page": "api-reference.html",
-    "signature": "FArdaRHIStatus GetOperandSupport() const final",
-    "summary": "Validates schema, immutable registry, device CUDA support and native target coverage. Does not validate a particular resource allocation/view or launch a kernel.",
-    "details": "Validates schema, immutable registry, device CUDA support and native target coverage. Does not validate a particular resource allocation/view or launch a kernel.",
+    "signature": "FArdaRHIStatus CheckRequiredFeatures() const final",
+    "summary": "Validates schema, immutable registry, and feature support for a supplied CUDA or compute implementation. Does not validate a particular resource allocation/view or launch a kernel.",
+    "details": "Validates schema, immutable registry, and feature support for a supplied CUDA or compute implementation. Does not validate a particular resource allocation/view or launch a kernel.",
     "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaComputeOperand.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -63844,7 +64201,49 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 67
+    "sourceLine": 93
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-getoperandsupport-6d4a80d3",
+    "name": "GetOperandSupport",
+    "qualifiedName": "arda::TArdaComputeOperand::GetOperandSupport",
+    "kind": "method",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIStatus GetOperandSupport() const final",
+    "summary": "Equivalent to CheckRequiredFeatures(); retained for existing operand callers.",
+    "details": "Equivalent to CheckRequiredFeatures(); retained for existing operand callers.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 99
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-selectdispatchroute-3557b13d",
+    "name": "SelectDispatchRoute",
+    "qualifiedName": "arda::TArdaComputeOperand::SelectDispatchRoute",
+    "kind": "method",
+    "component": "shaders",
+    "page": "api-reference.html",
+    "signature": "TArdaRHIResult<EArdaComputeDispatchRoute> SelectDispatchRoute( EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics) const",
+    "summary": "Selects the implementation from immutable host metadata for graph lowering before resource allocation. Prefers compatible CUDA; only Unsupported feature results may select an explicit compute alternative. Schema/binding errors are never hidden. The alternative is not retried after preparation or execution fails.",
+    "details": "Selects the implementation from immutable host metadata for graph lowering before resource allocation. Prefers compatible CUDA; only Unsupported feature results may select an explicit compute alternative. Schema/binding errors are never hidden. The alternative is not retried after preparation or execution fails.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 108
   },
   {
     "id": "api-arda-tardacomputeoperand-preparedispatch-0959e24c",
@@ -63865,7 +64264,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 75
+    "sourceLine": 117
   },
   {
     "id": "api-arda-tardacomputeoperand-recordplan-0923eeba",
@@ -63886,7 +64285,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 152
+    "sourceLine": 217
   },
   {
     "id": "api-arda-tardacomputeoperand-dispatchdeferred-054ad63a",
@@ -63907,7 +64306,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 167
+    "sourceLine": 255
   },
   {
     "id": "api-arda-tardacomputeoperand-dispatch-2a87d7a8",
@@ -63928,7 +64327,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 175
+    "sourceLine": 263
   },
   {
     "id": "api-arda-tardacomputeoperand-getdevice-a6d22968",
@@ -63949,7 +64348,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 214
+    "sourceLine": 302
   },
   {
     "id": "api-arda-eardacomputeparameterkind-dd17fa5d",
