@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 650" role="img" aria-labelledby="title desc"><title id="title">A geometric hit identifies a place; the cache must still cover it</title><desc id="desc">A ray hits a triangular wall at coordinates one,one,zero. A card projection maps the hit into quarter,quarter of a four-by-four capture region. A highlighted atlas texel supplies a lighting lookup independently of the triangle intersection.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#237665"/></marker></defs>
+<rect width="1040" height="650" fill="#fcfaf5"/>
+<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">A geometric hit identifies a place; the cache must still cover it</text>
+<polygon points="63.00,382.00 410.00,382.00 63.00,121.00" fill="#dcd4bf" stroke="#ac7420" stroke-width="2"/>
+<circle cx="149.75" cy="316.75" r="9" fill="#a74834" stroke="#a74834" stroke-width="2"/>
+<line x1="353" y1="148" x2="149.75" y2="316.75" stroke="#326f96" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="328" y="121" font-family="Arial, sans-serif" font-size="22" fill="#326f96" text-anchor="middle" font-weight="normal">incoming ray</text>
+<text x="187" y="423" font-family="Arial, sans-serif" font-size="22" fill="#a74834" text-anchor="middle" font-weight="normal">hit P = (1,1,0)</text>
+<text x="35" y="477" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="start" font-weight="normal">Intersection reports P and surface identity.</text>
+<text x="35" y="506" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="start" font-weight="normal">It does not report the final light value.</text>
+<rect x="605" y="129" width="55" height="55" rx="0" fill="#c9bd9c" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="660" y="129" width="55" height="55" rx="0" fill="#a8b6a0" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="715" y="129" width="55" height="55" rx="0" fill="#e5d7b6" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="770" y="129" width="55" height="55" rx="0" fill="#9eb8a6" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="825" y="129" width="55" height="55" rx="0" fill="#c9bd9c" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="880" y="129" width="55" height="55" rx="0" fill="#a8b6a0" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="605" y="184" width="55" height="55" rx="0" fill="#e5d7b6" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="660" y="184" width="55" height="55" rx="0" fill="#9eb8a6" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="715" y="184" width="55" height="55" rx="0" fill="#c9bd9c" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="770" y="184" width="55" height="55" rx="0" fill="#a8b6a0" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="825" y="184" width="55" height="55" rx="0" fill="#e5d7b6" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="880" y="184" width="55" height="55" rx="0" fill="#db39c8" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="605" y="239" width="55" height="55" rx="0" fill="#c9bd9c" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="660" y="239" width="55" height="55" rx="0" fill="#a8b6a0" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="715" y="239" width="55" height="55" rx="0" fill="#e5d7b6" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="770" y="239" width="55" height="55" rx="0" fill="#9eb8a6" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="825" y="239" width="55" height="55" rx="0" fill="#c9bd9c" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="880" y="239" width="55" height="55" rx="0" fill="#db39c8" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="605" y="294" width="55" height="55" rx="0" fill="#e5d7b6" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="660" y="294" width="55" height="55" rx="0" fill="#9eb8a6" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="715" y="294" width="55" height="55" rx="0" fill="#c9bd9c" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="770" y="294" width="55" height="55" rx="0" fill="#a8b6a0" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="825" y="294" width="55" height="55" rx="0" fill="#e5d7b6" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="880" y="294" width="55" height="55" rx="0" fill="#db39c8" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="605" y="349" width="55" height="55" rx="0" fill="#c9bd9c" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="660" y="349" width="55" height="55" rx="0" fill="#a8b6a0" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="715" y="349" width="55" height="55" rx="0" fill="#e5d7b6" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="770" y="349" width="55" height="55" rx="0" fill="#9eb8a6" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="825" y="349" width="55" height="55" rx="0" fill="#c9bd9c" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="880" y="349" width="55" height="55" rx="0" fill="#a8b6a0" stroke="#fcfaf5" stroke-width="2"/>
+<rect x="660" y="184" width="165" height="165" rx="0" fill="none" stroke="#237665" stroke-width="4"/>
+<circle cx="701.25" cy="225.25" r="9" fill="#a74834" stroke="#a74834" stroke-width="2"/>
+<text x="770" y="99" font-family="Arial, sans-serif" font-size="24" fill="#263a36" text-anchor="middle" font-weight="bold">Paged capture atlas</text>
+<text x="591" y="450" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Card bounds: x,y in [0,4]</text>
+<text x="591" y="481" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Card coordinate = (1/4, 1/4)</text>
+<text x="591" y="512" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Map to resident atlas page; sample lighting.</text>
+<path d="M415 321 L512 321 L512 225 L633 225" stroke="#237665" fill="none" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="32" y="582" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Pink cells illustrate missing cache coverage: a ray can hit geometry and still lack good cached data.</text>
+<text x="32" y="611" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Card coordinates come from capture projection; they are not automatically the material’s UVs.</text>
+</svg>

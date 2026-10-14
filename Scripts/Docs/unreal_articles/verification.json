@@ -1,0 +1,113 @@
+{
+  "date": "2026-10-13",
+  "scope": "Three independent long-form Unreal articles; expanded scene walkthrough and illustrated compatibility contract.",
+  "unreal_snapshot": {
+    "version": "5.8.1",
+    "commit": "71fe36aac5a8df5ccd66c763ffc902b29b6a9c43"
+  },
+  "articles": [
+    {
+      "file": "Docs/Unreal/scene-representation.html",
+      "sha256": "45e9a9a36900bc008ae4a911dd8184cf0034b605e963f5a6ced5c5fabb39e6f2",
+      "prose_words": 19756,
+      "chapters": 13,
+      "figures": 52
+    },
+    {
+      "file": "Docs/Unreal/nanite-and-lumen.html",
+      "sha256": "1db72acf76dbc8c098634471fdb510a2b8f2609d68551da37bb0a0260dea2ecb",
+      "prose_words": 12902,
+      "chapters": 18,
+      "figures": 16
+    },
+    {
+      "file": "Docs/Unreal/material-compiler.html",
+      "sha256": "795831ef2a3717deff7e97b884ab23d3372557599e4e32b69e7b1b20109392d8",
+      "prose_words": 12170,
+      "chapters": 16,
+      "figures": 12
+    }
+  ],
+  "scene_visuals": {
+    "compatibility_entries": 24,
+    "compatibility_svgs": 24,
+    "worked_walkthrough_svgs": 17,
+    "computed_png_outputs": 9,
+    "original_scene_svgs": 8,
+    "epic_reference_images_used": 2,
+    "each_compatibility_entry_has_a_graphical_example": true
+  },
+  "validation": [
+    {
+      "command": "python Scripts/Docs/unreal_articles/build.py --check",
+      "result": "PASS; generated articles reproduce from authored fragments and figure placements"
+    },
+    {
+      "command": "python Scripts/Docs/unreal_articles/validate.py --unreal-root D:/UnrealEngine",
+      "result": "PASS; HTML structure, local links/fragments, 70 accessible SVGs, 193 source-range hashes"
+    },
+    {
+      "command": "node Scripts/Docs/unreal_articles/browser_qa.cjs",
+      "result": "PASS; all three articles at 1440,768,390,640 CSS pixels, no page overflow, chapter navigation, keyboard use, glossary focus, appearance controls, no-JS reading, local assets with external requests blocked"
+    },
+    {
+      "command": "node Scripts/Docs/unreal_articles/visual_qa.cjs",
+      "result": "PASS; all 70 SVGs have no text outside drawing or overlapping text labels; walkthrough/compatibility/original-scene screenshots inspected"
+    },
+    {
+      "result": "27 documentation tooling tests passed during rewrite verification",
+      "check": "Documentation tooling unit suite (test_docs_validation and test_api_extraction)"
+    },
+    {
+      "check": "Reference image provenance",
+      "result": "PASS; seven local Epic image files match their recorded SHA-256 values"
+    },
+    {
+      "command": "python Skills/document-codebase/scripts/validate_docs.py",
+      "result": "152 pre-existing errors remain; exact error-set comparison against baseline shows none introduced"
+    },
+    {
+      "command": "git diff --check -- Docs/Unreal Scripts/Docs/unreal_articles Docs/index.html Docs/glossary.html Scripts/Docs/HtmlDocumentation.py Skills/document-codebase/scripts/glossary_html.py",
+      "result": "PASS; only line-ending notices"
+    }
+  ],
+  "isolated_beginner_reader": {
+    "agent": "scene_visual_fresh_reader",
+    "prior_context": "none",
+    "allowed_material": "Scene article and its local rendered figures only; no Unreal source, external pages, or sibling blogs",
+    "result": "PASS",
+    "transfer_questions_passed": [
+      "Actor/component/asset/render primitive/triangle distinctions",
+      "Game/render/GPU publication and safe removal",
+      "3 primitives / 12 placements / 12 illustrative submissions",
+      "Raw representation families versus import formats",
+      "Transforms, skinning, material response, and lighting",
+      "Surface GBuffer versus translucent layers and participating media",
+      "Separate visibility and representation requirements for shadows, rays, and GI",
+      "New point-provider requirements, rejection/fallback, revisions, and lifetime",
+      "Find specialized Unreal compatibility contracts",
+      "Follow one slab sample numerically from indexed geometry to logical GBuffer"
+    ],
+    "corrections_from_review": [
+      "Introduced renderer vocabulary before mesh-pass details",
+      "Replaced geometry name catalogue with connected representation comparisons",
+      "Clarified reference-pose inverse and scope labels",
+      "Exposed Cascade, instanced skinning, Virtual Heightfield Mesh, and fog in the index",
+      "Aligned slab dimensions, draw arithmetic, lifetime slot, and tree counts",
+      "Corrected coordinate origin and explicit positive forward depth",
+      "Rendered actual alpha composites matching displayed arithmetic",
+      "Added continuous pixel trace with barycentric coordinates, depth winner, material sample, and GBuffer values"
+    ],
+    "remaining_nonblocking_difficulty": [
+      "Several adjacent renderer class names require careful reading",
+      "Logical IDs and illustrative byte addresses are separate teaching examples",
+      "Feature combinations require project-specific capability validation"
+    ]
+  },
+  "limits": [
+    "The source study and mathematical render examples are not a build or execution of Unreal Engine.",
+    "Original software renders are explicitly labeled and do not claim Unreal BRDF, GBuffer encoding, GI, or performance fidelity.",
+    "The Arda adapter contract is a proposal, not implemented renderer support.",
+    "A scoped inventory cannot guarantee support for arbitrary custom Unreal plugins."
+  ]
+}

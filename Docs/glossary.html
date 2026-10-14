@@ -153,14 +153,14 @@
           <p>A bottom-level ray-tracing acceleration structure indexing geometry for efficient intersection queries.</p>
           <p><strong>In Ardashir:</strong> Rigid placements can share geometry structures; deformation requires an appropriate update or rebuild when that geometry is ray traced.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-tlas">TLAS</a></li><li><a href="#term-scene-asset">Scene asset</a></li><li><a href="#term-skinning">Skinning</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#lumen">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#the-camera-does-not-see-the-whole-lighting-problem">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-brdf" data-glossary-entry data-category="Graphics" data-search="BRDF Graphics A bidirectional reflectance distribution function describing how incoming light is reflected toward an outgoing direction at a surface. A material supplies surface parameters; light visibility and incoming radiance are additional inputs when evaluating reflected illumination.">
           <div class="glossary-entry__meta"><h3>BRDF</h3><span class="category">Graphics</span></div>
           <p>A bidirectional reflectance distribution function describing how incoming light is reflected toward an outgoing direction at a surface.</p>
           <p><strong>In Ardashir:</strong> A material supplies surface parameters; light visibility and incoming radiance are additional inputs when evaluating reflected illumination.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-shader">Shader</a></li><li><a href="#term-global-illumination">Global illumination (GI)</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#materials">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#a-material-is-a-surface-program">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-bytecode" data-glossary-entry data-category="Computer science" data-search="Bytecode Computer science A compiled, machine-consumable representation of a program. Shader bytecode enters ArdaBackend as DXIL or SPIR-V and is used to create native shader objects.">
           <div class="glossary-entry__meta"><h3>Bytecode</h3><span class="category">Computer science</span></div>
@@ -361,28 +361,28 @@
           <p>Screen-space buffers encoding surface properties for later lighting evaluation.</p>
           <p><strong>In Ardashir:</strong> The Unreal deferred renderer consumes configured surface encodings; exact channels depend on renderer and Substrate configuration.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-shader">Shader</a></li><li><a href="#term-global-illumination">Global illumination (GI)</a></li><li><a href="#term-resource">Resource</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#deferred">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#a-visible-surface-becomes-a-lit-pixel">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-generational-handle" data-glossary-entry data-category="Computer science" data-search="Generational handle Computer science An identifier combining a reusable slot with a generation that distinguishes successive occupants. Proposed scene handles reject stale CPU references. Generation checks do not replace GPU completion or safe storage retirement.">
           <div class="glossary-entry__meta"><h3>Generational handle</h3><span class="category">Computer science</span></div>
           <p>An identifier combining a reusable slot with a generation that distinguishes successive occupants.</p>
           <p><strong>In Ardashir:</strong> Proposed scene handles reject stale CPU references. Generation checks do not replace GPU completion or safe storage retirement.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-lifetime">Lifetime</a></li><li><a href="#term-synchronization">Synchronization</a></li><li><a href="#term-scene-instance">Scene instance</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#arda-design">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#deriving-an-arda-scene-from-the-courtyard">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-geometry-cluster" data-glossary-entry data-category="Graphics" data-search="Geometry cluster Graphics A bounded group of geometry processed together for visibility, detail selection or storage. Nanite clusters are different from HISM instance clusters; their parent relationships describe different data.">
           <div class="glossary-entry__meta"><h3>Geometry cluster</h3><span class="category">Graphics</span></div>
           <p>A bounded group of geometry processed together for visibility, detail selection or storage.</p>
           <p><strong>In Ardashir:</strong> Nanite clusters are different from HISM instance clusters; their parent relationships describe different data.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-culling">Culling</a></li><li><a href="#term-lod">Level of detail (LOD)</a></li><li><a href="#term-dag">DAG</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#nanite">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#the-courtyard-needs-more-than-static-meshes">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-global-illumination" data-glossary-entry data-category="Graphics" data-search="Global illumination (GI) Graphics Illumination that accounts for light arriving through interactions elsewhere in a scene, including indirect bounces. Lumen uses several scene representations and lighting caches. Arda&#x27;s proposed scene layer exposes data to GI consumers without requiring one GI algorithm.">
           <div class="glossary-entry__meta"><h3>Global illumination (GI)</h3><span class="category">Graphics</span></div>
           <p>Illumination that accounts for light arriving through interactions elsewhere in a scene, including indirect bounces.</p>
           <p><strong>In Ardashir:</strong> Lumen uses several scene representations and lighting caches. Arda&#x27;s proposed scene layer exposes data to GI consumers without requiring one GI algorithm.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-surface-cache">Surface Cache</a></li><li><a href="#term-screen-trace">Screen trace</a></li><li><a href="#term-blas">BLAS</a></li><li><a href="#term-tlas">TLAS</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#lumen">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#the-camera-does-not-see-the-whole-lighting-problem">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-global-shader" data-glossary-entry data-category="Project" data-search="Global shader Project A shader type registered independently of a material or scene object. ArdaBackend global shaders use registered type information, virtual paths, and parameter metadata.">
           <div class="glossary-entry__meta"><h3>Global shader</h3><span class="category">Project</span></div>
@@ -395,7 +395,7 @@
           <p>Shader-addressable tables containing retained scene records, with updates for changed data.</p>
           <p><strong>In Ardashir:</strong> Unreal FGPUScene manages primitive, instance and optional payload data. It is not all mesh storage or every GI representation.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-scene-primitive">Scene primitive</a></li><li><a href="#term-scene-instance">Scene instance</a></li><li><a href="#term-resource">Resource</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#gpu-scene">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#the-scene-becomes-gpu-data">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-hash" data-glossary-entry data-category="Computer science" data-search="Hash Computer science A fixed-size value derived from data for fast lookup or change detection. ArdaBackend uses hashes as cache keys only when all state affecting the result is represented.">
           <div class="glossary-entry__meta"><h3>Hash</h3><span class="category">Computer science</span></div>
@@ -408,7 +408,7 @@
           <p>A surface described by one height sample at each position on a two-dimensional grid.</p>
           <p><strong>In Ardashir:</strong> Unreal Landscape uses height and layer-weight data; caves and overhangs require additional geometry rather than a second height at the same sample.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-scene-asset">Scene asset</a></li><li><a href="#term-transform">Transform</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#geometry">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#the-courtyard-needs-more-than-static-meshes">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-homogeneous-coordinates" data-glossary-entry data-category="Mathematics" data-search="Homogeneous coordinates Mathematics A representation that adds a coordinate so translation and perspective can be expressed with matrix multiplication. Graphics shaders commonly use four-component positions and 4-by-4 transforms at the ArdaBackend parameter boundary.">
           <div class="glossary-entry__meta"><h3>Homogeneous coordinates</h3><span class="category">Mathematics</span></div>
@@ -452,7 +452,7 @@
           <p>A choice of representation detail appropriate for a view, cost or quality target.</p>
           <p><strong>In Ardashir:</strong> Conventional Unreal meshes can select discrete LODs; Nanite selects compatible geometric detail through its hierarchy and residency constraints.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-geometry-cluster">Geometry cluster</a></li><li><a href="#term-culling">Culling</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#nanite">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#the-courtyard-needs-more-than-static-meshes">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-lifetime" data-glossary-entry data-category="Computer science" data-search="Lifetime Computer science The interval during which an object exists and may be safely accessed. GPU work can extend effective resource lifetime beyond the CPU call that submits it.">
           <div class="glossary-entry__meta"><h3>Lifetime</h3><span class="category">Computer science</span></div>
@@ -509,14 +509,14 @@
           <p>A rectangular array of values used to represent linear mappings and related computations.</p>
           <p><strong>In Ardashir:</strong> ArdaBackend preserves matrix memory layout across C++ parameter metadata and shader ABI boundaries.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-vector">Vector</a></li><li><a href="#term-transform">Transform</a></li><li><a href="#term-parameter-metadata-reflection">Parameter metadata / reflection</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#deformation">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#motion-is-more-than-a-matrix">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-mesh-section" data-glossary-entry data-category="Graphics" data-search="Mesh section Graphics A geometry range associated with a material binding and rendering settings. Unreal mesh sections connect triangle/index ranges to material slots without requiring a separate gameplay object for each range.">
           <div class="glossary-entry__meta"><h3>Mesh section</h3><span class="category">Graphics</span></div>
           <p>A geometry range associated with a material binding and rendering settings.</p>
           <p><strong>In Ardashir:</strong> Unreal mesh sections connect triangle/index ranges to material slots without requiring a separate gameplay object for each range.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-vertex-buffer">Vertex buffer</a></li><li><a href="#term-index-buffer">Index buffer</a></li><li><a href="#term-shader">Shader</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#geometry">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#a-triangle-becomes-an-object">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-mesh-shader" data-glossary-entry data-category="Graphics" data-search="Mesh shader Graphics A programmable geometry stage that emits mesh primitives without the traditional vertex-input pipeline. ArdaBackend exposes mesh-pipeline creation where the active backend supports it.">
           <div class="glossary-entry__meta"><h3>Mesh shader</h3><span class="category">Graphics</span></div>
@@ -655,7 +655,7 @@
           <p>Determining the screen samples covered by projected geometry, typically followed by tests and shading work.</p>
           <p><strong>In Ardashir:</strong> Unreal&#x27;s conventional and Nanite raster paths organize this work differently. Rasterization is distinct from evaluating indirect illumination.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-gbuffer">GBuffer</a></li><li><a href="#term-render-view">Rendering view</a></li><li><a href="#term-shader">Shader</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#graphics-bridge">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#from-a-proxy-to-a-draw">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-raw-war-waw-hazards" data-glossary-entry data-category="Computer science" data-search="RAW / WAR / WAW hazards Computer science Read-after-write, write-after-read, and write-after-write ordering conflicts that arise when operations access the same data. Regions with multiple distinct writer nodes order overlapping RAW, WAR and WAW hazards by original successful attachment order. Single-producer regions order readers after their producer; disjoint regions stay independent. Physical reuse adds synchronization, and duplicate native imports cannot hide hazards.">
           <div class="glossary-entry__meta"><h3>RAW / WAR / WAW hazards</h3><span class="category">Computer science</span></div>
@@ -693,7 +693,7 @@
           <p>A representation that makes the render-relevant state of an application object available under rendering ownership.</p>
           <p><strong>In Ardashir:</strong> Unreal mirrors component state through scene proxies; rendering callbacks must not freely read mutable gameplay objects.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-threading">Threading</a></li><li><a href="#term-lifetime">Lifetime</a></li><li><a href="#term-scene-primitive">Scene primitive</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#ownership">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#crossing-the-thread-boundary">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-render-target" data-glossary-entry data-category="Graphics" data-search="Render target Graphics A texture view that receives output from a rendering operation. ArdaBackend describes render-target formats when creating framebuffers and graphics pipelines.">
           <div class="glossary-entry__meta"><h3>Render target</h3><span class="category">Graphics</span></div>
@@ -706,14 +706,14 @@
           <p>One execution that updates rendering state and produces images for its views.</p>
           <p><strong>In Ardashir:</strong> Frame-local visibility lists and temporary textures have different lifetimes from retained scene assets and instances.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-render-view">Rendering view</a></li><li><a href="#term-lifetime">Lifetime</a></li><li><a href="#term-render-graph">Render graph</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#mental-model">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#deriving-an-arda-scene-from-the-courtyard">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-render-view" data-glossary-entry data-category="Graphics" data-search="Rendering view Graphics An observer description, including its position, projection and viewport, that asks which scene data contributes to an image. Camera and shadow views select work from retained scene state rather than owning copies of every asset.">
           <div class="glossary-entry__meta"><h3>Rendering view</h3><span class="category">Graphics</span></div>
           <p>An observer description, including its position, projection and viewport, that asks which scene data contributes to an image.</p>
           <p><strong>In Ardashir:</strong> Camera and shadow views select work from retained scene state rather than owning copies of every asset.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-scene-instance">Scene instance</a></li><li><a href="#term-render-frame">Rendering frame</a></li><li><a href="#term-viewport">Viewport</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#mental-model">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#a-triangle-becomes-an-object">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-resource" data-glossary-entry data-category="Graphics" data-search="Resource Graphics GPU-visible storage or an object that owns such storage, such as a buffer or texture. ArdaBackend resources carry descriptions, state, ownership, and native interoperability information.">
           <div class="glossary-entry__meta"><h3>Resource</h3><span class="category">Graphics</span></div>
@@ -756,21 +756,21 @@
           <p>Reusable content such as geometry, textures or a material program, independent of any one placement.</p>
           <p><strong>In Ardashir:</strong> The scene study separates shared asset resources from instance transforms and proposes that separation for a future Arda scene layer.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-scene-instance">Scene instance</a></li><li><a href="#term-resource">Resource</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#mental-model">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#a-triangle-becomes-an-object">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-scene-instance" data-glossary-entry data-category="Graphics" data-search="Scene instance Graphics One placement or use of shared content, with its own transform and relevant per-instance state. Unreal GPU Scene can store many instance records associated with one scene primitive; an instance is not necessarily an actor or draw call.">
           <div class="glossary-entry__meta"><h3>Scene instance</h3><span class="category">Graphics</span></div>
           <p>One placement or use of shared content, with its own transform and relevant per-instance state.</p>
           <p><strong>In Ardashir:</strong> Unreal GPU Scene can store many instance records associated with one scene primitive; an instance is not necessarily an actor or draw call.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-scene-asset">Scene asset</a></li><li><a href="#term-scene-primitive">Scene primitive</a></li><li><a href="#term-transform">Transform</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#mental-model">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#a-triangle-becomes-an-object">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-scene-primitive" data-glossary-entry data-category="Graphics" data-search="Scene primitive Graphics A renderer-managed object participating in scene bookkeeping; distinct from a triangle, line or point primitive in a graphics API. An Unreal scene primitive may represent many triangles or instances. Actor, component, primitive and draw identities are not interchangeable.">
           <div class="glossary-entry__meta"><h3>Scene primitive</h3><span class="category">Graphics</span></div>
           <p>A renderer-managed object participating in scene bookkeeping; distinct from a triangle, line or point primitive in a graphics API.</p>
           <p><strong>In Ardashir:</strong> An Unreal scene primitive may represent many triangles or instances. Actor, component, primitive and draw identities are not interchangeable.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-scene-instance">Scene instance</a></li><li><a href="#term-gpu-scene">GPU Scene</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#mental-model">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#the-scene-becomes-gpu-data">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-scissor" data-glossary-entry data-category="Graphics" data-search="Scissor Graphics A rectangle that rejects rasterized fragments outside its bounds. ArdaBackend records scissor rectangles alongside viewport and raster state.">
           <div class="glossary-entry__meta"><h3>Scissor</h3><span class="category">Graphics</span></div>
@@ -783,7 +783,7 @@
           <p>A ray query against data already represented in the current screen view, such as depth.</p>
           <p><strong>In Ardashir:</strong> Screen traces can cover representation mismatches but cannot reliably supply off-screen or hidden geometry.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-render-view">Rendering view</a></li><li><a href="#term-global-illumination">Global illumination (GI)</a></li><li><a href="#term-gbuffer">GBuffer</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#lumen">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#the-camera-does-not-see-the-whole-lighting-problem">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-semaphore" data-glossary-entry data-category="Computer science" data-search="Semaphore Computer science A synchronization primitive used to signal availability or order work between execution contexts. Native backend integrations may use semaphores for queue-to-queue or presentation synchronization.">
           <div class="glossary-entry__meta"><h3>Semaphore</h3><span class="category">Computer science</span></div>
@@ -826,7 +826,7 @@
           <p>Deforming a surface using bone transforms and vertex influence weights.</p>
           <p><strong>In Ardashir:</strong> Skinning changes local vertex positions independently of the object&#x27;s world transform; previous deformation is relevant to velocity and temporal history.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-transform">Transform</a></li><li><a href="#term-vertex-buffer">Vertex buffer</a></li><li><a href="#term-render-frame">Rendering frame</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#deformation">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#motion-is-more-than-a-matrix">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-spir-v" data-glossary-entry data-category="Graphics" data-search="SPIR-V Graphics A standardized intermediate language for graphics and compute shaders. The Vulkan path consumes SPIR-V shader bytecode.">
           <div class="glossary-entry__meta"><h3>SPIR-V</h3><span class="category">Graphics</span></div>
@@ -851,21 +851,21 @@
           <p>Lumen&#x27;s parameterized surface samples used to retain material properties and reusable lighting.</p>
           <p><strong>In Ardashir:</strong> Cards describe capture coverage; missing coverage is distinct from absent ray-intersection geometry and from stale lighting.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-global-illumination">Global illumination (GI)</a></li><li><a href="#term-blas">BLAS</a></li><li><a href="#term-gbuffer">GBuffer</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#lumen">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#the-camera-does-not-see-the-whole-lighting-problem">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-surface-normal" data-glossary-entry data-category="Mathematics" data-search="Surface normal Mathematics A direction perpendicular to a surface, used to describe orientation and evaluate light reflection. Shading normals may differ from geometric normals. Non-uniform scale requires a suitable inverse-transpose normal transform, not the position transform.">
           <div class="glossary-entry__meta"><h3>Surface normal</h3><span class="category">Mathematics</span></div>
           <p>A direction perpendicular to a surface, used to describe orientation and evaluate light reflection.</p>
           <p><strong>In Ardashir:</strong> Shading normals may differ from geometric normals. Non-uniform scale requires a suitable inverse-transpose normal transform, not the position transform.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-surface-tangent">Surface tangent</a></li><li><a href="#term-transform">Transform</a></li><li><a href="#term-brdf">BRDF</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#deformation">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#motion-is-more-than-a-matrix">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-surface-tangent" data-glossary-entry data-category="Mathematics" data-search="Surface tangent Mathematics A direction along a surface, often used with the normal to describe a local shading coordinate frame. A tangent basis lets normal-map samples be interpreted consistently with the mesh surface and its texture coordinates.">
           <div class="glossary-entry__meta"><h3>Surface tangent</h3><span class="category">Mathematics</span></div>
           <p>A direction along a surface, often used with the normal to describe a local shading coordinate frame.</p>
           <p><strong>In Ardashir:</strong> A tangent basis lets normal-map samples be interpreted consistently with the mesh surface and its texture coordinates.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-surface-normal">Surface normal</a></li><li><a href="#term-uv-coordinates">UV coordinates</a></li><li><a href="#term-vector">Vector</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#deformation">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#motion-is-more-than-a-matrix">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-swap-chain" data-glossary-entry data-category="Graphics" data-search="Swap chain Graphics A sequence of presentable images exchanged between rendering and a display surface. ArdaBackend imports or wraps swap-chain images for rendering and presentation.">
           <div class="glossary-entry__meta"><h3>Swap chain</h3><span class="category">Graphics</span></div>
@@ -896,7 +896,7 @@
           <p>A top-level ray-tracing acceleration structure indexing placed instances of geometry structures.</p>
           <p><strong>In Ardashir:</strong> Changes to instance transforms affect placement in the ray scene independently of the main camera&#x27;s visible list.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-blas">BLAS</a></li><li><a href="#term-scene-instance">Scene instance</a></li><li><a href="#term-transform">Transform</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#lumen">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#the-camera-does-not-see-the-whole-lighting-problem">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-topological-order" data-glossary-entry data-category="Computer science" data-search="Topological order Computer science A linear ordering of a directed acyclic graph in which the source of every edge appears before its destination. Independent nodes may appear in either order. ArdaInductor searches orders that respect resource dependencies and explicit edges. An order is an input to queue and memory planning; it does not require independent GPU queues to execute serially or follow node attachment order.">
           <div class="glossary-entry__meta"><h3>Topological order</h3><span class="category">Computer science</span></div>
@@ -910,7 +910,7 @@
           <p>A mapping that changes coordinates between spaces, commonly represented by a matrix.</p>
           <p><strong>In Ardashir:</strong> Rendering shaders consume transforms prepared by higher-level systems; layout and multiplication convention must agree.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-matrix">Matrix</a></li><li><a href="#term-vector">Vector</a></li><li><a href="#term-constant-buffer">Constant buffer</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#deformation">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#motion-is-more-than-a-matrix">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-transient-resource" data-glossary-entry data-category="Graphics" data-search="Transient resource Graphics A temporary resource whose storage is needed only for a bounded interval of one workload or frame. ArdaInductor assigns frame-local storage to transient values, using compatible placed heaps or committed objects and explicit waits before overlapping reuse.">
           <div class="glossary-entry__meta"><h3>Transient resource</h3><span class="category">Graphics</span></div>
@@ -929,7 +929,7 @@
           <p>Two-dimensional coordinates identifying locations in a texture domain for surface samples.</p>
           <p><strong>In Ardashir:</strong> A texture seam can require distinct attribute vertices at one geometric position; position count alone does not determine vertex-buffer size.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-vertex-buffer">Vertex buffer</a></li><li><a href="#term-surface-tangent">Surface tangent</a></li><li><a href="#term-mesh-section">Mesh section</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#graphics-bridge">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#a-triangle-becomes-an-object">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-validation-layer" data-glossary-entry data-category="Graphics" data-search="Validation layer Graphics A diagnostic layer that checks API usage and reports contract violations. D3D12 debug and Vulkan validation layers help diagnose incorrect states, descriptors, and synchronization around ArdaBackend.">
           <div class="glossary-entry__meta"><h3>Validation layer</h3><span class="category">Graphics</span></div>
@@ -954,7 +954,7 @@
           <p>Unreal&#x27;s geometry-access abstraction that tells mesh shaders how to fetch and interpret vertex and instance data.</p>
           <p><strong>In Ardashir:</strong> It joins geometry-specific shader code with material and pass variants; it is not a mesh shader or an asset factory.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-shader">Shader</a></li><li><a href="#term-vertex-buffer">Vertex buffer</a></li><li><a href="#term-shader-permutation">Shader permutation</a></li></ul></div>
-          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#mesh-pipeline">Unreal scene representation study</a></p>
+          <p><strong>Read more:</strong> <a href="Unreal/scene-representation.html#from-a-proxy-to-a-draw">Scene Representation in Unreal Engine</a></p>
         </article>
         <article class="glossary-entry" id="term-viewport" data-glossary-entry data-category="Graphics" data-search="Viewport Graphics A transform that maps normalized device coordinates into a rectangular render-target region. ArdaBackend records viewport state with graphics commands and pipeline-compatible dimensions.">
           <div class="glossary-entry__meta"><h3>Viewport</h3><span class="category">Graphics</span></div>

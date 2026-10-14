@@ -1,0 +1,87 @@
+[
+  {
+    "chapter": "a-triangle-becomes-an-object",
+    "after_contains": "A vertex record usually contains more than position.",
+    "html": "<figure><img src=\"assets/walkthrough/indexed-slab.svg\" alt=\"A two-triangle slab with four colored vertices, matching position and UV rows, and the index triples 0,1,2 and 0,2,3.\" width=\"1040\" height=\"620\" loading=\"lazy\"><figcaption>Read the colors across the geometry and the arrays: the green row is always vertex 1, whether a triangle references it once or many times. The diagonal is shared through indices 0 and 2. Position values use the chapter’s 100-centimeter square slab. This is an illustrative mesh layout, not the binary layout of a particular Unreal vertex factory.</figcaption></figure>"
+  },
+  {
+    "chapter": "a-triangle-becomes-an-object",
+    "after_contains": "Now place the slab three meters from the courtyard origin.",
+    "html": "<figure><img src=\"assets/walkthrough/coordinate-projection.svg\" alt=\"Computed plots of a colored slab triangle before transformation, after translation by 300 centimeters, and after perspective projection to image coordinates.\" width=\"1040\" height=\"650\" loading=\"lazy\"><figcaption>Follow the red vertex: local (0,0,0) becomes world (300,0,0) cm. The camera at (250,0,400) looks along world −Z; this illustration defines positive camera depth along that forward direction, giving camera coordinates (50,0,400). It lands 30 pixels right of the image center. The green vertex is the prose’s local (100,0,0), now world (400,0,0). The triangles are computed from these coordinates. This is an original mathematical rendering, not an Unreal screenshot or an assertion about Unreal matrix storage order.</figcaption></figure>"
+  },
+  {
+    "chapter": "from-a-proxy-to-a-draw",
+    "after_contains": "Now count the illustrative draw submissions.",
+    "html": "<figure><img src=\"assets/walkthrough/ownership-and-draw-counts.svg\" alt=\"One Actor has two ordinary mesh components and one ten-instance component. Their three primitives describe twelve placements. Two sections and two passes produce eight ordinary and four instanced submissions.\" width=\"1040\" height=\"660\" loading=\"lazy\"><figcaption>Count the visible placements first: two ordinary placements plus ten instanced placements share the mesh asset. Then apply the prose’s two-section, two-pass assumptions: 8 ordinary submissions plus 4 instanced submissions, each instanced submission processing ten placements. The total is 12 submissions for 48 placement-section-pass combinations. These are the chapter’s controlled conventional-path assumptions, not an empirical Unreal draw count.</figcaption></figure>"
+  },
+  {
+    "chapter": "crossing-the-thread-boundary",
+    "after_contains": "The add path illustrates the handoff precisely.",
+    "html": "<figure><img src=\"assets/walkthrough/thread-snapshots.svg\" alt=\"Three timeline lanes show the gate angle advancing first on the game side, then in the render snapshot, and later in a submitted GPU frame.\" width=\"1040\" height=\"590\" loading=\"lazy\"><figcaption>Read vertically at t2: gameplay has reached 60°, the prepared render snapshot shows 30°, and the illustrated GPU work still reads 0°. The angles visualize separate snapshots of the same object, not three gameplay gates. Publishing a change preserves the data already referenced by an in-flight frame; the exact amount of frame overlap is configuration-dependent.</figcaption></figure>"
+  },
+  {
+    "chapter": "changes-have-lifetimes",
+    "after_contains": "Identity has to survive these transitions.",
+    "html": "<figure><img src=\"assets/walkthrough/removal-fence.svg\" alt=\"A removal timeline shows CPU object removal, cessation of new render references, continued GPU buffer occupancy, a completion fence, and later slot reuse with an incremented generation.\" width=\"1040\" height=\"600\" loading=\"lazy\"><figcaption>The blue allocation remains occupied after the red removal line because previously submitted GPU work may still read it. The fence, rather than the gameplay deletion time, permits physical reuse. Reusing slot 42 with generation 8 prevents an old logical handle for generation 7 from naming the new occupant. This is an illustrative lifetime contract, not a claim that Unreal uses this exact handle encoding.</figcaption></figure>"
+  },
+  {
+    "chapter": "the-scene-becomes-gpu-data",
+    "after_contains": "The physical buffer layout is an implementation decision",
+    "html": "<figure><img src=\"assets/walkthrough/gpu-byte-address.svg\" alt=\"A contiguous instance buffer is expanded into a 64-byte teaching record with three transform rows and tint; arithmetic obtains address 0x10F0 for instance 3 tint.\" width=\"1040\" height=\"650\" loading=\"lazy\"><figcaption>Follow the highlighted fourth record, then its yellow final field. A logical instance ID becomes an address only after applying the stride and field offset. The CPU packing code and GPU decoding code must share that contract. This 64-byte example is deliberately invented for arithmetic clarity; Unreal GPU Scene has its own versioned layouts and additional tables.</figcaption></figure>"
+  },
+  {
+    "chapter": "from-a-proxy-to-a-draw",
+    "after_contains": "Before giving Unreal",
+    "html": "<figure><img src=\"assets/walkthrough/raster-depth-winners.svg\" alt=\"A numerically rasterized sample grid shows two overlapping triangles, one highlighted shared sample, and the depth comparison that selects the blue triangle.\" width=\"1040\" height=\"660\" loading=\"lazy\"><figcaption>The colored cells are computed from triangle edge tests at their centers; the outlines show the continuous triangles. At sample (4.5,3.5), both cover the sample, then 0.35 wins over 0.60 in this explicitly forward-depth example. The depth convention is stated because copying that inequality into Unreal’s reversed-depth paths would be wrong.</figcaption></figure>"
+  },
+  {
+    "chapter": "the-courtyard-needs-more-than-static-meshes",
+    "after_contains": "A ray marcher approximates this integral",
+    "html": "<figure><img src=\"assets/walkthrough/alpha-and-volume.svg\" alt=\"Red and blue half-transparent panes are composited in both orders over white, yielding different overlap colors. A computed fog transmittance curve falls from one toward zero as distance increases.\" width=\"1040\" height=\"650\" loading=\"lazy\"><figcaption>Read the overlap patches: red over blue gives (0.75,0.25,0.50), while swapping their order gives (0.50,0.25,0.75), using the shown unit-RGB compositing arithmetic over white. A pane is a surface event with an order. Fog instead attenuates continuously along distance: the plotted curve is T(d)=exp(−0.5d). Full volume rendering additionally integrates light scattered and emitted into the ray. Displayed colors illustrate the arithmetic; this is not a complete linear-light display-management example.</figcaption></figure>"
+  },
+  {
+    "chapter": "the-world-is-not-one-tree",
+    "after_contains": "For the gate, imagine an actor containing",
+    "html": "<figure><img src=\"assets/walkthrough/gate-attachment.svg\" alt=\"A top-down gate swings from zero to ninety degrees about a hinge at 300,200 centimeters. Its lamp is marked at a sixty-centimeter local offset before and after rotation.\" width=\"1040\" height=\"620\" loading=\"lazy\"><figcaption>The brown door becomes the green door while the hinge stays fixed. Both yellow lamp positions are computed from the same parent rotation applied to the lamp’s 60-centimeter local offset. The lamp shares motion ancestry with the door; it does not have to share its mesh asset, material, or draw submission.</figcaption></figure>"
+  },
+  {
+    "chapter": "motion-is-more-than-a-matrix",
+    "after_contains": "Skinning introduces transforms inside the object.",
+    "html": "<figure><img src=\"assets/walkthrough/weighted-skinning.svg\" alt=\"Three computed triangulated sleeve strips show rest, previous, and current deformation. The tracked red vertex moves from 2,0 to 2,0.5 to 2,1 under the displayed two-bone weighted calculation.\" width=\"1040\" height=\"670\" loading=\"lazy\"><figcaption>The red vertex is the prose’s 0.75/0.25 example. Its two current transformed positions are (2,0) and (2,4), so the result is (2,1); the previous pose instead used (2,2) for the second result, producing (2,0.5). The strip is actually computed with weights varying along its length. This is an illustrative software deformation using simple bone translations, not an Unreal character capture. Its retained previous result is the information motion reconstruction needs.</figcaption></figure>"
+  },
+  {
+    "chapter": "motion-is-more-than-a-matrix",
+    "after_contains": "Bounds must follow the same physical reality.",
+    "html": "<figure><img src=\"assets/walkthrough/deformation-bounds.svg\" alt=\"A stick figure outside the camera region extends a hand into it. A stale red dashed bound excludes the hand and fails the visibility test; a larger green current-pose bound intersects the region.\" width=\"1040\" height=\"620\" loading=\"lazy\"><figcaption>The red dashed rest bound lies entirely left of the view boundary, so culling it is internally consistent but visually wrong: the hand has moved into the image. The current green bound includes the hand and survives. A larger correct bound may cost more culling work; a smaller incorrect bound loses visible geometry.</figcaption></figure>"
+  },
+  {
+    "chapter": "a-material-is-a-surface-program",
+    "after_contains": "Material instances reuse a parent material",
+    "html": "<figure><img src=\"assets/walkthrough/material-response.svg\" alt=\"Three original software-rendered spheres show the same green material and lighting with narrow, medium, and broad specular responses as one roughness-like parameter changes.\" width=\"1040\" height=\"650\" loading=\"lazy\"><figcaption>Compare the highlight, not the sphere silhouette: the geometry, green base color, and illumination are identical. The pixels are computed by the included software renderer. Its simple exponent model is printed to make the demonstration reproducible; it is not Unreal’s microfacet BRDF or a measured comparison of Unreal roughness settings. The visual isolates the meaning of changing a surface response without moving a light or rebuilding a mesh.</figcaption></figure>"
+  },
+  {
+    "chapter": "a-visible-surface-becomes-a-lit-pixel",
+    "after_contains": "Rasterization first answers",
+    "html": "<figure><img src=\"assets/walkthrough/one-pixel-through-the-pipeline.svg\" alt=\"An enlarged projected triangle marks pixel center 230.5,100.5. Three colored barycentric weights interpolate local and world positions, UV and normal. The slab at 400 cm defeats a competing surface at 600 cm; its sampled and tinted material writes base color 0.32,0.30,0.16, world normal 0,0,1 and roughness 0.8.\" width=\"1040\" height=\"980\" loading=\"lazy\"><figcaption>Return to <a href=\"#a-triangle-becomes-an-object\">the original 100 cm slab and camera</a>: the same vertices now produce one complete surface sample. The chosen pixel is separate from the earlier small raster-grid exercise. Since all three vertices have the same camera depth, the displayed barycentric weights also give the perspective-correct attributes. Positive view depth selects the nearer sample; this does not describe a hardware depth-buffer encoding. The base-color arithmetic uses linear values, while the color swatch is encoded for display. These are illustrative logical GBuffer fields, before lighting, rather than Unreal’s packed texture layout; depth is a separate visibility result.</figcaption></figure>"
+  },
+  {
+    "chapter": "a-visible-surface-becomes-a-lit-pixel",
+    "after_contains": "Unreal's <code>FGBufferData</code>",
+    "html": "<figure><img src=\"assets/walkthrough/courtyard-gbuffer.svg\" alt=\"Six computed images of the same courtyard show base color, world normals, ray depth, roughness, lamp visibility, and the final direct-lit result.\" width=\"1040\" height=\"795\" loading=\"lazy\"><figcaption>Choose a surface and locate it in all six panels. The checker pattern belongs to the paving’s base color; its upward normal has a different encoding; its shadow can change while those properties remain fixed. All panels use the same ray intersections. This original software renderer uses simplified direct lighting and a constant ambient term, with no GI; the panels illustrate logical values rather than Unreal’s physical GBuffer packing. The separate <a href=\"assets/walkthrough/courtyard-lit.png\">lit frame</a> is also available.</figcaption></figure>"
+  },
+  {
+    "chapter": "a-visible-surface-becomes-a-lit-pixel",
+    "after_contains": "Shadows add another visibility question.",
+    "html": "<figure><img src=\"assets/walkthrough/off-camera-shadow.svg\" alt=\"A plan-view camera cone includes a paving sample but excludes the gate above it. The lamp-to-sample ray intersects that off-camera gate, creating a shadow on the visible sample.\" width=\"1040\" height=\"630\" loading=\"lazy\"><figcaption>Trace the blue camera ray to P, then the gold lamp ray to the same P. Only the gold segment crosses the gate. Culling the gate from the main camera’s work is valid; deleting it from the persistent scene because of that culling would incorrectly remove the shadow. The drawing is a geometric example, not a measured Unreal shadow-map view.</figcaption></figure>"
+  },
+  {
+    "chapter": "the-camera-does-not-see-the-whole-lighting-problem",
+    "after_contains": "A ray intersection is only part of a lighting answer.",
+    "html": "<figure><img src=\"assets/walkthrough/intersection-versus-cache.svg\" alt=\"A ray hits a triangle at 1,1,0; a separately parameterized four-unit card maps that point to 0.25,0.25 and then to a resident atlas region, while pink cells mark absent coverage.\" width=\"1040\" height=\"650\" loading=\"lazy\"><figcaption>The red point is a geometric hit. The green outlined atlas region is a separate parameterization used to retrieve cached information. A correct intersection does not guarantee that the selected card covers that surface with valid lighting. The printed card projection is illustrative; it deliberately distinguishes capture coordinates from the material’s authored UV coordinates.</figcaption></figure>"
+  },
+  {
+    "chapter": "deriving-an-arda-scene-from-the-courtyard",
+    "after_contains": "Now edit one scanned point.",
+    "html": "<figure><img src=\"assets/walkthrough/point-provider-revisions.svg\" alt=\"A point cloud sample moves beyond its old bound. A revision table advances the point buffer and bounds, marks optional derived triangles stale, and leaves an absent ray product absent; missing UV and tangent data force an explicit material fallback.\" width=\"1040\" height=\"710\" loading=\"lazy\"><figcaption>The red point moves, so both the point positions and the enclosing bound change. The right-hand entries distinguish an existing stale derived product from a representation that never existed. A material requiring UVs and a tangent basis cannot be satisfied by position-and-color records alone; a declared point-color fallback is honest and testable. The earlier lifetime rule still applies to the old allocation used by an in-flight frame.</figcaption></figure>"
+  }
+]

@@ -7,6 +7,7 @@ on:
     paths:
       - "Docs/**"
       - "Skills/document-codebase/**"
+      - "Scripts/Docs/**"
       - "Source/ArdaInfra/ArdaBackend/Public/**"
       - "Source/ArdaInfra/ArdaDependencyGraph/Public/**"
       - ".github/workflows/pages.yml"
@@ -47,6 +48,12 @@ jobs:
           python3 Skills/document-codebase/scripts/sync_api_inventories.py
           --repo-root .
           --check
+
+      - name: Check generated Unreal tech blogs
+        run: python3 Scripts/Docs/unreal_articles/build.py --check
+
+      - name: Validate Unreal tech blogs
+        run: python3 Scripts/Docs/unreal_articles/validate.py
 
       - name: Validate documentation
         run: >-
