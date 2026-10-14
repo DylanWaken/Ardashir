@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540" role="img" aria-labelledby="title desc">
+<title id="title">Construction publication and execution are separate</title><desc id="desc">Private edits commit to a queued construction. Compile selects and locks a revision. An execution attempt unlocks it. Failed compilation keeps the construction queued. Equivalent later constructions can select an existing revision.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="540" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Construction publication and execution are separate</text>
+<rect x="40" y="95" width="260" height="85" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="170.0" y="131.5" class="label" text-anchor="middle">Private edit</text>
+<text x="170.0" y="155.5" class="small" text-anchor="middle">author a construction</text>
+<rect x="370" y="95" width="260" height="85" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="500.0" y="131.5" class="label" text-anchor="middle">Queued edits</text>
+<text x="500.0" y="155.5" class="small" text-anchor="middle">Commit publishes</text>
+<rect x="700" y="95" width="260" height="85" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="830.0" y="131.5" class="label" text-anchor="middle">Locked revision</text>
+<text x="830.0" y="155.5" class="small" text-anchor="middle">Compile succeeds</text>
+<path d="M310 138L360 138" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M640 138L690 138" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="700" y="270" width="260" height="85" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="830.0" y="306.5" class="label" text-anchor="middle">Unlocked revision</text>
+<text x="830.0" y="330.5" class="small" text-anchor="middle">after execution attempt</text>
+<path d="M830 190L830 260" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="525" y="225" class="small">Submit / Execute attempt</text>
+<path d="M705 182 L665 220 L500 220 L500 190" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="340" y="250" class="small">Compile failure: keep queued edits</text>
+<path d="M700 313 L170 313 L170 190" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="45" y="351" class="small">Next ordinary construction starts empty. Compatible revisions remain cached.</text>
+<text x="40" y="405" class="label">Later: describe Normal → describe Debug → describe Normal</text>
+<rect x="40" y="430" width="260" height="58" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="170.0" y="465.0" class="label" text-anchor="middle">select revision 1</text>
+<path d="M310 459L360 459" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="370" y="430" width="260" height="58" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="500.0" y="465.0" class="label" text-anchor="middle">select revision 2</text>
+<path d="M640 459L690 459" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="700" y="430" width="260" height="58" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="830.0" y="465.0" class="label" text-anchor="middle">reuse revision 1</text>
+</svg>

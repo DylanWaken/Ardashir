@@ -1,0 +1,162 @@
+[
+  {
+    "id": "packages-capture",
+    "path": "Tools/ModelExport/arda/_export.py",
+    "line": 258,
+    "end_line": 314,
+    "claim": "Export deep-copies the model to CPU eval, strictly captures with torch.export, rejects mutations/randomness, compares eager/captured outputs and exports ONNX.",
+    "sha256": "996d095a39af8f6bf1c2e0db90dca6f78497d35722e4f3c14766f77bc1886492"
+  },
+  {
+    "id": "packages-input-contract",
+    "path": "Tools/ModelExport/arda/_export.py",
+    "line": 63,
+    "end_line": 95,
+    "claim": "Input profiles require positive static dimensions and supported dtypes; per-target precision checks reject unsupported combinations.",
+    "sha256": "aea006f466b7eef2329a37c1e0d0f6067d9a7fce88772b85d8e5c0cd53fbc81f"
+  },
+  {
+    "id": "packages-input-binding",
+    "path": "Tools/ModelExport/arda/_export.py",
+    "line": 150,
+    "end_line": 228,
+    "claim": "Public exporter flattens tensor leaves and frozen scalar arguments, validates dense finite inputs and rejects shared input storage.",
+    "sha256": "a32d1fcad71dfcb76d8a7b91f9bf37b1428fee156e42cec6cc7422eb53d540f6"
+  },
+  {
+    "id": "packages-compile-route",
+    "path": "Tools/ModelExport/ArdaIreeExport.py",
+    "line": 722,
+    "end_line": 803,
+    "claim": "Audited IREE 3.11.0 imports ONNX and compiles to HAL; static exporter produces package records, not a TorchInductor route.",
+    "sha256": "e80512df37b5916eaaea42d733a90e961772c61a3b2b5db18712df5f6e116626"
+  },
+  {
+    "id": "packages-static-evaluator",
+    "path": "Tools/ModelExport/ArdaIreeExport.py",
+    "line": 477,
+    "end_line": 563,
+    "claim": "Static HAL evaluator resolves host orchestration with bounded recursion and operation count and produces dense typed ports.",
+    "sha256": "2e75cc90a637463f2a1b985cbff659f805f9e12cd713d2c78bddde7a3cbaf381"
+  },
+  {
+    "id": "packages-unknown-operations",
+    "path": "Tools/ModelExport/ArdaIreeExport.py",
+    "line": 610,
+    "end_line": 719,
+    "claim": "Only enumerated HAL host operations are accepted; fill/copy/dispatch recipes are recorded and unknown host operations fail.",
+    "sha256": "53260c0a4b16b997ce3c416b94852150defa6d0f49b41c35bfe9387c129ef25b"
+  },
+  {
+    "id": "packages-executable-metadata",
+    "path": "Tools/ModelExport/ArdaIreeExport.py",
+    "line": 397,
+    "end_line": 475,
+    "claim": "Package allocator initializes mutable arenas and extracts PTX, actual target, launch metadata, conservative accesses and packed kernel ABI.",
+    "sha256": "0de7a8ea2107ef1bf0ffd5ba7ef87dde6cad421aa6df2bcaa940e8f51771ac6c"
+  },
+  {
+    "id": "packages-transport-validation",
+    "path": "Tools/ModelExport/ArdaModelPackage.py",
+    "line": 31,
+    "end_line": 108,
+    "claim": "Exporter validates closed PTX, target, unresolved external symbols, packed ABI, commands and dense tensor ports.",
+    "sha256": "094b8c2e276e0b3ea486b65175fb6733a4b3964b764cd20da4c8706cb1307d84"
+  },
+  {
+    "id": "packages-dtypes",
+    "path": "Tools/ModelExport/ArdaDTypes.py",
+    "line": 1,
+    "end_line": 72,
+    "claim": "Stable dtype widths and IDs, public export dtype list and architecture admission thresholds are explicit export policy.",
+    "sha256": "8a6d5a70e47dc76d520d93db1450c737a18d8326d15c7bf32f192fcb5f450bcd"
+  },
+  {
+    "id": "packages-reference-storage",
+    "path": "Tools/ModelExport/ArdaDTypes.py",
+    "line": 80,
+    "end_line": 108,
+    "claim": "Offline comparison decodes raw BF16/FP8 storage according to declared numeric encoding.",
+    "sha256": "c388c113d762cb9aa5a405b7061643136a9243c57017c9bde2a7c2e06888be87"
+  },
+  {
+    "id": "packages-target-options",
+    "path": "Tools/ModelExport/ArdaIreeExport.py",
+    "line": 30,
+    "end_line": 62,
+    "claim": "Current audited target list starts at SM60; newer target profiles are explicit conservative SIMT profiles rather than relabeled old targets.",
+    "sha256": "4e65476fff4cd885d6a1ad9e30fd4b0a7626f62169fe9d1e396fa257b9cca2bb"
+  },
+  {
+    "id": "packages-export-contract",
+    "path": "Tools/ModelExport/arda/_export.py",
+    "line": 413,
+    "end_line": 484,
+    "claim": "Public export freezes scalar config, performs no implicit precision conversion, stages per-target packages and optionally verifies on a local CUDA device.",
+    "sha256": "789b0994670b61e95e6453f29c267adb400f91d2cf89ae594bf5dcc8ccbab483"
+  },
+  {
+    "id": "packages-affine-test",
+    "path": "Tools/ModelExport/test_arda_export.py",
+    "line": 195,
+    "end_line": 205,
+    "claim": "Export test accepts keyword-only tensor bias plus frozen strength scalar and verifies typed ports and affine reference outputs.",
+    "sha256": "6d3ea04fee383ef2010420943125532261f7a385f415e80b23b7648c7cae7343"
+  },
+  {
+    "id": "packages-rejection-tests",
+    "path": "Tools/ModelExport/test_arda_export.py",
+    "line": 353,
+    "end_line": 374,
+    "claim": "Tests reject tensor-dependent Python branches, implicit mutation and randomness before compiler calls while preserving inputs/state.",
+    "sha256": "ebb41efb6559929384066bcd8c722510b225a08bd00c2c3e6da76f6c39cccbb5"
+  },
+  {
+    "id": "packages-public-types",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaGraphPackage.h",
+    "line": 12,
+    "end_line": 72,
+    "claim": "Public package types expose tensor roles/layout/backing size, named bindings and invocation views; package code is trusted executable content.",
+    "sha256": "dd5b1b1dd7fca88f61b75eef73000f9dc2d183ddf133a3491ff903dfb70a2e83"
+  },
+  {
+    "id": "packages-runtime-validation",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Graph/Node/ArdaGraphPackage.cpp",
+    "line": 165,
+    "end_line": 278,
+    "claim": "Runtime validates buffer capacities, tensor layouts, immutable constants, dispatch argument ranges, launch dimensions and copy/fill semantics.",
+    "sha256": "c0fb3f3d4960ef4a05a18c83189f7db56a1c2a079381281401fa219e35617ec5"
+  },
+  {
+    "id": "packages-runtime-load",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Graph/Node/ArdaGraphPackage.cpp",
+    "line": 309,
+    "end_line": 499,
+    "claim": "Reader checks version and complete archive, supports PTX/cubin transport, validates before definition registration and retains immutable definitions.",
+    "sha256": "a9e154376143fa2a19887c66dd954c0cdbbc6ecda2091a24f73764ca7a98cb6d"
+  },
+  {
+    "id": "packages-runtime-binding",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Graph/Node/ArdaGraphPackage.cpp",
+    "line": 502,
+    "end_line": 588,
+    "claim": "Invoke validates exact tensor interfaces and backing extents, rejects overlap, requires inputs and allocates omitted storage/constants.",
+    "sha256": "321d246e0eece48a55f7b5e65b927e8d4abbcd4b13fac9a4c81386ab1e7a6484"
+  },
+  {
+    "id": "packages-runtime-expansion",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Graph/Node/ArdaGraphPackage.cpp",
+    "line": 589,
+    "end_line": 663,
+    "claim": "Recipe commands expand into retained CUDA dispatch/fill/copy definitions with explicit adjacent ordering, then return ordinary graph tensor views.",
+    "sha256": "9b4ee14a7ebb59b0e3f69c99e6c50a9a19ced7ff73825a6f22581c3315991790"
+  },
+  {
+    "id": "packages-binding-tests",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphPackageBindingTests.cpp",
+    "line": 8,
+    "end_line": 136,
+    "claim": "Binding fixtures test 64-byte backing extent for Float32[4], reject insufficient/overlapping allocations and preserve permitted aliases.",
+    "sha256": "3bf632e20e83b57f3aca1e064cf039f613fdb8662cb7196adc88f55ec41f2dd0"
+  }
+]

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 430" role="img" aria-labelledby="title desc">
+<title id="title">Keep operations and resources separate</title><desc id="desc">Upload produces A. Transform reads A and writes B. Readback observes B. A debug branch writes D; D is observable only if a consumer or output declaration requires it.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="430" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Keep operations and resources separate</text>
+<rect x="35" y="140" width="135" height="70" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="102.5" y="181.0" class="label" text-anchor="middle">Upload</text>
+<circle cx="245" cy="175" r="30" fill="#e1edf0" stroke="#62838b" stroke-width="1.5"/>
+<text x="245" y="181" class="label" text-anchor="middle">A</text>
+<rect x="325" y="140" width="160" height="70" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="405.0" y="181.0" class="label" text-anchor="middle">Transform</text>
+<circle cx="560" cy="175" r="30" fill="#e1edf0" stroke="#62838b" stroke-width="1.5"/>
+<text x="560" y="181" class="label" text-anchor="middle">B</text>
+<rect x="640" y="140" width="150" height="70" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="715.0" y="181.0" class="label" text-anchor="middle">Readback</text>
+<rect x="850" y="140" width="110" height="70" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="905.0" y="181.0" class="label" text-anchor="middle">CPU result</text>
+<path d="M170 175L215 175" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M275 175L325 175" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M485 175L530 175" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M590 175L640 175" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M790 175L850 175" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M245 205 L245 305 L325 305" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<rect x="325" y="270" width="160" height="70" rx="7" fill="#ecece6" stroke="#829079" stroke-width="1.5"/>
+<text x="405.0" y="311.0" class="label" text-anchor="middle">Debug</text>
+<circle cx="560" cy="305" r="30" fill="#e1edf0" stroke="#62838b" stroke-width="1.5"/>
+<text x="560" y="311" class="label" text-anchor="middle">D</text>
+<path d="M485 305L530 305" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="620" y="292" class="small">Keep this branch if D is observed.</text>
+<text x="620" y="319" class="small">Cull it if D has no observable use.</text>
+<text x="36" y="403" class="small muted">Rectangles = operations. Circles = logical resources. Arrows here show data use, before hazard analysis.</text>
+</svg>

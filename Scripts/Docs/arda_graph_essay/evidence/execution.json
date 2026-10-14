@@ -1,0 +1,314 @@
+[
+  {
+    "id": "exec-result",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Compiler/ArdaInductorCompileResult.h",
+    "line": 1,
+    "end_line": 118,
+    "claim": "Compile result separates semantic order, device execution state, memory proof, queues, grouping, dispatches, fences, and search diagnostics.",
+    "sha256": "2677c82c2bebbfb040e7ba0c158dc3c5bb6a74e7ca35d798963dc3177d382ad4"
+  },
+  {
+    "id": "exec-options",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Config/ArdaInductorConfig.h",
+    "line": 1,
+    "end_line": 65,
+    "claim": "Scheduling and timing defaults, hard memory budget, frames in flight, search modes, and adaptive configuration.",
+    "sha256": "412d45455e498bed1f4ca5470ed9f63915512f855e621b2d4d02612c8696d7d2"
+  },
+  {
+    "id": "exec-ordering",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorOrderingRules.cpp",
+    "line": 1,
+    "end_line": 174,
+    "claim": "Search and stable ordering validate topological order; configured search produces and publishes order diagnostics.",
+    "sha256": "4064f0cab280ac20e4d131a32ed305bc8ffdd86f804f08a06da653410303c0b3"
+  },
+  {
+    "id": "exec-search",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaInductorSearchRules.cpp",
+    "line": 1,
+    "end_line": 195,
+    "claim": "Greedy critical and memory ordering, bounded local candidate improvement, and iterative exhaustive/backtracking search.",
+    "sha256": "a879c96e6fa3ec616532d8c713c7fbba871f5fd0d0ab6eb77b87608f0f768b9c"
+  },
+  {
+    "id": "exec-evaluation",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorScheduleEvaluation.cpp",
+    "line": 1,
+    "end_line": 172,
+    "claim": "Build allocation lifetimes, evaluate serialization policies, preserve alias dependencies, estimate queue makespan and domain/alias penalties, rank candidates.",
+    "sha256": "262dbd8b5d8e05f088555dd767ea3b69a149a424545c85500c4d21afaa601298"
+  },
+  {
+    "id": "exec-queues",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorQueueRules.cpp",
+    "line": 1,
+    "end_line": 324,
+    "claim": "Queue placement requires device support and legal states, sufficient compute chain and independent graphics slack, includes memory edges; CUDA runs ignore declarations.",
+    "sha256": "4cd646812bc2a1981acce0aafda2ced96c4b87b851268e567f1de6ffa4a19bb6"
+  },
+  {
+    "id": "exec-memory-types",
+    "path": "Source/ArdaInfra/ArdaBackend/Public/RHI/Memory/ArdaMemoryPlanner.h",
+    "line": 1,
+    "end_line": 163,
+    "claim": "Memory requests, native requirements, heap restrictions, alias activations, accounting across frame pools, and describe/plan/materialize separation.",
+    "sha256": "255a730d6f36fce138ce89bc0da5b95e31c39d7a4fe7f900c2708907f5b2784c"
+  },
+  {
+    "id": "exec-memory-rules",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorMemoryRules.cpp",
+    "line": 1,
+    "end_line": 219,
+    "claim": "Imports and persistent resources retained, outputs persistent for allocation, retained adapter workspace accounted, synthetic scratch and CUDA placement restrictions, hard caps require native device requirements.",
+    "sha256": "9a8b3012d55958f83cc034586ba2de81df74a8eb8532876e91cf159a6a38e792"
+  },
+  {
+    "id": "exec-preparation",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPreparation.cpp",
+    "line": 1,
+    "end_line": 267,
+    "claim": "Pending physical plan materialization stages ownership and can retry; cold persistent initialization waits; per-frame pools, bindings, and lowering prepare before runtime publication.",
+    "sha256": "f56c12889d70ee94d8876b252878c9bcb0958c2775a68d64c2ed0fe69a7dfdf5"
+  },
+  {
+    "id": "exec-lowering",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorFrameLowering.cpp",
+    "line": 1,
+    "end_line": 332,
+    "claim": "Dispatches bind actual physical resources; aliases insert image activation/retirement; CUDA and acceleration-structure commands record at submit time.",
+    "sha256": "bc5b36ed1ace68d7bca6627ec582fd75487fcbdf2861510456191a4085305a78"
+  },
+  {
+    "id": "exec-batching",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorBatchingRules.cpp",
+    "line": 1,
+    "end_line": 209,
+    "claim": "Batch compatibility includes pipeline and framebuffer format, queues, memory boundaries, and access hazards; not general shader fusion.",
+    "sha256": "6a75203500d5d62177d6ed86399506bae2c54110f6085085f6293367ab40b2e9"
+  },
+  {
+    "id": "exec-dispatches",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorDispatchRules.cpp",
+    "line": 1,
+    "end_line": 244,
+    "claim": "Batches partition executable nodes, one CUDA framework stream, fence resolution contracts declarations and includes memory edges and per-domain chains.",
+    "sha256": "b5d9788a05d90e50d4e092c08533fb520e55b477f2e949f5c00bdca5f8bd8797"
+  },
+  {
+    "id": "exec-cuda-contract",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorCudaContract.cpp",
+    "line": 1,
+    "end_line": 140,
+    "claim": "CUDA operand access, state, byte ranges and texture mip/layer footprint must be covered by current node declarations.",
+    "sha256": "f7f4c80407788ce8c277a6cf354faccc16be6fa115c4b921412497e668699825"
+  },
+  {
+    "id": "exec-instancing-compile",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorInstancingRules.cpp",
+    "line": 1,
+    "end_line": 162,
+    "claim": "Instancing candidates require all stage opt-in, compatible logical bindings and targets, no other storage effects or unsupported per-node state.",
+    "sha256": "cd3e0b4b53048653c9ac5c8eb77d2fa67f59472eb0f67383040985942015d254"
+  },
+  {
+    "id": "exec-instancing-native",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorInstancing.cpp",
+    "line": 1,
+    "end_line": 142,
+    "claim": "Native merge checks pipeline, bindings, framebuffer, geometry, viewport/scissor, draw parameters and contiguous non-overflowing instance ranges.",
+    "sha256": "ded0195f90a58ab341af82af724ac786d52ab259f87ca494a09eacfcec253d48"
+  },
+  {
+    "id": "exec-instancing-tests",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorInstancingTests.cpp",
+    "line": 191,
+    "end_line": 331,
+    "claim": "Tests verify explicit stage permission, resource differences and storage effects prevent merge, and preserve noncontiguous/reset instances and native state changes.",
+    "sha256": "6beb6afa0e9c7dec742d59a3418f8f0be497c247ab052df3e9061bf2461b65cb"
+  },
+  {
+    "id": "exec-command-types",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorCommandProgram.h",
+    "line": 1,
+    "end_line": 385,
+    "claim": "Private command program stores already bound resources and recording/dependency/state products, not authoring/allocation/culling/scheduling.",
+    "sha256": "9c01ac5e7b19bd8f3e1ce6ec790f3e0d9c0634b32204dedeacf4b11cb8b131ee"
+  },
+  {
+    "id": "exec-command-program",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorCommandProgram.cpp",
+    "line": 1,
+    "end_line": 385,
+    "claim": "Finalization merges read requirements, tracks texture cells and whole-buffer states, emits barriers and entry/exit sentinel plan.",
+    "sha256": "d079439cae0a0f7fe2f074ee5476ab9102c8f34e04e710aa83e2dac19db04f67"
+  },
+  {
+    "id": "exec-transitions",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPhysicalTransitions.cpp",
+    "line": 1,
+    "end_line": 178,
+    "claim": "Physical identities drive continuity; queue ownership transfer introduces release/acquire and dependencies, while UAV buffer barriers consider overlap and writes.",
+    "sha256": "c4f6b300b90ee30a1ecbfe2f14b11bf09b0b17141b73b2a7951989fe39a7422f"
+  },
+  {
+    "id": "exec-frame-boundary",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorFrameBoundary.cpp",
+    "line": 1,
+    "end_line": 89,
+    "claim": "Equal-state exit transitions preserve ownership transfer and aliased image retirements define reusable boundary.",
+    "sha256": "2cd3dd78d30ef0fb2a7e702e835dde24fb2c7d1af87e0e423a945d9d7fbf7b4d"
+  },
+  {
+    "id": "exec-command-executor",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorCommandExecutor.cpp",
+    "line": 1,
+    "end_line": 288,
+    "claim": "Independent recording uses bounded CPU jobs while deterministic submission honors queue tokens and retains accepted work after partial failure.",
+    "sha256": "361cf54c7f76f60fe524571d01f74e331f363cb6f86dc4b62280341007d95df2"
+  },
+  {
+    "id": "exec-execution-report",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Runtime/ArdaDependencyGraphExecution.h",
+    "line": 1,
+    "end_line": 138,
+    "claim": "Execution result includes status, counts, submission tokens, dependencies, and independently observed state/ownership conformance.",
+    "sha256": "3d155db4231c12d1e1eb40deded113c89323015c4b0b89df025b2a9409d5278b"
+  },
+  {
+    "id": "exec-owner",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaGraphExecutor.cpp",
+    "line": 1,
+    "end_line": 70,
+    "claim": "Executor validates successful plan, atomically claims execution ownership, retains cloned compiled input and delegates execution.",
+    "sha256": "b866dffa72a16865b861b1fa4f39baaca750afa9b674d7cb052221aed590d8b0"
+  },
+  {
+    "id": "exec-owner-test",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaPreprocessorTests.cpp",
+    "line": 167,
+    "end_line": 208,
+    "claim": "Standalone compile result survives source destruction, preserves input, rejects second executor claiming copied plan, and device-independent plans cannot execute GPU work.",
+    "sha256": "7afb0d49d4a128288e27b03d66eed8f5ebb8430e8936a9e76ef2bd318c4d712a"
+  },
+  {
+    "id": "exec-readbacks",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorReadbackCompletions.cpp",
+    "line": 1,
+    "end_line": 97,
+    "claim": "Native callbacks fulfill promises; draining publishes in compiled pass order and clears all pending destinations on any failure.",
+    "sha256": "7af42bd76026c16f4b7c246afd1f880dbf869bcb44c32961cd0c1ae3493eb641"
+  },
+  {
+    "id": "exec-completion-tests",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorCompletionTests.cpp",
+    "line": 15,
+    "end_line": 114,
+    "claim": "Readback tests cover delayed publication, destroyed unsubmitted callbacks, partial submission drainage, and all-output invalidation.",
+    "sha256": "bf755bc3ee4949e3b1985cfc4e8b07a3cc8824a0797e00e659399d6c92c6c83d"
+  },
+  {
+    "id": "exec-submission",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorSubmission.cpp",
+    "line": 1,
+    "end_line": 339,
+    "claim": "Submit may wait for pool reuse, returns tickets for partial failure, serializes shared inter-frame ownership, Wait retires accepted work and publishes readbacks, and IsComplete polls without draining.",
+    "sha256": "e24845a946db90d3c08aab2b5f007adf9c1d51647756bf42dcf0a73a07c200fe"
+  },
+  {
+    "id": "exec-ticket",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorFrameTicketState.h",
+    "line": 1,
+    "end_line": 27,
+    "claim": "Ticket completion identity and retained report, device, tokens, readbacks and telemetry are independent of reusable frame slot.",
+    "sha256": "153bba3f3e674e2522d908cab5eecc69831b91c8536dcd2c02871af671533c43"
+  },
+  {
+    "id": "exec-lifecycle-tests",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorLifecycleTests.cpp",
+    "line": 550,
+    "end_line": 937,
+    "claim": "Lifecycle tests defer tuning until retirement, reject obsolete telemetry epochs, retry failed materialization, retain receipts, and avoid device idle and blocking polling.",
+    "sha256": "857b6c47761d531836bfdb159d26d62cea44e4aedadec74c6f27eefe6c0587cf"
+  },
+  {
+    "id": "exec-timing-types",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Runtime/ArdaInductorTiming.h",
+    "line": 1,
+    "end_line": 55,
+    "claim": "Timing aggregate/individual distinctions, collection-order EMA, latest frame fields, bounded raw node history, and modeled adaptive statistics.",
+    "sha256": "5e99c11b7ffddab3d2f203322f5853776c5b423134d3a7a78a681d18a16dedf3"
+  },
+  {
+    "id": "exec-adaptive-runtime",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorAdaptiveRuntime.cpp",
+    "line": 1,
+    "end_line": 309,
+    "claim": "Measured-region attribution, immutable background snapshots, pool reuse, revision/epoch validity, retirement-gated adoption and explicit cancellation.",
+    "sha256": "ee3c37239ac6de0a5cdb3917ac62cfbf2225a62635eb8f386515a8747e15bcf4"
+  },
+  {
+    "id": "exec-timing-accumulator",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorTimingAccumulator.cpp",
+    "line": 1,
+    "end_line": 126,
+    "claim": "EMA, stable node identity keys, collection-order handling, bounded individual-node history, and epoch reset.",
+    "sha256": "d64ec7836fbfc4c7928d6004fa066fb09e682f7edae0d981bbf02aaf31d168b7"
+  },
+  {
+    "id": "exec-adaptive-tests",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorAdaptiveScheduleTests.cpp",
+    "line": 171,
+    "end_line": 450,
+    "claim": "Adaptive tests cover bounded progress, hysteresis, preserving fixed alias/budget constraints, workspace allocation reuse and proportional batch attribution.",
+    "sha256": "1616396292ae4cced397da9345f1089c59e18f74466457fc08f96e2428e0d363"
+  },
+  {
+    "id": "exec-node-cost",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorScheduleCost.cpp",
+    "line": 1,
+    "end_line": 21,
+    "claim": "Timing cost override applies only when node name, canonical key, and executable definition match; declarations cost zero.",
+    "sha256": "1663b5309057d90dfaab80e29a44f958de41e22f36f8c20b9edaefdcbfdc79b0"
+  },
+  {
+    "id": "exec-frame",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorFrame.h",
+    "line": 1,
+    "end_line": 42,
+    "claim": "Frame slot owns physical memory, lowered commands, per-node bindings, timer state and CUDA caches; reusable-frame record retains pools for adaptation.",
+    "sha256": "76d923a0527f8dad4c132d27122c56c239c5090b1376dce1dd637cd9c0c1400a"
+  },
+  {
+    "id": "exec-execution-state",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorExecutionState.h",
+    "line": 1,
+    "end_line": 34,
+    "claim": "Device ownership and mutable runtime/caches/timing are stored separately from authored topology and execution ownership is single-claim.",
+    "sha256": "d7af8c09386cdfabe4e60dd02bb5e425d0d148e51400aa998a0ead6b19d132d4"
+  },
+  {
+    "id": "exec-queue-wait-d3d12",
+    "path": "Source/ArdaInfra/ArdaBackendImpls/D3D12/ArdaD3D12Backend.cpp",
+    "line": 8960,
+    "end_line": 8979,
+    "sha256": "595a21193c36212a167904182e4cb6f9c04bce1d7b3901802cb9f266854c9522",
+    "claim": "D3D12 queues a GPU-side wait for the producer timeline value."
+  },
+  {
+    "id": "exec-queue-wait-vulkan",
+    "path": "Source/ArdaInfra/ArdaBackendImpls/Vulkan/ArdaVulkanBackend.cpp",
+    "line": 10248,
+    "end_line": 10285,
+    "sha256": "0f86e0a15d40c0e5410f36fe9980e33ed4da60570806cbd5f979a09d9ec5c505",
+    "claim": "Vulkan submits a timeline-semaphore wait to the consumer queue."
+  },
+  {
+    "id": "exec-queue-wait-provider",
+    "path": "Source/ArdaInfra/ArdaBackend/Public/RHI/Providers/ArdaRHIProviderDevice.h",
+    "line": 446,
+    "end_line": 464,
+    "sha256": "54a27ea0a6e2351e9a7ccc1f4e9e5076ab158b71352a01e912f4e40bf6cad5cf",
+    "claim": "The generic QueueWait fallback uses host completion waiting; providers may override it."
+  }
+]

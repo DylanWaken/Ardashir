@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 510" role="img" aria-labelledby="title desc">
+<title id="title">A linear list alone cannot prove safe memory reuse</title><desc id="desc">Independent graphics and compute work can overlap despite an apparent first-last order. Two 64 MiB resources need 128 MiB during overlap. A dependency from last use of X to first use of Y allows one compatible 64 MiB region to be reused.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="510" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">A linear list alone cannot prove safe memory reuse</text>
+<text x="40" y="102" class="small">Parallel schedule: X and Y overlap on different queues</text>
+<text x="40" y="166" class="small">Graphics</text>
+<rect x="210" y="130" width="430" height="62" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="425.0" y="167.0" class="label" text-anchor="middle">X · 64 MiB</text>
+<text x="40" y="245" class="small">Compute</text>
+<rect x="340" y="210" width="430" height="62" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="555.0" y="247.0" class="label" text-anchor="middle">Y · 64 MiB</text>
+<text x="800" y="198" class="small">128 MiB live</text>
+<text x="40" y="323" class="small">Add X.last → Y.first: less overlap, but storage can be reused</text>
+<rect x="120" y="355" width="360" height="65" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="300.0" y="393.5" class="label" text-anchor="middle">X occupies region R</text>
+<rect x="565" y="355" width="360" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="745.0" y="393.5" class="label" text-anchor="middle">Y occupies region R</text>
+<path d="M490 388L555 388" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="430" y="457" class="small">one 64 MiB region</text>
+<text x="36" y="483" class="small muted">Illustrative compatible allocation requirements, one frame. Alignment and resource-class rules still apply.</text>
+</svg>

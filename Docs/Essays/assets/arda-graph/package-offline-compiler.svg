@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" role="img" aria-labelledby="title desc">
+<title id="title">Offline code generation meets runtime graph planning</title><desc id="desc">Strict torch.export capture produces ONNX. Pinned IREE compilation and bounded static HAL evaluation produce a package with PTX and explicit recipe data. Runtime imports the recipe as Arda graph operations. This route does not call TorchInductor.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="620" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Offline code generation meets runtime graph planning</text>
+<text x="40" y="92" class="small">OFFLINE: specialize the computation and emit device code</text>
+<rect x="40" y="115" width="260" height="90" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="170.0" y="154.0" class="label" text-anchor="middle">Module + examples</text>
+<text x="170.0" y="178.0" class="small" text-anchor="middle">shapes · dtypes · scalars</text>
+<path d="M310 160L360 160" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="370" y="115" width="260" height="90" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="500.0" y="154.0" class="label" text-anchor="middle">strict torch.export</text>
+<text x="500.0" y="178.0" class="small" text-anchor="middle">then ONNX</text>
+<path d="M640 160L690 160" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="700" y="115" width="260" height="90" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="830.0" y="154.0" class="label" text-anchor="middle">IREE 3.11.0</text>
+<text x="830.0" y="178.0" class="small" text-anchor="middle">HAL compilation</text>
+<rect x="700" y="270" width="260" height="80" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="830.0" y="304.0" class="label" text-anchor="middle">Static HAL evaluation</text>
+<text x="830.0" y="328.0" class="small" text-anchor="middle">bounded supported subset</text>
+<path d="M830 215L830 260" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="40" y="260" width="540" height="100" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="310.0" y="292.0" class="label" text-anchor="middle">.ardagpu</text>
+<text x="310.0" y="316.0" class="small" text-anchor="middle">PTX + kernel ABI + constants + tensor ports</text>
+<text x="310.0" y="340.0" class="small" text-anchor="middle">ordered dispatch / fill / copy recipe</text>
+<path d="M690 310L590 310" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="420" class="small">RUNTIME: combine compiled computation with the rest of the frame</text>
+<rect x="40" y="445" width="260" height="90" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="170.0" y="484.0" class="label" text-anchor="middle">Load + Invoke</text>
+<text x="170.0" y="508.0" class="small" text-anchor="middle">caller tensor bindings</text>
+<path d="M310 490L360 490" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="370" y="445" width="260" height="90" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="500.0" y="484.0" class="label" text-anchor="middle">Ordinary graph ops</text>
+<text x="500.0" y="508.0" class="small" text-anchor="middle">declared reads / writes</text>
+<path d="M640 490L690 490" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="700" y="445" width="260" height="90" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="830.0" y="484.0" class="label" text-anchor="middle">ArdaInductor</text>
+<text x="830.0" y="508.0" class="small" text-anchor="middle">schedule + memory plan</text>
+<text x="36" y="593" class="small muted">ArdaInductor plans graph execution. This offline export route does not call PyTorch TorchInductor.</text>
+</svg>

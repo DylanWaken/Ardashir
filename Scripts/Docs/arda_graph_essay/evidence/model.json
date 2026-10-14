@@ -1,0 +1,290 @@
+[
+  {
+    "id": "model-graph-foundation",
+    "path": "Source/ArdaInfra/ArdaGraph/Public/ArdaGraph.h",
+    "line": 152,
+    "end_line": 218,
+    "claim": "Generic graph owns payloads, indexed adjacency and idempotent endpoint pairs; mutation requires external synchronization.",
+    "sha256": "54e05e7bf2da7acbf19ec79fd981600f4d95a13e97790162fbd3b2801cd38bc4"
+  },
+  {
+    "id": "model-handle",
+    "path": "Source/ArdaInfra/ArdaGraph/Public/ArdaGraph.h",
+    "line": 27,
+    "end_line": 96,
+    "claim": "Stable handles encode graph identity, slot and generation; structural validity differs from liveness.",
+    "sha256": "6e50354d788ee2f88f92e49b70726b7bab98cd17b73413cc7cacb7acdce0f64c"
+  },
+  {
+    "id": "model-handle-lookup",
+    "path": "Source/ArdaInfra/ArdaGraph/Public/ArdaGraph.h",
+    "line": 340,
+    "end_line": 379,
+    "claim": "Graph lookup checks graph identity, slot bounds, generation and live payload.",
+    "sha256": "ba483d70cd63cc4e6cee90492ad80495f45a9aed636adc9d496aae15e3a05495"
+  },
+  {
+    "id": "model-graph-snapshots",
+    "path": "Source/ArdaInfra/ArdaGraph/Public/ArdaGraph.h",
+    "line": 228,
+    "end_line": 308,
+    "claim": "Explicit snapshots share graph identity and lineage generation allocation; ordinary copying is disabled.",
+    "sha256": "0f7cb2dfbe7b78389f2f030524232b7be334f2d042afc36ff3655084f70467e7"
+  },
+  {
+    "id": "model-topological-result",
+    "path": "Source/ArdaInfra/ArdaGraph/Public/ArdaGraph.h",
+    "line": 128,
+    "end_line": 143,
+    "claim": "Topological results distinguish ordered prefix, closed cycle witness and blocked nodes.",
+    "sha256": "1c82c5f70fa3b34f71244d4602db6c2c383de9a0450abd89be7d9d4f529d342e"
+  },
+  {
+    "id": "model-graph-lifecycle",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyGraph.h",
+    "line": 22,
+    "end_line": 153,
+    "claim": "Persistent graph transaction, preprocessing, revision selection and submission lifecycle contract.",
+    "sha256": "f3c572565900e722259cd695315fddf3a93c0248d6be8e13d6097d7e1456d7be"
+  },
+  {
+    "id": "model-topology",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyTopology.h",
+    "line": 11,
+    "end_line": 60,
+    "claim": "Frozen dependency node payloads and distinct resource/hazard edge flags specialize the generic graph.",
+    "sha256": "77fef996665cedb2a6e8b49880f0dab6fd626f98fec9c7127f1969ec2870a0f5"
+  },
+  {
+    "id": "model-resource-identity",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Resources/ArdaDependencyResource.h",
+    "line": 10,
+    "end_line": 60,
+    "claim": "Logical resource identity and read/write/state/range declarations.",
+    "sha256": "627d1c26aad408e5c2db9da2aaff80fcde09c971df24e2ccfe86c6155ddf6591"
+  },
+  {
+    "id": "model-resource-description",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Resources/ArdaDependencyResource.h",
+    "line": 62,
+    "end_line": 108,
+    "claim": "Resource descriptors distinguish graph-owned storage, persistent/output flags and named external slots/bindings.",
+    "sha256": "ab0eeff717ea68c1dd1c53528d28dab82a0c682ba700e0d5c88787172d6d751e"
+  },
+  {
+    "id": "model-typed-values",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Resources/ArdaGraphValue.h",
+    "line": 10,
+    "end_line": 66,
+    "claim": "Typed resource wrappers are non-owning aliases of a logical handle, not immutable content versions.",
+    "sha256": "6aa6477ea7b01c11435cc9289a89bf0c1248eccca2766e65b6f3dc89699401d8"
+  },
+  {
+    "id": "model-tensor",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Resources/ArdaGraphTensor.h",
+    "line": 13,
+    "end_line": 31,
+    "claim": "Graph tensor wraps logical buffer and Backend layout; resolution performs no allocation or copy.",
+    "sha256": "1b45c9046e8327845ef42baf1e1877c8f511b4a3eb03d80f06b47ebab86db93e"
+  },
+  {
+    "id": "model-resource-operations",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/DefaultNodes/ArdaGraphOperations.h",
+    "line": 12,
+    "end_line": 88,
+    "claim": "Resource facade declares storage/lifetimes and external slots; initialized buffers and repeated uploads have distinct semantics.",
+    "sha256": "6903db6e6c115c55d16c7e57c87031757e6b62dacf42f213b1aa948c7be6dcee"
+  },
+  {
+    "id": "model-readback",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/DefaultNodes/ArdaGraphOperations.h",
+    "line": 125,
+    "end_line": 141,
+    "claim": "Readback retains CPU output published after successful Execute/Wait; sharing vectors requires serialized executions.",
+    "sha256": "3957da7d6df28cecea5cc8d4681bd31818696a186d688a3e05298d2451e58fa4"
+  },
+  {
+    "id": "model-node-description",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNodeDesc.h",
+    "line": 10,
+    "end_line": 83,
+    "claim": "Description exposes accesses, bindings, pipeline requests, cost/workspace/effects and compiler-owned stage metadata.",
+    "sha256": "2ff52d0883dfbc0b3dd215c56862a570be774a42d02f901c51402e335ddbed36"
+  },
+  {
+    "id": "model-parameter-schema",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaNodeParameters.h",
+    "line": 196,
+    "end_line": 293,
+    "claim": "Parameter metadata exposes resource/stage kinds, access, schema mappings and typed callbacks for effects, keys and archives.",
+    "sha256": "3743e12a4ba0b2e0a11cc994be25801e02254c2c6452c82e4fa55900ae993b08"
+  },
+  {
+    "id": "model-node-definition",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaNodeDefinition.h",
+    "line": 9,
+    "end_line": 118,
+    "claim": "Typed definition maps execution categories and shader stages to specific contracts; Subgraph expands during compilation.",
+    "sha256": "55ca4e40ae4df34f60e5874a4f62f953cf111a4d0c1c10fcbc86ad11a2d84a64"
+  },
+  {
+    "id": "model-node-contract",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNode.h",
+    "line": 184,
+    "end_line": 239,
+    "claim": "Node contract separates public parameters, immutable device state and private instance state; preparation never submits GPU work.",
+    "sha256": "35a59b1a80d62e25c40290aec4446b6109801b9dd1511573efb66133472af9bd"
+  },
+  {
+    "id": "model-registry",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNodeRegistry.h",
+    "line": 28,
+    "end_line": 120,
+    "claim": "Immutable erased executable definitions retain typed hooks and outlive registry removal in existing graphs.",
+    "sha256": "8889ff4aede143a8842b11cebf309d6b434630d0115f3cb3f5ac0479296ccedc"
+  },
+  {
+    "id": "model-canonical-key",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyKey.h",
+    "line": 10,
+    "end_line": 107,
+    "claim": "Canonical keys encode semantics, normalize construction identities and retain full identity bytes.",
+    "sha256": "3b071e004192acd341953b1b8e3642853a2ff1b6a0618fcc4253dd5f4a0d2cb7"
+  },
+  {
+    "id": "model-operation-output",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaGraphEdit.h",
+    "line": 28,
+    "end_line": 61,
+    "claim": "Operation output retrieval is edit-bound and precedes compilation; resource values have construction-scoped validity.",
+    "sha256": "21aadfbe80fb9f2e7b74970967f6b4b46efac70805ae8cde790f6d7f3ebfed79"
+  },
+  {
+    "id": "model-operation-invocation",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyGraph.h",
+    "line": 201,
+    "end_line": 248,
+    "claim": "AttachOrFind validates schema and named identity, retains parameter snapshots and rejects changed definitions/keys.",
+    "sha256": "902a33d16d2436b87b260f56f0ddf5927608969f488b543d1a8433c94cc535ec"
+  },
+  {
+    "id": "model-edit-contract",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaGraphEdit.h",
+    "line": 63,
+    "end_line": 121,
+    "claim": "Private edit retains first failure and cancels uncommitted work; concurrent publication follows commit order.",
+    "sha256": "d16adae85f64a694e3c16ab11c4d417ca2206f7cdfa652da28be46977822063f"
+  },
+  {
+    "id": "model-array-invocation",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaGraphEdit.h",
+    "line": 188,
+    "end_line": 243,
+    "claim": "Array invocation records distinct lanes with provenance; slots zip and scalar slots broadcast after length checks.",
+    "sha256": "ee45e36a003dcf24c018d4a05aecad16e8cc88f29c054074002315825dcbe9a4"
+  },
+  {
+    "id": "model-revision-cache",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyGraph.h",
+    "line": 103,
+    "end_line": 123,
+    "claim": "Compile selects cached revisions, locks edits and retains default four-entry cache with configurable capacity.",
+    "sha256": "9e50b316b3fc51f62afee92c396ded6b657fa5f744789faafe8d27203f1b8220"
+  },
+  {
+    "id": "model-revision-tests",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphRevisionTests.cpp",
+    "line": 53,
+    "end_line": 163,
+    "claim": "Tests establish queued edits, compile lock, empty fresh construction and reuse with fresh handles and alternate revisions.",
+    "sha256": "730844725311f72e4610bac1e35bc66660bfb61484b6d43be4121b994685b646"
+  },
+  {
+    "id": "model-revision-identity-tests",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphRevisionTests.cpp",
+    "line": 165,
+    "end_line": 221,
+    "claim": "Descriptors, names, options, operation order and edit order affect construction identity.",
+    "sha256": "1af047ad3af1229d96535c030e7fb90ee9b96775e3f05077e96636aaa00bb234"
+  },
+  {
+    "id": "model-revision-repair-test",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphRevisionTests.cpp",
+    "line": 223,
+    "end_line": 268,
+    "claim": "Old handles fail in fresh construction; failed compilation can be repaired by a later producer edit.",
+    "sha256": "8572b17983edbd7a5af9562897b7bbcafe5e9e50344badc8b8356fff87b8f0c6"
+  },
+  {
+    "id": "model-concurrency-tests",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphConcurrentEditTests.cpp",
+    "line": 269,
+    "end_line": 345,
+    "claim": "Concurrent tests reject compilation with open scopes and enforce atomic name/option conflicts.",
+    "sha256": "01cbb93070ddba78557f6f350604f3b22d1f96a7ad70eb4dbb6cde1ea4507983"
+  },
+  {
+    "id": "model-operation-identity-test",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphOperationsTests.cpp",
+    "line": 85,
+    "end_line": 109,
+    "claim": "Identical uploads remain distinct and preserve reads between in-place writes.",
+    "sha256": "de1e302fe93f2dd200c5befec7ca329fef082ec2c0fee27a61477a769fdb62df"
+  },
+  {
+    "id": "model-failed-edit-test",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphOperationsTests.cpp",
+    "line": 147,
+    "end_line": 173,
+    "claim": "First authoring failure prevents mutation and requires cancellation before retry.",
+    "sha256": "36df658b8672fdaef1be598fc58ac875d5afdb8dff893a3b13dcc7bdc653bc3f"
+  },
+  {
+    "id": "model-operation-gpu-test",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphOperationsTests.cpp",
+    "line": 476,
+    "end_line": 506,
+    "claim": "GPU operation test exercises upload, clone, clear, CopyTo and completed readback with compile and execution.",
+    "sha256": "8823d433a6bcb42b89b03fc064eab95838bf4288cc6715608bfee68fa58346e9"
+  },
+  {
+    "id": "model-subgraph",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaSubgraph.h",
+    "line": 10,
+    "end_line": 60,
+    "claim": "Subgraph authors ordinary children during compilation and binds named logical inputs/outputs without mandatory copies.",
+    "sha256": "8cbe444cf3ca3ee4697f8f3a241ae9e806b5d60e76ccb82c38a1efd495a9ccde"
+  },
+  {
+    "id": "model-serialization",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaGraphSerialization.h",
+    "line": 10,
+    "end_line": 35,
+    "claim": "Deterministic structural archives exclude native runtime objects, use named external slots and atomically admit portable definitions.",
+    "sha256": "b4575f127c6a65e529a8b63476894515bc18d3b8d4a9d3c91eddbc3968b55405"
+  },
+  {
+    "id": "model-runtime-definition",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaRuntimeNodeDefinition.h",
+    "line": 12,
+    "end_line": 89,
+    "claim": "Runtime definitions embed CUDA code and exact ABI metadata; invocations use logical buffer ranges or scalar bytes.",
+    "sha256": "c709c6aaba4411543f78b6c361b71feb2ebdb09122c2bcd179eeabbe94ad0373"
+  },
+  {
+    "id": "model-package",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaGraphPackage.h",
+    "line": 12,
+    "end_line": 72,
+    "claim": "Package exposes static tensor interfaces and expands specialized dispatch/fill/copy recipes into caller operations.",
+    "sha256": "dd5b1b1dd7fca88f61b75eef73000f9dc2d183ddf133a3491ff903dfb70a2e83"
+  },
+  {
+    "id": "model-hazard-resolution",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaDependencyHazards.cpp",
+    "line": 88,
+    "end_line": 160,
+    "claim": "Unique-producer reads are attachment-order independent; multi-writer reads consume preceding values and precede later overwrites; edge flags combine.",
+    "sha256": "a518a8323cce45c6093068f2ce26782719e0b86129883b5be992985002041cf1"
+  }
+]

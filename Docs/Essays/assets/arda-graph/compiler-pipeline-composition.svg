@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" role="img" aria-labelledby="title desc">
+<title id="title">Stage composition is distinct from shader compilation</title><desc id="desc">Graphics stage contributions assemble into one node-local pipeline description. Inductor validates bindings and contracts. Native pipeline objects are created for device execution. Shader code must already be supplied or compiled through its own toolchain.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="500" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Stage composition is distinct from shader compilation</text>
+<rect x="40" y="90" width="260" height="78" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="170.0" y="135.0" class="label" text-anchor="middle">Vertex stage</text>
+<path d="M310 129L360 129" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="370" y="90" width="260" height="78" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="500.0" y="123.0" class="label" text-anchor="middle">Raster stage</text>
+<text x="500.0" y="147.0" class="small" text-anchor="middle">fixed state</text>
+<path d="M640 129L690 129" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="700" y="90" width="260" height="78" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="830.0" y="123.0" class="label" text-anchor="middle">Pixel stage</text>
+<text x="830.0" y="147.0" class="small" text-anchor="middle">terminal draw</text>
+<rect x="270" y="245" width="460" height="80" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="500.0" y="279.0" class="label" text-anchor="middle">Assembled operation-local description</text>
+<text x="500.0" y="303.0" class="small" text-anchor="middle">shader stages + bindings + render state</text>
+<path d="M170 178L350 235" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M500 178L500 235" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M830 178L650 235" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="70" y="385" width="350" height="65" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="245.0" y="423.5" class="label" text-anchor="middle">Infer and validate pipeline</text>
+<rect x="590" y="385" width="350" height="65" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="765.0" y="423.5" class="label" text-anchor="middle">Prepare native pipeline</text>
+<path d="M430 418L580 418" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M500 335 L500 355 L245 355 L245 375" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="36" y="473" class="small muted">Combining compatible stage declarations does not synthesize or fuse arbitrary shader instructions.</text>
+</svg>

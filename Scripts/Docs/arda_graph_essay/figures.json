@@ -1,0 +1,86 @@
+{
+  "values-to-work": {
+    "alt": "Input values 0, 1, 2, 3 are uploaded, transformed by B equals 2A plus 1, and read back as 1, 3, 5, 7.",
+    "caption": "The running example asks for four output numbers. Its implementation needs transfers, declared effects, ordering, physical storage and a completion boundary. The transform is supplied code; Arda does not derive a kernel from this equation."
+  },
+  "model-workload": {
+    "alt": "Upload produces A. Transform reads A and writes B. Readback observes B. A debug branch writes D; D is observable only if a consumer or output declaration requires it.",
+    "caption": "A resource is not an operation and an allocation declaration is not yet native storage. The optional diagnostic branch gives us a concrete dead-work example without changing the main result."
+  },
+  "model-handles": {
+    "alt": "A graph handle contains graph identity, slot index and generation. Deleting a node and reusing its slot increments the generation, rejecting the old handle. Another graph also rejects the handle.",
+    "caption": "Slot reuse must not resurrect a deleted operation. Graph identity and generation preserve meaning even when compact storage and iteration order change."
+  },
+  "model-resource-views": {
+    "alt": "One 64-byte logical buffer can have a float32 tensor view of shape 4 by 4. Accesses to its first and second 32-byte regions are disjoint; an overwrite of the first region conflicts with a read of that region.",
+    "caption": "The tensor descriptor does not allocate or copy data. Dependency analysis compares access regions: the overwrite conflicts with the first read, while the other half can remain independent."
+  },
+  "model-node-contract": {
+    "alt": "Parameters supply effects, outputs and semantic keys. Compilation prepares shared immutable device state and private instance state. Frame recording resolves logical resources and invokes the implementation.",
+    "caption": "The compiler needs explicit effects because executable C++ or shader code alone is not a dependency declaration. Device preparation and per-operation state have different ownership and reuse boundaries."
+  },
+  "model-revision-state": {
+    "alt": "Private edits commit to a queued construction. Compile selects and locks a revision. An execution attempt unlocks it. Failed compilation keeps the construction queued. Equivalent later constructions can select an existing revision.",
+    "caption": "Commit queues meaning; Compile stages an executable revision; an execution attempt unlocks authoring. Persistent revision reuse does not mean every new ordinary edit appends to the previous frame forever."
+  },
+  "model-composition": {
+    "alt": "A Transform subgraph expands to Normalize, Scale and Clamp with declared interfaces. A serialized graph loads external slots that must be bound before compilation.",
+    "caption": "Subgraphs compose through typed resources and stage interfaces. Serialization preserves the semantic program; externally owned values are rebound deliberately at load/use boundaries."
+  },
+  "compiler-stages": {
+    "alt": "Preprocessing creates a graph with explicit effects and dependencies. Compilation consumes the preprocessed graph and creates a separate execution plan. Standalone calls operate on private copies.",
+    "caption": "Preprocessing makes the program explicit without choosing a complete device schedule. Compilation chooses an internally consistent execution plan and retains the input needed to use it."
+  },
+  "compiler-hazards": {
+    "alt": "With one writer, dependency resolution orders the writer before the reader even if authored later. With repeated overlapping writes, attachment order establishes each read version; readers precede the next overwrite.",
+    "caption": "B₀ and B₁ label successive contents of the same logical resource for explanation; they are not immutable SSA handles. Hazard edges preserve safe overwrite order without inventing value consumption."
+  },
+  "compiler-range-coverage": {
+    "alt": "Two adjacent writes cover a 1024-byte read. A 12-byte gap leaves an undefined region. Texture mip and slice ranges distinguish independent subresources.",
+    "caption": "The compiler must prove that required regions have producers or valid initialized/external contents. Matching a buffer name is insufficient if the declared byte intervals leave a hole."
+  },
+  "compiler-culling": {
+    "alt": "Readback is an observable root. Its ancestors Upload and Transform remain live. An unused Debug branch is marked culled. Writes to external or persistent resources are also roots.",
+    "caption": "Culling keeps the incoming ancestor set of observable roots, including ordering predecessors. It is conservative liveness analysis, not a general optimizer that proves earlier overwrites irrelevant."
+  },
+  "compiler-pipeline-composition": {
+    "alt": "Graphics stage contributions assemble into one node-local pipeline description. Inductor validates bindings and contracts. Native pipeline objects are created for device execution. Shader code must already be supplied or compiled through its own toolchain.",
+    "caption": "Pipeline inference composes the stages and contracts of an operation. It neither invents the shader arithmetic nor treats every edge between GPU operations as a request for shader fusion."
+  },
+  "compiler-dispatch-dag": {
+    "alt": "Upload, declaration gate, compute and readback form semantic order. The gate has no dispatch. Dispatch dependencies retain upload before compute before readback; cross-domain edges require fences.",
+    "caption": "The declaration gate contributes ordering without executable work. Same-queue dependencies and cross-domain fences are related but different products of the compiled dispatch graph."
+  },
+  "exec-queue-timeline": {
+    "alt": "An independent graphics branch costs 12 units and four compute steps cost 8 total. Serialized cost is 20 units; an eligible second queue reduces the idealized critical path to 12. Numbers ignore contention and are illustrative.",
+    "caption": "A scheduler optimizes among legal choices. The idealized diagram exposes the opportunity; real queue eligibility, memory constraints, synchronization overhead and contention decide whether it is worthwhile."
+  },
+  "exec-alias-proof": {
+    "alt": "Independent graphics and compute work can overlap despite an apparent first-last order. Two 64 MiB resources need 128 MiB during overlap. A dependency from last use of X to first use of Y allows one compatible 64 MiB region to be reused.",
+    "caption": "Aliasing is a happens-before proof plus compatible physical requirements. The compiler emits the ordering and activation boundaries required by its packing decision; memory reuse can reduce parallelism."
+  },
+  "exec-batch-domains": {
+    "alt": "Native N0, CUDA C0 and C1, declaration Sync, CUDA C2, native N1 and CUDA C3 become four groups. Sync does not split CUDA work. Draw instance ranges merge only when consecutive and otherwise compatible.",
+    "caption": "The grouping level determines what changes. A pipeline batch still records its member operations; an eligible instancing group can become one actual draw after physical state checks."
+  },
+  "exec-lowering": {
+    "alt": "Semantic node handles map to compiled dispatch IDs, then to commands bound to frame-slot resources, then to accepted native submission tokens. Entry and exit commands establish reusable resource states.",
+    "caption": "A node handle, dispatch ID, command ID and native token are not interchangeable. Lowering binds the selected plan to one frame’s physical objects and emits the barrier/submission protocol."
+  },
+  "exec-frame-receipts": {
+    "alt": "Frames 0 and 1 occupy two slots and return separate tickets. Frame 2 must retire frame 0 before reusing slot 0. IsComplete polls readiness; Wait drains readbacks and publishes CPU data.",
+    "caption": "A completed GPU token and a published host readback are different observations. Retain and wait a valid ticket even when a later submission step fails, so accepted work and its resources retire safely."
+  },
+  "exec-adaptive-loop": {
+    "alt": "Collected GPU timings feed smoothed cost estimates. An immutable snapshot is searched under fixed resource constraints. Revision, epoch, readiness and improvement gates control adoption; rejected proposals preserve the incumbent.",
+    "caption": "The tuning worker evaluates a retained snapshot. Adoption must still match the active revision and timing epoch, and it must preserve the memory plan’s ordering proof. A modeled win is not a measured wall-clock speedup."
+  },
+  "package-offline-compiler": {
+    "alt": "Strict torch.export capture produces ONNX. Pinned IREE compilation and bounded static HAL evaluation produce a package with PTX and explicit recipe data. Runtime imports the recipe as Arda graph operations. This route does not call TorchInductor.",
+    "caption": "The offline compiler supplies kernel implementations and a closed recipe. The runtime graph planner integrates that recipe with transfers, rendering and other compute work; it does not recompile the model’s arithmetic."
+  },
+  "package-runtime": {
+    "alt": "Package invocation emits ordered graph commands. A caller buffer can hold two disjoint 64-byte package storage ranges, even if each exposed tensor has only 16 visible bytes. Moving the second origin to byte 32 overlaps the package backing extents and is rejected.",
+    "caption": "A tensor’s visible element count may be smaller than the compiled storage extent it binds. Package validation protects the latter, so apparently disjoint visible tensors cannot hide overlapping backing storage."
+  }
+}

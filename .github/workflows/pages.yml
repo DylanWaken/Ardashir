@@ -55,6 +55,12 @@ jobs:
       - name: Validate Unreal tech blogs
         run: python3 Scripts/Docs/unreal_articles/validate.py
 
+      - name: Check generated Arda graph essay
+        run: python3 Scripts/Docs/arda_graph_essay/build.py --check
+
+      - name: Validate Arda graph essay
+        run: python3 Scripts/Docs/arda_graph_essay/validate.py
+
       - name: Validate documentation
         run: >-
           python3 Skills/document-codebase/scripts/validate_docs.py

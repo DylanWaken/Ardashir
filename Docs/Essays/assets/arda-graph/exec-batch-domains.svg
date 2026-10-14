@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 510" role="img" aria-labelledby="title desc">
+<title id="title">Several operations can share one executable group</title><desc id="desc">Native N0, CUDA C0 and C1, declaration Sync, CUDA C2, native N1 and CUDA C3 become four groups. Sync does not split CUDA work. Draw instance ranges merge only when consecutive and otherwise compatible.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="510" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Several operations can share one executable group</text>
+<rect x="40" y="95" width="110" height="60" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="95.0" y="131.0" class="label" text-anchor="middle">N0</text>
+<rect x="175" y="95" width="110" height="60" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="230.0" y="131.0" class="label" text-anchor="middle">C0</text>
+<rect x="310" y="95" width="110" height="60" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="365.0" y="131.0" class="label" text-anchor="middle">C1</text>
+<rect x="445" y="95" width="110" height="60" rx="7" fill="#ecece6" stroke="#829079" stroke-width="1.5"/>
+<text x="500.0" y="131.0" class="label" text-anchor="middle">Sync</text>
+<rect x="580" y="95" width="110" height="60" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="635.0" y="131.0" class="label" text-anchor="middle">C2</text>
+<rect x="715" y="95" width="110" height="60" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="770.0" y="131.0" class="label" text-anchor="middle">N1</text>
+<rect x="850" y="95" width="110" height="60" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="905.0" y="131.0" class="label" text-anchor="middle">C3</text>
+<text x="40" y="205" class="small">A declaration contracts into dependencies; executable native work splits the CUDA run.</text>
+<rect x="40" y="235" width="160" height="65" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="120.0" y="273.5" class="label" text-anchor="middle">Native N0</text>
+<rect x="245" y="235" width="330" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="410.0" y="273.5" class="label" text-anchor="middle">CUDA C0, C1, C2</text>
+<rect x="620" y="235" width="160" height="65" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="700.0" y="273.5" class="label" text-anchor="middle">Native N1</text>
+<rect x="825" y="235" width="135" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="892.5" y="273.5" class="label" text-anchor="middle">CUDA C3</text>
+<text x="40" y="364" class="small">A stronger optimization: compatible contiguous instance ranges</text>
+<rect x="40" y="390" width="260" height="65" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="170.0" y="428.5" class="label" text-anchor="middle">[0, 4) + [4, 7)</text>
+<path d="M310 423L380 423" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="390" y="390" width="210" height="65" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="495.0" y="428.5" class="label" text-anchor="middle">one [0, 7) draw</text>
+<rect x="660" y="390" width="300" height="65" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="810.0" y="428.5" class="label" text-anchor="middle">[0, 4) + [0, 3): separate</text>
+<text x="36" y="483" class="small muted">Batching reduces recording/submission overhead. Instancing may replace draws. Neither implies shader fusion.</text>
+</svg>

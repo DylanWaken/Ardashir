@@ -1,0 +1,234 @@
+[
+  {
+    "id": "comp-lifecycle",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Preprocess/ArdaPreprocessor.cpp",
+    "line": 20,
+    "end_line": 68,
+    "claim": "Standalone preprocessing requires closed edits, guards the source, clones construction and returns the transformed graph.",
+    "sha256": "8a16b13723550401b3a0cc7f5c75f3f46e3a8da3fb78b5739da454a1c7dcca5d"
+  },
+  {
+    "id": "comp-preprocess-tests",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaPreprocessorTests.cpp",
+    "line": 97,
+    "end_line": 208,
+    "claim": "Tests verify culling without an execution plan, source immutability, failure rollback, retained compiled lifetime and execution rejection without a device.",
+    "sha256": "3346444cecf78bd48f7883f5823f464c293ce036cfd13f0d8e46ba852b8254f5"
+  },
+  {
+    "id": "comp-rule-view",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaInductorGraph.h",
+    "line": 15,
+    "end_line": 43,
+    "claim": "Rules receive a borrowed view; preprocessing can edit or remove graph nodes while compilation receives a const view.",
+    "sha256": "2d14759be8d2fbdc03da047dc5cd9d0760aa9444cdc39ca6daca64a6908e7705"
+  },
+  {
+    "id": "comp-preprocess-validation",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Preprocess/ArdaPreprocessor.cpp",
+    "line": 110,
+    "end_line": 199,
+    "claim": "Post-rule validation checks valid definitions, lowered subgraphs/stages, unique names, resources, cycles and required resource ordering.",
+    "sha256": "1954bede153b760d59d18d41e81e220538870673605ebe4533286b82011c105c"
+  },
+  {
+    "id": "comp-default-program",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Config/ArdaInductorRuleSet.cpp",
+    "line": 6,
+    "end_line": 35,
+    "claim": "Exact ordered default preprocessing and compilation rule lists.",
+    "sha256": "0602f05fbab4b5e6afe08349bab5b842cd87a0ac6e8273035e5ca2eb41c0cadc"
+  },
+  {
+    "id": "comp-hazard-resolution",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaDependencyHazards.cpp",
+    "line": 109,
+    "end_line": 204,
+    "claim": "Unique producers permit consumer-first authoring; repeated writers use attachment order, select the preceding value and protect readers from overwrites.",
+    "sha256": "0c7d91f712f843c6b1cbd15bf6c373236314177fccc94f229d18345d7a979aed"
+  },
+  {
+    "id": "comp-hazard-tests",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorTests.cpp",
+    "line": 492,
+    "end_line": 584,
+    "claim": "Repeated-write, independent-reader and ReadWrite tests establish producer selection and ordering without reader-reader dependencies.",
+    "sha256": "cf486dab0d9136952b8fe35b5150e4c134d5efa7aaa8aac384019374429cbab7"
+  },
+  {
+    "id": "comp-range-sweep",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaDependencyHazards.cpp",
+    "line": 29,
+    "end_line": 296,
+    "claim": "Buffer intervals and texture mip/slice/plane ranges are swept for overlap; reads require complete producer, external or initialization-prefix coverage.",
+    "sha256": "30fba69745f981a3593330083dfbc98a416191d438086fe98593389500a4e62a"
+  },
+  {
+    "id": "comp-access-validation",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Preprocess/ArdaInductorDependencyRules.cpp",
+    "line": 9,
+    "end_line": 179,
+    "claim": "Access validation rejects invalid identities, directions, unknown states, invalid ranges, incompatible buffer states and missing attachment accesses.",
+    "sha256": "a9f01caa77104836950ae8bc9945a88163d49e0fb1aed29fe1d7d5254f939071"
+  },
+  {
+    "id": "comp-usage",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Preprocess/ArdaInductorResourceUsageRules.cpp",
+    "line": 286,
+    "end_line": 448,
+    "claim": "Automatic usage is resolved to required capabilities; explicit and imported resources must satisfy requirements and final descriptors are concrete.",
+    "sha256": "01485d3a41bb381725c0149ac7b8a939ae0ac1851c6a3ce817450f94a43b7dd3"
+  },
+  {
+    "id": "comp-culling",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Preprocess/ArdaInductorCullingRules.cpp",
+    "line": 6,
+    "end_line": 50,
+    "claim": "Side effects and writes to output, persistent or external resources root a backward traversal through every incoming edge; culling marks nodes rather than deleting them.",
+    "sha256": "58ce2565b974163a5931c70d0aba1b55c34fa91fc5ef2e2787c6c4572f74560f"
+  },
+  {
+    "id": "comp-compile-entry",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductor.cpp",
+    "line": 24,
+    "end_line": 173,
+    "claim": "Compilation requires a closed preprocessed graph, validates bindings and rules, clones input, prepares nodes, runs ordered rules, validates the result and retains the snapshot.",
+    "sha256": "de47930dbfbd206194ba86727619d0f48e9facbc9cfadb824fce8c203df6559b"
+  },
+  {
+    "id": "comp-prepared-state",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorNodePreparation.cpp",
+    "line": 148,
+    "end_line": 436,
+    "claim": "Preparation preserves transformed semantic descriptions, rehydrates native declarations by provenance, validates requirements and clones stage parameters per assembled draw.",
+    "sha256": "7329f714d1eaaedcb794f88d8c94914eff17c537289fe9e49b8e3d4d502fa7dc"
+  },
+  {
+    "id": "comp-requirement-type",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyRequirements.h",
+    "line": 13,
+    "end_line": 72,
+    "claim": "Node requirements combine portable features, CUDA conditions and named read-only environment predicates; declaration validation differs from device admission.",
+    "sha256": "802efda6485874ce42db888a17846d292562b66f1064683845bf14a5e5e07042"
+  },
+  {
+    "id": "comp-feature-checks",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorRequirementsRules.cpp",
+    "line": 37,
+    "end_line": 159,
+    "claim": "Admission retains compiler-source and subgraph contracts, rechecks explicit requirements, and distinguishes device-independent analysis from inferred native support.",
+    "sha256": "b401f030e347a3f46b8406b72c93f8b5e836e17ebca84a87d90d16049b02b5a0"
+  },
+  {
+    "id": "comp-pipeline-inference",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorPipelineInference.cpp",
+    "line": 7,
+    "end_line": 206,
+    "claim": "Pipeline inference validates ancestry, respects same-family consumer boundaries, disambiguates groups, combines settings/layouts/stages, validates patterns and computes semantic identity.",
+    "sha256": "dbfac91ad1d2b86ad84a366c9dad268e5f6175eff487a3a50ba650078e62c6d1"
+  },
+  {
+    "id": "comp-pipeline-rule",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorPipelineRules.cpp",
+    "line": 6,
+    "end_line": 66,
+    "claim": "The default inference rule validates each live node using its already assembled node-local contributions and shader contracts.",
+    "sha256": "5e3b88be613080d04b657bd46319c4221e0b6e70e424aaf8c44cb5cf092cc585"
+  },
+  {
+    "id": "comp-pipeline-types",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorPipeline.h",
+    "line": 13,
+    "end_line": 130,
+    "claim": "Pipeline contributions, requests, configurations, projected nodes, semantic patterns and resolved native references carry distinct information.",
+    "sha256": "37ed9f38b9ea6d595455f2e323760a33954c8bb8db1ef86d2ca0e8b4bbadb0fd"
+  },
+  {
+    "id": "comp-shader-contract",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaInductorShaderContracts.cpp",
+    "line": 99,
+    "end_line": 334,
+    "claim": "Shader contract validation checks reflected shader schemas, binding layouts and declared resource access coverage.",
+    "sha256": "059ab3c2123acb8ae8702d514acde674c3ac241801fa71fa7f9670396ea501a8"
+  },
+  {
+    "id": "comp-rule-tests",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorRuleTests.cpp",
+    "line": 219,
+    "end_line": 474,
+    "claim": "Rule instances may repeat and execute in list order; invalid custom orders, missing output and exceptions fail without publishing partial results.",
+    "sha256": "b5a72ee32b23ddf669785fc94c4ba918b05d8964d8c27b508fa60f1ff83211ad"
+  },
+  {
+    "id": "comp-result-types",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Compiler/ArdaInductorCompileResult.h",
+    "line": 21,
+    "end_line": 118,
+    "claim": "The compile result retains input and node state plus execution order, memory proof, queue/stream batches, logical fence edges and diagnostics.",
+    "sha256": "7793c44be26295a8dcdc4b5dd85daeff9a0e19c0526df950681a634e991ae2a2"
+  },
+  {
+    "id": "comp-dispatch-lowering",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorDispatchRules.cpp",
+    "line": 45,
+    "end_line": 244,
+    "claim": "Flattening partitions executable nodes into dispatches; fence resolution preserves topology and alias dependencies through declarations and adds queue/stream chaining.",
+    "sha256": "1c6a29965d6b2c44fe8c7e2759aaffd581caafa25800ec67d852ba8c6d8bfc32"
+  },
+  {
+    "id": "comp-final-validation",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Compiler/ArdaInductorRuleValidation.cpp",
+    "line": 47,
+    "end_line": 272,
+    "claim": "Final validation checks node partitions, dependencies, allocation/order consistency, batching compatibility, dispatch completeness and required cross-domain fences.",
+    "sha256": "c233c4762b4434967f73f64e6216e2fc678d34f23259b8ae5ef1bea074c004f8"
+  },
+  {
+    "id": "comp-access-type",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Resources/ArdaDependencyResource.h",
+    "line": 43,
+    "end_line": 61,
+    "claim": "Access declarations identify a resource, read/write direction, required RHI state and buffer or texture subresource range.",
+    "sha256": "5f6fd720ee589cd7c3d302cc43a2c8b2c877aafd5e405f9ad7ed6d6670955e72"
+  },
+  {
+    "id": "comp-topology-type",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyTopology.h",
+    "line": 19,
+    "end_line": 61,
+    "claim": "Frozen node payloads retain semantic declarations, attachment order and lowering/culling annotations; edge payloads distinguish value and overwrite dependencies.",
+    "sha256": "fce3944c7569057fd2120a39fcce9c9d123ac1a411046eb2afdaea568323de2b"
+  },
+  {
+    "id": "comp-rule-contracts",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaGraphRule.h",
+    "line": 9,
+    "end_line": 26,
+    "claim": "Rule instances retain immutable configuration, expose stable names and disable adaptive scheduling unless explicitly opted in.",
+    "sha256": "b9f8b51bad45e7fb523088d9e78d3a19da87d7fb52af918b4361ba18513e782d"
+  },
+  {
+    "id": "comp-rule-set",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Config/ArdaInductorRuleSet.h",
+    "line": 11,
+    "end_line": 32,
+    "claim": "Ordered shared immutable rule instances form the compiler program; rule identity and order participate in revision caching.",
+    "sha256": "8cdc3f0cef6462e20662def6a5961a66a793f93b2a1c6563c1890c949eb26146"
+  },
+  {
+    "id": "comp-preprocess-rule",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Preprocess/ArdaGraphPreprocessRule.h",
+    "line": 7,
+    "end_line": 33,
+    "claim": "Preprocessing rules receive a mutable private graph view.",
+    "sha256": "2318ebe548539faf2868261341beb5b8802ac6b035ca8c61adb2988a20c33b80"
+  },
+  {
+    "id": "comp-compile-rule",
+    "path": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Compiler/ArdaGraphCompileRule.h",
+    "line": 7,
+    "end_line": 35,
+    "claim": "Compilation rules read a const graph view and refine the unpublished execution result.",
+    "sha256": "0a9a2985141ac59f5f0909e4091a54ad62f573ee29ef9b162d82b55ee019ce2a"
+  }
+]

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 470" role="img" aria-labelledby="title desc">
+<title id="title">Views add interpretation; accesses add effects</title><desc id="desc">One 64-byte logical buffer can have a float32 tensor view of shape 4 by 4. Accesses to its first and second 32-byte regions are disjoint; an overwrite of the first region conflicts with a read of that region.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="470" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Views add interpretation; accesses add effects</text>
+<rect x="40" y="90" width="280" height="90" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="180.0" y="129.0" class="label" text-anchor="middle">FArdaGraphBuffer A</text>
+<text x="180.0" y="153.0" class="small" text-anchor="middle">logical identity + descriptor</text>
+<rect x="600" y="90" width="350" height="90" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="775.0" y="129.0" class="label" text-anchor="middle">FArdaGraphTensor(A)</text>
+<text x="775.0" y="153.0" class="small" text-anchor="middle">float32 · shape [4, 4]</text>
+<path d="M590 135L330 135" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="370" y="115" class="small">same storage identity</text>
+<text x="40" y="229" class="label">Byte ranges on A (64 bytes total)</text>
+<rect x="230" y="250" width="350" height="50" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="405.0" y="281.0" class="label" text-anchor="middle">[0, 32)</text>
+<rect x="580" y="250" width="350" height="50" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="755.0" y="281.0" class="label" text-anchor="middle">[32, 64)</text>
+<text x="40" y="334" class="small">Transform read</text>
+<rect x="230" y="314" width="350" height="29" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="40" y="376" class="small">Debug read</text>
+<rect x="580" y="356" width="350" height="29" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="40" y="418" class="small">Overwrite</text>
+<rect x="230" y="398" width="350" height="29" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+</svg>

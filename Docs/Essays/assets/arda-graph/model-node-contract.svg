@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" role="img" aria-labelledby="title desc">
+<title id="title">One declaration feeds analysis and execution</title><desc id="desc">Parameters supply effects, outputs and semantic keys. Compilation prepares shared immutable device state and private instance state. Frame recording resolves logical resources and invokes the implementation.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="520" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">One declaration feeds analysis and execution</text>
+<rect x="35" y="95" width="250" height="95" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="160.0" y="136.5" class="label" text-anchor="middle">Typed parameters</text>
+<text x="160.0" y="160.5" class="small" text-anchor="middle">A, B, multiplier, offset</text>
+<rect x="380" y="95" width="250" height="95" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="505.0" y="136.5" class="label" text-anchor="middle">Declaration</text>
+<text x="505.0" y="160.5" class="small" text-anchor="middle">effects · outputs · key</text>
+<rect x="715" y="95" width="250" height="95" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="840.0" y="136.5" class="label" text-anchor="middle">Frozen node</text>
+<text x="840.0" y="160.5" class="small" text-anchor="middle">semantic description</text>
+<path d="M295 143L370 143" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M640 143L705 143" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="170" y="265" width="290" height="95" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="315.0" y="306.5" class="label" text-anchor="middle">Prepare(Device)</text>
+<text x="315.0" y="330.5" class="small" text-anchor="middle">shared immutable setup</text>
+<rect x="540" y="265" width="290" height="95" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="685.0" y="306.5" class="label" text-anchor="middle">CreateInstance</text>
+<text x="685.0" y="330.5" class="small" text-anchor="middle">private operation state</text>
+<text x="165" y="249" class="small">May be obtained during declaration</text>
+<text x="550" y="249" class="small">Created during compilation</text>
+<path d="M170 312 L140 312 L140 215 L505 215 L505 200" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M840 190 L900 215 L900 312 L840 312" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M470 312L530 312" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="265" y="410" width="480" height="60" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="505.0" y="446.0" class="label" text-anchor="middle">Record: resolve A/B and emit the operation</text>
+<path d="M315 370L400 400" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M685 370L610 400" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="36" y="493" class="small muted">Authoring and node preparation describe or prepare work; they do not submit the graph to the GPU.</text>
+</svg>

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 480" role="img" aria-labelledby="title desc">
+<title id="title">Scheduling trades serial time for eligible overlap</title><desc id="desc">An independent graphics branch costs 12 units and four compute steps cost 8 total. Serialized cost is 20 units; an eligible second queue reduces the idealized critical path to 12. Numbers ignore contention and are illustrative.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="480" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Scheduling trades serial time for eligible overlap</text>
+<text x="40" y="103" class="small">One queue</text>
+<rect x="190" y="80" width="432" height="65" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="406.0" y="118.5" class="label" text-anchor="middle">Graphics G · 12</text>
+<rect x="622" y="80" width="72" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="658.0" y="118.5" class="label" text-anchor="middle">C1</text>
+<rect x="694" y="80" width="72" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="730.0" y="118.5" class="label" text-anchor="middle">C2</text>
+<rect x="766" y="80" width="72" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="802.0" y="118.5" class="label" text-anchor="middle">C3</text>
+<rect x="838" y="80" width="72" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="874.0" y="118.5" class="label" text-anchor="middle">C4</text>
+<text x="40" y="230" class="small">Graphics queue</text>
+<rect x="190" y="200" width="432" height="65" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="406.0" y="238.5" class="label" text-anchor="middle">G · 12</text>
+<text x="40" y="330" class="small">Compute queue</text>
+<rect x="190" y="300" width="72" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="226.0" y="338.5" class="label" text-anchor="middle">C1</text>
+<rect x="262" y="300" width="72" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="298.0" y="338.5" class="label" text-anchor="middle">C2</text>
+<rect x="334" y="300" width="72" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="370.0" y="338.5" class="label" text-anchor="middle">C3</text>
+<rect x="406" y="300" width="72" height="65" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="442.0" y="338.5" class="label" text-anchor="middle">C4</text>
+<path d="M190 400L910 400" fill="none" stroke="#52664d" stroke-width="2"/>
+<text x="190" y="430" class="small" text-anchor="middle">0</text>
+<text x="478" y="430" class="small" text-anchor="middle">8</text>
+<text x="622" y="430" class="small" text-anchor="middle">12</text>
+<text x="910" y="430" class="small" text-anchor="middle">20</text>
+<text x="36" y="453" class="small muted">Illustrative cost units: 20 serialized; max(12, 8) = 12 with eligible overlap. Shared start and final join.</text>
+</svg>

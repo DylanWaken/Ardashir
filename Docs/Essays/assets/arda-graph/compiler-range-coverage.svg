@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 530" role="img" aria-labelledby="title desc">
+<title id="title">Coverage is about regions, not resource names</title><desc id="desc">Two adjacent writes cover a 1024-byte read. A 12-byte gap leaves an undefined region. Texture mip and slice ranges distinguish independent subresources.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#52664d"/></marker></defs>
+<rect width="1000" height="530" fill="#fffdf8"/>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#28352c} .small{font-size:17px}.label{font-size:19px}.title{font-size:26px;font-weight:600}.muted{fill:#637060}</style>
+<text x="36" y="44" class="title">Coverage is about regions, not resource names</text>
+<text x="40" y="98" class="label">Complete coverage of a 1024-byte read</text>
+<rect x="80" y="120" width="420" height="60" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<text x="290.0" y="156.0" class="label" text-anchor="middle">P writes [0, 512)</text>
+<rect x="500" y="120" width="420" height="60" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="710.0" y="156.0" class="label" text-anchor="middle">Q writes [512, 1024)</text>
+<rect x="310" y="225" width="380" height="55" rx="7" fill="#f5e8cf" stroke="#829079" stroke-width="1.5"/>
+<text x="500.0" y="258.5" class="label" text-anchor="middle">Reader needs both P and Q</text>
+<path d="M290 190L390 215" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M710 190L610 215" fill="none" stroke="#52664d" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="328" class="label">A gap is not initialization</text>
+<rect x="80" y="350" width="400" height="48" rx="7" fill="#e1edf0" stroke="#829079" stroke-width="1.5"/>
+<rect x="480" y="350" width="20" height="48" rx="7" fill="#f5dfd8" stroke="#829079" stroke-width="1.5"/>
+<rect x="500" y="350" width="420" height="48" rx="7" fill="#e4edda" stroke="#829079" stroke-width="1.5"/>
+<text x="280" y="381" class="label" text-anchor="middle">P ends at byte 500</text>
+<text x="710" y="381" class="label" text-anchor="middle">Q starts at byte 512</text>
+<text x="450" y="429" class="small">12 bytes undefined</text>
+<text x="36" y="503" class="small muted">Textures use mip / slice / plane ranges. A write to mip 0 does not supply the contents of mip 1.</text>
+</svg>
