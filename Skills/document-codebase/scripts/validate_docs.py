@@ -1311,8 +1311,10 @@ class Validator:
         self, text: str, header: Path
     ) -> List[Tuple[str, Path, int, str]]:
         records: List[Tuple[str, Path, int, str]] = []
+        # A forward declaration ends at its semicolon; its underlying type must
+        # not consume the next struct or enum definition's body.
         pattern = re.compile(
-            r"\benum(?:\s+class)?\s+[A-Za-z_]\w*(?:\s*:\s*[^{]+)?\s*\{"
+            r"\benum(?:\s+class)?\s+[A-Za-z_]\w*(?:\s*:\s*[^;{}]+)?\s*\{"
         )
         for match in pattern.finditer(text):
             start = match.end() - 1

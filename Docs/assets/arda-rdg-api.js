@@ -1,4 +1,4 @@
-/* Generated public source inventory for ArdaDependencyGraph; derived from all 52 public headers. */
+/* Generated public source inventory for ArdaDependencyGraph; derived from all 53 public headers. */
 window.ArdaRDGApi = {
   "module": {
     "id": "arda-rdg",
@@ -6,7 +6,7 @@ window.ArdaRDGApi = {
     "namespace": "arda",
     "summary": "Persistent dependency graphs compiled by ArdaInductor for graphics, CUDA, and transfer work."
   },
-  "generatedFrom": "Source/ArdaInfra/ArdaDependencyGraph/Public (all 52 unique public headers)",
+  "generatedFrom": "Source/ArdaInfra/ArdaDependencyGraph/Public (all 53 unique public headers)",
   "headerProvenance": [
     "Source/ArdaInfra/ArdaDependencyGraph/Public/ArdaDependencyGraph.h",
     "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/DefaultNodes/ArdaDependencyGraphNodeLibrary.h",
@@ -53,6 +53,7 @@ window.ArdaRDGApi = {
     "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorPipelineRules.h",
     "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorQueueRules.h",
     "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorRayTracingRules.h",
+    "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorRequirementsRules.h",
     "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorResourceUsageRules.h",
     "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorRules.h",
     "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Runtime/ArdaDependencyExecutionContext.h",
@@ -6914,7 +6915,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 15
+      "sourceLine": 16
     },
     {
       "id": "api-arda-fardadependencynodemetadata-mname-8dccab15",
@@ -6935,7 +6936,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeMetadata"
       ],
-      "sourceLine": 18
+      "sourceLine": 19
     },
     {
       "id": "api-arda-fardadependencynodemetadata-mversion-69715767",
@@ -6956,7 +6957,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeMetadata"
       ],
-      "sourceLine": 20
+      "sourceLine": 21
     },
     {
       "id": "api-arda-fardaemptydependencynodestate-c731c577",
@@ -6977,7 +6978,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 24
+      "sourceLine": 25
     },
     {
       "id": "api-arda-tardanodeparameterkeysupport-f57633ed",
@@ -6998,7 +6999,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 30
+      "sourceLine": 31
     },
     {
       "id": "api-arda-tardanodeparameterkeysupport-8f1e04e0",
@@ -7019,7 +7020,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 35
+      "sourceLine": 36
     },
     {
       "id": "api-arda-tardanodefetchbufferhook-5f097e35",
@@ -7040,7 +7041,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 41
+      "sourceLine": 42
     },
     {
       "id": "api-arda-tardanodefetchbufferhook-ac422dee",
@@ -7061,7 +7062,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 46
+      "sourceLine": 47
     },
     {
       "id": "api-arda-fardadependencynodebase-2e1c7f13",
@@ -7082,7 +7083,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 58
+      "sourceLine": 59
     },
     {
       "id": "api-arda-tardadependencynodecontract-72ddd1e8",
@@ -7103,16 +7104,16 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 111
+      "sourceLine": 131
     },
     {
-      "id": "api-arda-tardadependencynodecontract-867dead8",
+      "id": "api-arda-tardadependencynodecontract-d1c94e2b",
       "name": "TArdaDependencyNodeContract",
       "qualifiedName": "arda::TArdaDependencyNodeContract",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
-      "signature": "template <class Node> struct TArdaDependencyNodeContract<Node, eastl::void_t<typename Node::FArdaNodeBase, decltype(Node::GetMetadata()), decltype(Node::GetRequirements(eastl::declval<const typename Node::FArdaParameters&>())), decltype(Node::DeclareResources(eastl::declval<FArdaDependencyResourceContext&>(), eastl::declval<typename Node::FArdaParameters&>())), decltype(Node::GetCanonicalKey(eastl::declval<const typename Node::FArdaParameters&>())), decltype(Node::Describe(eastl::declval<const typename Node::FArdaParameters&>(), eastl::declval<const typename Node::FArdaState&>())), decltype(Node::Prepare(eastl::declval<FArdaRHIDeviceRef>())), decltype(Node::Validate(eastl::declval<const typename Node::FArdaParameters&>())), decltype(Node::CreateInstance(eastl::declval<FArdaRHIDeviceRef>(), eastl::declval<const typename Node::FArdaParameters&>(), eastl::declval<const typename Node::FArdaState&>()))>> : eastl::bool_constant<eastl::is_base_of_v<FArdaDependencyNodeBase, Node> && eastl::is_same_v<typename Node::FArdaNodeBase::FArdaNodeType, Node> && eastl::is_same_v<decltype(Node::GetMetadata()), FArdaDependencyNodeMetadata> && eastl::is_same_v<decltype(Node::GetRequirements(eastl::declval<const typename Node::FArdaParameters&>())), FArdaDependencyNodeRequirements> && eastl::is_same_v<decltype(Node::DeclareResources(eastl::declval<FArdaDependencyResourceContext&>(), eastl::declval<typename Node::FArdaParameters&>())), FArdaRHIStatus> && eastl::is_same_v<decltype(Node::GetCanonicalKey(eastl::declval<const typename Node::FArdaParameters&>())), eastl::string> && eastl::is_same_v<decltype(Node::Describe(eastl::declval<const typename Node::FArdaParameters&>(), eastl::declval<const typename Node::FArdaState&>())), FArdaDependencyNodeDesc> && eastl::is_same_v<decltype(Node::Prepare(eastl::declval<FArdaRHIDeviceRef>())), TArdaRHIResult<eastl::shared_ptr<const typename Node::FArdaState>>> && eastl::is_same_v<decltype(Node::Validate(eastl::declval<const typename Node::FArdaParameters&>())), FArdaRHIStatus> && eastl::is_same_v<decltype(Node::CreateInstance(eastl::declval<FArdaRHIDeviceRef>(), eastl::declval<const typename Node::FArdaParameters&>(), eastl::declval<const typename Node::FArdaState&>())), TArdaRHIResult<eastl::shared_ptr<typename Node::FArdaInstanceState>>> && (Node::mKind == EArdaDependencyNodeKind::Cuda ? FArdaDependencyNodeBase::TArdaNodeCudaHook<Node>::value && !FArdaDependencyNodeBase::TArdaNodeRecordHook<Node>::value : !FArdaDependencyNodeBase::TArdaNodeCudaHook< Node>::value && (FArdaDependencyNodeBase::TArdaNodeRecordHook<Node>::value || Node::mKind == EArdaDependencyNodeKind::Synchronization))>",
+      "signature": "template <class Node> struct TArdaDependencyNodeContract<Node, eastl::void_t<typename Node::FArdaNodeBase, decltype(Node::GetMetadata()), decltype(Node::GetRequirements(eastl::declval<const typename Node::FArdaParameters&>())), decltype(Node::DeclareResources(eastl::declval<FArdaDependencyResourceContext&>(), eastl::declval<typename Node::FArdaParameters&>())), decltype(Node::GetCanonicalKey(eastl::declval<const typename Node::FArdaParameters&>())), decltype(Node::Describe(eastl::declval<const typename Node::FArdaParameters&>(), eastl::declval<const typename Node::FArdaState&>())), decltype(Node::Prepare(eastl::declval<FArdaRHIDeviceRef>())), decltype(Node::Validate(eastl::declval<const typename Node::FArdaParameters&>())), decltype(Node::CreateInstance(eastl::declval<FArdaRHIDeviceRef>(), eastl::declval<const typename Node::FArdaParameters&>(), eastl::declval<const typename Node::FArdaState&>()))>> : eastl::bool_constant<eastl::is_base_of_v<FArdaDependencyNodeBase, Node> && eastl::is_same_v<typename Node::FArdaNodeBase::FArdaNodeType, Node> && eastl::is_same_v<decltype(Node::GetMetadata()), FArdaDependencyNodeMetadata> && eastl::is_same_v<decltype(Node::GetRequirements(eastl::declval<const typename Node::FArdaParameters&>())), FArdaDependencyNodeRequirements> && eastl::is_same_v<decltype(Node::DeclareResources(eastl::declval<FArdaDependencyResourceContext&>(), eastl::declval<typename Node::FArdaParameters&>())), FArdaRHIStatus> && eastl::is_same_v<decltype(Node::GetCanonicalKey(eastl::declval<const typename Node::FArdaParameters&>())), eastl::string> && eastl::is_same_v<decltype(Node::Describe(eastl::declval<const typename Node::FArdaParameters&>(), eastl::declval<const typename Node::FArdaState&>())), FArdaDependencyNodeDesc> && eastl::is_same_v<decltype(Node::Prepare(eastl::declval<FArdaRHIDeviceRef>())), TArdaRHIResult<eastl::shared_ptr<const typename Node::FArdaState>>> && eastl::is_same_v<decltype(Node::Validate(eastl::declval<const typename Node::FArdaParameters&>())), FArdaRHIStatus> && eastl::is_same_v<decltype(Node::CreateInstance(eastl::declval<FArdaRHIDeviceRef>(), eastl::declval<const typename Node::FArdaParameters&>(), eastl::declval<const typename Node::FArdaState&>())), TArdaRHIResult<eastl::shared_ptr<typename Node::FArdaInstanceState>>> && (Node::mKind == EArdaDependencyNodeKind::Cuda ? FArdaDependencyNodeBase::TArdaNodeCudaHook<Node>::value && !FArdaDependencyNodeBase::TArdaNodeRecordHook<Node>::value : !FArdaDependencyNodeBase::TArdaNodeCudaHook< Node>::value && !FArdaDependencyNodeBase::TArdaNodeComputeAlternativeHook<Node>::value && (FArdaDependencyNodeBase::TArdaNodeRecordHook<Node>::value || Node::mKind == EArdaDependencyNodeKind::Synchronization))>",
       "summary": "Defines t arda dependency node contract in the public dependency graph contract.",
       "details": "Defines t arda dependency node contract in the public dependency graph contract. The signature is generated from the current public header.",
       "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNode.h",
@@ -7124,7 +7125,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 116
+      "sourceLine": 136
     },
     {
       "id": "api-arda-tardadependencynode-35213481",
@@ -7145,7 +7146,28 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 186
+      "sourceLine": 207
+    },
+    {
+      "id": "api-arda-tardadependencynode-tardadependencynode-dca83987",
+      "name": "TArdaDependencyNode",
+      "qualifiedName": "arda::TArdaDependencyNode::TArdaDependencyNode",
+      "kind": "constructor",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "constexpr TArdaDependencyNode() noexcept",
+      "summary": "Constructs the stateless callable through its protected base, including C++20 brace initialization.",
+      "details": "Constructs the stateless callable through its protected base, including C++20 brace initialization.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNode.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::TArdaDependencyNode"
+      ],
+      "sourceLine": 211
     },
     {
       "id": "api-arda-tardadependencynode-fnodebase-5b2453f4",
@@ -7166,7 +7188,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 190
+      "sourceLine": 216
     },
     {
       "id": "api-arda-tardadependencynode-fnodetype-d536fa8d",
@@ -7187,7 +7209,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 192
+      "sourceLine": 218
     },
     {
       "id": "api-arda-tardadependencynode-fparameters-77abe382",
@@ -7208,7 +7230,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 196
+      "sourceLine": 222
     },
     {
       "id": "api-arda-tardadependencynode-fstate-4ca15a26",
@@ -7229,7 +7251,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 198
+      "sourceLine": 224
     },
     {
       "id": "api-arda-tardadependencynode-finstancestate-193447e3",
@@ -7250,7 +7272,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 200
+      "sourceLine": 226
     },
     {
       "id": "api-arda-tardadependencynode-mkind-48ee6c94",
@@ -7271,7 +7293,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 202
+      "sourceLine": 228
     },
     {
       "id": "api-arda-tardadependencynode-mgraphicsstage-df5cf82e",
@@ -7292,7 +7314,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 204
+      "sourceLine": 230
     },
     {
       "id": "api-arda-tardadependencynode-mraystage-cec3b602",
@@ -7313,7 +7335,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 205
+      "sourceLine": 231
     },
     {
       "id": "api-arda-tardadependencynode-getrequirements-defdae36",
@@ -7334,7 +7356,133 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 213
+      "sourceLine": 239
+    },
+    {
+      "id": "api-arda-tardadependencynode-getcomputealternativerequirements-d655464a",
+      "name": "GetComputeAlternativeRequirements",
+      "qualifiedName": "arda::TArdaDependencyNode::GetComputeAlternativeRequirements",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeRequirements GetComputeAlternativeRequirements(const FArdaParameters&)",
+      "summary": "Requirements for the optional compute alternative, independent of the CUDA route's list. Declare shared requirements in both lists. The framework never silently drops an authored requirement.",
+      "details": "Requirements for the optional compute alternative, independent of the CUDA route's list. Declare shared requirements in both lists. The framework never silently drops an authored requirement.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNode.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::TArdaDependencyNode"
+      ],
+      "sourceLine": 247
+    },
+    {
+      "id": "api-arda-tardadependencynode-hascomputealternative-6816d777",
+      "name": "HasComputeAlternative",
+      "qualifiedName": "arda::TArdaDependencyNode::HasComputeAlternative",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static constexpr bool HasComputeAlternative()",
+      "summary": "Performs has compute alternative through the public dependency graph contract.",
+      "details": "Performs has compute alternative through the public dependency graph contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNode.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::TArdaDependencyNode"
+      ],
+      "sourceLine": 252
+    },
+    {
+      "id": "api-arda-tardadependencynode-usescomputealternative-dd02d0fd",
+      "name": "UsesComputeAlternative",
+      "qualifiedName": "arda::TArdaDependencyNode::UsesComputeAlternative",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static bool UsesComputeAlternative(const IArdaRHIDevice* Device)",
+      "summary": "Route selection is fixed before DeclareResources/Prepare. CUDA stays preferred when available. No fallback is attempted after recording/submission failure. Null-device analysis keeps the authored domain.",
+      "details": "Route selection is fixed before DeclareResources/Prepare. CUDA stays preferred when available. No fallback is attempted after recording/submission failure. Null-device analysis keeps the authored domain.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNode.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::TArdaDependencyNode"
+      ],
+      "sourceLine": 261
+    },
+    {
+      "id": "api-arda-tardadependencynode-addintrinsicrequirements-bf5b3f99",
+      "name": "AddIntrinsicRequirements",
+      "qualifiedName": "arda::TArdaDependencyNode::AddIntrinsicRequirements",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static void AddIntrinsicRequirements(FArdaDependencyNodeRequirements& Requirements)",
+      "summary": "Performs add intrinsic requirements through the public dependency graph contract.",
+      "details": "Performs add intrinsic requirements through the public dependency graph contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNode.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::TArdaDependencyNode"
+      ],
+      "sourceLine": 266
+    },
+    {
+      "id": "api-arda-tardadependencynode-checkrequiredfeatures-b7f0704b",
+      "name": "CheckRequiredFeatures",
+      "qualifiedName": "arda::TArdaDependencyNode::CheckRequiredFeatures",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] static FArdaRHIStatus CheckRequiredFeatures(const IArdaRHIDevice* Device, const FArdaParameters& Value)",
+      "summary": "Read-only user preflight; returns Success, Unsupported (with missing abilities), or InvalidArgument. Checks the selected route's declarations and intrinsic domain requirements without preparing resources. Descriptor-derived requirements are additionally checked by attachment and compilation.",
+      "details": "Read-only user preflight; returns Success, Unsupported (with missing abilities), or InvalidArgument. Checks the selected route's declarations and intrinsic domain requirements without preparing resources. Descriptor-derived requirements are additionally checked by attachment and compilation.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNode.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::TArdaDependencyNode"
+      ],
+      "sourceLine": 275
+    },
+    {
+      "id": "api-arda-tardadependencynode-checkrequiredfeatures-ae4ac34f",
+      "name": "CheckRequiredFeatures",
+      "qualifiedName": "arda::TArdaDependencyNode::CheckRequiredFeatures",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] static FArdaRHIStatus CheckRequiredFeatures(const FArdaRHIDeviceRef& Device, const FArdaParameters& Value)",
+      "summary": "Performs check required features through the public dependency graph contract.",
+      "details": "Performs check required features through the public dependency graph contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNode.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::TArdaDependencyNode"
+      ],
+      "sourceLine": 313
     },
     {
       "id": "api-arda-tardadependencynode-declareresources-44a31b2e",
@@ -7355,7 +7503,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 222
+      "sourceLine": 323
     },
     {
       "id": "api-arda-tardadependencynode-getcanonicalkey-0594bcb9",
@@ -7376,7 +7524,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 232
+      "sourceLine": 333
     },
     {
       "id": "api-arda-tardadependencynode-describe-6746f5cb",
@@ -7397,7 +7545,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 242
+      "sourceLine": 343
     },
     {
       "id": "api-arda-tardadependencynode-validate-2678def0",
@@ -7418,7 +7566,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 248
+      "sourceLine": 349
     },
     {
       "id": "api-arda-tardadependencynode-prepare-cc0ad885",
@@ -7439,7 +7587,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 256
+      "sourceLine": 357
     },
     {
       "id": "api-arda-tardadependencynode-createinstance-2528ba59",
@@ -7460,7 +7608,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 267
+      "sourceLine": 368
     },
     {
       "id": "api-arda-tardadependencynode-register-9b507a1f",
@@ -7481,7 +7629,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 280
+      "sourceLine": 381
     },
     {
       "id": "api-arda-tardadependencynode-register-296cf60a",
@@ -7502,7 +7650,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 492
+      "sourceLine": 624
     },
     {
       "id": "api-arda-tardadependencynode-invoke-2c87a611",
@@ -7523,7 +7671,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 501
+      "sourceLine": 633
     },
     {
       "id": "api-arda-tardadependencynode-invoke-8dd2f369",
@@ -7544,7 +7692,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 510
+      "sourceLine": 642
     },
     {
       "id": "api-arda-tardadependencynode-invoke-09fc8242",
@@ -7565,7 +7713,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 521
+      "sourceLine": 653
     },
     {
       "id": "api-arda-tardadependencynode-operator-f3ebabfc",
@@ -7586,7 +7734,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 528
+      "sourceLine": 660
     },
     {
       "id": "api-arda-tardadependencynode-operator-acae223d",
@@ -7607,7 +7755,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaDependencyNode"
       ],
-      "sourceLine": 537
+      "sourceLine": 669
     },
     {
       "id": "api-arda-tardagraphicsdependencynode-7e031f28",
@@ -7628,7 +7776,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 687
+      "sourceLine": 822
     },
     {
       "id": "api-arda-tardacomputedependencynode-c694d962",
@@ -7649,7 +7797,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 690
+      "sourceLine": 825
     },
     {
       "id": "api-arda-tardacopydependencynode-4321ada9",
@@ -7670,7 +7818,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 693
+      "sourceLine": 828
     },
     {
       "id": "api-arda-tardacudadependencynode-35bb155c",
@@ -7691,7 +7839,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 696
+      "sourceLine": 831
     },
     {
       "id": "api-arda-tardasynchronizationdependencynode-ee03fb13",
@@ -7712,7 +7860,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 699
+      "sourceLine": 834
     },
     {
       "id": "api-arda-arda-declare-graph-node-93f04778",
@@ -7742,7 +7890,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 710
+      "sourceLine": 845
     },
     {
       "id": "api-arda-arda-define-graph-node-b5442505",
@@ -7772,7 +7920,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 722
+      "sourceLine": 857
     },
     {
       "id": "api-arda-eardadependencynodekind-ba4a2439",
@@ -8552,6 +8700,48 @@ window.ArdaRDGApi = {
       "sourceLine": 48
     },
     {
+      "id": "api-arda-fardadependencynodeexecutable-maddintrinsicrequirements-bdc697c2",
+      "name": "mAddIntrinsicRequirements",
+      "qualifiedName": "arda::FArdaDependencyNodeExecutable::mAddIntrinsicRequirements",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::function<void(FArdaDependencyNodeRequirements&)> mAddIntrinsicRequirements",
+      "summary": "Intrinsic execution-domain/stage requirements, separate from device-independent author requirements.",
+      "details": "Intrinsic execution-domain/stage requirements, separate from device-independent author requirements.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNodeRegistry.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaDependencyNodeExecutable"
+      ],
+      "sourceLine": 50
+    },
+    {
+      "id": "api-arda-fardadependencynodeexecutable-mcomputealternative-07a8c257",
+      "name": "mComputeAlternative",
+      "qualifiedName": "arda::FArdaDependencyNodeExecutable::mComputeAlternative",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const FArdaDependencyNodeExecutable> mComputeAlternative",
+      "summary": "Optional immutable compute lowering of a CUDA definition. Selected before any preparation.",
+      "details": "Optional immutable compute lowering of a CUDA definition. Selected before any preparation.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNodeRegistry.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaDependencyNodeExecutable"
+      ],
+      "sourceLine": 52
+    },
+    {
       "id": "api-arda-fardadependencynodeexecutable-mresolveresources-be2db996",
       "name": "mResolveResources",
       "qualifiedName": "arda::FArdaDependencyNodeExecutable::mResolveResources",
@@ -8570,7 +8760,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 51
+      "sourceLine": 55
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mprepare-afe7a4dd",
@@ -8591,7 +8781,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 56
+      "sourceLine": 60
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mcanonicalkey-179c72a3",
@@ -8612,7 +8802,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 58
+      "sourceLine": 62
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mdescribe-1841ed85",
@@ -8633,7 +8823,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 59
+      "sourceLine": 63
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mrecord-81365e8d",
@@ -8654,7 +8844,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 60
+      "sourceLine": 64
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mconfiguregraphics-b46c202f",
@@ -8675,7 +8865,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 62
+      "sourceLine": 66
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mclonegraphicsparameters-892d821c",
@@ -8696,7 +8886,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 65
+      "sourceLine": 69
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mfetchbuffer-1d9ca6c9",
@@ -8717,7 +8907,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 67
+      "sourceLine": 71
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mpreparecuda-0ecdd363",
@@ -8738,7 +8928,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 68
+      "sourceLine": 72
     },
     {
       "id": "api-arda-fardanoderegistry-70e11d95",
@@ -8759,7 +8949,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 75
+      "sourceLine": 79
     },
     {
       "id": "api-arda-fardanoderegistry-get-2c29fe26",
@@ -8780,7 +8970,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaNodeRegistry"
       ],
-      "sourceLine": 78
+      "sourceLine": 82
     },
     {
       "id": "api-arda-fardanoderegistry-unregister-ebf9ba88",
@@ -8801,7 +8991,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaNodeRegistry"
       ],
-      "sourceLine": 80
+      "sourceLine": 84
     },
     {
       "id": "api-arda-fardanoderegistry-find-bf94f42a",
@@ -8822,7 +9012,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaNodeRegistry"
       ],
-      "sourceLine": 81
+      "sourceLine": 85
     },
     {
       "id": "api-arda-fardanoderegistry-getnames-49b01d69",
@@ -8843,7 +9033,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaNodeRegistry"
       ],
-      "sourceLine": 82
+      "sourceLine": 86
     },
     {
       "id": "api-arda-fardadependencyenvironmentrequirement-2bac463c",
@@ -8864,7 +9054,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 13
+      "sourceLine": 16
     },
     {
       "id": "api-arda-fardadependencyenvironmentrequirement-mname-d063f95f",
@@ -8885,7 +9075,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyEnvironmentRequirement"
       ],
-      "sourceLine": 16
+      "sourceLine": 19
     },
     {
       "id": "api-arda-fardadependencyenvironmentrequirement-mcheck-11e4928a",
@@ -8906,7 +9096,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyEnvironmentRequirement"
       ],
-      "sourceLine": 18
+      "sourceLine": 21
     },
     {
       "id": "api-arda-fardadependencynoderequirements-7513e792",
@@ -8927,7 +9117,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 26
+      "sourceLine": 29
     },
     {
       "id": "api-arda-fardadependencynoderequirements-mfeatures-bd3a9bd7",
@@ -8948,7 +9138,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeRequirements"
       ],
-      "sourceLine": 29
+      "sourceLine": 32
     },
     {
       "id": "api-arda-fardadependencynoderequirements-mbrequirecuda-18ced779",
@@ -8969,7 +9159,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeRequirements"
       ],
-      "sourceLine": 31
+      "sourceLine": 34
     },
     {
       "id": "api-arda-fardadependencynoderequirements-mbrequirecudasurfaces-9b926ace",
@@ -8990,7 +9180,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeRequirements"
       ],
-      "sourceLine": 33
+      "sourceLine": 36
     },
     {
       "id": "api-arda-fardadependencynoderequirements-mbrequirecudalayeredsurfaces-a7077dcb",
@@ -9011,7 +9201,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeRequirements"
       ],
-      "sourceLine": 35
+      "sourceLine": 38
     },
     {
       "id": "api-arda-fardadependencynoderequirements-mmincudacomputecapability-3db01918",
@@ -9032,7 +9222,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeRequirements"
       ],
-      "sourceLine": 37
+      "sourceLine": 40
     },
     {
       "id": "api-arda-fardadependencynoderequirements-mmincudathreadsperblock-4d11647c",
@@ -9053,7 +9243,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeRequirements"
       ],
-      "sourceLine": 39
+      "sourceLine": 42
     },
     {
       "id": "api-arda-fardadependencynoderequirements-mmincudasharedmemorybytes-3f4e4243",
@@ -9074,7 +9264,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeRequirements"
       ],
-      "sourceLine": 41
+      "sourceLine": 44
     },
     {
       "id": "api-arda-fardadependencynoderequirements-mallowedcudalaunchmodes-97f4b987",
@@ -9095,7 +9285,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeRequirements"
       ],
-      "sourceLine": 45
+      "sourceLine": 48
     },
     {
       "id": "api-arda-fardadependencynoderequirements-menvironment-5e2abd6d",
@@ -9116,7 +9306,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeRequirements"
       ],
-      "sourceLine": 47
+      "sourceLine": 50
     },
     {
       "id": "api-arda-fardadependencynoderequirements-check-49c0c84f",
@@ -9126,8 +9316,8 @@ window.ArdaRDGApi = {
       "component": "core",
       "page": "api-reference.html",
       "signature": "[[nodiscard]] FArdaRHIStatus Check(const IArdaRHIDevice* Device) const",
-      "summary": "Read-only admission, without GPU work or waits. Returns Unsupported with all missing portable/CUDA abilities and named environment failures. Malformed predicates or launch-mode declarations return InvalidArgument. A null device is useful only for requirements which do not request environment capabilities.",
-      "details": "Read-only admission, without GPU work or waits. Returns Unsupported with all missing portable/CUDA abilities and named environment failures. Malformed predicates or launch-mode declarations return InvalidArgument. A null device is useful only for requirements which do not request environment capabilities.",
+      "summary": "Read-only admission, without GPU work or waits. Returns Unsupported with all missing portable/CUDA abilities and named environment failures. Malformed predicates or launch-mode declarations return InvalidArgument. A throwing environment predicate returns BackendFailure with its diagnostic name. A null device is useful only for requirements which do not request environment capabilities.",
+      "details": "Read-only admission, without GPU work or waits. Returns Unsupported with all missing portable/CUDA abilities and named environment failures. Malformed predicates or launch-mode declarations return InvalidArgument. A throwing environment predicate returns BackendFailure with its diagnostic name. A null device is useful only for requirements which do not request environment capabilities.",
       "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyRequirements.h",
       "params": [],
       "returns": "See the declared result and status contract.",
@@ -9137,7 +9327,28 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeRequirements"
       ],
-      "sourceLine": 54
+      "sourceLine": 58
+    },
+    {
+      "id": "api-arda-addardanodeintrinsicrequirements-2da4304c",
+      "name": "AddArdaNodeIntrinsicRequirements",
+      "qualifiedName": "arda::AddArdaNodeIntrinsicRequirements",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "void AddArdaNodeIntrinsicRequirements(FArdaDependencyNodeRequirements& Requirements, EArdaDependencyNodeKind Kind, EArdaGraphicsStage GraphicsStage, EArdaRHIShaderStage RayStage) noexcept",
+      "summary": "Adds requirements intrinsic to the selected execution domain and typed shader stage. Native compute/copy work may use the graphics queue, so this does not require independent queues. A selected compute alternative must pass Compute rather than the original CUDA domain.",
+      "details": "Adds requirements intrinsic to the selected execution domain and typed shader stage. Native compute/copy work may use the graphics queue, so this does not require independent queues. A selected compute alternative must pass Compute rather than the original CUDA domain.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyRequirements.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 65
     },
     {
       "id": "api-arda-fardadependencynode-b00312f2",
@@ -9434,6 +9645,27 @@ window.ArdaRDGApi = {
       "sourceLine": 32
     },
     {
+      "id": "api-arda-fardadependencynode-msourceparameters-0fb7be95",
+      "name": "mSourceParameters",
+      "qualifiedName": "arda::FArdaDependencyNode::mSourceParameters",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const void> mSourceParameters",
+      "summary": "Frozen public inputs retained for read-only required-feature revalidation.",
+      "details": "Frozen public inputs retained for read-only required-feature revalidation.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyTopology.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaDependencyNode"
+      ],
+      "sourceLine": 34
+    },
+    {
       "id": "api-arda-fardadependencyedge-cf1f1927",
       "name": "FArdaDependencyEdge",
       "qualifiedName": "arda::FArdaDependencyEdge",
@@ -9452,7 +9684,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 36
+      "sourceLine": 38
     },
     {
       "id": "api-arda-fardadependencyedge-mbresource-cc767b17",
@@ -9473,7 +9705,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyEdge"
       ],
-      "sourceLine": 38
+      "sourceLine": 40
     },
     {
       "id": "api-arda-fardadependencyedge-mbhazard-31741774",
@@ -9494,7 +9726,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyEdge"
       ],
-      "sourceLine": 39
+      "sourceLine": 41
     },
     {
       "id": "api-arda-fardadependencytopology-ad8fb3b8",
@@ -9515,7 +9747,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 42
+      "sourceLine": 44
     },
     {
       "id": "api-arda-tardagraphpositionalarguments-abb44feb",
@@ -11576,15 +11808,15 @@ window.ArdaRDGApi = {
       "sourceLine": 36
     },
     {
-      "id": "api-arda-tardanodedefinition-021c4c81",
+      "id": "api-arda-tardanodedefinition-14a1939c",
       "name": "TArdaNodeDefinition",
       "qualifiedName": "arda::TArdaNodeDefinition",
-      "kind": "alias",
+      "kind": "class",
       "component": "core",
       "page": "api-reference.html",
-      "signature": "#undef ARDA_NODE_DEFINITION_RAY template <class Node, class Parameters, EArdaNodeType Type = EArdaNodeType::Compute> using TArdaNodeDefinition = typename TArdaNodeDefinitionTraits<Type>::template FArdaBase<Node, Parameters>",
-      "summary": "Uniform CRTP authoring entry. All specializations share registration, parameter snapshots, structured/positional invocation and ARDA_DECLARE_GRAPH_NODE/ARDA_DEFINE_GRAPH_NODE globals. Compute/native operations implement Record; CUDA implements PrepareCuda. Graphics stages implement ConfigureGraphics and return typed state. Ray providers return typed shader references, and a ray-generation terminal implements Record to dispatch its assembled pipeline and shader table.",
-      "details": "Uniform CRTP authoring entry. All specializations share registration, parameter snapshots, structured/positional invocation and ARDA_DECLARE_GRAPH_NODE/ARDA_DEFINE_GRAPH_NODE globals. Compute/native operations implement Record; CUDA implements PrepareCuda. Graphics stages implement ConfigureGraphics and return typed state. Ray providers return typed shader references, and a ray-generation terminal implements Record to dispatch its assembled pipeline and shader table.",
+      "signature": "template <class Node, class Parameters, EArdaNodeType Type = EArdaNodeType::Compute> class TArdaNodeDefinition : public TArdaNodeDefinitionTraits<Type>::template FArdaBase<Node, Parameters>",
+      "summary": "Uniform CRTP authoring entry. All specializations share registration, parameter snapshots, structured/positional invocation and ARDA_DECLARE_GRAPH_NODE/ARDA_DEFINE_GRAPH_NODE globals. Compute/native operations implement Record; CUDA implements PrepareCuda and may supply RecordComputeAlternative for devices without CUDA. All nodes inherit CheckRequiredFeatures. Graphics stages implement ConfigureGraphics and return typed state. Ray providers return typed shader references, and a ray-generation terminal implements Record to dispatch its assembled pipeline and shader table.",
+      "details": "Uniform CRTP authoring entry. All specializations share registration, parameter snapshots, structured/positional invocation and ARDA_DECLARE_GRAPH_NODE/ARDA_DEFINE_GRAPH_NODE globals. Compute/native operations implement Record; CUDA implements PrepareCuda and may supply RecordComputeAlternative for devices without CUDA. All nodes inherit CheckRequiredFeatures. Graphics stages implement ConfigureGraphics and return typed state. Ray providers return typed shader references, and a ray-generation terminal implements Record to dispatch its assembled pipeline and shader table.",
       "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaNodeDefinition.h",
       "params": [],
       "returns": "",
@@ -11594,7 +11826,49 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 98
+      "sourceLine": 100
+    },
+    {
+      "id": "api-arda-tardanodedefinition-mnodetype-eb7eda36",
+      "name": "mNodeType",
+      "qualifiedName": "arda::TArdaNodeDefinition::mNodeType",
+      "kind": "constant",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static constexpr EArdaNodeType mNodeType = Type",
+      "summary": "Defines node type in the public dependency graph contract.",
+      "details": "Defines node type in the public dependency graph contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaNodeDefinition.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::TArdaNodeDefinition"
+      ],
+      "sourceLine": 103
+    },
+    {
+      "id": "api-arda-tardanodedefinition-addintrinsicrequirements-b8539cb4",
+      "name": "AddIntrinsicRequirements",
+      "qualifiedName": "arda::TArdaNodeDefinition::AddIntrinsicRequirements",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static void AddIntrinsicRequirements(FArdaDependencyNodeRequirements& Requirements)",
+      "summary": "Performs add intrinsic requirements through the public dependency graph contract.",
+      "details": "Performs add intrinsic requirements through the public dependency graph contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaNodeDefinition.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::TArdaNodeDefinition"
+      ],
+      "sourceLine": 105
     },
     {
       "id": "api-arda-tardanodeparameterkey-3e715fe0",
@@ -14828,7 +15102,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 12
+      "sourceLine": 14
     },
     {
       "id": "api-arda-fardadependencynodeoutput-mname-a9479262",
@@ -14849,7 +15123,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeOutput"
       ],
-      "sourceLine": 14
+      "sourceLine": 16
     },
     {
       "id": "api-arda-fardadependencynodeoutput-mresource-45dc350e",
@@ -14870,7 +15144,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeOutput"
       ],
-      "sourceLine": 15
+      "sourceLine": 17
     },
     {
       "id": "api-arda-fardadependencynodeoutput-mrequiredbufferusage-1fa14dcf",
@@ -14891,7 +15165,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeOutput"
       ],
-      "sourceLine": 17
+      "sourceLine": 19
     },
     {
       "id": "api-arda-fardadependencynodeoutput-mrequiredtextureusage-8e74d5d4",
@@ -14912,7 +15186,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeOutput"
       ],
-      "sourceLine": 18
+      "sourceLine": 20
     },
     {
       "id": "api-arda-fardadependencyresourcecontext-b766a08b",
@@ -14933,7 +15207,28 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 25
+      "sourceLine": 27
+    },
+    {
+      "id": "api-arda-fardadependencyresourcecontext-getdevice-6da0fd41",
+      "name": "GetDevice",
+      "qualifiedName": "arda::FArdaDependencyResourceContext::GetDevice",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] const IArdaRHIDevice* GetDevice() const",
+      "summary": "Borrowed device for read-only capability and execution-route decisions during DeclareResources. Null denotes device-independent analysis. The graph owns the device; do not retain this pointer beyond the declaration callback or use it to allocate, submit, wait, or mutate native state.",
+      "details": "Borrowed device for read-only capability and execution-route decisions during DeclareResources. Null denotes device-independent analysis. The graph owns the device; do not retain this pointer beyond the declaration callback or use it to allocate, submit, wait, or mutate native state.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Resources/ArdaDependencyResourceContext.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaDependencyResourceContext"
+      ],
+      "sourceLine": 34
     },
     {
       "id": "api-arda-fardadependencyresourcecontext-buffer-7e0254c2",
@@ -14954,7 +15249,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyResourceContext"
       ],
-      "sourceLine": 28
+      "sourceLine": 35
     },
     {
       "id": "api-arda-fardadependencyresourcecontext-texture-46809ee4",
@@ -14975,7 +15270,49 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyResourceContext"
       ],
-      "sourceLine": 29
+      "sourceLine": 36
+    },
+    {
+      "id": "api-arda-fardadependencyresourcecontext-buffer-ea409cfa",
+      "name": "Buffer",
+      "qualifiedName": "arda::FArdaDependencyResourceContext::Buffer",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus Buffer(FArdaGraphBuffer& Output, eastl::string Name, FArdaRHIBufferDesc Desc)",
+      "summary": "Preserve the typed facade while declaring or validating a named node output.",
+      "details": "Preserve the typed facade while declaring or validating a named node output.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Resources/ArdaDependencyResourceContext.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaDependencyResourceContext"
+      ],
+      "sourceLine": 38
+    },
+    {
+      "id": "api-arda-fardadependencyresourcecontext-texture-f4e224dc",
+      "name": "Texture",
+      "qualifiedName": "arda::FArdaDependencyResourceContext::Texture",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus Texture(FArdaGraphTexture& Output, eastl::string Name, FArdaRHITextureDesc Desc)",
+      "summary": "Performs texture through the public dependency graph contract.",
+      "details": "Performs texture through the public dependency graph contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Resources/ArdaDependencyResourceContext.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaDependencyResourceContext"
+      ],
+      "sourceLine": 39
     },
     {
       "id": "api-arda-fardadependencyresourcecontext-find-4a61eb90",
@@ -14996,7 +15333,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyResourceContext"
       ],
-      "sourceLine": 30
+      "sourceLine": 40
     },
     {
       "id": "api-arda-eardagraphresourcekind-7ea8d235",
@@ -15206,7 +15543,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 59
+      "sourceLine": 60
     },
     {
       "id": "api-arda-fardagraphtexture-7b92de0c",
@@ -15227,7 +15564,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 61
+      "sourceLine": 62
     },
     {
       "id": "api-arda-fardagraphaccelerationstructure-e5366624",
@@ -15248,7 +15585,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 63
+      "sourceLine": 64
     },
     {
       "id": "api-arda-eardagraphicsstage-3d6d1058",
@@ -20774,6 +21111,90 @@ window.ArdaRDGApi = {
       "sourceLine": 20
     },
     {
+      "id": "api-arda-fardacheckrequiredfeaturesrule-836ea7a8",
+      "name": "FArdaCheckRequiredFeaturesRule",
+      "qualifiedName": "arda::FArdaCheckRequiredFeaturesRule",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaCheckRequiredFeaturesRule final : public FArdaGraphCompileRule",
+      "summary": "Reject missing backend or environment requirements for every attached node, including culled work. Rechecks frozen public parameters without preparing nodes or issuing GPU commands. The compiler also enforces this invariant when custom rule lists omit this default rule.",
+      "details": "Reject missing backend or environment requirements for every attached node, including culled work. Rechecks frozen public parameters without preparing nodes or issuing GPU commands. The compiler also enforces this invariant when custom rule lists omit this default rule.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorRequirementsRules.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 10
+    },
+    {
+      "id": "api-arda-fardacheckrequiredfeaturesrule-getname-70d6fbed",
+      "name": "GetName",
+      "qualifiedName": "arda::FArdaCheckRequiredFeaturesRule::GetName",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "const char* GetName() const noexcept override",
+      "summary": "Performs get name through the public dependency graph contract.",
+      "details": "Performs get name through the public dependency graph contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorRequirementsRules.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaCheckRequiredFeaturesRule"
+      ],
+      "sourceLine": 13
+    },
+    {
+      "id": "api-arda-fardacheckrequiredfeaturesrule-allowsadaptivescheduling-e004c9c5",
+      "name": "AllowsAdaptiveScheduling",
+      "qualifiedName": "arda::FArdaCheckRequiredFeaturesRule::AllowsAdaptiveScheduling",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "bool AllowsAdaptiveScheduling() const noexcept override",
+      "summary": "Performs allows adaptive scheduling through the public dependency graph contract.",
+      "details": "Performs allows adaptive scheduling through the public dependency graph contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorRequirementsRules.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaCheckRequiredFeaturesRule"
+      ],
+      "sourceLine": 18
+    },
+    {
+      "id": "api-arda-fardacheckrequiredfeaturesrule-apply-79bbcfc2",
+      "name": "Apply",
+      "qualifiedName": "arda::FArdaCheckRequiredFeaturesRule::Apply",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus Apply(const FArdaInductorGraph& Graph, FArdaInductorCompileResult& Result) const override",
+      "summary": "Performs apply through the public dependency graph contract.",
+      "details": "Performs apply through the public dependency graph contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorRequirementsRules.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaCheckRequiredFeaturesRule"
+      ],
+      "sourceLine": 23
+    },
+    {
       "id": "api-arda-fardadeduceresourceusagerule-351b82c3",
       "name": "FArdaDeduceResourceUsageRule",
       "qualifiedName": "arda::FArdaDeduceResourceUsageRule",
@@ -22286,6 +22707,27 @@ window.ArdaRDGApi = {
       "sourceLine": 165
     },
     {
+      "id": "api-arda-tardacudaoperandnode-getcomputealternativerequirements-7a379f37",
+      "name": "GetComputeAlternativeRequirements",
+      "qualifiedName": "arda::TArdaCudaOperandNode::GetComputeAlternativeRequirements",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "static FArdaDependencyNodeRequirements GetComputeAlternativeRequirements(const FArdaParameters& Parameters)",
+      "summary": "The compute route checks its own supplied implementation, without inheriting CUDA-only requirements.",
+      "details": "The compute route checks its own supplied implementation, without inheriting CUDA-only requirements.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Runtime/ArdaDependencyGraphCuda.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::TArdaCudaOperandNode"
+      ],
+      "sourceLine": 211
+    },
+    {
       "id": "api-arda-tardacudaoperandnode-validate-2bc38cda",
       "name": "Validate",
       "qualifiedName": "arda::TArdaCudaOperandNode::Validate",
@@ -22304,7 +22746,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaCudaOperandNode"
       ],
-      "sourceLine": 193
+      "sourceLine": 248
     },
     {
       "id": "api-arda-tardacudaoperandnode-getcanonicalkey-99e504e0",
@@ -22325,7 +22767,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaCudaOperandNode"
       ],
-      "sourceLine": 200
+      "sourceLine": 255
     },
     {
       "id": "api-arda-tardacudaoperandnode-describe-b64a1863",
@@ -22346,7 +22788,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaCudaOperandNode"
       ],
-      "sourceLine": 208
+      "sourceLine": 263
     },
     {
       "id": "api-arda-tardacudaoperandnode-preparecuda-24d49c2f",
@@ -22367,7 +22809,28 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaCudaOperandNode"
       ],
-      "sourceLine": 216
+      "sourceLine": 271
+    },
+    {
+      "id": "api-arda-tardacudaoperandnode-recordcomputealternative-b5723a9e",
+      "name": "RecordComputeAlternative",
+      "qualifiedName": "arda::TArdaCudaOperandNode::RecordComputeAlternative",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "template <class T = Operand, eastl::enable_if_t<eastl::is_base_of_v<FArdaComputeOperand, T>, int> = 0> static FArdaRHIStatus RecordComputeAlternative(FArdaDependencyExecutionContext& Context, const FArdaParameters& Parameters, const FArdaState&, FArdaInstanceState&)",
+      "summary": "Available only for real compute operands; legacy duck-typed CUDA adapters keep their original contract.",
+      "details": "Available only for real compute operands; legacy duck-typed CUDA adapters keep their original contract.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Runtime/ArdaDependencyGraphCuda.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::TArdaCudaOperandNode"
+      ],
+      "sourceLine": 290
     },
     {
       "id": "api-arda-eardagraphresourcetype-191cc979",

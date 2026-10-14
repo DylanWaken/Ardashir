@@ -130,6 +130,35 @@ class MacroExtractionTest(unittest.TestCase):
                 self.assertEqual(by_name[name]["sourceLine"], line)
 
 
+class EnumExtractionTest(unittest.TestCase):
+    def test_forward_enum_does_not_consume_the_following_struct(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Requirements.h").write_text(
+                "namespace arda {\n"
+                "enum class EForward : uint8_t;\n"
+                "struct FRequirement\n"
+                "{\n"
+                "    eastl::string mName;\n"
+                "};\n"
+                "enum class ERoute : uint8_t\n"
+                "{\n"
+                "    Native,\n"
+                "    Alternative = 2\n"
+                "};\n"
+                "}\n", encoding="utf-8")
+            symbols = make_symbols(root, [("Requirements.h", "arda", "core")], "test")
+            enumerators = [item for item in symbols if item["kind"] == "enumerator"]
+            self.assertEqual(
+                [(item["qualifiedName"], item["signature"], item["sourceLine"])
+                 for item in enumerators],
+                [("arda::ERoute::Native", "Native", 9),
+                 ("arda::ERoute::Alternative", "Alternative = 2", 10)],
+            )
+            self.assertTrue(any(item["qualifiedName"] == "arda::FRequirement::mName"
+                                and item["kind"] == "member variable" for item in symbols))
+
+
 class CallableExtractionTest(unittest.TestCase):
     def test_function_template_types_are_not_methods_but_returning_methods_are(self):
         with tempfile.TemporaryDirectory() as directory:
