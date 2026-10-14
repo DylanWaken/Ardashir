@@ -8,10 +8,11 @@
   "articles": [
     {
       "file": "Docs/Unreal/scene-representation.html",
-      "sha256": "45e9a9a36900bc008ae4a911dd8184cf0034b605e963f5a6ced5c5fabb39e6f2",
-      "prose_words": 19756,
+      "sha256": "05c81f568db3000ab9d9747f52b7ae3e8d09c91f9abfbaf0e8e657b6372be895",
+      "prose_words": 22912,
       "chapters": 13,
-      "figures": 52
+      "figures": 52,
+      "data_tables": 19
     },
     {
       "file": "Docs/Unreal/nanite-and-lumen.html",
@@ -102,12 +103,22 @@
       "Several adjacent renderer class names require careful reading",
       "Logical IDs and illustrative byte addresses are separate teaching examples",
       "Feature combinations require project-specific capability validation"
-    ]
+    ],
+    "reviewed_scene_sha256": "45e9a9a36900bc008ae4a911dd8184cf0034b605e963f5a6ced5c5fabb39e6f2"
   },
   "limits": [
     "The source study and mathematical render examples are not a build or execution of Unreal Engine.",
     "Original software renders are explicitly labeled and do not claim Unreal BRDF, GBuffer encoding, GI, or performance fidelity.",
     "The Arda adapter contract is a proposal, not implemented renderer support.",
     "A scoped inventory cannot guarantee support for arbitrary custom Unreal plugins."
-  ]
+  ],
+  "scene_type_tables_update": {
+    "date": "2026-10-14",
+    "scope": "19 in-context tables of scene data responsibilities, actual fields/operations, and courtyard use cases; selected fields rather than a complete API catalogue.",
+    "new_source_ranges": 46,
+    "source_verification": "PASS: scene article, compatibility evidence, and all new table source hashes checked against D:/UnrealEngine.",
+    "documentation_validation": "PASS: complete published documentation tree, zero errors.",
+    "browser_validation": "PASS: all three articles at four widths; 19 tables have named keyboard-scrollable regions; no page overflow; table screenshots inspected.",
+    "beginner_review": "Existing beginner review predates these added tables; its reviewed scene hash is recorded separately."
+  }
 }
