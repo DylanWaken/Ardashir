@@ -81,6 +81,13 @@ def render(verify=False):
         width, height = re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)"', svg).groups()
         return tag[:-1] + f' width="{width}" height="{height}">'
     body = re.sub(r'<img\b[^>]*src="([^"]+\.svg)"[^>]*>', image_dimensions, body)
+    table_numbers = iter(range(1, body.count('<table>') + 1))
+    def collapse_table(match):
+        title_id = f'data-table-title-{next(table_numbers):02}'
+        return (f'<details class="data-table-details"><summary id="{title_id}">{match[1]}</summary>'
+                f'<div class="table-wrap"><table aria-labelledby="{title_id}">{match[2]}</table></div></details>')
+    body = re.sub(r'<div class="table-wrap"><table><caption>(.*?)</caption>(.*?)</table></div>',
+                  collapse_table, body, flags=re.S)
     body = re.sub(r'<div class="table-wrap">', '<div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table">', body)
     body = body.replace('<th>', '<th scope="col">')
     evidence = sources(verify)
