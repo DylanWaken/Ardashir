@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 710" role="img" aria-labelledby="title desc"><title id="title">One point edit exposes the provider’s real dependency contract</title><desc id="desc">A scanned point changes position while its color remains fixed. The raster point buffer and conservative bounds advance to revision eight, an existing reconstructed triangle product becomes stale, and no ray product exists to update. Missing normal and UV attributes require a declared material fallback.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 710" role="img" aria-labelledby="title desc"><title id="title">Room scan: one point edit exposes the provider contract</title><desc id="desc">A room scan point changes position while its color remains fixed. The raster point buffer and conservative bounds advance to revision eight, an existing reconstructed triangle product becomes stale, and no ray product exists to update. Missing normal and UV attributes require a declared material fallback.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#237665"/></marker></defs>
 <rect width="1040" height="710" fill="#fcfaf5"/>
-<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">One point edit exposes the provider’s real dependency contract</text>
+<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">Room scan: one point edit exposes the provider contract</text>
 <circle cx="71" cy="169" r="9" fill="#bd4939" stroke="#bd4939" stroke-width="2"/>
 <circle cx="119" cy="153" r="9" fill="#287c6b" stroke="#287c6b" stroke-width="2"/>
 <circle cx="160" cy="206" r="9" fill="#3d72b0" stroke="#3d72b0" stroke-width="2"/>
@@ -15,9 +15,9 @@
 <line x1="197" y1="312" x2="292" y2="323" stroke="#a74834" stroke-width="3" marker-end="url(#arrow)"/>
 <rect x="51" y="134" width="214" height="194" rx="0" fill="none" stroke="#a74834" stroke-width="2" stroke-dasharray="6 5"/>
 <rect x="45" y="128" width="281" height="217" rx="0" fill="none" stroke="#237665" stroke-width="3"/>
-<text x="156" y="99" font-family="Arial, sans-serif" font-size="24" fill="#263a36" text-anchor="middle" font-weight="bold">Scanned samples</text>
-<text x="45" y="395" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="start" font-weight="normal">Point 17: (2,1,0) → (3,1,0)</text>
-<text x="45" y="429" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="start" font-weight="normal">Stored: position + color</text>
+<text x="156" y="99" font-family="Arial, sans-serif" font-size="24" fill="#263a36" text-anchor="middle" font-weight="bold">Room scan samples</text>
+<text x="45" y="395" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="start" font-weight="normal">Point 17: x = 0.2 → 0.3 m</text>
+<text x="45" y="429" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="start" font-weight="normal">y = 2.2 m, z = 0.6 m; color fixed</text>
 <text x="45" y="463" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="start" font-weight="normal">Missing: normal, tangent, UV</text>
 <text x="658" y="100" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="middle" font-weight="normal">Selected material asks for UV + tangent</text>
 <text x="435" y="153" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Those attributes cannot be fetched from this record.</text>

@@ -1,15 +1,13 @@
-"""Reproduce the scene article's original mathematical illustrations, using only Python's standard library.
+"""Reproduce the scene article's room diagrams with Python's standard library.
 
-These are deliberately small teaching examples, not Unreal captures or Unreal performance measurements.
-Run from any directory. SVG geometry, pixel rasterization and PNG encoding are computed here.
+Math diagrams are computed teaching examples; runtime panels embed unchanged, attributed Unreal PNGs.
+No generated figure is a performance measurement. Run from any directory.
 """
 from pathlib import Path
 from html import escape
 import base64
 import json
 import math
-import struct
-import zlib
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
@@ -18,14 +16,14 @@ OUT.mkdir(parents=True, exist_ok=True)
 FIGURES = []
 ANCHORS = {
     'indexed-slab': 'A vertex record usually contains more than position.',
-    'coordinate-projection': 'Now place the slab three meters from the courtyard origin.',
+    'coordinate-projection': 'Now place a floor tile inside the room.',
     'ownership-and-draw-counts': 'Now count the illustrative draw submissions.',
     'thread-snapshots': 'The add path illustrates the handoff precisely.',
     'removal-fence': 'Identity has to survive these transitions.',
     'gpu-byte-address': 'The physical buffer layout is an implementation decision',
     'raster-depth-winners': 'Before giving Unreal',
     'alpha-and-volume': 'A ray marcher approximates this integral',
-    'gate-attachment': 'For the gate, imagine an actor containing',
+    'gate-attachment': 'For the indoor door, imagine an actor containing',
     'weighted-skinning': 'Skinning introduces transforms inside the object.',
     'deformation-bounds': 'Bounds must follow the same physical reality.',
     'material-response': 'Material instances reuse a parent material',
@@ -91,7 +89,7 @@ def slab(s,x,y,w=90,h=24,fill='#d8d5bf'):
 
 
 def indexed_slab():
-    s=SVG('Four vertices, two triangles, one shared slab', 'Colored vertex positions match colored rows in the vertex buffer. Two index triples reuse vertices zero and two. Texture coordinates give the surface a separate two-dimensional address.',620)
+    s=SVG('Room floor closeup: four vertices and two triangles', 'Colored vertex positions match colored rows in the vertex buffer. Two index triples reuse vertices zero and two. Texture coordinates give the surface a separate two-dimensional address.',620)
     pts=[(80,280),(295,350),(392,167),(180,100)]
     s.poly([pts[i] for i in [0,1,2]],'#e4ede2',GREEN)
     s.poly([pts[i] for i in [0,2,3]],'#e6dcc5',GOLD)
@@ -112,44 +110,48 @@ def indexed_slab():
         s.circle(522,y-7,6,VERT[i]);s.text(542,y,a,22,VERT[i]);s.text(579,y,b,22);s.text(851,y,c,22)
     s.lines(510,428,['Each row also supplies a surface normal.','Here all four normals are (0, 0, 1).','The two triangles share v0 and v2.'],21)
     s.lines(31,572,['A vertex index selects a whole attribute row; a UV selects a place in a texture.'],22)
-    s.save('indexed-slab',1,'A two-triangle slab with four colored vertices, matching position and UV rows, and the index triples 0,1,2 and 0,2,3.','Read the colors across the geometry and the arrays: the green row is always vertex 1, whether a triangle references it once or many times. The diagonal is shared through indices 0 and 2. Position values use the chapter’s 100-centimeter square slab. This is an illustrative mesh layout, not the binary layout of a particular Unreal vertex factory.')
+    s.save('indexed-slab',1,'A two-triangle room floor patch with four colored vertices, matching position and UV rows, and the index triples 0,1,2 and 0,2,3.','Read the colors across the geometry and the arrays: the green row is always vertex 1, whether a triangle references it once or many times. The diagonal is shared through indices 0 and 2. Position values use the chapter’s 100-centimeter square room floor patch. This is an illustrative mesh layout, not the binary layout of a particular Unreal vertex factory.')
 
 
 def transforms():
-    s=SVG('Compute the same triangle in local, world, and image space', 'The slab triangle is translated three meters, then a pinhole camera computes screen position by dividing by camera depth. All plotted points are computed from the printed coordinates.',650)
+    s=SVG('The room floor patch in local, world, and image space', 'A mathematical one-meter square patch of the room floor is translated to minus fifty,two hundred,zero centimeters. A teaching overhead camera projects it by dividing by positive forward depth. This extracted patch is not the room Cube mesh topology.',680)
     local=[(0,0,0),(100,0,0),(100,100,0)]
-    world=[(x+300,y,z) for x,y,z in local]
-    camera=[(x-250,y,400-z) for x,y,z in world]
+    world=[(x-50,y+200,z) for x,y,z in local]
+    camera=[(x+100,y-200,400-z) for x,y,z in world]
     pixel=[(160+240*x/z,120-240*y/z) for x,y,z in camera]
-    s.lines(173,86,['Local coordinates','asset-centered axes'],22,anchor='middle')
+    assert pixel == [(190.0,120.0),(250.0,120.0),(250.0,60.0)]
+    s.lines(173,86,['Local patch','100 × 100 cm'],22,anchor='middle')
     lp=[(80+1.7*x,321-1.7*y) for x,y,z in local]
     s.line(55,321,300,321,MUTED,2,True);s.line(80,347,80,135,MUTED,2,True)
     s.poly(lp,'#e3eadd',GREEN)
-    s.lines(509,86,['World coordinates','translation + (300,0,0) cm'],22,anchor='middle')
-    wp=[(389+0.55*x,321-0.55*y) for x,y,z in world]
-    s.line(389,321,665,321,MUTED,2,True);s.line(389,347,389,164,MUTED,2,True);s.poly(wp,'#e4dcc5',GOLD)
-    s.text(389,374,'(0,0)',18,anchor='middle');s.text(554,356,'300',18,anchor='middle');s.text(609,356,'400',18,anchor='middle')
-    s.lines(853,86,['Image coordinates','x = cx + f X / Z'],22,anchor='middle')
+    s.lines(509,86,['World floor','translation (−50,200,0)'],22,anchor='middle')
+    # Room floor extents: X [-200,200], Y [0,500]. Plan view, +Y up.
+    wx,wy,k=419,365,.44
+    s.rect(wx,wy-500*k,400*k,500*k,'#efeee6',MUTED,1)
+    wp=[(wx+(x+200)*k,wy-y*k) for x,y,z in world]
+    s.poly(wp,'#e4dcc5',GOLD)
+    s.text(507,397,'inside 4 m × 5 m room',18,anchor='middle')
+    s.lines(853,86,['Teaching image','x = cx + f X / Z'],22,anchor='middle')
     s.rect(711,158,301,231,'#e7ece7',MUTED,1)
     pp=[(711+px*301/320,158+py*231/240) for px,py in pixel];s.poly(pp,'#d5e4ee',BLUE)
     for points in [lp,wp,pp]:
         for i,(x,y) in enumerate(points):s.circle(x,y,7,VERT[i])
     s.lines(32,441,['Track the red vertex v0:'],24)
-    s.lines(50,481,['Local: (0,0,0)','World: (300,0,0) cm'],22)
+    s.lines(50,481,['Local: (0,0,0)','World: (−50,200,0) cm'],21)
     s.lines(362,467,['Camera coordinates: (50,0,400)','positive forward depth = 400 cm','f = 240 px; center = (160,120)'],20)
     s.lines(763,481,['Image: (190,120)','240 × 50 / 400 = 30 px'],20)
-    s.lines(32,582,['Computed mathematical projection. Same vertex identity; three different coordinate systems.','Camera at (250,0,400) cm, looking along −Z; image Y increases downward.'],21)
-    s.save('coordinate-projection',1,'Computed plots of a colored slab triangle before transformation, after translation by 300 centimeters, and after perspective projection to image coordinates.','Follow the red vertex: local (0,0,0) becomes world (300,0,0) cm. The camera at (250,0,400) looks along world −Z; this illustration defines positive camera depth along that forward direction, giving camera coordinates (50,0,400). It lands 30 pixels right of the image center. The green vertex is the prose’s local (100,0,0), now world (400,0,0). The triangles are computed from these coordinates. This is an original mathematical rendering, not an Unreal screenshot or an assertion about Unreal matrix storage order.')
+    s.lines(32,582,['Overhead teaching camera at (−100,200,400) cm, looking down along −Z.','The ceiling is omitted for this mathematical closeup; this is not the Unreal capture camera.','Image Y increases downward. The same patch returns in the one-pixel worked example.'],20)
+    s.save('coordinate-projection',1,'A one-meter mathematical room floor patch is translated to world minus fifty,two hundred,zero centimeters and viewed by an overhead teaching camera. The red vertex projects to 190,120 pixels.','Follow the red vertex: local (0,0,0) becomes world (−50,200,0) cm. Relative to the overhead camera at (−100,200,400), it has camera coordinates (50,0,400), so it lands 30 pixels right of image center. The green local vertex (100,0,0) becomes world (50,200,0). Every plotted point is computed. This is an extracted floor-patch calculation with the ceiling omitted, not the original Cube mesh topology, an Unreal screenshot, or Unreal’s matrix storage convention. The baseline runtime camera remains at (0,−400,165) cm.')
 
 
 def actors_instances():
-    s=SVG('One courtyard-kit Actor: 3 primitives, 12 placements, 12 submissions', 'Two ordinary mesh components and one instanced component share one two-section mesh asset. The instanced component has ten placements. Two passes produce eight ordinary submissions plus four instanced submissions.',660)
-    s.text(260,90,'Two ordinary components',24,anchor='middle')
+    s=SVG('Room tile kit: 3 primitives, 12 placements, 12 submissions', 'Two ordinary mesh components and one instanced component share one two-section mesh asset. The instanced component has ten placements. Two passes produce eight ordinary submissions plus four instanced submissions.',660)
+    s.text(260,90,'Two ordinary tile components',24,anchor='middle')
     s.circle(92,164,29,'#e8dfcb',GOLD);s.text(92,172,'A',24,anchor='middle')
     s.line(122,164,209,140,arrow=True);s.line(122,164,209,231,arrow=True)
     slab(s,222,146,95);slab(s,222,237,95)
     s.text(365,149,'placement 1',20);s.text(365,240,'placement 2',20)
-    s.text(758,90,'One ISM component: ten placements',22,anchor='middle')
+    s.text(758,90,'One tile ISM: ten placements',22,anchor='middle')
     for i in range(10):slab(s,570+(i%5)*80,153+(i//5)*86,57)
     s.lines(260,323,['2 render primitives','2 placements'],22,anchor='middle')
     s.lines(754,323,['1 render primitive','10 placements'],22,anchor='middle')
@@ -158,11 +160,11 @@ def actors_instances():
     s.text(40,482,'Ordinary components',22);s.text(552,482,'2 × 2 × 2 = 8 submissions',23,RUST)
     s.text(40,528,'Instanced group (10 placements)',22);s.text(552,528,'1 × 2 × 2 = 4 submissions',23,GREEN)
     s.lines(31,595,['Total: 12 submissions cover 12 × 2 × 2 = 48 placement-section-pass combinations.','Explicit example: all visible, conventional opaque path, preserve sections, no draw merging.'],20)
-    s.save('ownership-and-draw-counts',6,'One Actor has two ordinary mesh components and one ten-instance component. Their three primitives describe twelve placements. Two sections and two passes produce eight ordinary and four instanced submissions.','Count the visible placements first: two ordinary placements plus ten instanced placements share the mesh asset. Then apply the prose’s two-section, two-pass assumptions: 8 ordinary submissions plus 4 instanced submissions, each instanced submission processing ten placements. The total is 12 submissions for 48 placement-section-pass combinations. These are the chapter’s controlled conventional-path assumptions, not an empirical Unreal draw count.')
+    s.save('ownership-and-draw-counts',6,'One room tile-kit Actor has two ordinary mesh components and one ten-instance component. Their three primitives describe twelve placements. Two sections and two passes produce eight ordinary and four instanced submissions.','In the room tile-kit thought experiment, count the visible placements first: two ordinary placements plus ten instanced placements share the mesh asset. Then apply the prose’s two-section, two-pass assumptions: 8 ordinary submissions plus 4 instanced submissions, each instanced submission processing ten placements. The total is 12 submissions for 48 placement-section-pass combinations. This optional tile kit is a schematic extension of the room; the baseline capture uses one floor Cube component. These are controlled conventional-path assumptions, not an empirical Unreal draw count.')
 
 
 def thread_snapshots():
-    s=SVG('A transform reaches three timelines at different moments', 'Game, render, and GPU lanes show the same gate at successively newer angles. A submitted frame retains its snapshot while later updates are prepared.',590)
+    s=SVG('The indoor door reaches three timelines at different moments', 'Game, render, and GPU lanes show the same indoor door at successively newer angles. A submitted frame retains its snapshot while later updates are prepared.',590)
     times=[286,496,706,916]
     for x,n in zip(times,['t0','t1','t2','t3']):s.text(x,97,n,22,anchor='middle');s.line(x,113,x,473,'#d4dad0',1)
     for y,name in [(169,'Game state'),(306,'Render snapshot'),(443,'GPU in flight')]:
@@ -175,15 +177,15 @@ def thread_snapshots():
     s.path('M496 195 L496 213 L671 256',GREEN,'none',2,True)
     s.path('M706 332 L706 350 L881 393',GREEN,'none',2,True)
     s.lines(31,529,['An update publishes a value; it does not mutate a buffer already being read.','This timing sketch is illustrative. Unreal frame overlap varies by configuration and workload.'],21)
-    s.save('thread-snapshots',3,'Three timeline lanes show the gate angle advancing first on the game side, then in the render snapshot, and later in a submitted GPU frame.','Read vertically at t2: gameplay has reached 60°, the prepared render snapshot shows 30°, and the illustrated GPU work still reads 0°. The angles visualize separate snapshots of the same object, not three gameplay gates. Publishing a change preserves the data already referenced by an in-flight frame; the exact amount of frame overlap is configuration-dependent.')
+    s.save('thread-snapshots',3,'Three timeline lanes show the indoor door angle advancing first on the game side, then in the render snapshot, and later in a submitted GPU frame.','Read vertically at t2: gameplay has reached 60°, the prepared render snapshot shows 30°, and the illustrated GPU work still reads 0°. The angles visualize separate snapshots of the same object, not three gameplay doors. Publishing a change preserves the data already referenced by an in-flight frame; the exact amount of frame overlap is configuration-dependent.')
 
 
 def fence_lifetime():
-    s=SVG('Removal stops new references before old GPU readers finish', 'A buffer allocation remains occupied after object removal while an older frame can still read it. A completion fence makes reclamation safe; a new generation identifies later reuse.',600)
+    s=SVG('Removing the door indicator does not finish old GPU readers', 'A buffer allocation remains occupied after object removal while an older frame can still read it. A completion fence makes reclamation safe; a new generation identifies later reuse.',600)
     s.text(35,90,'CPU object',22);s.text(35,197,'Render record',22);s.text(35,308,'GPU allocation',22)
     start,end=249,988
     for y in [111,219,330]:s.line(start,y,end,y,MUTED,2,True)
-    s.rect(252,78,291,40,'#e6d5c9',RUST,2);s.text(396,106,'Lantern exists',21,anchor='middle')
+    s.rect(252,78,291,40,'#e6d5c9',RUST,2);s.text(396,106,'Indicator exists',21,anchor='middle')
     s.rect(252,186,389,40,'#dce8db',GREEN,2);s.text(447,214,'Record accepts draws',21,anchor='middle')
     s.rect(252,297,560,54,'#d9e5ee',BLUE,2);s.text(527,333,'Occupied: old frame still reads this range',21,anchor='middle')
     s.line(545,69,545,360,RUST,2,False,'7 5');s.text(545,392,'Remove',21,RUST,'middle')
@@ -192,12 +194,12 @@ def fence_lifetime():
     s.rect(828,297,155,54,'#eee5cc',GOLD,2);s.text(905,333,'Reuse: gen 8',19,anchor='middle')
     s.rect(44,433,418,83,'#f4f0e5',MUTED,1);s.lines(62,465,['Old handle = (slot 42, generation 7)','New handle = (slot 42, generation 8)'],21)
     s.text(31,565,'A removed object and a reusable byte range are not the same lifetime event.',23)
-    s.save('removal-fence',4,'A removal timeline shows CPU object removal, cessation of new render references, continued GPU buffer occupancy, a completion fence, and later slot reuse with an incremented generation.','The blue allocation remains occupied after the red removal line because previously submitted GPU work may still read it. The fence, rather than the gameplay deletion time, permits physical reuse. Reusing slot 42 with generation 8 prevents an old logical handle for generation 7 from naming the new occupant. This is an illustrative lifetime contract, not a claim that Unreal uses this exact handle encoding.')
+    s.save('removal-fence',4,'A removal timeline shows CPU object removal, cessation of new render references, continued GPU buffer occupancy, a completion fence, and later slot reuse with an incremented generation.','In this schematic removal of the room door’s indicator, the blue allocation remains occupied after the red removal line because previously submitted GPU work may still read it. The fence, rather than the gameplay deletion time, permits physical reuse. Reusing slot 42 with generation 8 prevents an old logical handle for generation 7 from naming the new occupant. This is an illustrative lifetime contract, not a claim that Unreal uses this exact handle encoding.')
 
 
 def gpu_addresses():
-    s=SVG('A GPU record is bytes plus an indexing rule', 'Four 64-byte instance records occupy a contiguous buffer. Record three has three 16-byte transform rows followed by a 16-byte tint field. Arithmetic computes the exact tint address.',650)
-    s.lines(31,88,['Illustrative packed instance layout: stride = 64 bytes, base address = 0x1000'],22)
+    s=SVG('Room planter instances: bytes plus an indexing rule', 'Four 64-byte planter instance records occupy a contiguous buffer. Record three has three 16-byte transform rows followed by a 16-byte tint field. Arithmetic computes the exact tint address.',650)
+    s.lines(31,88,['Teaching planter instance layout: stride = 64 bytes, base address = 0x1000'],22)
     for i in range(4):
         x=50+i*242;s.rect(x,141,230,86,'#dbe7de' if i!=3 else '#e5d5bd',GREEN if i!=3 else GOLD,2)
         s.text(x+115,177,f'instance[{i}]',23,anchor='middle');s.text(x+115,210,hex(0x1000+i*64),21,anchor='middle')
@@ -209,11 +211,11 @@ def gpu_addresses():
     s.path('M891 230 L891 263 L899 300',GREEN,'none',3,True)
     s.lines(50,467,['address(tint of instance 3)','= base + instanceID × stride + fieldOffset','= 0x1000 + 3 × 64 + 48 = 0x10F0'],25,gap=39)
     s.text(31,610,'The shader and uploader must agree on stride, field offsets, alignment, and meaning.',22)
-    s.save('gpu-byte-address',5,'A contiguous instance buffer is expanded into a 64-byte teaching record with three transform rows and tint; arithmetic obtains address 0x10F0 for instance 3 tint.','Follow the highlighted fourth record, then its yellow final field. A logical instance ID becomes an address only after applying the stride and field offset. The CPU packing code and GPU decoding code must share that contract. This 64-byte example is deliberately invented for arithmetic clarity; Unreal GPU Scene has its own versioned layouts and additional tables.')
+    s.save('gpu-byte-address',5,'A contiguous instance buffer is expanded into a 64-byte teaching record with three transform rows and tint; arithmetic obtains address 0x10F0 for instance 3 tint.','Add a hypothetical fourth pot to the captured three-pot group, then follow its highlighted instance record, then its yellow final field. A logical instance ID becomes an address only after applying the stride and field offset. The CPU packing code and GPU decoding code must share that contract. This 64-byte example is deliberately invented for arithmetic clarity; Unreal GPU Scene has its own versioned layouts and additional tables.')
 
 
 def raster_pixels():
-    s=SVG('Rasterization tests samples; depth selects the visible one', 'Two triangles overlap a ten-by-eight sample grid. Green and blue cells mark covered sample centers; blue wins overlap because it has a smaller depth in this explicitly forward-depth toy example.',660)
+    s=SVG('Room crop: door and back-wall triangles compete for samples', 'Schematic projections of a room door triangle and a back-wall triangle overlap a ten-by-eight sample grid. Green and blue cells mark covered sample centers; blue wins overlap because it has a smaller depth in this explicitly forward-depth toy example.',660)
     A=[(0.6,0.8),(8.8,2.1),(3.2,7.6)];B=[(4.0,0.5),(9.3,6.6),(1.9,5.1)]
     def hit(p,tri):
         e=[]
@@ -229,17 +231,17 @@ def raster_pixels():
     s.poly([(x0+x*c,y0+y*c) for x,y in A],'none',GREEN,3)
     s.poly([(x0+x*c,y0+y*c) for x,y in B],'none',BLUE,3)
     s.text(45,96,'Actual sample-center coverage',23,weight='bold')
-    s.lines(576,143,['Triangle A: depth 0.60','Triangle B: depth 0.35','Here, smaller depth is nearer.'],23,gap=36)
+    s.lines(576,143,['Back wall A: depth 0.60','Door B: depth 0.35','Here, smaller depth is nearer.'],23,gap=36)
     s.rect(576,289,395,122,'#f2eee3',MUTED,1)
     s.lines(595,324,['Sample (4.5, 3.5): inside A and B','0.35 < 0.60 → B wins','Shade B; A is hidden at this sample.'],21,gap=33)
     s.rect(x0+4*c,y0+3*c,c,c,'none',RUST,4)
     s.lines(32,558,['Coverage and depth are separate tests. A triangle may touch a pixel square','without containing its sample center. Unreal commonly uses reversed depth;','the printed comparison belongs only to this forward-depth illustration.'],21)
-    s.save('raster-depth-winners',6,'A numerically rasterized sample grid shows two overlapping triangles, one highlighted shared sample, and the depth comparison that selects the blue triangle.','The colored cells are computed from triangle edge tests at their centers; the outlines show the continuous triangles. At sample (4.5,3.5), both cover the sample, then 0.35 wins over 0.60 in this explicitly forward-depth example. The depth convention is stated because copying that inequality into Unreal’s reversed-depth paths would be wrong.')
+    s.save('raster-depth-winners',6,'A numerically rasterized sample grid shows two overlapping triangles, one highlighted shared sample, and the depth comparison that selects the blue triangle.','Treat the outlines as a closeup of the room door in front of the back wall. This is a schematic projection with chosen depths, not triangle coordinates extracted from the capture. The colored cells are computed from triangle edge tests at their centers; the outlines show the continuous triangles. At sample (4.5,3.5), both cover the sample, then 0.35 wins over 0.60 in this explicitly forward-depth example. The depth convention is stated because copying that inequality into Unreal’s reversed-depth paths would be wrong.')
 
 
 def alpha_volume():
-    s=SVG('Two surface layers and a participating volume accumulate differently', 'Two transparent panes apply alpha compositing in order. A fog volume uses exponential transmittance along distance, with plotted attenuation and discrete segment values.',650)
-    s.text(263,91,'Surface compositing',24,anchor='middle',weight='bold')
+    s=SVG('Room glass panes and mist accumulate differently', 'Two room display-case panes apply alpha compositing in order. The room humidifier mist uses exponential transmittance along distance, with plotted attenuation and discrete segment values.',650)
+    s.text(263,91,'Room display-case panes',24,anchor='middle',weight='bold')
     for x,swap in [(45,False),(265,True)]:
         s.rect(x,139,197,195,'#ffffff',MUTED,1)
         colors=['#0000ff','#ff0000'] if not swap else ['#ff0000','#0000ff']
@@ -247,7 +249,7 @@ def alpha_volume():
         s.data.append(f'<rect x="{x+66}" y="198" width="114" height="115" fill="{colors[1]}" fill-opacity="0.5"/>')
         s.text(x+99,366,'Red in front' if not swap else 'Blue in front',20,anchor='middle')
     s.lines(41,412,['Both α = 0.5, over white (1,1,1)','Red over blue: (0.75, 0.25, 0.50)','Blue over red: (0.50, 0.25, 0.75)'],20,gap=34)
-    s.text(795,91,'Volume transmittance',24,anchor='middle',weight='bold')
+    s.text(795,91,'Room humidifier mist',24,anchor='middle',weight='bold')
     x0,y0,w,h=603,142,367,205
     s.line(x0,y0+h,x0+w,y0+h,MUTED,2,True);s.line(x0,y0+h,x0,y0,MUTED,2,True)
     pts=[(x0+w*i/100,y0+h*(1-math.exp(-2*i/100))) for i in range(101)]
@@ -259,36 +261,36 @@ def alpha_volume():
     s.text(979,399,'distance (m)',18,anchor='end');s.text(577,123,'T',21)
     s.lines(594,445,['T(d) = exp(−σt d), σt = 0.5 /m','1 m: 0.607    2 m: 0.368    4 m: 0.135'],20,gap=34)
     s.lines(32,574,['Fog also adds in-scattered and emitted light along the ray; transmittance alone is only extinction.','Illustrative equations and colors, not Unreal’s complete translucency or volumetric pipeline.'],20)
-    s.save('alpha-and-volume',7,'Red and blue half-transparent panes are composited in both orders over white, yielding different overlap colors. A computed fog transmittance curve falls from one toward zero as distance increases.','Read the overlap patches: red over blue gives (0.75,0.25,0.50), while swapping their order gives (0.50,0.25,0.75), using the shown unit-RGB compositing arithmetic over white. A pane is a surface event with an order. Fog instead attenuates continuously along distance: the plotted curve is T(d)=exp(−0.5d). Full volume rendering additionally integrates light scattered and emitted into the ray. Displayed colors illustrate the arithmetic; this is not a complete linear-light display-management example.')
+    s.save('alpha-and-volume',7,'Red and blue half-transparent panes are composited in both orders over white, yielding different overlap colors. A computed fog transmittance curve falls from one toward zero as distance increases.','For a room display-case extension, read the overlap patches: red over blue gives (0.75,0.25,0.50), while swapping their order gives (0.50,0.25,0.75), using the shown unit-RGB compositing arithmetic over white. A pane is a surface event with an order. A humidifier’s mist instead attenuates continuously along distance: the plotted curve is T(d)=exp(−0.5d). Full volume rendering additionally integrates light scattered and emitted into the ray. Displayed colors illustrate the arithmetic; this is not a complete linear-light display-management example.')
 
 
 def gate_attachment():
-    s=SVG('The lamp follows the door because its offset is transformed too', 'A top-down gate rotates ninety degrees around a hinge at world 300,200 centimeters. The door endpoint moves from 400,200 to 300,300. A lamp sixty centimeters from the hinge moves from 360,200 to 300,260.',620)
+    s=SVG('The room door carries its attached indicator through the same turn', 'A top-down room door rotates ninety degrees around a hinge at world −150,200 centimeters. The door endpoint moves from −50,200 to −150,300. An indicator sixty centimeters from the hinge moves from −90,200 to −150,260.',620)
     ox,oy,scale=112,450,2.25
-    def xy(x,y):return ox+(x-260)*scale,oy-(y-170)*scale
-    for x in range(260,441,20):
+    def xy(x,y):return ox+(x+190)*scale,oy-(y-170)*scale
+    for x in range(-190,-9,20):
         a,b=xy(x,170),xy(x,320);s.line(*a,*b,'#dce1d5',1)
     for y in range(180,321,20):
-        a,b=xy(260,y),xy(440,y);s.line(*a,*b,'#dce1d5',1)
-    H=xy(300,200);E0=xy(400,200);E1=xy(300,300);L0=xy(360,200);L1=xy(300,260)
+        a,b=xy(-190,y),xy(-10,y);s.line(*a,*b,'#dce1d5',1)
+    H=xy(-150,200);E0=xy(-50,200);E1=xy(-150,300);L0=xy(-90,200);L1=xy(-150,260)
     s.line(*H,*E0,RUST,10);s.line(*H,*E1,GREEN,10);s.circle(*H,10,INK)
     s.circle(*L0,13,'#edcf83',GOLD,2);s.circle(*L1,13,'#edcf83',GOLD,2)
     s.path(f'M{H[0]+130} {H[1]} A130 130 0 0 0 {H[0]} {H[1]-130}',GREEN,'none',2,True)
     s.text(H[0]+80,H[1]-88,'90°',23,GREEN)
-    s.text(E0[0],E0[1]+35,'(400,200)',20,RUST,'middle')
-    s.text(E1[0],E1[1]-22,'(300,300)',20,GREEN,'middle')
-    s.text(H[0]-20,H[1]+39,'hinge (300,200)',20,INK,'middle')
-    s.lines(593,139,['Door endpoint, local (100,0):','Rz(90°) × (100,0) = (0,100)','world = (300,200) + (0,100)','= (300,300) cm'],22,gap=34)
-    s.lines(593,337,['Lamp offset, local (60,0):','Rz(90°) × (60,0) = (0,60)','world lamp = (300,260) cm'],22,gap=34)
-    s.lines(32,551,['Top-down illustration: all shown Z coordinates are zero.','The GPU can read resolved world transforms; it need not traverse this attachment chain.'],21)
-    s.save('gate-attachment',2,'A top-down gate swings from zero to ninety degrees about a hinge at 300,200 centimeters. Its lamp is marked at a sixty-centimeter local offset before and after rotation.','The brown door becomes the green door while the hinge stays fixed. Both yellow lamp positions are computed from the same parent rotation applied to the lamp’s 60-centimeter local offset. The lamp shares motion ancestry with the door; it does not have to share its mesh asset, material, or draw submission.')
+    s.text(E0[0],E0[1]+35,'(−50,200)',20,RUST,'middle')
+    s.text(E1[0],E1[1]-22,'(−150,300)',20,GREEN,'middle')
+    s.text(H[0]-20,H[1]+39,'hinge (−150,200)',20,INK,'middle')
+    s.lines(593,139,['Door endpoint, local (100,0):','Rz(90°) × (100,0) = (0,100)','world = (−150,200) + (0,100)','= (−150,300) cm'],22,gap=34)
+    s.lines(593,337,['Indicator offset, local (60,0):','Rz(90°) × (60,0) = (0,60)','world indicator = (−150,260) cm'],22,gap=34)
+    s.lines(32,551,['Top-down attachment schematic: XY only; indicator height is omitted.','The GPU can read resolved world transforms; it need not traverse this attachment chain.'],21)
+    s.save('gate-attachment',2,'A top-down room door swings from zero to ninety degrees about a hinge at −150,200 centimeters. Its indicator is marked at a sixty-centimeter local offset before and after rotation.','The brown door becomes the green door while the hinge stays fixed. Both yellow indicator positions are computed from the same parent rotation applied to the indicator’s 60-centimeter local offset. The native room setup attaches DoorPanel and AttachedIndicator as siblings beneath TeachingRoot. Both inherit the hinge transform; neither requires the other as a parent. The emissive indicator mesh has its own material and no LightComponent.')
 
 
 def weighted_skinning():
-    s=SVG('One sleeve vertex keeps its weights while its bone results move', 'A small triangulated strip is skinned with two bone transforms. For the tracked vertex, weights are 0.75 and 0.25. The current bone results 2,0 and 2,4 produce 2,1; the previous second-bone result 2,2 produced 2,0.5.',670)
+    s=SVG('Room mannequin closeup: one sleeve vertex, two bones', 'The room mannequin’s schematic sleeve strip is skinned with two bone transforms. For the tracked vertex, weights are 0.75 and 0.25. The current bone results 2,0 and 2,4 produce 2,1; the previous second-bone result 2,2 produced 2,0.5.',670)
     def weight(x):return min(1,max(0,x/8))
     def deform(x,y,shift):return x,y+weight(x)*shift
-    for col,(shift,label) in enumerate([(0,'Rest strip'),(2,'Previous pose'),(4,'Current pose')]):
+    for col,(shift,label) in enumerate([(0,'Rest sleeve'),(2,'Previous pose'),(4,'Current pose')]):
         x0=48+col*339;y0=338;scale=60
         s.text(x0+128,97,label,23,anchor='middle',weight='bold')
         for i in range(4):
@@ -301,11 +303,11 @@ def weighted_skinning():
     s.line(45,430,995,430,'#ccd5c9',2)
     s.lines(44,475,['Current: 0.75 × (2,0) + 0.25 × (2,4) = (2,1)','Previous: 0.75 × (2,0) + 0.25 × (2,2) = (2,0.5)','Local motion of tracked vertex: (0,0.5) before component and camera transforms'],22,gap=37)
     s.lines(32,614,['Original computed skinning example; translations make the weighted arithmetic visible.','Weights vary along the strip. Current and previous shape share vertex identity and connectivity.'],20)
-    s.save('weighted-skinning',8,'Three computed triangulated sleeve strips show rest, previous, and current deformation. The tracked red vertex moves from 2,0 to 2,0.5 to 2,1 under the displayed two-bone weighted calculation.','The red vertex is the prose’s 0.75/0.25 example. Its two current transformed positions are (2,0) and (2,4), so the result is (2,1); the previous pose instead used (2,2) for the second result, producing (2,0.5). The strip is actually computed with weights varying along its length. This is an illustrative software deformation using simple bone translations, not an Unreal character capture. Its retained previous result is the information motion reconstruction needs.')
+    s.save('weighted-skinning',8,'Three computed triangulated sleeve strips show rest, previous, and current deformation. The tracked red vertex moves from 2,0 to 2,0.5 to 2,1 under the displayed two-bone weighted calculation.','This computed sleeve closeup isolates the arithmetic used by the room’s captured 68-bone <code>SK_Mannequin</code>, posed by <code>ThirdPersonWalk</code>. Its invented two-bone weights do not reproduce the asset’s stored bone influences or its captured poses at 0.10 s and 0.45 s. The red vertex is the prose’s 0.75/0.25 example. Its two current transformed positions are (2,0) and (2,4), so the result is (2,1); the previous pose instead used (2,2) for the second result, producing (2,0.5). The strip is actually computed with weights varying along its length. This is an illustrative software deformation using simple bone translations, not an Unreal skeletal-mesh capture. Its retained previous result is the information motion reconstruction needs.')
 
 
 def deformation_bounds():
-    s=SVG('An unchanged rest bound can reject a visible moving hand', 'A character stands outside the illustrated view region, but the animated arm reaches into it. The small rest bound misses the view; an updated bound intersects the view and preserves visibility.',620)
+    s=SVG('Room mannequin closeup: a stale bound loses a moving hand', 'The room mannequin stands outside the illustrated view region, but the animated arm reaches into it. The small rest bound misses the view; an updated bound intersects the view and preserves visibility.',620)
     s.rect(30,118,968,336,'#f4f0e5',MUTED,1)
     s.rect(568,119,429,334,'#dce9df',GREEN,2);s.text(784,151,'Visible region of this view',22,GREEN,'middle')
     s.rect(237,200,186,235,'none',RUST,3,dash='8 6');s.text(250,187,'stale rest bound',21,RUST)
@@ -315,127 +317,31 @@ def deformation_bounds():
     s.rect(235,198,435,239,'none',GREEN,4);s.text(596,418,'current bound',20,GREEN,'middle')
     s.line(568,108,568,471,GREEN,3)
     s.lines(37,508,['Old bound: no overlap with the view → object incorrectly discarded.','Updated bound: overlaps the view → animated hand can be drawn.','The bound must enclose the actual pose, including material displacement.'],22,gap=33)
-    s.save('deformation-bounds',8,'A stick figure outside the camera region extends a hand into it. A stale red dashed bound excludes the hand and fails the visibility test; a larger green current-pose bound intersects the region.','The red dashed rest bound lies entirely left of the view boundary, so culling it is internally consistent but visually wrong: the hand has moved into the image. The current green bound includes the hand and survives. A larger correct bound may cost more culling work; a smaller incorrect bound loses visible geometry.')
+    s.save('deformation-bounds',8,'A schematic room mannequin outside the camera region extends a hand into it. A stale red dashed bound excludes the hand and fails the visibility test; a larger green current-pose bound intersects the region.','In this schematic closeup of the same room mannequin, the red dashed rest bound lies entirely left of the view boundary, so culling it is internally consistent but visually wrong: the hand has moved into the image. The current green bound includes the hand and survives. A larger correct bound may cost more culling work; a smaller incorrect bound loses visible geometry.')
 
 
-def png_rgb(width,height,data):
-    def chunk(kind,value):return struct.pack('!I',len(value))+kind+value+struct.pack('!I',zlib.crc32(kind+value)&0xffffffff)
-    rows=b''.join(b'\x00'+bytes(data[y*width*3:(y+1)*width*3]) for y in range(height))
-    return b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('!IIBBBBB',width,height,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(rows,8))+chunk(b'IEND',b'')
-
-
-def dot(a,b):return sum(x*y for x,y in zip(a,b))
-def add(a,b):return tuple(x+y for x,y in zip(a,b))
-def sub(a,b):return tuple(x-y for x,y in zip(a,b))
-def mul(a,k):return tuple(x*k for x in a)
-def unit(a):return mul(a,1/math.sqrt(dot(a,a)))
-def cross(a,b):return (a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0])
-def rgb(v,gamma=False):return [round(255*max(0,min(1,x))**(1/2.2 if gamma else 1)) for x in v]
+def runtime_panel(s, name, x, y, width, height):
+    """Embed unchanged captured PNG bytes: standalone SVG <img> cannot load sibling images."""
+    s.image(x, y, width, height, (OUT.parent / 'unreal-lab' / (name + '.png')).read_bytes())
 
 
 def material_response():
-    s=SVG('Hold geometry and color fixed; change only the surface response', 'Three software-rendered spheres use identical shape, color, view and light. Increasing the illustrative roughness parameter broadens and weakens the specular lobe. A graph shows the corresponding angular lobe shapes.',650)
-    light=unit((-.4,.6,.85));half=unit(add(light,(0,0,1)));roughness=[.15,.45,.85]
-    for col,r in enumerate(roughness):
-        w=h=220;pixels=[];exponent=max(.3,2/(r*r)-2)
-        for py in range(h):
-            for px in range(w):
-                x=(px+.5-w/2)/(w*.43);y=-(py+.5-h/2)/(h*.43)
-                if x*x+y*y>1:pixels.extend([252,250,245]);continue
-                normal=(x,y,math.sqrt(1-x*x-y*y));diff=.10+.58*max(0,dot(normal,light));spec=.85*(1-r)*max(0,dot(normal,half))**exponent
-                pixels.extend(rgb(tuple(v*diff+spec for v in (.34,.48,.31)),True))
-        png=png_rgb(w,h,pixels);(OUT/f'material-roughness-{str(r).replace(".","")}.png').write_bytes(png)
-        s.image(38+col*343,105,280,280,png);s.text(178+col*343,408,f'roughness control = {r}',21,anchor='middle')
-    s.lines(32,464,['All three renders use the same sphere, base color, light direction, and camera.','Only the width/intensity control of this illustrative specular term changes.'],22)
-    s.lines(32,552,['Software teaching model: exponent = max(0.3, 2 / r² − 2), not Unreal’s BRDF.','A normal map changes the shading normal; a roughness map changes the response around it.'],20)
-    s.text(31,621,'Material parameters describe a response to illumination; they do not contain the light itself.',22)
-    s.save('material-response',9,'Three original software-rendered spheres show the same green material and lighting with narrow, medium, and broad specular responses as one roughness-like parameter changes.','Compare the highlight, not the sphere silhouette: the geometry, green base color, and illumination are identical. The pixels are computed by the included software renderer. Its simple exponent model is printed to make the demonstration reproducible; it is not Unreal’s microfacet BRDF or a measured comparison of Unreal roughness settings. The visual isolates the meaning of changing a surface response without moving a light or rebuilding a mesh.')
-
-
-def scene_objects():
-    # Coordinates are meters with Z upward. This is a small software example, not an Unreal scene export.
-    def box(name,mn,mx,color,rough,yaw=0,pivot=(0,0,0)):
-        return dict(kind='box',name=name,mn=mn,mx=mx,color=color,rough=rough,yaw=yaw,pivot=pivot)
-    return [box('paving',(-3,-2,-.18),(3,3,0),(.48,.50,.43),.85),
-            box('left wall',(-3,2.5,0),(-.7,2.7,2.5),(.63,.48,.36),.9),
-            box('right wall',(.7,2.5,0),(3,2.7,2.5),(.63,.48,.36),.9),
-            box('lintel',(-.7,2.5,1.9),(.7,2.7,2.5),(.63,.48,.36),.9),
-            box('gate',(-.65,2.25,.05),(.65,2.34,1.85),(.24,.34,.22),.35,math.radians(-28),(-.65,2.25,0)),
-            box('crate',(-1.9,-.3,0),(-1.05,.55,.85),(.43,.23,.11),.55),
-            box('character body',(1.03,.04,.52),(1.40,.37,1.28),(.16,.29,.46),.65),
-            box('left leg',(1.04,.08,0),(1.18,.28,.57),(.12,.18,.27),.6),
-            box('right leg',(1.28,.08,0),(1.41,.28,.57),(.12,.18,.27),.6),
-            dict(kind='sphere',name='character head',center=(1.21,.2,1.49),radius=.23,color=(.69,.42,.26),rough=.7),
-            dict(kind='sphere',name='lamp',center=(.92,2.10,2.10),radius=.105,color=(1,.66,.17),rough=.15,emission=True)]
-
-
-def object_hit(origin,direction,obj):
-    if obj['kind']=='sphere':
-        oc=sub(origin,obj['center']);b=dot(oc,direction);c=dot(oc,oc)-obj['radius']**2;disc=b*b-c
-        if disc<0:return None
-        t=-b-math.sqrt(disc)
-        if t<.0001:t=-b+math.sqrt(disc)
-        if t<.0001:return None
-        p=add(origin,mul(direction,t));return t,p,unit(sub(p,obj['center']))
-    a=obj['yaw'];ca,sa=math.cos(a),math.sin(a);pivot=obj['pivot']
-    o=sub(origin,pivot);o=(ca*o[0]+sa*o[1]+pivot[0],-sa*o[0]+ca*o[1]+pivot[1],o[2]+pivot[2])
-    d=(ca*direction[0]+sa*direction[1],-sa*direction[0]+ca*direction[1],direction[2])
-    near,far=-1e30,1e30;normal=(0,0,1)
-    for axis in range(3):
-        lo,hi=obj['mn'][axis],obj['mx'][axis]
-        if abs(d[axis])<1e-12:
-            if o[axis]<lo or o[axis]>hi:return None
-            continue
-        t0,t1=(lo-o[axis])/d[axis],(hi-o[axis])/d[axis];sign=-1
-        if t0>t1:t0,t1=t1,t0;sign=1
-        if t0>near:near=t0;normal=tuple(sign if j==axis else 0 for j in range(3))
-        far=min(far,t1)
-        if near>far:return None
-    if far<.0001 or near<.0001:return None
-    n=(ca*normal[0]-sa*normal[1],sa*normal[0]+ca*normal[1],normal[2]);return near,add(origin,mul(direction,near)),n
-
-
-def trace(origin,direction,objects,max_t=1e30):
-    best=None
-    for obj in objects:
-        hit=object_hit(origin,direction,obj)
-        if hit and hit[0]<max_t:max_t=hit[0];best=(*hit,obj)
-    return best
-
-
-def courtyard_render(width=480,height=360):
-    objects=scene_objects();camera=(5.0,-7.0,4.8);target=(0,.65,1.0)
-    forward=unit(sub(target,camera));right=unit(cross(forward,(0,0,1)));up=cross(right,forward)
-    scale=math.tan(math.radians(43)/2);light=(.92,1.92,2.10);sun=unit((-2,-3,5))
-    buffers={name:bytearray() for name in ['albedo','normals','depth','roughness','shadow','lit']}
-    for y in range(height):
-        for x in range(width):
-            sx=(2*(x+.5)/width-1)*width/height*scale;sy=(1-2*(y+.5)/height)*scale
-            ray=unit(add(forward,add(mul(right,sx),mul(up,sy))));hit=trace(camera,ray,objects)
-            if not hit:
-                for name in buffers:buffers[name].extend([223,231,229] if name in ['lit','albedo'] else [24,31,31])
-                continue
-            t,p,n,obj=hit;color=obj['color']
-            if obj['name']=='paving':
-                checker=(math.floor(p[0]/.5)+math.floor(p[1]/.5))%2;color=mul(color,.88 if checker else 1.06)
-                edge=min(p[0]/.5%1,p[1]/.5%1,1-p[0]/.5%1,1-p[1]/.5%1)
-                if edge<.025:color=mul(color,.6)
-            ldelta=sub(light,p);dist=math.sqrt(dot(ldelta,ldelta));ldir=mul(ldelta,1/max(.001,dist));start=add(p,mul(n,.002))
-            shadow=0 if trace(start,ldir,objects,max(.001,dist-.12)) else 1
-            sundot=max(0,dot(n,sun));sunshadow=0 if trace(start,sun,objects,20) else 1
-            shade=.14+.65*sundot*sunshadow+1.2*max(0,dot(n,ldir))*shadow/(1+.12*dist*dist)
-            h=unit(add(ldir,mul(ray,-1)));spec=.10*(1-obj['rough'])*max(0,dot(n,h))**max(1,2/obj['rough']**2-2)*shadow
-            lit=tuple(v*shade+spec for v in color)
-            if obj.get('emission'):lit=(1,.79,.32)
-            values={'albedo':rgb(color,True),'normals':rgb(tuple((v+1)/2 for v in n)),
-                    'depth':rgb((max(0,1-t/15),)*3),'roughness':rgb((obj['rough'],)*3),
-                    'shadow':rgb((.1+.9*shadow,)*3),'lit':rgb(lit,True)}
-            for name in buffers:buffers[name].extend(values[name])
-    return {name:png_rgb(width,height,data) for name,data in buffers.items()}
+    s=SVG('Room materials: separate surface values from incoming light', 'Four unchanged Unreal viewport captures of the baseline room show base color, roughness, metallic and lit appearance at the same camera. The matte and glossy blocks have different material values. This is not a controlled roughness-only experiment.',870)
+    specs=[('scene-base-color','Base color','The red and green walls store surface color.'),
+           ('scene-roughness','Roughness','Bright matte block; darker glossy block.'),
+           ('scene-metallic','Metallic','The glossy block also changes metal response.'),
+           ('scene-lit','Lit room','These values respond to the ceiling light and GI.')]
+    for i,(name,title,subtitle) in enumerate(specs):
+        x=30+(i%2)*505;y=96+(i//2)*345
+        s.text(x+239,y,title,24,anchor='middle',weight='bold')
+        runtime_panel(s,name,x,y+14,478,269)
+        s.text(x+239,y+308,subtitle,18,anchor='middle')
+    s.lines(30,819,['Actual Unreal captures, unchanged camera and baseline room.','The two blocks differ in multiple parameters; this comparison does not isolate roughness alone.'],20)
+    s.save('material-response',9,'Four real Unreal captures of the same indoor room separate base color, roughness and metallic from the final lit result.','Track the short matte block at screen left and the tall glossy block at screen right through all four frames. Roughness and metallic are material inputs; neither is an image of illumination. The lit frame adds direct and indirect illumination, visibility and display processing. The blocks differ in base color, roughness and metallic, so their appearance is not evidence for a roughness-only causal comparison. These panels embed unchanged images from the <a href="assets/unreal-lab/capture-manifest.json">native Unreal capture run</a>.')
 
 
 def pixel_pipeline():
-    s=SVG('Follow one slab pixel from triangle to logical GBuffer', 'The exact slab triangle from chapter one is projected to 190,120; 250,120; and 250,60. Pixel center 230.5,100.5 has barycentric weights 0.325,0.35,0.325. Its interpolated position and UV feed a depth comparison and material sample, producing explicit logical GBuffer values.',980)
+    s=SVG('Follow one room floor pixel from triangle to logical GBuffer', 'The room floor triangle from chapter one is projected to 190,120; 250,120; and 250,60. Pixel center 230.5,100.5 has barycentric weights 0.325,0.35,0.325. Its interpolated position and UV feed a depth comparison and material sample, producing explicit logical GBuffer values.',980)
     s.text(30,77,'One continuous numeric example; lengths in cm, image coordinates in pixels.',21)
     vertices=[(190,120),(250,120),(250,60)]
     point=(230.5,100.5)
@@ -444,9 +350,9 @@ def pixel_pipeline():
     assert abs(sum(weights)-1)<1e-12
     assert all(abs(sum(weights[i]*vertices[i][j] for i in range(3))-point[j])<1e-12 for j in range(2))
     loc=(100*(weights[1]+weights[2]),100*weights[2],0)
-    world=(loc[0]+300,loc[1],0)
-    camera=(world[0]-250,world[1],400)
-    assert loc==(67.5,32.5,0) and world==(367.5,32.5,0) and camera==(117.5,32.5,400)
+    world=(loc[0]-50,loc[1]+200,0)
+    camera=(world[0]+100,world[1]-200,400)
+    assert loc==(67.5,32.5,0) and world==(17.5,232.5,0) and camera==(117.5,32.5,400)
     assert (160+240*camera[0]/camera[2],120-240*camera[1]/camera[2])==point
     project=lambda p:(90+(p[0]-190)*4.4,130+(p[1]-60)*4.4)
     pts=[project(p) for p in vertices]
@@ -466,13 +372,13 @@ def pixel_pipeline():
     for y,i,weight,position in [(163,0,'.325','(0,0,0)'),(201,1,'.350','(100,0,0)'),(239,2,'.325','(100,100,0)')]:
         s.circle(540,y-7,6,VERT[i]);s.text(555,y,f'v{i}: {weight} × {position}',22,VERT[i])
     s.text(529,288,'Local = (67.5,32.5,0)',22,weight='bold')
-    s.text(529,323,'World = (367.5,32.5,0)',22)
+    s.text(529,323,'World = (17.5,232.5,0)',22)
     s.text(529,358,'Camera = (117.5,32.5,400)',22)
     s.text(529,389,'400 is positive forward depth.',20)
     s.text(529,429,'UV = (.675,.325)',22,BLUE)
     s.text(529,462,'World normal = (0,0,1) at all vertices',20)
     s.line(30,491,1010,491,'#c5cec0',2)
-    s.text(30,532,'The slab wins the depth comparison',23,weight='bold')
+    s.text(30,532,'The room floor wins the depth comparison',23,weight='bold')
     s.text(30,569,'Compare positive view depth in cm:',20)
     s.line(72,642,441,642,MUTED,2,True)
     s.line(72,642,272,642,GREEN,7)
@@ -480,54 +386,66 @@ def pixel_pipeline():
     s.line(272,597,272,688,GREEN,6)
     s.line(372,597,372,688,RUST,6)
     s.text(272,721,'400 cm',21,GREEN,'middle');s.text(372,721,'600 cm',21,RUST,'middle')
-    s.text(272,758,'slab',20,GREEN,'middle');s.text(372,758,'behind it',20,RUST,'middle')
-    s.lines(30,812,['400 < 600: keep the slab’s sample.','This uses view depth, not hardware Z.','Depth-test encoding can differ by renderer.'],20,gap=30)
+    s.text(272,758,'room floor',20,GREEN,'middle');s.text(372,758,'behind it',20,RUST,'middle')
+    s.lines(30,812,['400 < 600: keep the floor’s sample.','This uses view depth, not hardware Z.','Depth-test encoding can differ by renderer.'],20,gap=30)
     s.text(529,532,'Sample material, then write surface data',22,weight='bold')
     s.lines(529,573,['Texture at UV: (.4,.3,.2)','Tint: (.8,1,.8)','Multiply → (.32,.30,.16)'],21,gap=31)
     s.rect(529,675,80,80,'#99956f','none',0)
     s.lines(631,700,['Base color patch','sRGB encoded for display'],19,gap=27)
     s.text(529,799,'Logical GBuffer fields',22,weight='bold')
-    s.lines(529,835,['BaseColor = (.32,.30,.16)','WorldNormal = (0,0,1); Roughness = .8','Illustrative slab: Metallic = 0'],20,gap=30)
+    s.lines(529,835,['BaseColor = (.32,.30,.16)','WorldNormal = (0,0,1); Roughness = .8','Floor patch: Metallic = 0'],20,gap=30)
     s.lines(30,936,['All triangle vertices share 400 cm depth, so perspective-correct weights equal screen weights.'],20)
-    s.save('one-pixel-through-the-pipeline',10,'An enlarged projected triangle marks pixel center 230.5,100.5. Three colored barycentric weights interpolate local and world positions, UV and normal. The slab at 400 cm defeats a competing surface at 600 cm; its sampled and tinted material writes base color 0.32,0.30,0.16, world normal 0,0,1 and roughness 0.8.','Return to <a href="#a-triangle-becomes-an-object">the original 100 cm slab and camera</a>: the same vertices now produce one complete surface sample. The chosen pixel is separate from the earlier small raster-grid exercise. Since all three vertices have the same camera depth, the displayed barycentric weights also give the perspective-correct attributes. Positive view depth selects the nearer sample; this does not describe a hardware depth-buffer encoding. The base-color arithmetic uses linear values, while the color swatch is encoded for display. These are illustrative logical GBuffer fields, before lighting, rather than Unreal’s packed texture layout; depth is a separate visibility result.')
+    s.save('one-pixel-through-the-pipeline',10,'An enlarged projected triangle marks pixel center 230.5,100.5. Three colored barycentric weights interpolate local and world positions, UV and normal. The floor patch at 400 cm defeats a competing surface at 600 cm; its sampled and tinted material writes base color 0.32,0.30,0.16, world normal 0,0,1 and roughness 0.8.','Return to <a href="#a-triangle-becomes-an-object">the 100 cm room floor patch and teaching camera</a>: the same vertices now produce one complete surface sample. The chosen pixel is separate from the earlier small raster-grid exercise. Since all three vertices have the same camera depth, the displayed barycentric weights also give the perspective-correct attributes. Positive view depth selects the nearer sample; this does not describe a hardware depth-buffer encoding. The base-color arithmetic uses linear values, while the color swatch is encoded for display. These are illustrative logical GBuffer fields, before lighting, rather than Unreal’s packed texture layout; depth is a separate visibility result.')
 
 
 def gbuffer():
-    panels=courtyard_render()
-    for name,png in panels.items():(OUT/f'courtyard-{name}.png').write_bytes(png)
-    s=SVG('One courtyard, six views of the same visible samples', 'An original software render produces albedo, world normal, ray depth, roughness, lamp visibility and final direct-lit images for the same camera and geometry.',795)
-    specs=[('albedo','Base color','material color, without lighting'),('normals','World normal','RGB = (normal + 1) / 2'),('depth','Ray depth','white is near; d maps over 15 m'),('roughness','Roughness','white is rough; dark is smooth'),('shadow','Lamp visibility','white = visible; dark = blocked'),('lit','Lit result','surface + direct light + shadows')]
+    s=SVG('One indoor room, six views of the same camera-visible surfaces', 'Six actual Unreal viewport captures show base color, world normal, linear scene depth, roughness, metallic and lit color for the same baseline indoor room. The three middle diagnostic values must not be confused with illumination.',650)
+    specs=[('scene-base-color','Base color','surface color without incoming lighting'),
+           ('scene-world-normal','World normal','normal visualization, not a light image'),
+           ('scene-depth','Linear scene depth','white = 10 m; black = near'),
+           ('scene-roughness','Roughness','white = rough; dark = smooth'),
+           ('scene-metallic','Metallic','white = metal; black = dielectric'),
+           ('scene-lit','Lit result','material + direct and indirect light')]
     for i,(name,title,subtitle) in enumerate(specs):
-        x=29+(i%3)*343;y=96+(i//3)*309
-        s.text(x+154,y,title,24,anchor='middle',weight='bold');s.image(x,y+15,309,232,panels[name]);s.text(x+154,y+278,subtitle,18,anchor='middle')
-    s.lines(31,747,['Original software render: paving, gate, walls, crate, a block character, and a small lamp.','Logical teaching channels, not Unreal’s packed GBuffer or a capture from Unreal Editor.'],20)
-    s.save('courtyard-gbuffer',10,'Six computed images of the same courtyard show base color, world normals, ray depth, roughness, lamp visibility, and the final direct-lit result.','Choose a surface and locate it in all six panels. The checker pattern belongs to the paving’s base color; its upward normal has a different encoding; its shadow can change while those properties remain fixed. All panels use the same ray intersections. This original software renderer uses simplified direct lighting and a constant ambient term, with no GI; the panels illustrate logical values rather than Unreal’s physical GBuffer packing. The separate <a href="assets/walkthrough/courtyard-lit.png">lit frame</a> is also available.')
+        x=29+(i%3)*343;y=96+(i//3)*245
+        s.text(x+154,y,title,23,anchor='middle',weight='bold')
+        runtime_panel(s,name,x,y+15,309,174)
+        s.text(x+154,y+218,subtitle,17,anchor='middle')
+    s.lines(31,601,['Actual native Unreal captures: same room, geometry, material assignments and camera.','Depth is a custom SceneDepth(cm)/1000 display. These views do not expose physical GBuffer packing.'],19)
+    s.save('courtyard-gbuffer',10,'Six real Unreal captures of the same indoor room show base color, world normal, linear scene depth, roughness, metallic and final lit appearance.','Choose the short matte block, then locate its front face in all six panels. Its normal is constant across that flat face; its base color and roughness are material properties; its depth depends on the camera. The Lit view also includes illumination and display processing, so it cannot replace any one of those inputs. These are unchanged native <a href="assets/unreal-lab/capture-manifest.json">Unreal captures</a>, not a second software-rendered scene. The depth panel uses the documented custom linear display, SceneDepth(cm)/1000, with white at 10 m. Buffer visualizations show decoded logical attributes rather than the engine’s physical texture packing.')
 
 
 def shadow_view():
-    s=SVG('The gate can leave the camera while its shadow remains visible', 'A top-down plan shows the camera frustum, a visible paving sample, a lamp, and a gate outside the camera frustum. The lamp-to-sample segment crosses the gate, so the sample is shadowed.',630)
-    camera=(149,407);P=(623,306);lamp=(775,107)
-    s.poly([camera,(885,255),(885,474)],'#e3eee4',GREEN,2)
-    s.text(717,466,'Camera-visible region',21,GREEN,'middle')
-    s.circle(*camera,15,BLUE);s.text(80,448,'Camera',22,BLUE)
-    for i in range(5):slab(s,405+i*104,364,73,21)
-    s.circle(*P,9,RUST);s.text(595,287,'P: visible slab',22,RUST,'middle')
-    s.circle(*lamp,19,'#eacf78',GOLD);s.text(777,76,'Lamp',23,GOLD,'middle')
-    # The gate lies above the top edge of the camera frustum, yet crosses the lamp ray.
-    s.line(653,201,752,201,RUST,13);s.text(899,202,'Off-camera gate',21,RUST,'middle')
-    s.line(*lamp,*P,GOLD,3);s.line(*camera,*P,BLUE,2,True)
-    s.circle(703,201,10,'none',RUST,3)
-    s.text(829,245,'Light ray blocked',20,RUST,'middle')
-    s.lines(32,525,['Camera visibility: P is visible; gate is outside this camera region.','Light visibility: the segment from lamp to P crosses the gate → P is in shadow.','The persistent scene must retain the gate for the light’s query.'],22,gap=32)
-    s.save('off-camera-shadow',10,'A plan-view camera cone includes a paving sample but excludes the gate above it. The lamp-to-sample ray intersects that off-camera gate, creating a shadow on the visible sample.','Trace the blue camera ray to P, then the gold lamp ray to the same P. Only the gold segment crosses the gate. Culling the gate from the main camera’s work is valid; deleting it from the persistent scene because of that culling would incorrectly remove the shadow. The drawing is a geometric example, not a measured Unreal shadow-map view.')
+    s=SVG('A room block can leave a view while still shadowing its floor', 'An XZ section through the actual room at Y equals 270 centimeters uses the baseline matte block bounds, a point on the ceiling area light and a floor sample at X155. A teaching camera crops the floor, excluding the block; the light-to-floor segment still intersects the block.',710)
+    def xz(x,z):return 80+(x+40)*2,500-z*1.1
+    light=xz(0,298);point=xz(155,0);camera=xz(180,130)
+    s.text(32,88,'Section at Y = 270 cm; X →, Z ↑',21)
+    s.line(*xz(-40,0),*xz(220,0),MUTED,3)
+    s.poly([camera,xz(140,0),xz(190,0)],'#e3eee4',GREEN,2)
+    a=xz(30,105);s.rect(*a,190,115.5,'#d6c7a7',RUST,3)
+    s.text(317,448,'Matte block',21,RUST,'middle')
+    s.circle(*light,11,'#eacf78',GOLD);s.text(155,139,'Ceiling source sample',21,GOLD,'middle')
+    s.circle(*camera,10,BLUE);s.text(548,334,'Crop camera',19,BLUE,'middle')
+    s.line(*light,*point,GOLD,3);s.line(*camera,*point,BLUE,2,True)
+    # At block top Z=105, the light segment reaches X=155*(298-105)/298.
+    crossing_x=155*(298-105)/298
+    assert 30 < crossing_x < 125
+    s.circle(*xz(crossing_x,105),9,'none',RUST,3)
+    s.circle(*point,7,RUST);s.text(480,538,'P: floor sample',20,RUST,'middle')
+    s.lines(650,145,['Actual room coordinates (cm):','Source sample L = (0,270,298)','Floor point P = (155,270,0)'],20,gap=32)
+    s.lines(650,272,['Matte block at this section:','X ∈ [30,125]; Z ∈ [0,105]','L → P crosses its top at','X = 155 × 193 / 298 = 100.39'],20,gap=32)
+    s.lines(650,435,['The crop sees P, not the block.','The light query must retain it.'],20,gap=32)
+    s.lines(32,596,['Teaching camera and section drawing; no claim that this crop was captured from Unreal.','The ceiling RectLight is extended: this line tests one source sample, not the complete soft shadow.','Main-view culling can discard draw work without deleting the primitive from the persistent scene.'],20,gap=29)
+    s.save('off-camera-shadow',10,'An XZ section of the room shows a tight floor camera excluding the actual matte block while a ceiling-source ray intersects the block before reaching the visible floor point.','This schematic reuses the recorded matte block bounds and ceiling RectLight position. At Y=270 cm, the segment from the source center (0,270,298) to floor point (155,270,0) reaches the block’s top at X≈100.39 cm, inside its X range [30,125]. The teaching camera sees the floor but omits the block. Deleting the block from the persistent scene would change that light query. An extended source requires many such visibility evaluations or an appropriate shadow approximation; the single segment does not predict the full soft-shadow intensity.')
 
 
 def ray_cache():
-    s=SVG('A geometric hit identifies a place; the cache must still cover it', 'A ray hits a triangular wall at coordinates one,one,zero. A card projection maps the hit into quarter,quarter of a four-by-four capture region. A highlighted atlas texel supplies a lighting lookup independently of the triangle intersection.',650)
-    pts=[(63,382),(410,382),(63,121)];s.poly(pts,'#dcd4bf',GOLD,2)
+    s=SVG('A hit on the room’s back wall still needs a valid cache lookup', 'A ray hits the baseline back wall at minus one hundred,five hundred,seventy five centimeters. The wall capture spans X minus two hundred to two hundred and Z zero to three hundred. Its normalized card coordinate is one quarter,one quarter, independently of material UVs.',675)
+    pts=[(63,382),(410,382),(410,121),(63,121)];s.poly(pts,'#dcd4bf',GOLD,2)
     p=(63+347/4,382-261/4);s.circle(*p,9,RUST);s.line(353,148,*p,BLUE,3,True)
-    s.text(328,121,'incoming ray',22,BLUE,'middle');s.text(187,423,'hit P = (1,1,0)',22,RUST,'middle')
-    s.lines(35,477,['Intersection reports P and surface identity.','It does not report the final light value.'],21)
+    s.text(260,97,'Back wall: Y = 500 cm',22,anchor='middle')
+    s.text(198,425,'P = (−100,500,75) cm',21,RUST,'middle')
+    s.lines(35,478,['Intersection supplies P and surface identity.','Cache lookup is a separate operation.'],20)
     x0,y0,size=605,129,55
     for y in range(5):
         for x in range(6):
@@ -536,37 +454,78 @@ def ray_cache():
             s.rect(x0+x*size,y0+y*size,size,size,col,PAPER,2)
     s.rect(x0+size,y0+size,3*size,3*size,'none',GREEN,4)
     s.circle(x0+size+3*size*.25,y0+size+3*size*.25,9,RUST)
-    s.text(770,99,'Paged capture atlas',24,anchor='middle',weight='bold')
-    s.lines(591,450,['Card bounds: x,y in [0,4]','Card coordinate = (1/4, 1/4)','Map to resident atlas page; sample lighting.'],20,gap=31)
+    s.text(770,99,'Schematic capture atlas',24,anchor='middle',weight='bold')
+    s.lines(591,450,['u = (X + 200) / 400 = 0.25','v = Z / 300 = 0.25','Map to resident atlas page; sample lighting.'],20,gap=31)
     s.path('M415 321 L512 321 L512 225 L633 225',GREEN,'none',3,True)
-    s.lines(32,582,['Pink cells illustrate missing cache coverage: a ray can hit geometry and still lack good cached data.','Card coordinates come from capture projection; they are not automatically the material’s UVs.'],20)
-    s.save('intersection-versus-cache',11,'A ray hits a triangle at 1,1,0; a separately parameterized four-unit card maps that point to 0.25,0.25 and then to a resident atlas region, while pink cells mark absent coverage.','The red point is a geometric hit. The green outlined atlas region is a separate parameterization used to retrieve cached information. A correct intersection does not guarantee that the selected card covers that surface with valid lighting. The printed card projection is illustrative; it deliberately distinguishes capture coordinates from the material’s authored UV coordinates.')
+    s.lines(32,587,['The wall projection is a teaching parameterization, not a measured Lumen card assignment.','Pink cells illustrate missing coverage; they do not assert missing coverage in this room capture.','Card coordinates need not equal the wall material’s authored UV coordinates.'],19,gap=27)
+    s.save('intersection-versus-cache',11,'A ray hits the actual room back-wall plane at minus one hundred,five hundred,seventy five centimeters; a teaching capture projection maps it to quarter,quarter and a schematic atlas page.','The world point belongs to our room’s back wall at Y=500 cm. With a teaching capture covering X∈[−200,200] and Z∈[0,300], its coordinate is ((−100+200)/400,75/300)=(0.25,0.25). This separate parameterization retrieves cached information after intersection. The colored atlas is a schematic, not a readback of this wall’s actual Lumen cards; pink illustrates the failure mode of missing coverage. The room’s native card and atlas captures elsewhere show the real implementation data.')
 
 
 def point_provider():
-    s=SVG('One point edit exposes the provider’s real dependency contract', 'A scanned point changes position while its color remains fixed. The raster point buffer and conservative bounds advance to revision eight, an existing reconstructed triangle product becomes stale, and no ray product exists to update. Missing normal and UV attributes require a declared material fallback.',710)
+    s=SVG('Room scan: one point edit exposes the provider contract', 'A room scan point changes position while its color remains fixed. The raster point buffer and conservative bounds advance to revision eight, an existing reconstructed triangle product becomes stale, and no ray product exists to update. Missing normal and UV attributes require a declared material fallback.',710)
     for x,y,c in [(71,169,VERT[0]),(119,153,VERT[1]),(160,206,VERT[2]),(200,180,VERT[3]),(83,254,VERT[2]),(135,298,VERT[0]),(238,269,VERT[1]),(284,228,VERT[3])]:s.circle(x,y,9,c)
     s.circle(185,311,9,RUST);s.circle(307,325,11,RUST);s.line(197,312,292,323,RUST,3,True)
     s.rect(51,134,214,194,'none',RUST,2,dash='6 5');s.rect(45,128,281,217,'none',GREEN,3)
-    s.text(156,99,'Scanned samples',24,anchor='middle',weight='bold')
-    s.lines(45,395,['Point 17: (2,1,0) → (3,1,0)','Stored: position + color','Missing: normal, tangent, UV'],21,gap=34)
+    s.text(156,99,'Room scan samples',24,anchor='middle',weight='bold')
+    s.lines(45,395,['Point 17: x = 0.2 → 0.3 m','y = 2.2 m, z = 0.6 m; color fixed','Missing: normal, tangent, UV'],21,gap=34)
     s.text(658,100,'Selected material asks for UV + tangent',22,anchor='middle')
     s.lines(435,153,['Those attributes cannot be fetched from this record.','Declared fallback: display the supplied point color.','Do not silently claim a normal-mapped mesh exists.'],20,gap=34)
     s.line(432,255,984,255,'#c6d0c3',2)
     for i,(name,status,col) in enumerate([('Raster buffer','revision 8',GREEN),('Conservative bounds','revision 8',GREEN),('Derived triangles, if built','revision 7 → stale',RUST),('Ray representation','absent; no update invented',MUTED)]):
         y=305+i*49;s.text(430,y,name,20);s.text(736,y,status,20,col);s.line(431,y+13,995,y+13,'#d6dccf',1)
     s.lines(31,566,['GPU frame N keeps the revision-7 allocation alive until its completion fence.','New draws can publish revision 8 without rewriting memory still being read.','A color-only edit can invalidate less work if no derived product depends on color.'],21,gap=34)
-    s.save('point-provider-revisions',12,'A point cloud sample moves beyond its old bound. A revision table advances the point buffer and bounds, marks optional derived triangles stale, and leaves an absent ray product absent; missing UV and tangent data force an explicit material fallback.','The red point moves, so both the point positions and the enclosing bound change. The right-hand entries distinguish an existing stale derived product from a representation that never existed. A material requiring UVs and a tangent basis cannot be satisfied by position-and-color records alone; a declared point-color fallback is honest and testable. The earlier lifetime rule still applies to the old allocation used by an in-flight frame.')
+    s.save('point-provider-revisions',12,'A point cloud sample moves beyond its old bound. A revision table advances the point buffer and bounds, marks optional derived triangles stale, and leaves an absent ray product absent; missing UV and tangent data force an explicit material fallback.','For a hypothetical scan of this room, point 17 moves from (0.2,2.2,0.6) to (0.3,2.2,0.6) meters. The red point moves, so both the point positions and the enclosing bound change. The right-hand entries distinguish an existing stale derived product from a representation that never existed. A material requiring UVs and a tangent basis cannot be satisfied by position-and-color records alone; a declared point-color fallback is honest and testable. The earlier lifetime rule still applies to the old allocation used by an in-flight frame.')
+
+
+def room_study_map():
+    s=SVG('One room is the coordinate reference for the whole essay', 'A top-down coordinate map of the four by five meter indoor room. Positive Unreal X is screen-left, positive Y points to the back wall. Solid objects are the captured baseline; dashed objects extend that same room. A tinted one-meter floor patch supports the computed geometry examples.',760)
+    s.data[0]=s.data[0].replace('0 0 1040 760','0 0 1120 760')
+    s.data[2]=s.data[2].replace('width="1040"','width="1120"')
+    def xy(x,y):return 300-1.1*x,640-y
+    def box(xlo,xhi,ylo,yhi,color,stroke=MUTED,dash=''):
+        x,y=xy(xhi,yhi);s.rect(x,y,(xhi-xlo)*1.1,yhi-ylo,color,stroke,2,dash=dash)
+    # Actual interior wall positions; wall thickness is schematic.
+    s.rect(80,140,440,500,'#f0eee4',MUTED,2)
+    s.line(80,140,80,640,RUST,8);s.line(520,140,520,640,GREEN,8);s.line(80,140,520,140,MUTED,8)
+    s.text(300,111,'Back wall: Y = 500 cm',21,anchor='middle')
+    s.text(80,77,'+X = screen-left',21,RUST)
+    s.text(520,77,'−X = screen-right',21,GREEN,'end')
+    s.text(300,674,'Open front: Y = 0',21,anchor='middle')
+    box(-50,50,200,300,'#e6d29d',GOLD)
+    box(30,125,230,340,'#c5b895',RUST)
+    box(-120,-30,330,430,'#b9cbd0',BLUE)
+    s.lines(214,346,['Matte','block'],20,anchor='middle',gap=25)
+    s.lines(383,250,['Glossy','block'],20,anchor='middle',gap=25)
+    s.text(300,426,'F',22,GOLD,'middle','bold')
+    # Ceiling source is projected onto this plan; its height is recorded in the legend.
+    light=xy(0,270);s.circle(*light,11,'#f6da78',GOLD,2);s.text(light[0]+18,light[1]+7,'L',22,GOLD)
+    hinge=xy(-150,200);end0=xy(-50,200);end1=xy(-150,300)
+    s.line(*hinge,*end0,RUST,4,False,'7 4');s.line(*hinge,*end1,RUST,4,False,'7 4')
+    s.circle(*hinge,6,RUST);s.text(490,465,'H',21,RUST,'middle','bold')
+    for x,y in [(-90,200),(-150,260)]:s.circle(*xy(x,y),6,'#eacf78',GOLD,1)
+    # Native capture extensions retain the original room and seven cube transforms.
+    mx,my=xy(65,110);s.circle(mx,my,22,'none',BLUE,2);s.rect(mx-28,my-31,56,62,'none',BLUE,2,dash='5 4');s.text(mx,my+8,'M',22,BLUE,'middle','bold')
+    for i,x in enumerate([-145,-105,-65]):
+        px,py=xy(x,80);s.circle(px,py,15,'#d8e2ce',GREEN,2);s.rect(px-19,py-19,38,38,'none',GREEN,1,dash='5 4');s.text(px,py+6,str(i),17,GREEN,'middle')
+    s.text(417,606,'three pot instances',19,GREEN,'middle')
+    s.line(300,704,300,686,BLUE,3,True)
+    s.text(24,739,'Camera (0,−400,165) cm: off-map; arrow is not to scale',20,BLUE)
+    # Fixed legend, keeping all additions explicit rather than inventing capture claims.
+    s.text(620,105,'Read this plan before every closeup',24,weight='bold')
+    s.line(622,141,681,141,MUTED,4);s.text(700,148,'Solid: baseline room',21)
+    s.line(622,180,681,180,BLUE,3,False,'7 5');s.text(700,187,'Dashed: added teaching props',21)
+    s.rect(622,207,59,25,'#e6d29d',GOLD,2);s.text(700,228,'F: computed floor patch',21)
+    s.lines(620,280,['Room interior: X ∈ [−200,200] cm','Y ∈ [0,500] cm; Z ∈ [0,300] cm','L: ceiling source at (0,270,298) cm'],20,gap=30)
+    s.lines(620,398,['H: hinge at (−150,200,0) cm','The two dashed segments are two door poses.','Yellow marks show its attached indicator.'],20,gap=30)
+    s.lines(620,515,['M: skeletal mannequin at (65,110,0) cm','Pots 0–2: X = −145, −105, −65; Y = 80 cm','F: X ∈ [−50,50], Y ∈ [200,300], Z = 0'],20,gap=30)
+    s.lines(620,647,['A coordinate schematic, not a rendered screenshot.','Solid block footprints use the captured bounds.','The floor patch is an analytic teaching surface.'],19,gap=28)
+    (OUT.parent / 'scene' / 'room-study-map.svg').write_text('\n'.join(s.data)+'\n</svg>\n',encoding='utf-8')
 
 
 def main():
+    room_study_map()
     indexed_slab();transforms();actors_instances();thread_snapshots();fence_lifetime();gpu_addresses();raster_pixels();alpha_volume()
     gate_attachment();weighted_skinning();deformation_bounds();material_response();pixel_pipeline();gbuffer();shadow_view();ray_cache();point_provider()
-    provenance=ROOT/'Docs/Unreal/assets/reference/image-provenance.json'
-    records=json.loads(provenance.read_text(encoding='utf-8'))
-    for record in records:
-        if record['id']=='lumen-surface-cache':record.update(width=1200,height=926)
-    provenance.write_text(json.dumps(records,indent=2)+'\n',encoding='utf-8')
     print(f'Wrote {len(FIGURES)} scene walkthrough figures.')
 
 

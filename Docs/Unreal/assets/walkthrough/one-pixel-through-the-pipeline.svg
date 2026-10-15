@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 980" role="img" aria-labelledby="title desc"><title id="title">Follow one slab pixel from triangle to logical GBuffer</title><desc id="desc">The exact slab triangle from chapter one is projected to 190,120; 250,120; and 250,60. Pixel center 230.5,100.5 has barycentric weights 0.325,0.35,0.325. Its interpolated position and UV feed a depth comparison and material sample, producing explicit logical GBuffer values.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 980" role="img" aria-labelledby="title desc"><title id="title">Follow one room floor pixel from triangle to logical GBuffer</title><desc id="desc">The room floor triangle from chapter one is projected to 190,120; 250,120; and 250,60. Pixel center 230.5,100.5 has barycentric weights 0.325,0.35,0.325. Its interpolated position and UV feed a depth comparison and material sample, producing explicit logical GBuffer values.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#237665"/></marker></defs>
 <rect width="1040" height="980" fill="#fcfaf5"/>
-<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">Follow one slab pixel from triangle to logical GBuffer</text>
+<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">Follow one room floor pixel from triangle to logical GBuffer</text>
 <text x="30" y="77" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="start" font-weight="normal">One continuous numeric example; lengths in cm, image coordinates in pixels.</text>
 <polygon points="90.00,394.00 354.00,394.00 354.00,130.00" fill="#e1eadf" stroke="#237665" stroke-width="2"/>
 <line x1="310" y1="174" x2="354" y2="174" stroke="#bccabb" stroke-width="1"/>
@@ -34,13 +34,13 @@
 <circle cx="540" cy="232" r="6" fill="#3d72b0" stroke="#3d72b0" stroke-width="2"/>
 <text x="555" y="239" font-family="Arial, sans-serif" font-size="22" fill="#3d72b0" text-anchor="start" font-weight="normal">v2: .325 × (100,100,0)</text>
 <text x="529" y="288" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="bold">Local = (67.5,32.5,0)</text>
-<text x="529" y="323" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="normal">World = (367.5,32.5,0)</text>
+<text x="529" y="323" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="normal">World = (17.5,232.5,0)</text>
 <text x="529" y="358" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="normal">Camera = (117.5,32.5,400)</text>
 <text x="529" y="389" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">400 is positive forward depth.</text>
 <text x="529" y="429" font-family="Arial, sans-serif" font-size="22" fill="#326f96" text-anchor="start" font-weight="normal">UV = (.675,.325)</text>
 <text x="529" y="462" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">World normal = (0,0,1) at all vertices</text>
 <line x1="30" y1="491" x2="1010" y2="491" stroke="#c5cec0" stroke-width="2"/>
-<text x="30" y="532" font-family="Arial, sans-serif" font-size="23" fill="#263a36" text-anchor="start" font-weight="bold">The slab wins the depth comparison</text>
+<text x="30" y="532" font-family="Arial, sans-serif" font-size="23" fill="#263a36" text-anchor="start" font-weight="bold">The room floor wins the depth comparison</text>
 <text x="30" y="569" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Compare positive view depth in cm:</text>
 <line x1="72" y1="642" x2="441" y2="642" stroke="#53665f" stroke-width="2" marker-end="url(#arrow)"/>
 <line x1="72" y1="642" x2="272" y2="642" stroke="#237665" stroke-width="7"/>
@@ -50,9 +50,9 @@
 <line x1="372" y1="597" x2="372" y2="688" stroke="#a74834" stroke-width="6"/>
 <text x="272" y="721" font-family="Arial, sans-serif" font-size="21" fill="#237665" text-anchor="middle" font-weight="normal">400 cm</text>
 <text x="372" y="721" font-family="Arial, sans-serif" font-size="21" fill="#a74834" text-anchor="middle" font-weight="normal">600 cm</text>
-<text x="272" y="758" font-family="Arial, sans-serif" font-size="20" fill="#237665" text-anchor="middle" font-weight="normal">slab</text>
+<text x="272" y="758" font-family="Arial, sans-serif" font-size="20" fill="#237665" text-anchor="middle" font-weight="normal">room floor</text>
 <text x="372" y="758" font-family="Arial, sans-serif" font-size="20" fill="#a74834" text-anchor="middle" font-weight="normal">behind it</text>
-<text x="30" y="812" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">400 &lt; 600: keep the slab’s sample.</text>
+<text x="30" y="812" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">400 &lt; 600: keep the floor’s sample.</text>
 <text x="30" y="842" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">This uses view depth, not hardware Z.</text>
 <text x="30" y="872" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Depth-test encoding can differ by renderer.</text>
 <text x="529" y="532" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="bold">Sample material, then write surface data</text>
@@ -65,6 +65,6 @@
 <text x="529" y="799" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="bold">Logical GBuffer fields</text>
 <text x="529" y="835" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">BaseColor = (.32,.30,.16)</text>
 <text x="529" y="865" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">WorldNormal = (0,0,1); Roughness = .8</text>
-<text x="529" y="895" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Illustrative slab: Metallic = 0</text>
+<text x="529" y="895" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Floor patch: Metallic = 0</text>
 <text x="30" y="936" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">All triangle vertices share 400 cm depth, so perspective-correct weights equal screen weights.</text>
 </svg>

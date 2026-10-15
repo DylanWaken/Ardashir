@@ -18,7 +18,7 @@ OUT = ROOT / 'Docs' / 'Unreal'
 ARTICLES = [
     dict(key='scene', slug='scene-representation', title='Scene Representation in Unreal Engine',
          short='Scene representation',
-         deck='From geometry in memory to a persistent world: how Unreal organizes objects, shares GPU data, and serves the systems that turn a scene into an image.'),
+         deck='Follow one indoor room from shared geometry and placed components through animation, GPU records, visible surfaces, and lighting representations—with real Unreal captures.'),
     dict(key='nanite', slug='nanite', title='Nanite: From a Scanned Bunny to Visible Pixels',
          short='Nanite',
          deck='Build, select, stream, and rasterize virtual geometry: a source-guided essay with a computed Stanford bunny experiment and real Unreal Engine captures.'),

@@ -33,6 +33,7 @@ def files():
                 continue
             if path.suffix in TEXT or path.name == '.gitignore': selected.append(path)
         selected.extend(path for path in (ROOT / 'Docs/Unreal/assets' / (family + '-lab')).iterdir() if path.is_file())
+    selected.extend(path for path in (ROOT / 'Docs/Unreal/assets/scene-room-captures').iterdir() if path.is_file())
     return sorted(selected)
 
 
@@ -68,6 +69,9 @@ def main():
     for record in captures['figures']:
         assert digest(engine_assets / record['file']) == record['sha256'], 'Changed engine capture: ' + record['file']
     subprocess.run([sys.executable, str(HERE / 'labs/lumen/verify.py')], check=True)
+    subprocess.run([sys.executable, str(HERE / 'labs/unreal/publish_scene_room.py'),
+                    'unused', str(ROOT / 'Docs/Unreal/assets/scene-room-captures'),
+                    '--check-published'], check=True)
     print(f'PASS: {len(paths)} laboratory sources/outputs, {image_count} PNGs, frozen hashes and numerical evidence')
 
 
