@@ -1,4 +1,4 @@
-/* One reading surface for three independent, long-form engineering articles. */
+/* One reading surface for four independent, long-form engineering articles. */
 :root { color-scheme: light; --paper: #fffefb; --ink: #292b27; --muted: #686a61; --rule: #dedfd7; --accent: #455c35; --wash: #f0f1e9; --code: #f3f3ef; }
 :root[data-theme="dark"] { color-scheme: dark; --paper: #191b19; --ink: #e3e5dc; --muted: #a7aca0; --rule: #3a4037; --accent: #bed39e; --wash: #252b22; --code: #242924; }
 * { box-sizing: border-box; }

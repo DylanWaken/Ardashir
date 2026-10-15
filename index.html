@@ -65,11 +65,13 @@
 
     <section aria-labelledby="unreal-heading">
       <h2 id="unreal-heading">Unreal rendering tech blogs</h2>
-      <p class="section-intro">Three independent, long-form articles that build from first principles to Unreal Engine 5.8.1 implementation, with chapter navigation, diagrams and worked examples. Each article stands on its own.</p>
+      <p class="section-intro">Four independent, long-form articles that build from first principles to Unreal Engine 5.8.1 implementation, with chapter navigation, rendered experiments, real engine captures and worked examples. Each article stands on its own.</p>
       <h3><a href="Unreal/scene-representation.html">Scene Representation in Unreal Engine</a></h3>
-      <p>Follow a courtyard scene from geometry and component ownership to GPU data, materials, animation and lighting. Explore the geometry families a compatible renderer must support, then derive a proposed scene architecture for Arda.</p>
-      <h3><a href="Unreal/nanite-and-lumen.html">Nanite and Lumen, from First Principles</a></h3>
-      <p>Develop the algorithms behind virtualized geometry, visibility and real-time global illumination through visual explanations of clusters, streaming, surface caches and light transport.</p>
+      <p>Follow geometry and component ownership through GPU data, materials, animation and lighting, then inspect an actual indoor scene through Unreal's runtime visualizers. Explore the geometry families a compatible renderer must support and derive a proposed scene architecture for Arda.</p>
+      <h3><a href="Unreal/nanite.html">Nanite: From a Scanned Bunny to Visible Pixels</a></h3>
+      <p>Build a measured hierarchy from the Stanford bunny, select compatible LODs, test occlusion, rasterize visibility and evaluate shading. Compare the reproducible experiment with real Unreal Nanite views.</p>
+      <h3><a href="Unreal/lumen.html">Lumen: Following Light Through a Room</a></h3>
+      <p>Follow one indoor scene through surface caches, SDF tracing, probes, diffuse GI, reflections and temporal reuse, with computed intermediate states, actual Lumen captures and step-by-step mathematical derivations.</p>
       <h3><a href="Unreal/material-compiler.html">How Unreal Compiles a Material Graph</a></h3>
       <p>Follow an expression graph from the Material Editor through translation, shader compilation, permutations, caching and the GPU programs that shade a surface.</p>
     </section>
