@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 620" role="img" aria-labelledby="title desc"><title id="title">An unchanged rest bound can reject a visible moving hand</title><desc id="desc">A character stands outside the illustrated view region, but the animated arm reaches into it. The small rest bound misses the view; an updated bound intersects the view and preserves visibility.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 620" role="img" aria-labelledby="title desc"><title id="title">Room mannequin closeup: a stale bound loses a moving hand</title><desc id="desc">The room mannequin stands outside the illustrated view region, but the animated arm reaches into it. The small rest bound misses the view; an updated bound intersects the view and preserves visibility.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#237665"/></marker></defs>
 <rect width="1040" height="620" fill="#fcfaf5"/>
-<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">An unchanged rest bound can reject a visible moving hand</text>
+<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">Room mannequin closeup: a stale bound loses a moving hand</text>
 <rect x="30" y="118" width="968" height="336" rx="0" fill="#f4f0e5" stroke="#53665f" stroke-width="1"/>
 <rect x="568" y="119" width="429" height="334" rx="0" fill="#dce9df" stroke="#237665" stroke-width="2"/>
 <text x="784" y="151" font-family="Arial, sans-serif" font-size="22" fill="#237665" text-anchor="middle" font-weight="normal">Visible region of this view</text>

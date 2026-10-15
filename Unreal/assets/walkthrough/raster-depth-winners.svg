@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 660" role="img" aria-labelledby="title desc"><title id="title">Rasterization tests samples; depth selects the visible one</title><desc id="desc">Two triangles overlap a ten-by-eight sample grid. Green and blue cells mark covered sample centers; blue wins overlap because it has a smaller depth in this explicitly forward-depth toy example.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 660" role="img" aria-labelledby="title desc"><title id="title">Room crop: door and back-wall triangles compete for samples</title><desc id="desc">Schematic projections of a room door triangle and a back-wall triangle overlap a ten-by-eight sample grid. Green and blue cells mark covered sample centers; blue wins overlap because it has a smaller depth in this explicitly forward-depth toy example.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#237665"/></marker></defs>
 <rect width="1040" height="660" fill="#fcfaf5"/>
-<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">Rasterization tests samples; depth selects the visible one</text>
+<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">Room crop: door and back-wall triangles compete for samples</text>
 <rect x="45" y="132" width="46" height="46" rx="0" fill="#f3f1e9" stroke="#b6c1b5" stroke-width="1"/>
 <circle cx="68.0" cy="155.0" r="2.5" fill="#53665f" stroke="#53665f" stroke-width="2"/>
 <rect x="91" y="132" width="46" height="46" rx="0" fill="#f3f1e9" stroke="#b6c1b5" stroke-width="1"/>
@@ -165,8 +165,8 @@
 <polygon points="72.60,168.80 449.80,228.60 192.20,481.60" fill="none" stroke="#237665" stroke-width="3"/>
 <polygon points="229.00,155.00 472.80,435.60 132.40,366.60" fill="none" stroke="#326f96" stroke-width="3"/>
 <text x="45" y="96" font-family="Arial, sans-serif" font-size="23" fill="#263a36" text-anchor="start" font-weight="bold">Actual sample-center coverage</text>
-<text x="576" y="143" font-family="Arial, sans-serif" font-size="23" fill="#263a36" text-anchor="start" font-weight="normal">Triangle A: depth 0.60</text>
-<text x="576" y="179" font-family="Arial, sans-serif" font-size="23" fill="#263a36" text-anchor="start" font-weight="normal">Triangle B: depth 0.35</text>
+<text x="576" y="143" font-family="Arial, sans-serif" font-size="23" fill="#263a36" text-anchor="start" font-weight="normal">Back wall A: depth 0.60</text>
+<text x="576" y="179" font-family="Arial, sans-serif" font-size="23" fill="#263a36" text-anchor="start" font-weight="normal">Door B: depth 0.35</text>
 <text x="576" y="215" font-family="Arial, sans-serif" font-size="23" fill="#263a36" text-anchor="start" font-weight="normal">Here, smaller depth is nearer.</text>
 <rect x="576" y="289" width="395" height="122" rx="0" fill="#f2eee3" stroke="#53665f" stroke-width="1"/>
 <text x="595" y="324" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="start" font-weight="normal">Sample (4.5, 3.5): inside A and B</text>

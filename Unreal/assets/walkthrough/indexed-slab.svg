@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 620" role="img" aria-labelledby="title desc"><title id="title">Four vertices, two triangles, one shared slab</title><desc id="desc">Colored vertex positions match colored rows in the vertex buffer. Two index triples reuse vertices zero and two. Texture coordinates give the surface a separate two-dimensional address.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 620" role="img" aria-labelledby="title desc"><title id="title">Room floor closeup: four vertices and two triangles</title><desc id="desc">Colored vertex positions match colored rows in the vertex buffer. Two index triples reuse vertices zero and two. Texture coordinates give the surface a separate two-dimensional address.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#237665"/></marker></defs>
 <rect width="1040" height="620" fill="#fcfaf5"/>
-<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">Four vertices, two triangles, one shared slab</text>
+<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">Room floor closeup: four vertices and two triangles</text>
 <polygon points="80.00,280.00 295.00,350.00 392.00,167.00" fill="#e4ede2" stroke="#237665" stroke-width="2"/>
 <polygon points="80.00,280.00 392.00,167.00 180.00,100.00" fill="#e6dcc5" stroke="#ac7420" stroke-width="2"/>
 <circle cx="80" cy="280" r="9" fill="#bd4939" stroke="#bd4939" stroke-width="2"/>

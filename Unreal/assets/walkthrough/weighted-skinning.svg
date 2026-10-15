@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 670" role="img" aria-labelledby="title desc"><title id="title">One sleeve vertex keeps its weights while its bone results move</title><desc id="desc">A small triangulated strip is skinned with two bone transforms. For the tracked vertex, weights are 0.75 and 0.25. The current bone results 2,0 and 2,4 produce 2,1; the previous second-bone result 2,2 produced 2,0.5.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 670" role="img" aria-labelledby="title desc"><title id="title">Room mannequin closeup: one sleeve vertex, two bones</title><desc id="desc">The room mannequin’s schematic sleeve strip is skinned with two bone transforms. For the tracked vertex, weights are 0.75 and 0.25. The current bone results 2,0 and 2,4 produce 2,1; the previous second-bone result 2,2 produced 2,0.5.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#237665"/></marker></defs>
 <rect width="1040" height="670" fill="#fcfaf5"/>
-<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">One sleeve vertex keeps its weights while its bone results move</text>
-<text x="176" y="97" font-family="Arial, sans-serif" font-size="23" fill="#263a36" text-anchor="middle" font-weight="bold">Rest strip</text>
+<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">Room mannequin closeup: one sleeve vertex, two bones</text>
+<text x="176" y="97" font-family="Arial, sans-serif" font-size="23" fill="#263a36" text-anchor="middle" font-weight="bold">Rest sleeve</text>
 <polygon points="48.00,353.00 108.00,353.00 108.00,323.00" fill="#d6e4dc" stroke="#237665" stroke-width="1"/>
 <polygon points="48.00,353.00 108.00,323.00 48.00,323.00" fill="#d1dfe7" stroke="#326f96" stroke-width="1"/>
 <polygon points="108.00,353.00 168.00,353.00 168.00,323.00" fill="#d6e4dc" stroke="#237665" stroke-width="1"/>

@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 590" role="img" aria-labelledby="title desc"><title id="title">A transform reaches three timelines at different moments</title><desc id="desc">Game, render, and GPU lanes show the same gate at successively newer angles. A submitted frame retains its snapshot while later updates are prepared.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 590" role="img" aria-labelledby="title desc"><title id="title">The indoor door reaches three timelines at different moments</title><desc id="desc">Game, render, and GPU lanes show the same indoor door at successively newer angles. A submitted frame retains its snapshot while later updates are prepared.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#237665"/></marker></defs>
 <rect width="1040" height="590" fill="#fcfaf5"/>
-<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">A transform reaches three timelines at different moments</text>
+<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">The indoor door reaches three timelines at different moments</text>
 <text x="286" y="97" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="middle" font-weight="normal">t0</text>
 <line x1="286" y1="113" x2="286" y2="473" stroke="#d4dad0" stroke-width="1"/>
 <text x="496" y="97" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="middle" font-weight="normal">t1</text>

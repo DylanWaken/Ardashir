@@ -1,37 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 630" role="img" aria-labelledby="title desc"><title id="title">The gate can leave the camera while its shadow remains visible</title><desc id="desc">A top-down plan shows the camera frustum, a visible paving sample, a lamp, and a gate outside the camera frustum. The lamp-to-sample segment crosses the gate, so the sample is shadowed.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 710" role="img" aria-labelledby="title desc"><title id="title">A room block can leave a view while still shadowing its floor</title><desc id="desc">An XZ section through the actual room at Y equals 270 centimeters uses the baseline matte block bounds, a point on the ceiling area light and a floor sample at X155. A teaching camera crops the floor, excluding the block; the light-to-floor segment still intersects the block.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#237665"/></marker></defs>
-<rect width="1040" height="630" fill="#fcfaf5"/>
-<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">The gate can leave the camera while its shadow remains visible</text>
-<polygon points="149.00,407.00 885.00,255.00 885.00,474.00" fill="#e3eee4" stroke="#237665" stroke-width="2"/>
-<text x="717" y="466" font-family="Arial, sans-serif" font-size="21" fill="#237665" text-anchor="middle" font-weight="normal">Camera-visible region</text>
-<circle cx="149" cy="407" r="15" fill="#326f96" stroke="#326f96" stroke-width="2"/>
-<text x="80" y="448" font-family="Arial, sans-serif" font-size="22" fill="#326f96" text-anchor="start" font-weight="normal">Camera</text>
-<polygon points="405.00,364.00 478.00,364.00 495.00,353.50 422.00,353.50" fill="#d8d5bf" stroke="#53665f" stroke-width="1"/>
-<polygon points="405.00,364.00 478.00,364.00 478.00,376.00 405.00,376.00" fill="#a9ac99" stroke="#53665f" stroke-width="1"/>
-<polygon points="478.00,364.00 495.00,353.50 495.00,364.00 478.00,376.00" fill="#bec0aa" stroke="#53665f" stroke-width="1"/>
-<polygon points="509.00,364.00 582.00,364.00 599.00,353.50 526.00,353.50" fill="#d8d5bf" stroke="#53665f" stroke-width="1"/>
-<polygon points="509.00,364.00 582.00,364.00 582.00,376.00 509.00,376.00" fill="#a9ac99" stroke="#53665f" stroke-width="1"/>
-<polygon points="582.00,364.00 599.00,353.50 599.00,364.00 582.00,376.00" fill="#bec0aa" stroke="#53665f" stroke-width="1"/>
-<polygon points="613.00,364.00 686.00,364.00 703.00,353.50 630.00,353.50" fill="#d8d5bf" stroke="#53665f" stroke-width="1"/>
-<polygon points="613.00,364.00 686.00,364.00 686.00,376.00 613.00,376.00" fill="#a9ac99" stroke="#53665f" stroke-width="1"/>
-<polygon points="686.00,364.00 703.00,353.50 703.00,364.00 686.00,376.00" fill="#bec0aa" stroke="#53665f" stroke-width="1"/>
-<polygon points="717.00,364.00 790.00,364.00 807.00,353.50 734.00,353.50" fill="#d8d5bf" stroke="#53665f" stroke-width="1"/>
-<polygon points="717.00,364.00 790.00,364.00 790.00,376.00 717.00,376.00" fill="#a9ac99" stroke="#53665f" stroke-width="1"/>
-<polygon points="790.00,364.00 807.00,353.50 807.00,364.00 790.00,376.00" fill="#bec0aa" stroke="#53665f" stroke-width="1"/>
-<polygon points="821.00,364.00 894.00,364.00 911.00,353.50 838.00,353.50" fill="#d8d5bf" stroke="#53665f" stroke-width="1"/>
-<polygon points="821.00,364.00 894.00,364.00 894.00,376.00 821.00,376.00" fill="#a9ac99" stroke="#53665f" stroke-width="1"/>
-<polygon points="894.00,364.00 911.00,353.50 911.00,364.00 894.00,376.00" fill="#bec0aa" stroke="#53665f" stroke-width="1"/>
-<circle cx="623" cy="306" r="9" fill="#a74834" stroke="#a74834" stroke-width="2"/>
-<text x="595" y="287" font-family="Arial, sans-serif" font-size="22" fill="#a74834" text-anchor="middle" font-weight="normal">P: visible slab</text>
-<circle cx="775" cy="107" r="19" fill="#eacf78" stroke="#ac7420" stroke-width="2"/>
-<text x="777" y="76" font-family="Arial, sans-serif" font-size="23" fill="#ac7420" text-anchor="middle" font-weight="normal">Lamp</text>
-<line x1="653" y1="201" x2="752" y2="201" stroke="#a74834" stroke-width="13"/>
-<text x="899" y="202" font-family="Arial, sans-serif" font-size="21" fill="#a74834" text-anchor="middle" font-weight="normal">Off-camera gate</text>
-<line x1="775" y1="107" x2="623" y2="306" stroke="#ac7420" stroke-width="3"/>
-<line x1="149" y1="407" x2="623" y2="306" stroke="#326f96" stroke-width="2" marker-end="url(#arrow)"/>
-<circle cx="703" cy="201" r="10" fill="none" stroke="#a74834" stroke-width="3"/>
-<text x="829" y="245" font-family="Arial, sans-serif" font-size="20" fill="#a74834" text-anchor="middle" font-weight="normal">Light ray blocked</text>
-<text x="32" y="525" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="normal">Camera visibility: P is visible; gate is outside this camera region.</text>
-<text x="32" y="557" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="normal">Light visibility: the segment from lamp to P crosses the gate → P is in shadow.</text>
-<text x="32" y="589" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="normal">The persistent scene must retain the gate for the light’s query.</text>
+<rect width="1040" height="710" fill="#fcfaf5"/>
+<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">A room block can leave a view while still shadowing its floor</text>
+<text x="32" y="88" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="start" font-weight="normal">Section at Y = 270 cm; X →, Z ↑</text>
+<line x1="80" y1="500.0" x2="600" y2="500.0" stroke="#53665f" stroke-width="3"/>
+<polygon points="520.00,357.00 440.00,500.00 540.00,500.00" fill="#e3eee4" stroke="#237665" stroke-width="2"/>
+<rect x="220" y="384.5" width="190" height="115.5" rx="0" fill="#d6c7a7" stroke="#a74834" stroke-width="3"/>
+<text x="317" y="448" font-family="Arial, sans-serif" font-size="21" fill="#a74834" text-anchor="middle" font-weight="normal">Matte block</text>
+<circle cx="160" cy="172.2" r="11" fill="#eacf78" stroke="#ac7420" stroke-width="2"/>
+<text x="155" y="139" font-family="Arial, sans-serif" font-size="21" fill="#ac7420" text-anchor="middle" font-weight="normal">Ceiling source sample</text>
+<circle cx="520" cy="357.0" r="10" fill="#326f96" stroke="#326f96" stroke-width="2"/>
+<text x="548" y="334" font-family="Arial, sans-serif" font-size="19" fill="#326f96" text-anchor="middle" font-weight="normal">Crop camera</text>
+<line x1="160" y1="172.2" x2="470" y2="500.0" stroke="#ac7420" stroke-width="3"/>
+<line x1="520" y1="357.0" x2="470" y2="500.0" stroke="#326f96" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="360.7718120805369" cy="384.5" r="9" fill="none" stroke="#a74834" stroke-width="3"/>
+<circle cx="470" cy="500.0" r="7" fill="#a74834" stroke="#a74834" stroke-width="2"/>
+<text x="480" y="538" font-family="Arial, sans-serif" font-size="20" fill="#a74834" text-anchor="middle" font-weight="normal">P: floor sample</text>
+<text x="650" y="145" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Actual room coordinates (cm):</text>
+<text x="650" y="177" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Source sample L = (0,270,298)</text>
+<text x="650" y="209" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Floor point P = (155,270,0)</text>
+<text x="650" y="272" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Matte block at this section:</text>
+<text x="650" y="304" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">X ∈ [30,125]; Z ∈ [0,105]</text>
+<text x="650" y="336" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">L → P crosses its top at</text>
+<text x="650" y="368" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">X = 155 × 193 / 298 = 100.39</text>
+<text x="650" y="435" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">The crop sees P, not the block.</text>
+<text x="650" y="467" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">The light query must retain it.</text>
+<text x="32" y="596" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Teaching camera and section drawing; no claim that this crop was captured from Unreal.</text>
+<text x="32" y="625" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">The ceiling RectLight is extended: this line tests one source sample, not the complete soft shadow.</text>
+<text x="32" y="654" font-family="Arial, sans-serif" font-size="20" fill="#263a36" text-anchor="start" font-weight="normal">Main-view culling can discard draw work without deleting the primitive from the persistent scene.</text>
 </svg>

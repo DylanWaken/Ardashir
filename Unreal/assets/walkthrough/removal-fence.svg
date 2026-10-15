@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 600" role="img" aria-labelledby="title desc"><title id="title">Removal stops new references before old GPU readers finish</title><desc id="desc">A buffer allocation remains occupied after object removal while an older frame can still read it. A completion fence makes reclamation safe; a new generation identifies later reuse.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1040 600" role="img" aria-labelledby="title desc"><title id="title">Removing the door indicator does not finish old GPU readers</title><desc id="desc">A buffer allocation remains occupied after object removal while an older frame can still read it. A completion fence makes reclamation safe; a new generation identifies later reuse.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#237665"/></marker></defs>
 <rect width="1040" height="600" fill="#fcfaf5"/>
-<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">Removal stops new references before old GPU readers finish</text>
+<text x="30" y="40" font-family="Arial, sans-serif" font-size="26" fill="#263a36" text-anchor="start" font-weight="bold">Removing the door indicator does not finish old GPU readers</text>
 <text x="35" y="90" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="normal">CPU object</text>
 <text x="35" y="197" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="normal">Render record</text>
 <text x="35" y="308" font-family="Arial, sans-serif" font-size="22" fill="#263a36" text-anchor="start" font-weight="normal">GPU allocation</text>
@@ -9,7 +9,7 @@
 <line x1="249" y1="219" x2="988" y2="219" stroke="#53665f" stroke-width="2" marker-end="url(#arrow)"/>
 <line x1="249" y1="330" x2="988" y2="330" stroke="#53665f" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="252" y="78" width="291" height="40" rx="0" fill="#e6d5c9" stroke="#a74834" stroke-width="2"/>
-<text x="396" y="106" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="middle" font-weight="normal">Lantern exists</text>
+<text x="396" y="106" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="middle" font-weight="normal">Indicator exists</text>
 <rect x="252" y="186" width="389" height="40" rx="0" fill="#dce8db" stroke="#237665" stroke-width="2"/>
 <text x="447" y="214" font-family="Arial, sans-serif" font-size="21" fill="#263a36" text-anchor="middle" font-weight="normal">Record accepts draws</text>
 <rect x="252" y="297" width="560" height="54" rx="0" fill="#d9e5ee" stroke="#326f96" stroke-width="2"/>
