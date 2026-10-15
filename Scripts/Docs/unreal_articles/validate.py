@@ -1,4 +1,4 @@
-"""Validate the three articles, local links, original SVGs, and optional source hashes."""
+"""Validate the four articles, local links, original SVGs, and optional source hashes."""
 from pathlib import Path
 from html.parser import HTMLParser
 from urllib.parse import urlsplit, unquote
@@ -86,7 +86,11 @@ def main():
 
     evidence_count = 0
     for path in (HERE / 'evidence').glob('*.json'):
-        if args.article and path.stem != args.article and not (args.article == 'scene' and path.stem == 'compatibility'): continue
+        related = {'scene': {'scene', 'compatibility', 'unreal-lab'},
+                   'nanite': {'nanite', 'nanite-lumen', 'nanite-lab', 'unreal-lab'},
+                   'lumen': {'lumen', 'nanite-lumen', 'lumen-lab', 'unreal-lab'},
+                   'material': {'material'}}
+        if args.article and path.stem not in related[args.article]: continue
         records = json.loads(path.read_text(encoding='utf-8'))
         if isinstance(records, dict): records = records.get('evidence', records.get('sources', []))
         seen = set()

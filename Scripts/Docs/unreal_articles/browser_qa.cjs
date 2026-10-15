@@ -7,7 +7,7 @@ const path = require('node:path');
 const os = require('node:os');
 (async () => {
   const base = process.env.ARDA_ARTICLE_BASE || 'http://127.0.0.1:8766/';
-  const pages = ['scene-representation', 'nanite-and-lumen', 'material-compiler'];
+  const pages = ['scene-representation', 'nanite', 'lumen', 'material-compiler'];
   const out = path.join(os.tmpdir(), 'arda-unreal-articles'); fs.mkdirSync(out, {recursive:true});
   const browser = await chromium.launch({headless:true, ...(process.env.ARDA_BROWSER ? {executablePath:process.env.ARDA_BROWSER} : {})});
   const context = await browser.newContext({reducedMotion:'reduce'});
@@ -24,6 +24,19 @@ const os = require('node:os');
       assert(await page.locator('.chapter').count() >= 10);
       const dimensions = await page.evaluate(() => ({width:innerWidth, full:document.documentElement.scrollWidth}));
       assert(dimensions.full <= dimensions.width + 1, `${slug} horizontal page overflow at ${width}: ${JSON.stringify(dimensions)}`);
+      assert.equal(await page.locator('.reference-table[open]').count(), 0);
+      if (await page.locator('.reference-table').count()) {
+        const table = page.locator('.reference-table').first();
+        await table.locator('summary').click();
+        assert(await table.locator('table').isVisible());
+        assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Expanded table causes page overflow');
+        await table.locator('summary').click();
+      }
+      if (slug === 'nanite' || slug === 'lumen') {
+        assert(await page.locator('.katex').count() > 30);
+        assert.equal(await page.locator('.katex-error').count(), 0);
+        assert(await page.locator('math annotation[encoding="application/x-tex"]').count() > 30);
+      }
       await page.locator('.contents summary').click();
       const destination = page.locator('.contents a').nth(4);
       const hash = await destination.getAttribute('href');
@@ -78,10 +91,19 @@ const os = require('node:os');
     await staticPage.goto(base + 'Docs/Unreal/' + slug + '.html');
     assert(await staticPage.locator('.chapter').count() >= 10);
     assert.equal(await staticPage.locator('.theme-button').isVisible(), false);
+    if (slug === 'nanite' || slug === 'lumen') {
+      assert(await staticPage.locator('.katex').first().isVisible());
+      await staticPage.locator('.equation-source summary').first().click();
+      assert(await staticPage.locator('.equation-source[open] code').isVisible());
+    }
     await staticPage.locator('.contents summary').click();
     await staticPage.locator('.contents a').last().click();
     assert(new URL(staticPage.url()).hash.length > 1);
   }
+  await page.goto(base + 'Docs/Unreal/nanite-and-lumen.html#surface-cache');
+  await page.waitForURL('**/lumen.html#surface-cache');
+  await page.goto(base + 'Docs/Unreal/nanite-and-lumen.html#dag-and-cut');
+  await page.waitForURL('**/nanite.html#dag-and-cut');
   await browser.close();
-  console.log('PASS: all three standalone articles, non-root hosting, offline reading, narrow layouts, navigation, themes, SVG bounds, and no-JS reading. Screenshots: ' + out);
+  console.log('PASS: all four standalone articles, non-root hosting, offline reading, narrow layouts, navigation, themes, SVG bounds, and no-JS reading. Screenshots: ' + out);
 })().catch(error => { console.error(error); process.exit(1); });

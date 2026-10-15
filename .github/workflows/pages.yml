@@ -52,6 +52,12 @@ jobs:
       - name: Check generated Unreal tech blogs
         run: python3 Scripts/Docs/unreal_articles/build.py --check
 
+      - name: Check rendered equation cache
+        run: python3 Scripts/Docs/unreal_articles/math_typesetting.py --check --node node
+
+      - name: Validate reproducible rendering laboratory evidence
+        run: python3 Scripts/Docs/unreal_articles/validate_labs.py
+
       - name: Validate Unreal tech blogs
         run: python3 Scripts/Docs/unreal_articles/validate.py
 

@@ -1,4 +1,4 @@
-"""Compose three independent, authored long-form Unreal articles.
+"""Compose four independent, authored long-form Unreal articles.
 
 python Scripts/Docs/unreal_articles/build.py [--check]
 The chapter HTML is the prose source. This shell adds only reading navigation.
@@ -10,6 +10,7 @@ import argparse
 import json
 import math
 import re
+from math_typesetting import typeset, PATTERN as MATH_PATTERN
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
@@ -18,9 +19,12 @@ ARTICLES = [
     dict(key='scene', slug='scene-representation', title='Scene Representation in Unreal Engine',
          short='Scene representation',
          deck='From geometry in memory to a persistent world: how Unreal organizes objects, shares GPU data, and serves the systems that turn a scene into an image.'),
-    dict(key='nanite-lumen', slug='nanite-and-lumen', title='Nanite and Lumen, from First Principles',
-         short='Nanite / Lumen',
-         deck='A detailed exploration of virtualized geometry and real-time global illumination: the representations, algorithms, and compromises behind Unreal’s visible world.'),
+    dict(key='nanite', slug='nanite', title='Nanite: From a Scanned Bunny to Visible Pixels',
+         short='Nanite',
+         deck='Build, select, stream, and rasterize virtual geometry: a source-guided essay with a computed Stanford bunny experiment and real Unreal Engine captures.'),
+    dict(key='lumen', slug='lumen', title='Lumen: Following Light Through a Room',
+         short='Lumen',
+         deck='Derive and implement the machinery of real-time indirect lighting: surface caches, distance fields, probes, reflections, and temporal reuse, demonstrated in one indoor scene.'),
     dict(key='material', slug='material-compiler', title='How Unreal Compiles a Material Graph',
          short='Material graph compilation',
          deck='Follow an expression graph from the Material Editor through analysis, shader generation, caching, compilation, and the GPU programs used to shade a surface.'),
@@ -99,7 +103,19 @@ class TermLinks(HTMLParser):
 
 
 def render(article, body):
+    equations = []
+    def protect_math(match):
+        equations.append(match[0])
+        return f'MATHPLACEHOLDER{len(equations)-1}END'
+    body = MATH_PATTERN.sub(protect_math, body)
     terms = TermLinks(); terms.feed(body); body = ''.join(terms.out)
+    body = re.sub(r'MATHPLACEHOLDER(\d+)END', lambda m: equations[int(m[1])], body)
+    def collapse_reference(match):
+        wrapper, table, title_id, title, rows = match.groups()
+        return (f'<details class="reference-table"><summary id="{title_id}">{title}</summary>'
+                f'{wrapper}{table[:-1]} aria-labelledby="{title_id}">{rows}</table></div></details>')
+    body = re.sub(r'(<div class="table-scroll"[^>]*>)\s*(<table class="data-table">)<caption id="([^"]+)">(.*?)</caption>(.*?)</table>\s*</div>',
+                  collapse_reference, body, flags=re.S)
     body = re.sub(r'(<h2>)\s*\d+[.)]\s+', r'\1', body)
     # Wide diagrams remain readable on phones; the surrounding article never scrolls sideways.
     def diagram(match):
@@ -110,10 +126,13 @@ def render(article, body):
     body = re.sub(r'(<figure[^>]*>)\s*(<img\b[^>]*src="[^"]+\.svg"[^>]*>)', diagram, body)
     body = re.sub(r'(<figure[^>]*>\s*<div class="figure-scroll"[^>]*><img\b[^>]*src="([^"]+\.svg)"[^>]*></div>\s*<figcaption>)(.*?)(</figcaption>)',
                   lambda m: m[1] + m[3] + f' <a href="{m[2]}">Open diagram at full size</a>.' + m[4], body, flags=re.S)
+    body = re.sub(r'(<figure[^>]*>\s*<img\b[^>]*src="([^"]+\.(?:png|jpg|webp))"[^>]*>\s*<figcaption>)(.*?)(</figcaption>)',
+                  lambda m: m[1] + m[3] + f' <a href="{m[2]}">Open image at full size</a>.' + m[4], body, flags=re.S)
     parsed = Headings()
     parsed.feed(body)
     assert parsed.items, article['key'] + ': no chapters'
     count = len(re.findall(r"\b[\w’'-]+\b", ' '.join(parsed.words)))
+    body = typeset(body)
     minutes = math.ceil(count / 200)
     nav = ''.join(f'<li><a href="#{escape(id)}"><span>{i:02}</span>{escape(label)}</a></li>'
                   for i, (id, label) in enumerate(parsed.items, 1))
@@ -132,6 +151,8 @@ def render(article, body):
 <meta name="description" content="{escape(article['deck'])}">
 <title>{title} · Ardashir</title>
 <link rel="stylesheet" href="articles.css">
+<link rel="stylesheet" href="assets/math/katex.min.css">
+<link rel="stylesheet" href="assets/math/math.css">
 <script src="../assets/glossary-data.js" defer></script>
 <script src="articles.js" defer></script>
 </head><body>
@@ -140,7 +161,7 @@ def render(article, body):
 <nav class="essay-links" aria-label="Independent articles">{siblings}</nav>
 <header class="article-heading"><p class="kicker">Rendering engineering</p><h1>{title}</h1>
 <p class="deck">{escape(article['deck'])}</p>
-<p class="byline">Source study · Unreal Engine 5.8.1 · <time datetime="2026-10-13">13 October 2026</time><br>{count:,} words · approximately {minutes} minutes</p>
+<p class="byline">Source study · Unreal Engine 5.8.1 · <time datetime="2026-10-15">15 October 2026</time><br>{count:,} words · approximately {minutes} minutes</p>
 </header>
 <div class="reading-bar"><div class="reading-bar-inner">
 <details class="contents"><summary>Chapters <span aria-hidden="true">↓</span></summary><nav aria-label="Article chapters"><ol>{nav}</ol></nav></details>
@@ -158,8 +179,22 @@ def render(article, body):
 
 def article_source(article):
     body = (HERE / 'chapters' / (article['key'] + '.html')).read_text(encoding='utf-8')
-    if article['key'] != 'scene': return body
-    visuals = HERE / 'walkthrough.json'
+    placements = HERE / (article['key'] + '-placements.json')
+    if placements.exists():
+        for item in json.loads(placements.read_text(encoding='utf-8')):
+            fragment = (HERE / 'chapters' / item['source']).read_text(encoding='utf-8')
+            if item.get('id'):
+                matches = re.findall(r'<section\b[^>]*id="' + re.escape(item['id']) + r'"[^>]*>.*?</section>', fragment, re.S)
+                assert len(matches) == 1, f'Unknown inserted chapter: {item["id"]}'
+                fragment = matches[0]
+            anchor = item.get('after') or item.get('before')
+            if anchor:
+                pattern = r'(<section\b[^>]*id="' + re.escape(anchor) + r'"[^>]*>.*?</section>)'
+                assert len(re.findall(pattern, body, re.S)) == 1, f'Unknown placement: {anchor}'
+                body = re.sub(pattern, lambda m: (m[0] + '\n' + fragment) if item.get('after') else (fragment + '\n' + m[0]), body, flags=re.S)
+            else:
+                body += '\n' + fragment
+    visuals = HERE / ('walkthrough.json' if article['key'] == 'scene' else article['key'] + '-runtime.json')
     if visuals.exists():
         for item in json.loads(visuals.read_text(encoding='utf-8')):
             pattern = re.compile(r'(<section\b[^>]*id="' + re.escape(item['chapter']) + r'"[^>]*>)(.*?)(</section>)', re.S)
@@ -178,8 +213,19 @@ def article_source(article):
                     chapter += '\n' + item['html'] + '\n'
                 return m[1] + chapter + m[3]
             body = pattern.sub(insert, body)
-    compatibility = HERE / 'chapters' / 'scene-compatibility.html'
-    if compatibility.exists(): body += '\n' + compatibility.read_text(encoding='utf-8')
+    if article['key'] == 'scene':
+        compatibility = HERE / 'chapters' / 'scene-compatibility.html'
+        if compatibility.exists(): body += '\n' + compatibility.read_text(encoding='utf-8')
+    if article['key'] in ('nanite', 'lumen'):
+        evidence = HERE / 'evidence' / (article['key'] + '-lab.json')
+        if evidence.exists():
+            records = json.loads(evidence.read_text(encoding='utf-8'))
+            if isinstance(records, dict): records = records.get('evidence', records.get('sources', []))
+            body += '\n<section class="chapter" id="source-lab-notes"><h2>Source evidence and reproducibility</h2><p>The source ranges below were inspected in the local Unreal 5.8.1 checkout. Their exact hashes are recorded beside the laboratory source. These are implementation anchors for the worked examples, not a claim that the reduced reference code reproduces every engine path.</p><ol class="source-list">'
+            for record in records:
+                url = 'https://github.com/EpicGames/UnrealEngine/blob/71fe36aac5a8df5ccd66c763ffc902b29b6a9c43/' + record['path'] + f'#L{record["line"]}-L{record["end_line"]}'
+                body += f'<li id="source-{escape(record["id"])}"><a href="{url}">{escape(record["path"])}, lines {record["line"]}–{record["end_line"]}</a><p>{escape(record.get("claim", record.get("note", "Inspected implementation range.")))}</p></li>'
+            body += '</ol></section>'
     return body
 
 
@@ -198,6 +244,32 @@ def main():
         else:
             target.write_text(content, encoding='utf-8')
         print(f'{"Verified" if args.check else "Built"} {article["slug"]}: {count:,} words, {chapters} chapters')
+    if not args.article:
+        target = OUT / 'nanite-and-lumen.html'
+        content = migration_page()
+        if args.check:
+            assert target.read_text(encoding='utf-8') == content, f'Stale migration page: {target}'
+        else:
+            target.write_text(content, encoding='utf-8')
+
+
+def migration_page():
+    anchors = ['pixels-and-triangles', 'clusters-and-boundaries', 'dag-and-cut', 'streaming-residency',
+               'gpu-visibility', 'visibility-rasterization', 'programmable-materials', 'shadow-views',
+               'light-transport', 'tracing-representations', 'surface-cache', 'screen-probes',
+               'reflections-and-hit-lighting', 'time-and-invalidation', 'moving-and-large-worlds',
+               'courtyard-frame', 'diagnosing-the-picture', 'designing-the-contracts']
+    marker = ''.join(f'<span id="{id}"></span>' for id in anchors)
+    return '''<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>Nanite and Lumen are now separate essays · Ardashir</title>
+<link rel="stylesheet" href="articles.css"><script src="legacy-routing.js" defer></script></head><body>
+<header class="masthead"><a class="wordmark" href="../index.html">Ardashir</a></header>
+<main class="prose"><h1>Two independent essays</h1>
+<p>The former combined article has been replaced by two expanded, independently readable studies.</p>
+<p><a href="nanite.html">Nanite: From a Scanned Bunny to Visible Pixels</a> follows an actual mesh through building, LOD selection, rasterization, tessellation and shading.</p>
+<p><a href="lumen.html">Lumen: Following Light Through a Room</a> develops surface caches, tracing, probes, reflections and temporal reuse with computed experiments and real Unreal captures.</p>
+<p><a href="../index.html">Return to the documentation index</a>.</p>''' + marker + '\n</main></body></html>\n'
 
 
 if __name__ == '__main__':
