@@ -7,7 +7,7 @@ import re
 # Topic links belong to the static chapter index; definitions remain in the
 # six-field glossary-data.js rows shared with tooltips and the offline validator.
 TOPIC_LINKS = {
-    **{slug: ("Unreal/scene-representation.html#" + chapter, "Scene Representation in Unreal Engine")
+    **{slug: ("https://dylanwaken.github.io/Understanding-Unreal/Unreal/scene-representation.html#" + chapter, "Scene Representation in Unreal Engine")
        for chapter, slugs in {
            "a-triangle-becomes-an-object": ["scene-asset", "scene-instance", "render-view", "uv-coordinates", "mesh-section"],
            "crossing-the-thread-boundary": ["render-proxy"],

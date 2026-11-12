@@ -13,9 +13,10 @@ from diagrams import create, FIGURES
 
 class Page(HTMLParser):
     def __init__(self):
-        super().__init__();self.ids=set();self.links=[];self.images=[];self.headings=[];self.tables=0
+        super().__init__();self.ids=set();self.links=[];self.images=[];self.headings=[];self.tables=0;self.navigation=set()
     def handle_starttag(self,tag,attrs):
         a=dict(attrs)
+        if tag=='a' and 'href' in a:self.navigation.add(a['href'])
         if 'id' in a:
             assert a['id'] not in self.ids, f'Duplicate ID: {a["id"]}'
             self.ids.add(a['id'])
@@ -37,6 +38,8 @@ def main():
     parsed={OUT:p}
     for link in p.links:
         u=urlsplit(link)
+        if link in p.navigation and link=='https://dylanwaken.github.io/Understanding-Unreal/Unreal/scene-representation.html':
+            continue  # The related essay moved; rendering dependencies remain local.
         assert not u.scheme and not u.netloc, f'Unexpected external dependency {link}'
         assert not u.path.startswith('/'),f'Root-relative URL: {link}'
         target=(OUT.parent/unquote(u.path)).resolve() if u.path else OUT
