@@ -62,6 +62,9 @@ jobs:
           --repo-root .
           --verbose
 
+      - name: Check site independence
+        run: python3 Scripts/Docs/check_site_independence.py
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
