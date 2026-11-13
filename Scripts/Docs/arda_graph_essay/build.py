@@ -121,7 +121,7 @@ def render(verify=False):
 <script src="../assets/glossary-data.js" defer></script><script src="../assets/articles.js" defer></script>
 </head><body><a class="skip-link" href="#article">Skip to article</a>
 <header class="masthead" id="top"><a class="wordmark" href="../index.html">Ardashir</a><span class="publication">Technical essays</span><a class="docs-link" href="../index.html">Documentation ↗</a></header>
-<nav class="essay-links" aria-label="Related documentation"><a href="../ArdaRDG/index.html">ArdaDependencyGraph</a><a href="../ArdaBackend/index.html">GPU backend</a><a href="https://dylanwaken.github.io/Understanding-Unreal/Unreal/scene-representation.html">Scene representation essay</a></nav>
+<nav class="essay-links" aria-label="Related documentation"><a href="../ArdaRDG/index.html">ArdaDependencyGraph</a><a href="../ArdaBackend/index.html">GPU backend</a></nav>
 <header class="article-heading"><p class="kicker">Graph and compiler engineering</p><h1>{TITLE}</h1><p class="deck">{DECK}</p>
 <p class="byline">Current working-tree source study · <time datetime="2026-10-14">14 October 2026</time><br>{count:,} words · approximately {math.ceil(count/200)} minutes</p></header>
 <div class="reading-bar"><div class="reading-bar-inner"><details class="contents"><summary>Chapters <span aria-hidden="true">↓</span></summary><nav aria-label="Article chapters"><ol>{nav}</ol></nav></details><span class="reading-position">Arda graph and Inductor</span><a class="top-link" href="#top" aria-label="Back to the beginning">↑</a><button type="button" class="theme-button" aria-label="Switch to dark appearance" hidden>Dark</button></div><div class="progress" aria-hidden="true"><span></span></div></div>

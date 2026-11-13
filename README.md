@@ -53,7 +53,7 @@ Source/
 
 Scene, global-illumination, physics, deep-learning and standalone interop module
 scaffolding has been removed. The [archived scene representation plan](Docs/ArdaScene/README.md)
-and Unreal research guides remain design references. Native device and resource
+remains a design reference. Native device and resource
 interop is implemented within ArdaBackend.
 
 ## Quick user guides

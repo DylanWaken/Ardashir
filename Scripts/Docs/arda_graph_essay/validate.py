@@ -38,8 +38,6 @@ def main():
     parsed={OUT:p}
     for link in p.links:
         u=urlsplit(link)
-        if link in p.navigation and link=='https://dylanwaken.github.io/Understanding-Unreal/Unreal/scene-representation.html':
-            continue  # The related essay moved; rendering dependencies remain local.
         assert not u.scheme and not u.netloc, f'Unexpected external dependency {link}'
         assert not u.path.startswith('/'),f'Root-relative URL: {link}'
         target=(OUT.parent/unquote(u.path)).resolve() if u.path else OUT

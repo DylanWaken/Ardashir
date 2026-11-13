@@ -7,19 +7,6 @@ import re
 # Topic links belong to the static chapter index; definitions remain in the
 # six-field glossary-data.js rows shared with tooltips and the offline validator.
 TOPIC_LINKS = {
-    **{slug: ("https://dylanwaken.github.io/Understanding-Unreal/Unreal/scene-representation.html#" + chapter, "Scene Representation in Unreal Engine")
-       for chapter, slugs in {
-           "a-triangle-becomes-an-object": ["scene-asset", "scene-instance", "render-view", "uv-coordinates", "mesh-section"],
-           "crossing-the-thread-boundary": ["render-proxy"],
-           "the-scene-becomes-gpu-data": ["gpu-scene", "scene-primitive"],
-           "the-courtyard-needs-more-than-static-meshes": ["heightfield", "geometry-cluster", "lod"],
-           "motion-is-more-than-a-matrix": ["skinning", "transform", "matrix", "surface-normal", "surface-tangent"],
-           "from-a-proxy-to-a-draw": ["vertex-factory", "rasterization"],
-           "a-material-is-a-surface-program": ["brdf"],
-           "a-visible-surface-becomes-a-lit-pixel": ["gbuffer"],
-           "the-camera-does-not-see-the-whole-lighting-problem": ["global-illumination", "surface-cache", "screen-trace", "blas", "tlas"],
-           "deriving-an-arda-scene-from-the-courtyard": ["generational-handle", "render-frame"],
-       }.items() for slug in slugs},
     "topological-order": ("ArdaRDG/compilation.html#objectives", "Compilation objectives and legal orders"),
     "critical-path": ("ArdaRDG/compilation.html#seeds", "Critical-path scheduling seeds"),
     "list-scheduling": ("ArdaRDG/compilation.html#seeds", "Constructing scheduling seeds"),
