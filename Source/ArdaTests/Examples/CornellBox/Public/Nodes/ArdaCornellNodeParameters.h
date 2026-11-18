@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graph/Node/ArdaDependencyNode.h"
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include <EASTL/vector.h>
 #include <EASTL/array.h>
 
@@ -53,6 +53,7 @@ namespace arda
 		eastl::array<float, 4> mCameraRightAndExposure{};
 		eastl::array<float, 4> mCameraUpAndLightArea{};
 		eastl::array<uint32_t, 4> mImageAndSampling{};
+		/** Maximum bounces, seed, frame index, and whether to write per-sample denoising guides. */
 		eastl::array<uint32_t, 4> mPathAndSeed{};
 	};
 

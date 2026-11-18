@@ -1,11 +1,15 @@
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include "Graph/Node/ArdaGraphEdit.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
-#include "Graph/Node/ArdaDependencyNode.h"
 #include "Inductor/Runtime/ArdaInductorCommandExecutor.h"
 #include "ArdaDependencyGraph.h"
+#include "Inductor/Preprocess/ArdaGraphPreprocessRule.h"
 #include "../../ArdaBackend/Private/RHI/Device/ArdaRHIDevicePrivate.h"
 
 #include <gtest/gtest.h>
+#include <cstring>
+#include <stdexcept>
+#include <thread>
 
 namespace arda::inductor_command_failure_tests
 {
@@ -16,9 +20,14 @@ namespace arda::inductor_command_failure_tests
 		eastl::string mOperation;
 		uint32_t mFailureCount = 0;
 		uint32_t mTimerBeginAttempts = 0;
+		uint32_t mWriteBufferAttempts = 0;
 
 		FArdaRHIStatus Check(const char* Operation)
 		{
+			if (std::strcmp(Operation, "WriteBuffer") == 0)
+			{
+				++mWriteBufferAttempts;
+			}
 			if (mOperation == Operation && mFailureCount == 0)
 			{
 				++mFailureCount;
@@ -374,6 +383,11 @@ namespace arda::inductor_command_failure_tests
 			return {{256, 256, 1}, {}};
 		}
 
+		TArdaRHIResult<FArdaRHIMemoryRequirements> QueryBufferMemoryRequirements(const FArdaRHIBufferDesc&) override
+		{
+			return {{256, 256, 1}, {}};
+		}
+
 		TArdaRHIResult<FArdaRHIMemoryRequirements> GetTextureMemoryRequirements(const FArdaProviderObjectRef&,
 		    const FArdaRHITextureDesc&) override
 		{
@@ -448,6 +462,10 @@ namespace arda::inductor_command_failure_tests
 
 		TArdaRHIResult<uint64_t> ExecuteCommandList(IArdaProviderCommandList&, EArdaRHIQueueType) override
 		{
+			if (auto Status = mFailure.Check("ExecuteCommandList"); !Status)
+			{
+				return {{}, Status};
+			}
 			for (const auto& Timer : mTimers)
 			{
 				if (Timer->mState == FArdaRecordingTimer::EArdaState::Recorded)
@@ -467,7 +485,7 @@ namespace arda::inductor_command_failure_tests
 		FArdaRHIStatus WaitForSubmission(uint64_t) override
 		{
 			++mWaitCount;
-			return {};
+			return mFailure.Check("WaitForSubmission");
 		}
 
 		FArdaRHIStatus WaitForIdle() override
@@ -484,13 +502,12 @@ namespace arda::inductor_command_failure_tests
 		}
 	};
 
-	struct FArdaTimedNodeParameters
-	{
-		eastl::shared_ptr<uint32_t> mBodyCount;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaTimedNodeParameters)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<uint32_t>, mBodyCount)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	struct FArdaTimedTestNode
-	    : TArdaDependencyNode<FArdaTimedTestNode, FArdaTimedNodeParameters, EArdaDependencyNodeKind::Graphics>
+	    : TArdaNodeDefinition<FArdaTimedTestNode, FArdaTimedNodeParameters, EArdaNodeType::Graphics>
 	{
 		using FArdaParameters = FArdaTimedNodeParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -529,6 +546,43 @@ namespace arda::inductor_command_failure_tests
 	ARDA_DECLARE_GRAPH_NODE(FArdaTimedTestNode, RecordTimedBody);
 	ARDA_DEFINE_GRAPH_NODE(FArdaTimedTestNode, RecordTimedBody);
 
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRecordingReentryParameters)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<std::function<void()>>, mCallback)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	struct FArdaRecordingReentryNode
+	    : TArdaNodeDefinition<FArdaRecordingReentryNode, FArdaRecordingReentryParameters, EArdaNodeType::Graphics>
+	{
+		static FArdaDependencyNodeMetadata GetMetadata()
+		{
+			return {"test.recording.reentry", 1};
+		}
+
+		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)
+		{
+			return FArdaDependencyKeyBuilder{}.Value(reinterpret_cast<uintptr_t>(Parameters.mCallback.get())).Build();
+		}
+
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&, const FArdaState&)
+		{
+			FArdaDependencyNodeDesc Desc;
+			Desc.mbSideEffect = true;
+			return Desc;
+		}
+
+		static FArdaRHIStatus Record(FArdaDependencyExecutionContext&,
+		    const FArdaParameters& Parameters,
+		    const FArdaState&,
+		    FArdaInstanceState&)
+		{
+			(*Parameters.mCallback)();
+			return {};
+		}
+	};
+
+	ARDA_DECLARE_GRAPH_NODE(FArdaRecordingReentryNode, RecordGraphReentry);
+	ARDA_DEFINE_GRAPH_NODE(FArdaRecordingReentryNode, RecordGraphReentry);
+
 	FArdaRHIStatus ConfigureTimedGraph(FArdaDependencyGraph& Graph,
 	    eastl::shared_ptr<uint32_t> BodyCount,
 	    const char* NodeName)
@@ -554,7 +608,7 @@ namespace arda::inductor_command_failure_tests
 		{
 			return Status;
 		}
-		return Graph.Compile();
+		return Graph.CompileAndWait();
 	}
 
 	TEST(ArdaInductorCommandFailure, TimerBeginFailureDropsSampleAndAllowsLaterFrameTiming)
@@ -566,10 +620,9 @@ namespace arda::inductor_command_failure_tests
 		auto BodyCount = eastl::make_shared<uint32_t>(0);
 		ASSERT_TRUE(ConfigureTimedGraph(Graph, BodyCount, "test.timer.begin-failure"));
 		FArdaGraphExecuteOptions Options;
-		Options.mbParallelRecording = false;
 		for (uint32_t Frame = 0; Frame != 3; ++Frame)
 		{
-			auto Submitted = Graph.Submit(Options);
+			auto Submitted = Graph.SubmitAndWait(Options);
 			ASSERT_TRUE(Submitted) << Submitted.mStatus.mMessage.c_str();
 			const auto WaitCount = Provider->mWaitCount;
 			Graph.CollectTelemetry();
@@ -596,15 +649,14 @@ namespace arda::inductor_command_failure_tests
 		auto BodyCount = eastl::make_shared<uint32_t>(0);
 		ASSERT_TRUE(ConfigureTimedGraph(Graph, BodyCount, "test.timer.end-failure"));
 		FArdaGraphExecuteOptions Options;
-		Options.mbParallelRecording = false;
-		const auto Failed = Graph.Execute(Options);
+		const auto Failed = Graph.ExecuteAndWait(Options);
 		EXPECT_EQ(Failed.mStatus.mCode, EArdaRHIResult::BackendFailure);
 		EXPECT_STREQ(Failed.mStatus.mMessage.c_str(), "Injected native command recording failure.");
 		EXPECT_EQ(Provider->mSubmissionCount, 0u);
 		EXPECT_EQ(*BodyCount, 1u);
 		EXPECT_TRUE(Graph.GetTimingProfile().empty());
-		ASSERT_TRUE(Graph.Compile(true));
-		const auto Recovered = Graph.Execute(Options);
+		ASSERT_TRUE(Graph.CompileAndWait(true));
+		const auto Recovered = Graph.ExecuteAndWait(Options);
 		ASSERT_TRUE(Recovered.mStatus) << Recovered.mStatus.mMessage.c_str();
 		const auto Profile = Graph.GetTimingProfile();
 		ASSERT_EQ(Profile.size(), 1u);
@@ -657,7 +709,6 @@ namespace arda::inductor_command_failure_tests
 			    });
 			Program.Finalize();
 			FArdaGraphExecuteOptions Options;
-			Options.mbParallelRecording = false;
 			Options.mbValidateResourceStates = false;
 			const auto& Result = FArdaInductorCommandExecutor::Submit(Program, Options);
 			ExpectRecordingFailure(Result, *Provider, BodyCount);
@@ -692,7 +743,6 @@ namespace arda::inductor_command_failure_tests
 			    });
 			Program.Finalize();
 			FArdaGraphExecuteOptions Options;
-			Options.mbParallelRecording = false;
 			Options.mbValidateResourceStates = false;
 			const auto& Result = FArdaInductorCommandExecutor::Submit(Program, Options);
 			ExpectRecordingFailure(Result, *Provider, BodyCount);
@@ -728,10 +778,376 @@ namespace arda::inductor_command_failure_tests
 			    });
 			Program.Finalize();
 			FArdaGraphExecuteOptions Options;
-			Options.mbParallelRecording = false;
 			Options.mbValidateResourceStates = Validate;
 			const auto& Result = FArdaInductorCommandExecutor::Submit(Program, Options);
 			ExpectRecordingFailure(Result, *Provider, BodyCount);
+		}
+	}
+}
+
+namespace arda
+{
+	namespace
+	{
+		class FArdaSubmitDuringPreprocessRule final : public FArdaGraphPreprocessRule
+		{
+		public:
+			FArdaSubmitDuringPreprocessRule(FArdaDependencyGraph& Source, eastl::vector<FArdaRHIStatus>& Results)
+			    : mSource(Source),
+			      mResults(Results)
+			{
+			}
+
+			const char* GetName() const noexcept override
+			{
+				return "SubmitDuringPreprocess";
+			}
+
+			FArdaRHIStatus Apply(FArdaInductorGraph&) const override
+			{
+				mResults.push_back(mSource.SubmitAndWait().mStatus);
+				return {};
+			}
+
+		private:
+			FArdaDependencyGraph& mSource;
+			eastl::vector<FArdaRHIStatus>& mResults;
+		};
+
+		class FArdaSubmitDuringCompileRule final : public FArdaGraphCompileRule
+		{
+		public:
+			FArdaSubmitDuringCompileRule(FArdaDependencyGraph& Source, eastl::vector<FArdaRHIStatus>& Results)
+			    : mSource(Source),
+			      mResults(Results)
+			{
+			}
+
+			const char* GetName() const noexcept override
+			{
+				return "SubmitDuringCompile";
+			}
+
+			FArdaRHIStatus Apply(const FArdaInductorGraph&, FArdaInductorCompileResult&) const override
+			{
+				mResults.push_back(mSource.SubmitAndWait().mStatus);
+				return {};
+			}
+
+		private:
+			FArdaDependencyGraph& mSource;
+			eastl::vector<FArdaRHIStatus>& mResults;
+		};
+
+		void ExpectRuleSubmitRejectedBeforeDispatch(bool bPreprocess)
+		{
+			auto Provider = eastl::make_shared<inductor_command_failure_tests::FArdaRecordingProvider>();
+			FArdaDependencyGraph Graph(CreateArdaRHIDevice(Provider));
+			eastl::vector<FArdaRHIStatus> Results;
+			FArdaInductorOptions Options;
+			if (bPreprocess)
+			{
+				Options.mRules.mPreprocessRules.push_back(
+				    MakeArdaGraphRule<FArdaSubmitDuringPreprocessRule>(Graph, Results));
+			}
+			else
+			{
+				Options.mRules.mCompileRules.push_back(MakeArdaGraphRule<FArdaSubmitDuringCompileRule>(Graph, Results));
+			}
+			FArdaGraphEdit Edit(Graph);
+			ASSERT_TRUE(Edit.SetOptions(Options));
+			FArdaRHIBufferDesc Desc;
+			Desc.mByteSize = 16;
+			auto Buffer = AllocateBuffer(Edit, Desc);
+			Upload(Edit, Buffer, eastl::vector<uint8_t>(16, 7));
+			Edit.Keep(Buffer);
+			ASSERT_TRUE(Edit.Commit());
+			if (bPreprocess)
+			{
+				const auto Preprocessed = Graph.Preprocess();
+				ASSERT_TRUE(Preprocessed) << Preprocessed.mStatus.mMessage.c_str();
+			}
+			else
+			{
+				const auto Compiled = Graph.CompileAndWait();
+				ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
+			}
+			ASSERT_EQ(Results.size(), 1u);
+			EXPECT_EQ(Results.front().mCode, EArdaRHIResult::InvalidState);
+			EXPECT_EQ(Provider->mSubmissionCount, 0u);
+		}
+
+		ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaInitializerReadParameters)
+			ARDA_NODE_BUFFER(mInput, EArdaDependencyAccess::Read, EArdaRHIResourceState::CopySource)
+		ARDA_END_NODE_PARAMETER_STRUCT()
+
+		class FArdaInitializerReadNode final : public TArdaNodeDefinition<FArdaInitializerReadNode,
+		                                           FArdaInitializerReadParameters,
+		                                           EArdaNodeType::Graphics>
+		{
+		public:
+			static FArdaDependencyNodeMetadata GetMetadata()
+			{
+				return {"test.initializer.read", 1};
+			}
+
+			static FArdaDependencyNodeDesc Describe(const FArdaParameters&, const FArdaState&)
+			{
+				FArdaDependencyNodeDesc Desc;
+				Desc.mbSideEffect = true;
+				return Desc;
+			}
+
+			static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context,
+			    const FArdaParameters& Parameters,
+			    const FArdaState&,
+			    FArdaInstanceState&)
+			{
+				return Context.GetBuffer(Parameters.mInput)
+				    ? FArdaRHIStatus{}
+				    : FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Initializer buffer was not prepared.");
+			}
+		};
+
+		ARDA_DECLARE_GRAPH_NODE(FArdaInitializerReadNode, ReadInitializedFixtureBuffer);
+		ARDA_DEFINE_GRAPH_NODE(FArdaInitializerReadNode, ReadInitializedFixtureBuffer);
+
+		FArdaRHIStatus QueueInitializedFixtureGraph(FArdaDependencyGraph& Graph, uint8_t Value)
+		{
+			FArdaGraphEdit Edit(Graph);
+			FArdaInductorOptions Options;
+			Options.mFramesInFlight = 2;
+			if (auto Status = Edit.SetOptions(Options); !Status)
+			{
+				return Status;
+			}
+			FArdaRHIBufferDesc Desc;
+			Desc.mByteSize = 16;
+			const auto Buffer = AllocateInitializedBuffer(Edit, Desc, eastl::vector<uint8_t>(16, Value), "data");
+			ReadInitializedFixtureBuffer(Edit, FArdaInitializerReadParameters{Buffer}, "consume");
+			return Edit.Commit();
+		}
+	}
+
+	TEST(ArdaGraphReentry, SubmitFromPreprocessRuleIsRejectedBeforeDispatch)
+	{
+		ExpectRuleSubmitRejectedBeforeDispatch(true);
+	}
+
+	TEST(ArdaGraphReentry, SubmitFromCompileRuleIsRejectedBeforeDispatch)
+	{
+		ExpectRuleSubmitRejectedBeforeDispatch(false);
+	}
+
+	TEST(ArdaGraphReentry, RecordingCallbacksRejectSameGraphMutationAndPermitStableInspection)
+	{
+		auto Provider = eastl::make_shared<inductor_command_failure_tests::FArdaRecordingProvider>();
+		auto Device = CreateArdaRHIDevice(Provider);
+		FArdaDependencyGraph Graph(Device);
+		FArdaDependencyGraph Independent(Device);
+		const auto Caller = std::this_thread::get_id();
+		uint32_t CallbackCount = 0;
+		FArdaGraphRevisionStats Before;
+		auto Callback = eastl::make_shared<std::function<void()>>(
+		    [&]
+		    {
+			    ++CallbackCount;
+			    EXPECT_EQ(std::this_thread::get_id(), Caller);
+			    FArdaGraphEdit Reentered(Graph);
+			    EXPECT_EQ(Reentered.GetStatus().mCode, EArdaRHIResult::InvalidState);
+			    EXPECT_FALSE(Reentered.IsOpen());
+			    EXPECT_EQ(Graph.CompileAndWait().mCode, EArdaRHIResult::InvalidState);
+			    EXPECT_EQ(Graph.Preprocess().mStatus.mCode, EArdaRHIResult::InvalidState);
+			    EXPECT_EQ(FArdaInductor::Compile(Graph).mStatus.mCode, EArdaRHIResult::InvalidState);
+			    EXPECT_EQ(Graph.DiscardPendingEdits().mCode, EArdaRHIResult::InvalidState);
+			    EXPECT_EQ(Graph.InvalidatePersistentCache().mCode, EArdaRHIResult::InvalidState);
+			    EXPECT_EQ(Graph.SetRevisionCacheCapacity(2).mCode, EArdaRHIResult::InvalidState);
+			    EXPECT_EQ(Graph.DeclareExternalValue<uint32_t>("reentrant", "u32").mCode, EArdaRHIResult::InvalidState);
+			    EXPECT_EQ(Graph.Serialize().mStatus.mCode, EArdaRHIResult::InvalidState);
+			    EXPECT_FALSE(Graph.IsEditing());
+			    const auto During = Graph.GetRevisionStats();
+			    EXPECT_EQ(During.mCompileCount, Before.mCompileCount);
+			    EXPECT_EQ(During.mPersistentRevision, Before.mPersistentRevision);
+			    EXPECT_EQ(During.mConstructionHash, Before.mConstructionHash);
+			    EXPECT_EQ(During.mbEditQueueLocked, Before.mbEditQueueLocked);
+			    EXPECT_FALSE(Independent.IsEditing());
+			    EXPECT_TRUE(QueueInitializedFixtureGraph(Independent, 3));
+			    EXPECT_TRUE(Independent.CompileAndWait());
+		    });
+		FArdaGraphEdit Edit(Graph);
+		ASSERT_TRUE(inductor_command_failure_tests::RecordGraphReentry(Edit,
+		    inductor_command_failure_tests::FArdaRecordingReentryParameters{Callback},
+		    "reentry"));
+		ASSERT_TRUE(Edit.Commit());
+		ASSERT_TRUE(Graph.CompileAndWait());
+		Before = Graph.GetRevisionStats();
+		FArdaGraphExecuteOptions Options;
+		Options.mbValidateResourceStates = false;
+		const auto Result = Graph.ExecuteAndWait(Options);
+		ASSERT_TRUE(Result.mStatus) << Result.mStatus.mMessage.c_str();
+		EXPECT_EQ(CallbackCount, 1u);
+		// Scope restoration must not reject later ordinary authoring on this thread.
+		FArdaGraphEdit After(Graph);
+		EXPECT_TRUE(After.GetStatus());
+		EXPECT_TRUE(After.Cancel());
+	}
+
+	TEST(ArdaRHIBufferCopies, CallerProgressDeliversEachCallbackOnceAndAllowsReentry)
+	{
+		auto Provider = eastl::make_shared<inductor_command_failure_tests::FArdaRecordingProvider>();
+		auto Device = CreateArdaRHIDevice(Provider);
+		FArdaRHIBufferDesc Desc;
+		Desc.mByteSize = sizeof(uint32_t);
+		Desc.mUsage = EArdaRHIBufferUsage::UnorderedAccess;
+		auto Buffer = Device->CreateBuffer(Desc);
+		ASSERT_TRUE(Buffer);
+		auto Upload = [&](auto Progress)
+		{
+			auto CommandList = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+			ASSERT_TRUE(CommandList);
+			ASSERT_TRUE(CommandList.mValue->Open());
+			uint64_t Token = 0;
+			uint32_t Calls = 0;
+			const uint32_t Value = 7;
+			ASSERT_TRUE(CommandList.mValue->CopyBufferHostToDeviceAsync(*Buffer.mValue,
+			    &Value,
+			    sizeof(Value),
+			    [&](FArdaRHIStatus Status)
+			    {
+				    EXPECT_TRUE(Status);
+				    ++Calls;
+				    EXPECT_TRUE(Device->PollSubmission(Token));
+			    }));
+			ASSERT_TRUE(CommandList.mValue->Close());
+			const auto Submitted = Device->ExecuteCommandList(CommandList.mValue);
+			ASSERT_TRUE(Submitted);
+			Token = Submitted.mValue;
+			EXPECT_EQ(Calls, 0u);
+			Progress(Token);
+			EXPECT_EQ(Calls, 1u);
+			ASSERT_TRUE(Device->WaitForSubmission(Token));
+			EXPECT_EQ(Calls, 1u);
+		};
+		Upload(
+		    [&](uint64_t Token)
+		    {
+			    EXPECT_TRUE(Device->PollSubmission(Token));
+		    });
+		Upload(
+		    [&](uint64_t)
+		    {
+			    Device->RunGarbageCollection();
+		    });
+		Upload(
+		    [&](uint64_t)
+		    {
+			    EXPECT_TRUE(Device->WaitForIdle());
+		    });
+	}
+
+	TEST(ArdaRHIBufferCopies, CopyFailureReachesEveryCallbackWhenOneThrows)
+	{
+		for (const char* Operation : {"ExecuteCommandList", "WaitForSubmission"})
+		{
+			SCOPED_TRACE(Operation);
+			auto Provider = eastl::make_shared<inductor_command_failure_tests::FArdaRecordingProvider>();
+			Provider->mFailure.mOperation = Operation;
+			auto Device = CreateArdaRHIDevice(Provider);
+			FArdaRHIBufferDesc Desc;
+			Desc.mByteSize = 16;
+			Desc.mUsage = EArdaRHIBufferUsage::UnorderedAccess;
+			auto Buffer = Device->CreateBuffer(Desc);
+			ASSERT_TRUE(Buffer) << Buffer.mStatus.mMessage.c_str();
+			auto CommandList = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+			ASSERT_TRUE(CommandList);
+			ASSERT_TRUE(CommandList.mValue->Open());
+			const uint32_t Value = 7;
+			uint32_t Calls = 0;
+			FArdaRHIStatus Completion;
+			ASSERT_TRUE(CommandList.mValue->CopyBufferHostToDeviceAsync(*Buffer.mValue,
+			    &Value,
+			    sizeof(Value),
+			    [&](FArdaRHIStatus Status)
+			    {
+				    EXPECT_EQ(Status.mCode, EArdaRHIResult::BackendFailure);
+				    ++Calls;
+				    throw std::runtime_error("first completion failed");
+			    }));
+			ASSERT_TRUE(CommandList.mValue->CopyBufferHostToDeviceAsync(
+			    *Buffer.mValue,
+			    &Value,
+			    sizeof(Value),
+			    [&](FArdaRHIStatus Status)
+			    {
+				    ++Calls;
+				    Completion = Status;
+			    },
+			    sizeof(Value)));
+			ASSERT_TRUE(CommandList.mValue->Close());
+			const auto Submitted = Device->ExecuteCommandList(CommandList.mValue);
+			EXPECT_EQ(static_cast<bool>(Submitted), std::strcmp(Operation, "WaitForSubmission") == 0);
+			if (Submitted)
+			{
+				EXPECT_EQ(Calls, 0u);
+				EXPECT_FALSE(Device->WaitForSubmission(Submitted.mValue));
+			}
+			EXPECT_EQ(Completion.mCode, EArdaRHIResult::BackendFailure);
+			EXPECT_EQ(Calls, 2u);
+		}
+	}
+
+	TEST(ArdaGraphBufferInitializer, ColdPreparationUploadsOnceAcrossFramesAndEquivalentRevisions)
+	{
+		auto Provider = eastl::make_shared<inductor_command_failure_tests::FArdaRecordingProvider>();
+		FArdaDependencyGraph Graph(CreateArdaRHIDevice(Provider));
+		ASSERT_TRUE(QueueInitializedFixtureGraph(Graph, 7));
+		const auto InitialCompilation = Graph.CompileAndWait();
+		ASSERT_TRUE(InitialCompilation) << InitialCompilation.mMessage.c_str();
+		EXPECT_EQ(Provider->mFailure.mWriteBufferAttempts, 0u);
+		FArdaGraphExecuteOptions Options;
+		Options.mbValidateResourceStates = false;
+		for (uint32_t Frame = 0; Frame < 4; ++Frame)
+		{
+			const auto Executed = Graph.ExecuteAndWait(Options);
+			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
+		}
+		EXPECT_EQ(Provider->mFailure.mWriteBufferAttempts, 1u);
+		const auto Revision = Graph.GetCompileResult().mRevision;
+		ASSERT_TRUE(QueueInitializedFixtureGraph(Graph, 7));
+		ASSERT_TRUE(Graph.CompileAndWait());
+		EXPECT_EQ(Graph.GetCompileResult().mRevision, Revision);
+		ASSERT_TRUE(Graph.ExecuteAndWait(Options).mStatus);
+		EXPECT_EQ(Provider->mFailure.mWriteBufferAttempts, 1u);
+
+		ASSERT_TRUE(QueueInitializedFixtureGraph(Graph, 9));
+		ASSERT_TRUE(Graph.CompileAndWait());
+		EXPECT_NE(Graph.GetCompileResult().mRevision, Revision);
+		ASSERT_TRUE(Graph.ExecuteAndWait(Options).mStatus);
+		EXPECT_EQ(Provider->mFailure.mWriteBufferAttempts, 2u);
+	}
+
+	TEST(ArdaGraphBufferInitializer, FailedColdInitializationIsUnpublishedAndRetriesWithFreshStorage)
+	{
+		for (const char* Operation : {"WriteBuffer", "SetBufferState", "ExecuteCommandList", "WaitForSubmission"})
+		{
+			SCOPED_TRACE(Operation);
+			auto Provider = eastl::make_shared<inductor_command_failure_tests::FArdaRecordingProvider>();
+			Provider->mFailure.mOperation = Operation;
+			FArdaDependencyGraph Graph(CreateArdaRHIDevice(Provider));
+			ASSERT_TRUE(QueueInitializedFixtureGraph(Graph, 5));
+			const auto Compiled = Graph.CompileAndWait();
+			ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
+			FArdaGraphExecuteOptions Options;
+			Options.mbValidateResourceStates = false;
+			const auto Failed = Graph.ExecuteAndWait(Options);
+			EXPECT_FALSE(Failed.mStatus);
+			EXPECT_EQ(Provider->mFailure.mFailureCount, 1u);
+			EXPECT_EQ(Failed.mSubmittedCommandListCount, 0u);
+			const auto Recovered = Graph.ExecuteAndWait(Options);
+			ASSERT_TRUE(Recovered.mStatus) << Recovered.mStatus.mMessage.c_str();
+			EXPECT_EQ(Provider->mFailure.mWriteBufferAttempts, 2u);
+			ASSERT_TRUE(Graph.ExecuteAndWait(Options).mStatus);
+			EXPECT_EQ(Provider->mFailure.mWriteBufferAttempts, 2u);
 		}
 	}
 }

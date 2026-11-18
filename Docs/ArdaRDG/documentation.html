@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Dependency graph documentation — Ardashir engineering documentation.">
+  <title>Dependency graph documentation | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRDG pages">
+      <h2>ArdaRDG</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="registering-nodes.html">Registering nodes</a>
+        <a href="node-recipes.html">Node recipes</a>
+        <a href="resources.html">Resources</a>
+        <a href="inductor.html">Inductor developer guide</a>
+        <a href="inductor-pipelines.html">Pipeline assembly</a>
+        <a href="inductor-bindings.html">Binding preparation</a>
+        <a href="batching.html">Batching and parallel edits</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaRDG</a>
+      </nav>
+      <article>
+<h1 id="dependency-graph-documentation">Dependency graph documentation</h1>
+<section id="objectives"><h2>How to use this guide</h2><p>Find the appropriate module guide and keep authored pages, compiled examples and the canonical API inventory synchronized.</p><p>Start with the <a href="index.html">module overview</a> and follow exact declarations in the <a href="api-reference.html">canonical API reference</a>.</p></section>
+
+<p>For application authoring, start with the <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/README.md#program-with-resource-variables">resource-variable programming model</a>. <code>FArdaGraphEdit</code> records operations such as <code>AllocateTexture</code>, <code>BindTexture</code>, <code>Clear</code> and <code>CopyTo</code>; every reusable node also publishes a named global callable such as <code>CopyBuffer(Edit, Source, Destination)</code>. <code>Edit.Commit()</code> checks authoring errors and queues the edit, <code>Graph.CompileAndWait()</code> selects or compiles a persistent revision, and <code>Graph.ExecuteAndWait()</code> runs it. The <a href="Examples/AssembleNodes.cpp">compiled node recipes</a> demonstrate named callables, automatic registration, output retention and readback.</p>
+<p>For imported models, use the <a href="../Essays/arda-graph-and-inductor.html#offline-model-compilation">offline compilation walkthrough</a> and <a href="registering-nodes.html#portable-runtime-definitions">runtime definition and package API</a>. The <a href="registering-nodes.html#model-export-status">status table</a> separates working static CUDA support from remaining compiler, architecture-selection and archive-scaling work.</p>
+<p>To add a class-authored operation, follow <a href="registering-nodes.html">registering a graph node</a>: declare its class and <code>ARDA_DECLARE_GRAPH_NODE(NodeClass, InvocationName)</code> in the header, define <code>ARDA_DEFINE_GRAPH_NODE(NodeClass, InvocationName)</code> once in its implementation, and implement metadata, canonical keys, resource declarations and recording. The guide distinguishes global C++ callable names, runtime registry identities and per-operation diagnostic names, and covers discovery, linking and failure handling.</p>
+<p>Resource descriptors default to <code>AutoDeduction</code>: compilation combines node requirements into concrete SRV, UAV, attachment and buffer usage flags. Explicit usages constrain the allocation; imported resources must already satisfy their consumers. See <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/README.md#automatic-resource-usage">automatic resource usage</a> for hints, validation and custom rules.</p>
+<p>Each frame can record its desired operations afresh on the same graph. Ordered edit hashes form a construction hash; matching constructions reuse the cached graph and compilation results. Successful compilation clears the edit queue and locks edits until <code>ExecuteAndWait()</code> or <code>SubmitAndWait()</code> is attempted. The next ordinary edit starts empty, so omitted operations need no explicit removal. The graph retains up to four revisions by default and can reuse A after an A/B/A sequence. Use <code>CompileAndWait(true)</code> to force compilation, <code>InvalidatePersistentCache()</code> to invalidate reuse, and <code>GetRevisionStats()</code> to inspect cache activity. See <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/README.md#frame-construction-and-persistent-revisions">revision lifetime and identity</a> for imported resources, retained pointees and error recovery.</p>
+<p>The same <code>CopyTo(Edit, Source, Destination)</code> name selects the registered operation from its typed arguments:</p>
+<table>
+<thead>
+<tr>
+<th>Source and destination</th>
+<th>Registered node</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Buffer to buffer</td>
+<td><code>FArdaMemoryCopyBufferNode</code></td>
+</tr>
+<tr>
+<td>Texture to texture</td>
+<td><code>FArdaMemoryCopyTextureNode</code></td>
+</tr>
+<tr>
+<td>Buffer to texture</td>
+<td><code>FArdaGraphBufferToTextureNode</code></td>
+</tr>
+<tr>
+<td>Texture to buffer</td>
+<td><code>FArdaGraphTextureToBufferNode</code></td>
+</tr>
+<tr>
+<td>Acceleration structure to acceleration structure</td>
+<td><code>FArdaMemoryCopyAccelerationStructureNode</code></td>
+</tr>
+</tbody></table>
+<p>Mixed buffer/texture copies accept a texture slice and buffer layout. An omitted layout or zero row pitch infers a portable aligned pitch for the selected region, preserving the byte offset; the buffer must have room for that pitched footprint. <code>Upload</code> and <code>Readback</code> handle ordinary packed CPU byte vectors.</p>
+<p>Start with the <a href="inductor.html">persistent dependency graph and ArdaInductor guide</a> for edits, registered typed nodes, scheduling, CUDA sequences and memory planning. The <a href="inductor-pipelines.html">pipeline guide</a> explains stage contributions, named slots, ambiguity, native PSO creation and reuse.</p>
+<p>For separate graphics operations, use the <a href="registering-nodes.html#declare-individual-graphics-stages">vertex, raster and pixel stage templates</a>. Typed intermediate values connect the stages automatically, and a shared vertex value can feed multiple raster branches. <a href="registering-nodes.html#materialize-stage-results-when-a-buffer-is-required">Explicit buffer materializers</a> let a node library expose captured results when needed.</p>
+<p>The <a href="architecture.html#modules">architecture chapter</a> separates graph resources, node definitions and default nodes from inductor configuration, rules, compiler orchestration and runtime. The <a href="compilation.html">compilation and scheduling chapter</a> explains ordered, configurable preprocess and compile rule instances derived from <code>FArdaGraphRule</code>, their graph/result transformation contracts, built-in alternatives, a <a href="compilation.html#custom-order">custom ordering policy</a>, memory/cost models and search algorithms. <code>CompileAndWait()</code> publishes or reuses a logical schedule and pending memory plan. The first <code>SubmitAndWait()</code> materializes native resources, pipelines and per-frame execution state; later frames reuse them.</p>
+<p>The <a href="index.html">overview</a>, <a href="getting-started.html">getting started example</a>, <a href="quick-guide.html">renderer guide</a> and <a href="execution.html">execution guide</a> all use <code>FArdaDependencyGraph</code>. <a href="inductor.html#gpu-telemetry-and-background-scheduling">GPU telemetry and adaptive scheduling</a> covers optional per-node timing, EMA/history, nonblocking collection and schedule adoption after frame retirement. Both timing and automatic tuning are disabled by default. Timing observes any selected order; automatic and manual schedule optimization require every selected rule to opt in, preserving stable/custom policies by default. The <a href="api-reference.html">API reference</a> inventories the current public graph headers. <code>ArdaDependencyGraph.h</code> is an umbrella for the persistent APIs.</p>
+<p>Regenerate and validate the inventory using the commands in <a href="../ArdaBackend/documentation.html#keeping-the-docs-synchronized">the backend documentation maintenance guide</a>.</p>
+<section id="summary"><h2>Review and next steps</h2><p>Edit authored HTML or the generator that owns an output, then run source inventory, excerpt and static-site checks before publishing.</p><p>Continue with the <a href="index.html">module guides</a> and <a href="api-reference.html">API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaRDG · Ardashir engineering documentation</p></footer>
+</body>
+</html>

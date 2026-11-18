@@ -1177,23 +1177,144 @@ namespace arda::cuda_external_tests
 	}
 
 	// External library calls and compiled kernels share the same graph node contract.
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPersistentExternalAddParameters)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<FArdaExternalAddOperand>, mOperation)
+		ARDA_NODE_CUDA_BUFFER(mInput, FArdaAddParameters, mInput)
+		ARDA_NODE_CUDA_BUFFER(mOutput, FArdaAddParameters, mOutput)
+		ARDA_NODE_PARAMETER(uint32_t, mCount)
+		ARDA_NODE_PARAMETER(uint32_t, mBias)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
 	struct FArdaPersistentExternalAddNode
-	    : TArdaCudaOperandNode<FArdaPersistentExternalAddNode, FArdaExternalAddOperand>
+	    : TArdaNodeDefinition<FArdaPersistentExternalAddNode, FArdaPersistentExternalAddParameters, EArdaNodeType::Cuda>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata()
 		{
 			return {"test.cuda.persistent-external-add", 1};
+		}
+
+		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters& Parameters)
+		{
+			FArdaDependencyNodeRequirements Requirements;
+			Requirements.mbRequireCuda = true;
+			if (Parameters.mOperation)
+			{
+				Requirements.mEnvironment.push_back({"CUDA operand",
+				    [Operation = Parameters.mOperation](const IArdaRHIDevice& Device)
+				    {
+					    return Operation->GetDevice().Get() == &Device
+					        ? Operation->GetOperandSupport()
+					        : FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+					              "CUDA operand belongs to another device.");
+				    }});
+			}
+			return Requirements;
+		}
+
+		static FArdaRHIStatus Validate(const FArdaParameters& Parameters)
+		{
+			return Parameters.mOperation
+			    ? FArdaRHIStatus{}
+			    : FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA nodes require an operand.");
+		}
+
+		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)
+		{
+			return FArdaDependencyKeyBuilder()
+			    .Value(reinterpret_cast<uintptr_t>(Parameters.mOperation.get()))
+			    .Resource(Parameters.mInput)
+			    .Resource(Parameters.mOutput)
+			    .Value(Parameters.mCount)
+			    .Value(Parameters.mBias)
+			    .Build();
+		}
+
+		static FArdaRHIStatus PrepareCuda(FArdaDependencyExecutionContext& Context,
+		    const FArdaParameters& Parameters,
+		    const FArdaState&,
+		    FArdaInstanceState&,
+		    FArdaCudaSequence& Sequence)
+		{
+			FArdaAddParameters Host;
+			Host.mCount = Parameters.mCount;
+			Host.mBias = Parameters.mBias;
+			if (auto Status = ResolveNodeCudaParameters(Context, Parameters, Host); !Status)
+			{
+				return Status;
+			}
+			return Sequence.Add(*Parameters.mOperation, Host);
 		}
 	};
 
 	ARDA_DECLARE_GRAPH_NODE(FArdaPersistentExternalAddNode, PersistentExternalAdd);
 	ARDA_DEFINE_GRAPH_NODE(FArdaPersistentExternalAddNode, PersistentExternalAdd);
 
-	struct FArdaPersistentCompiledAddNode : TArdaCudaOperandNode<FArdaPersistentCompiledAddNode, FArdaAddOperand>
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPersistentCompiledAddParameters)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<FArdaAddOperand>, mOperation)
+		ARDA_NODE_CUDA_BUFFER(mInput, FArdaAddParameters, mInput)
+		ARDA_NODE_CUDA_BUFFER(mOutput, FArdaAddParameters, mOutput)
+		ARDA_NODE_PARAMETER(uint32_t, mCount)
+		ARDA_NODE_PARAMETER(uint32_t, mBias)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	struct FArdaPersistentCompiledAddNode
+	    : TArdaNodeDefinition<FArdaPersistentCompiledAddNode, FArdaPersistentCompiledAddParameters, EArdaNodeType::Cuda>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata()
 		{
 			return {"test.cuda.persistent-compiled-add", 1};
+		}
+
+		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters& Parameters)
+		{
+			FArdaDependencyNodeRequirements Requirements;
+			Requirements.mbRequireCuda = true;
+			if (Parameters.mOperation)
+			{
+				Requirements.mEnvironment.push_back({"CUDA operand",
+				    [Operation = Parameters.mOperation](const IArdaRHIDevice& Device)
+				    {
+					    return Operation->GetDevice().Get() == &Device
+					        ? Operation->GetOperandSupport()
+					        : FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+					              "CUDA operand belongs to another device.");
+				    }});
+			}
+			return Requirements;
+		}
+
+		static FArdaRHIStatus Validate(const FArdaParameters& Parameters)
+		{
+			return Parameters.mOperation
+			    ? FArdaRHIStatus{}
+			    : FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA nodes require an operand.");
+		}
+
+		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)
+		{
+			return FArdaDependencyKeyBuilder()
+			    .Value(reinterpret_cast<uintptr_t>(Parameters.mOperation.get()))
+			    .Resource(Parameters.mInput)
+			    .Resource(Parameters.mOutput)
+			    .Value(Parameters.mCount)
+			    .Value(Parameters.mBias)
+			    .Build();
+		}
+
+		static FArdaRHIStatus PrepareCuda(FArdaDependencyExecutionContext& Context,
+		    const FArdaParameters& Parameters,
+		    const FArdaState&,
+		    FArdaInstanceState&,
+		    FArdaCudaSequence& Sequence)
+		{
+			FArdaAddParameters Host;
+			Host.mCount = Parameters.mCount;
+			Host.mBias = Parameters.mBias;
+			if (auto Status = ResolveNodeCudaParameters(Context, Parameters, Host); !Status)
+			{
+				return Status;
+			}
+			return Sequence.Add(*Parameters.mOperation, Host);
 		}
 	};
 
@@ -1243,34 +1364,37 @@ namespace arda::cuda_external_tests
 				std::memcpy(Upload.mBytes.data() + I * 4, &Value, 4);
 			}
 			ASSERT_TRUE(UploadNode(Edit, Upload, "upload"));
-			TArdaDependencyCudaParameters<FArdaAddParameters> P;
-			P.mInput.mResource = Input.GetHandle();
-			P.mOutput.mResource = Middle.GetHandle();
+			FArdaPersistentExternalAddParameters P;
+			P.mOperation = External;
+			P.mInput = Input;
+			P.mOutput = Middle;
 			P.mCount = 128;
 			P.mBias = 7;
-			auto First = PersistentExternalAdd(Edit, {External, P}, "external first");
+			auto First = PersistentExternalAdd(Edit, P, "external first");
 			ASSERT_TRUE(First) << Edit.GetStatus().mMessage.c_str();
-			P.mInput.mResource = Middle.GetHandle();
-			P.mOutput.mResource = CompiledOutput.GetHandle();
+			P.mInput = Middle;
+			P.mOutput = CompiledOutput;
 			P.mBias = 11;
-			auto Second = PersistentCompiledAdd(Edit, {Compiled, P}, "compiled middle");
+			auto Second = PersistentCompiledAdd(Edit,
+			    FArdaPersistentCompiledAddParameters{Compiled, P.mInput, P.mOutput, P.mCount, P.mBias},
+			    "compiled middle");
 			ASSERT_TRUE(Second);
-			P.mInput.mResource = CompiledOutput.GetHandle();
-			P.mOutput.mResource = Output.GetHandle();
+			P.mInput = CompiledOutput;
+			P.mOutput = Output;
 			P.mBias = 13;
-			auto Third = PersistentExternalAdd(Edit, {External, P}, "external last");
+			auto Third = PersistentExternalAdd(Edit, P, "external last");
 			ASSERT_TRUE(Third);
 			auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-			ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output.GetHandle(), Bytes}, "readback"));
+			ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output, Bytes}, "readback"));
 			ASSERT_TRUE(Edit.Commit());
-			auto Status = Graph.Compile();
+			auto Status = Graph.CompileAndWait();
 			ASSERT_TRUE(Status) << Status.mMessage.c_str();
 			ASSERT_EQ(Graph.GetCompileResult().mCudaBatches.size(), 1u);
 			EXPECT_EQ(Graph.GetCompileResult().mCudaBatches.front(),
 			    (eastl::vector<FArdaGraphNodeHandle>{First.GetHandle(), Second.GetHandle(), Third.GetHandle()}));
 			External.reset();
 			Compiled.reset();
-			const auto Result = Graph.Execute();
+			const auto Result = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Result.mStatus) << Result.mStatus.mMessage.c_str();
 			ASSERT_EQ(Bytes->size(), Upload.mBytes.size());
 			for (uint32_t I = 0; I < 128; ++I)

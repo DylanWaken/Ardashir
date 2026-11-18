@@ -1,5 +1,9 @@
 #include "Graph/Node/ArdaGraphEdit.h"
 #include "Graph/Node/ArdaDependencyGraphImpl.h"
+#include "Graph/Node/ArdaGraphRevisionState.h"
+#include "Graph/Node/ArdaGraphRecordingScope.h"
+
+#include <EASTL/algorithm.h>
 
 namespace arda
 {
@@ -38,13 +42,21 @@ namespace arda
 
 	FArdaGraphEdit::FArdaGraphEdit(FArdaDependencyGraph& Graph)
 	    : mGraph(Graph),
-	      mStatus(Graph.BeginGraphEdit())
+	      mStatus()
 	{
+		mStatus = Graph.BeginGraphEdit(*this);
 		mbOwnsEdit = bool(mStatus);
-		if (mbOwnsEdit)
-		{
-			mGeneration = Graph.mImpl->mEditGeneration;
-		}
+	}
+
+	FArdaGraphEdit::FArdaGraphEdit(FArdaDependencyGraph& Graph, eastl::string Prefix, bool bSubgraphContent)
+	    : mGraph(Graph),
+	      mbOwnsEdit(true),
+	      mbSubgraphContent(bSubgraphContent),
+	      mbPreprocessContent(true),
+	      mNamePrefix(eastl::move(Prefix)),
+	      mFirstSubgraphResource(Graph.mImpl->mResources.size()),
+	      mFirstSubgraphAttachmentOrder(Graph.mImpl->mNextAttachmentOrder)
+	{
 	}
 
 	FArdaGraphVertices FArdaGraphOperation::GetVertices() const
@@ -71,16 +83,24 @@ namespace arda
 		{
 			return false;
 		}
-		const auto* Node = mGraph.GetTopology().TryGetNode(Value.GetProducer());
-		const auto OutputKind = Node && IsArdaRHIRayTracingShaderStage(Node->mPayload.mDesc.mRayStage) &&
-		        Node->mPayload.mDesc.mRayStage != EArdaRHIShaderStage::RayGeneration
+		const auto* Node =
+		    GetRecordingGraph().GetTopology().TryGetNode(GetRecordingGraph().mImpl->ResolveNode(Value.GetProducer()));
+		const auto* Desc = Node ? &GetRecordingGraph().GetNodeDescription(Node->mPayload.mHandle) : nullptr;
+		const auto OutputKind = Desc && IsArdaRHIRayTracingShaderStage(Desc->mRayStage) &&
+		        Desc->mRayStage != EArdaRHIShaderStage::RayGeneration
 		    ? EArdaGraphStageValueKind::RayShader
-		    : Node ? GetArdaGraphicsStageOutput(Node->mPayload.mDesc.mGraphicsStage)
+		    : Desc ? GetArdaGraphicsStageOutput(Desc->mGraphicsStage)
 		           : EArdaGraphStageValueKind::None;
 		if (!Node || Value.GetKind() == EArdaGraphStageValueKind::None || OutputKind != Value.GetKind())
 		{
 			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 			    "Stage value is empty, foreign, stale or has the wrong output kind."));
+			return false;
+		}
+		if (mbSubgraphContent && Node->mPayload.mAttachmentOrder < mFirstSubgraphAttachmentOrder)
+		{
+			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			    "Subgraph content cannot access a parent logical stage value."));
 			return false;
 		}
 		return true;
@@ -114,9 +134,12 @@ namespace arda
 			return {};
 		}
 		// Retain before invoking the adapter: recording may reallocate topology storage.
-		const auto& Node = mGraph.GetTopology().TryGetNode(Value.GetProducer())->mPayload;
+		const auto& Node = GetRecordingGraph()
+		                       .GetTopology()
+		                       .TryGetNode(GetRecordingGraph().mImpl->ResolveNode(Value.GetProducer()))
+		                       ->mPayload;
 		const auto Definition = Node.mDefinition;
-		const auto Parameters = Node.mParameters;
+		const auto Parameters = Node.mSourceParameters;
 		if (!Definition->mFetchBuffer)
 		{
 			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
@@ -127,7 +150,9 @@ namespace arda
 		Buffer = UseBuffer(Buffer.GetHandle());
 		if (Buffer && ValidateStage(Value))
 		{
-			mGraph.mImpl->mTopology.TryGetNode(Value.GetProducer())->mPayload.mbStageMaterialized = true;
+			GetRecordingGraph()
+			    .mImpl->mTopology.TryGetNode(GetRecordingGraph().mImpl->ResolveNode(Value.GetProducer()))
+			    ->mPayload.mbStageMaterialized = true;
 			return Buffer;
 		}
 		return {};
@@ -135,12 +160,13 @@ namespace arda
 
 	FArdaGraphBuffer FArdaGraphEdit::GetStageBuffer(FArdaGraphStageValue Value, const eastl::string& Slot)
 	{
-		return ValidateStage(Value) ? UseBuffer(mGraph.FindOutput(Value.GetProducer(), Slot)) : FArdaGraphBuffer{};
+		return ValidateStage(Value) ? UseBuffer(GetRecordingGraph().FindOutput(Value.GetProducer(), Slot))
+		                            : FArdaGraphBuffer{};
 	}
 
 	FArdaGraphEdit::~FArdaGraphEdit()
 	{
-		if (IsOpen())
+		if (IsOpen() && !mbPreprocessContent)
 		{
 			(void)Cancel();
 		}
@@ -148,11 +174,17 @@ namespace arda
 
 	FArdaRHIStatus FArdaGraphEdit::Commit()
 	{
+		if (mbPreprocessContent)
+		{
+			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+			    "Preprocessing content is committed by the preprocessor after its callback completes."));
+			return mStatus;
+		}
 		if (!CanRecord())
 		{
 			return mStatus;
 		}
-		ReportError(mGraph.EndGraphEdit());
+		ReportError(mGraph.EndGraphEdit(*this));
 		if (mStatus)
 		{
 			mbOwnsEdit = false;
@@ -162,11 +194,17 @@ namespace arda
 
 	FArdaRHIStatus FArdaGraphEdit::Cancel()
 	{
+		if (mbPreprocessContent)
+		{
+			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+			    "Preprocessing content cannot close its borrowed edit."));
+			return mStatus;
+		}
 		if (!IsOpen())
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This scope does not own an open graph edit.");
 		}
-		auto Status = mGraph.CancelGraphEdit();
+		auto Status = mGraph.CancelGraphEdit(*this);
 		if (Status)
 		{
 			mbOwnsEdit = false;
@@ -181,12 +219,15 @@ namespace arda
 
 	bool FArdaGraphEdit::IsOpen() const noexcept
 	{
-		return mbOwnsEdit && mGraph.IsEditing() && mGraph.mImpl->mEditGeneration == mGeneration;
+		return mbOwnsEdit &&
+		    (mbPreprocessContent ? mGraph.mImpl->mbEditing : mRecordingGraph && mRecordingGraph->mImpl->mbEditing);
 	}
 
 	bool FArdaGraphEdit::CanRecord()
 	{
-		if (!IsOpen() || mGraph.mImpl->mbCompiling)
+		const auto& Graph = *GetRecordingGraph().mImpl;
+		if (!IsOpen() || Graph.mbCompiling ||
+		    (Graph.mbPreprocessing && !(mbPreprocessContent && Graph.mbPreprocessEditing)))
 		{
 			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 			    "Operations require this scope's open graph edit."));
@@ -204,15 +245,58 @@ namespace arda
 
 	const FArdaDependencyGraph& FArdaGraphEdit::GetGraph() const noexcept
 	{
-		return mGraph;
+		return GetRecordingGraph();
+	}
+
+	FArdaDependencyGraph& FArdaGraphEdit::GetRecordingGraph() const noexcept
+	{
+		return mRecordingGraph ? *mRecordingGraph : mGraph;
 	}
 
 	FArdaRHIStatus FArdaGraphEdit::SetOptions(const FArdaInductorOptions& Options)
 	{
+		if (mbPreprocessContent)
+		{
+			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+			    "Preprocessing content inherits its parent graph options."));
+			return mStatus;
+		}
 		if (CanRecord())
 		{
-			ReportError(mGraph.SetOptions(Options));
+			ReportError(GetRecordingGraph().SetOptions(Options));
+			mbOptionsChanged = bool(mStatus);
 		}
+		return mStatus;
+	}
+
+	FArdaRHIStatus FArdaGraphEdit::SetResourceRevision(FArdaDependencyResourceHandle Resource, uint64_t Revision)
+	{
+		if (!CanRecord())
+		{
+			return mStatus;
+		}
+		auto& Graph = *GetRecordingGraph().mImpl;
+		if (mbPreprocessContent || !Graph.HasResource(Resource))
+		{
+			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			    "Resource revisions require a live resource in an ordinary graph edit."));
+			return mStatus;
+		}
+		Resource = Graph.ResolveResource(Resource);
+		for (const auto& Existing : mResourceRevisions)
+		{
+			if (Existing.mResource == Resource)
+			{
+				if (Existing.mRevision != Revision)
+				{
+					ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+					    "An edit cannot assign two revisions to the same resource."));
+				}
+				return mStatus;
+			}
+		}
+		mResourceRevisions.push_back({Resource, Revision});
+		Graph.mResources[Resource.mIndex].mbRevisionOrdered = true;
 		return mStatus;
 	}
 
@@ -223,14 +307,16 @@ namespace arda
 			return mStatus;
 		}
 		if (Producer.mGraph != &mGraph || Consumer.mGraph != &mGraph || !Producer || !Consumer ||
-		    !mGraph.GetTopology().TryGetNode(Producer.mNode) || !mGraph.GetTopology().TryGetNode(Consumer.mNode))
+		    !GetRecordingGraph().GetTopology().TryGetNode(GetRecordingGraph().mImpl->ResolveNode(Producer.mNode)) ||
+		    !GetRecordingGraph().GetTopology().TryGetNode(GetRecordingGraph().mImpl->ResolveNode(Consumer.mNode)))
 		{
 			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 			    "Ordering requires two live operations in this graph's current construction."));
 		}
 		else
 		{
-			ReportError(mGraph.AddDependency(Producer.mNode, Consumer.mNode));
+			ReportError(GetRecordingGraph().AddDependency(GetRecordingGraph().mImpl->ResolveNode(Producer.mNode),
+			    GetRecordingGraph().mImpl->ResolveNode(Consumer.mNode)));
 		}
 		return mStatus;
 	}
@@ -241,7 +327,8 @@ namespace arda
 		{
 			return MakeName(Prefix);
 		}
-		if (mGraph.FindNode(Name))
+		Name = mNamePrefix + Name;
+		if (GetRecordingGraph().FindNode(Name))
 		{
 			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 			    "Operation names must be unique within a construction."));
@@ -255,13 +342,14 @@ namespace arda
 		{
 			return {};
 		}
-		auto& Graph = *mGraph.mImpl;
+		auto& Graph = *GetRecordingGraph().mImpl;
 		eastl::string Name;
 		do
 		{
-			Name = Prefix + "#" + eastl::to_string(Graph.mNextOperationName++);
+			Name = mNamePrefix + Prefix + "#" + eastl::to_string(Graph.mNextOperationName++);
 		} while (Graph.mNames.find(Name) != Graph.mNames.end() ||
 		    Graph.mResourceNames.find(Name) != Graph.mResourceNames.end());
+		Graph.mGeneratedNames.insert(Name);
 		return Name;
 	}
 
@@ -271,16 +359,17 @@ namespace arda
 		{
 			return false;
 		}
-		const auto* Desc = mGraph.FindResource(Resource);
+		const auto* Desc = GetRecordingGraph().FindResource(Resource);
 		if (!Desc)
 		{
 			ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 			    "Graph value is empty, foreign or no longer live."));
 			return false;
 		}
-		const auto ActualKind = Desc->mExternalAccelerationStructure ? EArdaGraphResourceKind::AccelerationStructure
-		    : Desc->mbTexture                                        ? EArdaGraphResourceKind::Texture
-		                                                             : EArdaGraphResourceKind::Buffer;
+		const auto ActualKind = Desc->mExternalKind == EArdaGraphExternalResourceKind::AccelerationStructure
+		    ? EArdaGraphResourceKind::AccelerationStructure
+		    : Desc->mbTexture ? EArdaGraphResourceKind::Texture
+		                      : EArdaGraphResourceKind::Buffer;
 		if (Kind != ActualKind)
 		{
 			ReportError(
@@ -313,7 +402,22 @@ namespace arda
 	{
 		if (CanRecord())
 		{
-			ReportError(mGraph.MarkOutput(Resource));
+			const auto& Graph = *GetRecordingGraph().mImpl;
+			const auto Resolved = Graph.ResolveResource(Resource);
+			if (mbSubgraphContent && Resolved.mIndex < mFirstSubgraphResource &&
+			    eastl::none_of(
+			        mSubgraphAccesses.begin(),
+			        mSubgraphAccesses.end(),
+			        [&](const auto& Access)
+			        {
+				        return Graph.ResolveResource(Access.mResource) == Resolved;
+			        }))
+			{
+				ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+				    "Subgraph content cannot keep an undeclared parent resource."));
+				return;
+			}
+			ReportError(GetRecordingGraph().MarkOutput(Resource));
 		}
 	}
 }

@@ -3,13 +3,12 @@
 
 namespace arda
 {
-	class FArdaTriangleVertexUploadNode final
-	    : public TArdaCopyDependencyNode<FArdaTriangleVertexUploadNode, FArdaTriangleVertexUploadParameters>
+	class FArdaTriangleVertexUploadNode final : public TArdaNodeDefinition<FArdaTriangleVertexUploadNode,
+	                                                FArdaTriangleVertexUploadParameters,
+	                                                EArdaNodeType::Copy>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata();
-		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
-		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State);
 		static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context,
 		    const FArdaParameters& Parameters,
 		    const FArdaState& State,

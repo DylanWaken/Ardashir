@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Batched operation authoring â€” Ardashir engineering documentation.">
+  <title>Batched operation authoring | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRDG pages">
+      <h2>ArdaRDG</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="registering-nodes.html">Registering nodes</a>
+        <a href="node-recipes.html">Node recipes</a>
+        <a href="resources.html">Resources</a>
+        <a href="inductor.html">Inductor developer guide</a>
+        <a href="inductor-pipelines.html">Pipeline assembly</a>
+        <a href="inductor-bindings.html">Binding preparation</a>
+        <a href="batching.html">Batching and parallel edits</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaRDG</a>
+      </nav>
+      <article>
+<h1 id="batched-operation-authoring">Batched operation authoring</h1>
+<nav class="toc" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ul>
+        <li><a href="#arrays">Arrays and broadcasting</a></li>
+        <li><a href="#mesh-example">A large GBuffer construction</a></li>
+        <li><a href="#pipeline-batches">Pipeline batching</a></li>
+        <li><a href="#instancing">Automatic draw instances</a></li>
+        <li><a href="#parallel-edits">Concurrent edits</a></li>
+        <li><a href="#inspection">Inspect the plan</a></li>
+      </ul>
+    </nav>
+<section id="objectives"><h2>What this guide covers</h2><p>Record large collections with typed argument arrays, submit independent edits from worker threads, inspect compiler pipeline batches, and enable safe automatic draw instancing. The node schema and shader/CUDA resource contract remain the same for scalar and array invocation.</p></section>
+<section id="prerequisites"><h2>Prerequisites and the execution model</h2><p>Start with <a href="registering-nodes.html">node registration</a>, <a href="resources.html">resource declarations</a> and <a href="compilation.html">dependency compilation</a>. An authored operation describes work; a pipeline describes how the GPU performs it; bindings select the data for that work. Sharing a pipeline permits command recording to be grouped without requiring identical bindings.</p><p>A batch moves transition boundaries around several operations, so the compiler must prove that no required transition or visibility barrier disappears. Instancing removes draw boundaries too: it needs matching geometry and a promise that shader instance addressing and setup hooks tolerate the merge. CPU edit recording is independent of these GPU scheduling decisions.</p><figure><img src="../assets/operation-batching.svg" alt="Private edits publish atomically, compilation batches compatible work, and eligible instance ranges merge."><figcaption>Publication order defines the construction. Pipeline and resource proofs determine native batches; geometry and instance-range proofs determine draw merging.</figcaption></figure></section>
+<section id="arrays"><h2>Arrays zip; scalars broadcast</h2>
+<p><a href="api-reference.html#api-arda-tardanodearray-3759d518"><code>TArdaNodeArray&lt;T&gt;</code></a> is an owning wrapper for repeated node arguments. Any positional parameter slot may receive an array of its normal value type. All arrays in one call must have the same length. Scalar values repeat for every lane; arrays zip by index. This does not form a Cartesian product. The node's existing parameter constructors still determine argument order, default fields, type conversions and narrowing errors.</p>
+<pre><code class="language-cpp">TArdaNodeArray&lt;FArdaGraphBuffer&gt; Buffers{FirstBuffer, SecondBuffer};
+TArdaNodeArray&lt;uint32_t&gt; FillValues{7, 11};
+
+auto DistinctValues = FillDemoBuffer(Edit, Buffers, FillValues);
+auto SameValue = FillDemoBuffer(Edit, Buffers, uint32_t{19});
+
+// Complete parameter snapshots are also accepted.
+TArdaNodeArray&lt;FArdaDemoFillParameters&gt; Parameters{
+    {FirstBuffer, 7}, {SecondBuffer, 11}};
+auto Structured = FArdaDemoFillNode::Invoke(Edit, Parameters);</code></pre>
+<p><code>FillDemoBuffer</code> is the callable defined in the <a href="registering-nodes.html#declare-the-class-and-its-invocation-name">node registration example</a>. The same overloads work through a named global callable, <code>Node::Invoke</code>, or <code>Edit.Invoke&lt;Node&gt;</code>. Ordinary <code>eastl::vector</code> values and fixed shader binding arrays remain one node parameter. Wrap them in <code>TArdaNodeArray</code> only when they should represent repeated operations.</p>
+<p>Empty arrays produce empty results without attaching operations. Pairing an empty array with a nonempty array is a length mismatch. Mismatches fail before any lane is attached. A later per-lane validation failure retains the first edit error; no part of that failed edit can be committed. Recover with <code>Cancel()</code> or scope destruction. Scalar broadcasts must be reusable values; move-only objects cannot be broadcast to multiple lanes. Parameter values are copied into immutable node snapshots, while nested shared pointees retain the normal node ownership contract.</p>
+<p>Array calls return arrays of the usual result type. Executable nodes return <code>TArdaNodeArray&lt;FArdaGraphOperation&gt;</code>; its <code>GetBuffer</code>, <code>GetTexture</code> and <code>GetAccelerationStructure</code> methods retrieve one output per lane. Retrieve outputs before closing the edit. Graphics and ray provider stages return arrays of their typed stage values, ready for the next vectorized call.</p>
+<pre><code class="language-cpp">TArdaNodeArray&lt;eastl::vector&lt;uint8_t&gt;&gt; Bytes{
+    {1, 2, 3, 4}, {5, 6, 7, 8}};
+auto Uploaded = UploadBuffer(Edit, FArdaDependencyResourceHandle{}, Bytes).GetBuffer();
+auto Copies = CopyBuffer(Edit, Uploaded, FArdaDependencyResourceHandle{}).GetBuffer();
+for (auto Buffer : Copies) Edit.Keep(Buffer);</code></pre>
+<p>Array normalization creates distinct logical lane nodes and shared invocation-family metadata during authoring. It does not create a native multi-draw command by itself. Compilation validates and assembles each lane, resolves its dependencies and then batches compatible executable work. This preserves independent outputs, error reporting and resource access deductions for every lane.</p>
+</section>
+<section id="mesh-example"><h2>A large GBuffer construction</h2>
+<p>The following sketch assumes application-defined <code>MeshVS</code> and <code>GBufferPS</code> nodes with the indicated parameter order. Upload or import geometry/material data first; allocate and initialize the shared GBuffer once before recording draws.</p>
+<pre><code class="language-cpp">// Each array contains one entry per mesh. View and targets broadcast.
+auto Vertices = MeshVS(Edit, VertexBuffers, IndexBuffers, Objects, View);
+auto Fragments = Rasterize(Edit, Vertices, RasterConfig);
+auto Pixels = GBufferPS(Edit, Fragments, Materials, RGB, Normal, Depth);
+
+Edit.Keep(RGB);
+Edit.Keep(Normal);
+Edit.Keep(Depth);
+if (auto Status = Edit.Commit(); !Status) return Status;
+if (auto Status = Graph.CompileAndWait(); !Status) return Status;
+return Graph.ExecuteAndWait().mStatus;</code></pre>
+<p><code>Rasterize(Edit, Vertices, Viewport, RasterState, ...)</code> also accepts array-valued configuration slots. The input arrays and every varying configuration array must have equal lengths. Shared attachment hazards preserve the requested draw order. Declare load-and-preserve attachments as <code>ReadWrite</code>, initialize them before use, and keep clear operations outside repeated draw hooks.</p>
+<p>For 100,000 meshes this may still author roughly 300,000 stage operations. Pipeline batching reduces native recording/submission overhead, and eligible instance merging can reduce draw count. Different geometry or per-draw binding sets normally still require separate draw commands. This backend does not generate scene culling, material tables, vertex pulling or GPU-driven indirect argument lists from an arbitrary array.</p>
+</section>
+<section id="pipeline-batches"><h2>Compiler rule: batch compatible pipelines</h2>
+<p><a href="api-reference.html#api-arda-fardabatchpipelinesrule-051a47ba"><code>FArdaBatchPipelinesRule</code></a> runs after queue assignment and CUDA batch construction. It partitions executable work into <a href="api-reference.html#api-arda-fardainductorcompileresult-mpipelinebatches-7f58f7b7"><code>FArdaInductorCompileResult::mPipelineBatches</code></a>, preserving the selected execution order. Adjacent native operations with the same inferred pipeline configurations and assigned queue may share one native command-list recording even when their resource bindings differ. The key includes the shaders and fixed pipeline configuration, pipeline slots, and relevant render-target formats/sample counts. Resource bindings are supplied separately for each operation.</p>
+<p>The rule covers traditional graphics, meshlet, compute, ray-tracing and work-graph pipeline requests. CUDA operations use their existing ordered <a href="api-reference.html#api-arda-fardainductorcompileresult-mcudabatches-d472a6b2"><code>mCudaBatches</code></a> as shared sequence batches, because CUDA work does not have a graphics PSO. Commands with no identifiable native pipeline remain separate native batches. An array is not required: ordinary scalar calls receive the same optimization.</p>
+<p>Queue changes, incompatible pipelines, physical alias activations, conflicting state transitions, overlapping writable non-attachment resources, and acceleration-structure build/write boundaries prevent unsafe native grouping. Consecutive render-target/depth writes can remain in an ordered batch. Custom rules may safely split a compatible batch or omit/split instancing candidate groups; final validation rejects groups that cross required boundaries. The rule does not reorder operations to bring matching pipelines together; dependency scheduling remains responsible for legal execution order. A shared command list may still change binding sets or framebuffer state and contain many dispatches or draws.</p>
+<table><thead><tr><th>Optimization</th><th>What becomes shared</th><th>What can remain separate</th></tr></thead><tbody>
+<tr><td>Native pipeline batching</td><td>Native recording/submission grouping</td><td>Resource bindings and draw/dispatch commands</td></tr>
+<tr><td>CUDA batching</td><td>Ordered CUDA sequence and its replay/capture opportunity</td><td>Kernel or external-call operations and arguments</td></tr>
+<tr><td>Draw instance merging</td><td>One ordinary draw's geometry/state and instance range</td><td>Incompatible geometry, bindings or noncontiguous ranges</td></tr>
+</tbody></table>
+</section>
+<section id="instancing"><h2>Compiler rule: merge compatible draw instances</h2>
+<p><a href="api-reference.html#api-arda-fardamergedrawinstancesrule-21c6999a"><code>FArdaMergeDrawInstancesRule</code></a> follows pipeline batching and builds <a href="api-reference.html#api-arda-fardainductorcompileresult-minstanceddraws-46c7d69a"><code>mInstancedDraws</code></a> candidate groups inside a pipeline batch. It applies to graph-assembled traditional graphics draws. Meshlet dispatches, compute, CUDA, work-graph and ray dispatches use pipeline batching but do not have the same ordinary draw-instance semantics.</p>
+<p>Every stage in an eligible graphics chain must explicitly declare the semantic permission below. Built-in <code>Rasterize</code> already declares it.</p>
+<pre><code class="language-cpp">class FArdaMyVertexNode final
+    : public TArdaNodeDefinition&lt;FArdaMyVertexNode, FArdaMyVertexParameters,
+          EArdaNodeType::Vertex&gt;
+{
+public:
+    static constexpr EArdaGraphicsInstancing mGraphicsInstancing =
+        EArdaGraphicsInstancing::ContiguousInstances;
+    // GetMetadata, shader description and ConfigureGraphics ...
+};</code></pre>
+<p>This permission promises that <code>ConfigureGraphics</code> only fills the supplied <a href="api-reference.html#api-arda-fardagraphicswork-e0e04a79"><code>FArdaGraphicsWork</code></a>: it does not record commands, mutate external/per-instance state, or depend on a draw boundary. The shader must preserve its behavior when neighboring instance ranges become one draw. It is not permission to ignore dependencies or change instance-ID addressing.</p>
+<p>The compile rule requires equal logical shader bindings, shader constant/value bytes, resource accesses and attachments. Node authoring parameters that only configure draw ranges may differ: for example, a vertex node can copy its start-instance field into FArdaGraphicsWork without uploading it as a differing shader constant. It excludes writable non-attachment effects, workspaces and unsupported table/descriptor-patching cases. During recording, the runtime additionally compares resolved pipeline/framebuffer state, bindings, vertex/index buffers and offsets, draw ranges, viewports and scissors. It merges only nonempty, contiguous instance ranges whose combined count fits. Any failed runtime comparison retains the original individual draws.</p>
+<pre><code class="language-cpp">// Eligible only when geometry, state and bindings also match:
+DrawA.mStartInstance = 0; DrawA.mInstanceCount = 3;
+DrawB.mStartInstance = 3; DrawB.mInstanceCount = 2;
+// Can become: startInstance = 0, instanceCount = 5.</code></pre>
+<p>Two draws both starting at instance zero are not automatically merged: changing the second draw's instance identity could change the shader result. Distinct per-object transforms can come from per-instance vertex inputs, where the start-instance offset selects the data. A shader must not assume raw <code>SV_InstanceID</code> has identical base-instance behavior on every backend. On D3D it is relative to each draw; indexing a shared table with that value alone can make two separate draws differ from one merged draw, violating the permission contract. Use merge-invariant addressing, and compare merged output with separately issued draws on each supported backend. See the <a href="https://microsoft.github.io/hlsl-specs/proposals/0015-extended-command-info/">HLSL instance-location specification</a>. The compiler does not repack separate object constant buffers into such a table. A <a href="api-reference.html#api-arda-fardainductorcompileresult-minstanceddraws-46c7d69a"><code>mInstancedDraws</code></a> entry is a compile-time candidate, not a guarantee of a reduced native draw count.</p>
+</section>
+<section id="parallel-edits"><h2>Record independent edits concurrently</h2>
+<p>Different threads may open independent <a href="api-reference.html#api-arda-fardagraphedit-51647141"><code>FArdaGraphEdit</code></a> scopes on the same graph. Each scope records into a private snapshot of the latest committed construction without holding the graph's publication mutex during node calls. A single scope belongs to its recording thread; use at most one active scope per graph on that thread.</p>
+<p><code>Commit()</code> serializes publication of the whole edit. Successful commit order determines the combined attachment order and ordered construction hash. Keep publication order stable if repeatable revision-cache hits matter. Generated operation/resource names are made unique when merging. Conflicting explicit names, duplicate imported native objects, or conflicting concurrent compiler-option changes reject the offending commit atomically.</p>
+<pre><code class="language-cpp">// Commit shared resources before opening worker scopes.
+eastl::vector&lt;FArdaRHIStatus&gt; Statuses(WorkerCount);
+eastl::vector&lt;std::thread&gt; Workers;
+for (uint32_t Worker = 0; Worker &lt; WorkerCount; ++Worker)
+{
+    Workers.emplace_back([&amp;, Worker]
+    {
+        FArdaGraphEdit Edit(Graph);
+        RecordWorkerOperations(Edit, Worker); // application function
+        Statuses[Worker] = Edit.Commit();
+    });
+}
+for (auto&amp; Worker : Workers) Worker.join();
+for (const auto&amp; Status : Statuses) if (!Status) return Status;
+if (auto Status = Graph.CompileAndWait(); !Status) return Status;</code></pre>
+<p>This sketch allows nondeterministic commit order. If operations touch the same resource and their order matters, coordinate publication or use separate phases. An edit sees outputs committed before it opened. It cannot consume another scope's uncommitted outputs, or outputs committed after its own snapshot was taken; open a new scope after the producer commits. <code>GetGraph()</code> exposes the scope's recording view. Graph inspection from that recording thread also uses its private view; general inspection and execution still need application synchronization. <code>IsEditing()</code>, revision statistics and compile admission have synchronized handling.</p>
+<p><code>Cancel()</code> and destruction discard only the owning scope. <code>CompileAndWait()</code> rejects while any edit remains open. Successful compilation locks new edits until an execution attempt, preserving the existing persistent-revision lifecycle. Recording edits in parallel is separate from native command recording on the submitting thread, and neither promises simultaneous execution of dependent draws on the GPU.</p>
+</section>
+<section id="inspection"><h2>Inspect the resulting plan</h2>
+<p>After successful compilation, compare <code>mExecutionOrder</code>, <code>mPipelineBatches</code>, <a href="api-reference.html#api-arda-fardainductorcompileresult-minstanceddraws-46c7d69a"><code>mInstancedDraws</code></a> and <a href="api-reference.html#api-arda-fardainductorcompileresult-mcudabatches-d472a6b2"><code>mCudaBatches</code></a> from <code>Graph.GetCompileResult()</code>. Logical node counts need not match native command-list counts or native draw counts. Keep normal error checking for commit, compilation, submission and completion.</p>
+<p>The execution report exposes <a href="api-reference.html#api-arda-fardagraphexecutionresult-mrecordedgraphicsdrawcount-0808c7c2"><code>mRecordedGraphicsDrawCount</code></a> and <a href="api-reference.html#api-arda-fardagraphexecutionresult-mmergedgraphicsdrawcount-2af14340"><code>mMergedGraphicsDrawCount</code></a> for compiler-generated traditional draws. These distinguish eligible candidates from successful native merges. Submitted-command-list counts also include generated boundary work.</p><p>See <a href="compilation.html#rules">rule ordering and custom rule programs</a>, <a href="execution.html#recording">native recording controls</a>, <a href="inductor-pipelines.html#graphics-stage-values">typed graphics stages</a>, and <a href="registering-nodes.html">node registration</a>.</p>
+</section>
+<section id="summary"><h2>Check your understanding</h2><ul><li>Array lengths 20, 20 and 1 mismatch; use a scalar to broadcast the third argument.</li><li>Different output buffers can share a pipeline batch, but a producer/consumer UAV dependency requires a barrier and splits it.</li><li>Draws starting at instances 0 and 0 remain separate. Even contiguous ranges require every stage to permit merging.</li><li>An edit cannot consume resources published after it opened. Open a later edit after publication.</li></ul><p>Inspect compile results for grouping, execution counters for draw reduction, and readbacks for correctness. Measure recording, compilation, and GPU time separately.</p></section>
+<section id="further-reading"><h2>Further reading</h2><p>Continue with <a href="execution.html">execution and timing</a>, <a href="inductor-pipelines.html">pipeline assembly</a>, and the centralized <a href="api-reference.html">graph API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaRDG Â· Ardashir engineering documentation</p></footer>
+</body>
+</html>

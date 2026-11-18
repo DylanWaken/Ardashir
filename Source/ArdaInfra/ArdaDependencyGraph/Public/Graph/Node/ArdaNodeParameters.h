@@ -3,7 +3,9 @@
 
 #include "Graph/Node/ArdaDependencyKey.h"
 #include "Graph/Node/ArdaDependencyNodeDesc.h"
+#include "Graph/Node/ArdaGraphArchive.h"
 #include "Graph/Resources/ArdaGraphValue.h"
+#include "Graph/Resources/ArdaGraphTensor.h"
 #include "RHI/Shaders/ArdaComputeParameters.h"
 #include <EASTL/array.h>
 #include <EASTL/type_traits.h>
@@ -75,6 +77,17 @@ namespace arda
 		}
 	};
 
+	template <class T>
+	struct TArdaNodeParameterKey<TArdaGraphExternal<T>>
+	{
+		static constexpr bool mSupported = true;
+
+		static void Append(FArdaDependencyKeyBuilder& Key, const TArdaGraphExternal<T>& Value)
+		{
+			Key.String(Value.mName);
+		}
+	};
+
 	template <>
 	struct TArdaNodeParameterKey<FArdaRHIBufferRange>
 	{
@@ -94,6 +107,45 @@ namespace arda
 		static void Append(FArdaDependencyKeyBuilder& Key, const FArdaRHITextureSubresourceRange& Value)
 		{
 			Key.TextureRange(Value);
+		}
+	};
+
+	/** Tensor identity uses shared Backend layout values, never allocation addresses. */
+	template <>
+	struct TArdaNodeParameterKey<FArdaRHITensorDesc>
+	{
+		/** All concrete tensor descriptor fields have canonical encodings. */
+		static constexpr bool mSupported = true;
+
+		/** Appends dtype, dimensions, strides and logical element origin. */
+		static void Append(FArdaDependencyKeyBuilder& Key, const FArdaRHITensorDesc& Value)
+		{
+			Key.Value(Value.mDataType).Value(uint64_t(Value.mDimensions.size()));
+			for (const auto Dimension : Value.mDimensions)
+			{
+				Key.Value(Dimension);
+			}
+			Key.Value(uint64_t(Value.mStrides.size()));
+			for (const auto Stride : Value.mStrides)
+			{
+				Key.Value(Stride);
+			}
+			Key.Value(Value.mByteOffset);
+		}
+	};
+
+	/** Tensor views share the underlying buffer's normalized logical identity. */
+	template <>
+	struct TArdaNodeParameterKey<FArdaGraphTensor>
+	{
+		/** Graph tensors have canonical value identities. */
+		static constexpr bool mSupported = true;
+
+		/** Appends the logical storage identity followed by the concrete tensor layout. */
+		static void Append(FArdaDependencyKeyBuilder& Key, const FArdaGraphTensor& Value)
+		{
+			Key.Resource(Value.mBuffer);
+			TArdaNodeParameterKey<FArdaRHITensorDesc>::Append(Key, Value.mDesc);
 		}
 	};
 
@@ -153,7 +205,9 @@ namespace arda
 		ColorTarget,
 		DepthTarget,
 		ShaderResource,
-		CudaResource
+		CudaResource,
+		/** Tensor view using the same buffer resource and dependency machinery. */
+		Tensor
 	};
 
 	/** Inspectable declaration data, independent of any parameter instance or structure layout. */
@@ -178,6 +232,9 @@ namespace arda
 	/** Validate mappings against the referenced executable parameter schema before resource preparation. */
 	FArdaRHIStatus ValidateArdaNodeShaderParameter(const FArdaNodeParameterMember& Member);
 	FArdaRHIStatus ValidateArdaNodeCudaParameter(const FArdaNodeParameterMember& Member);
+	/** Validates concrete tensor layout and access semantics before mutating a node description. */
+	FArdaRHIStatus ValidateArdaNodeTensorParameter(const FArdaGraphTensor& Tensor,
+	    const FArdaNodeParameterMember& Member);
 	EArdaDependencyAccess GetArdaNodeShaderParameterAccess(const FArdaNodeParameterMember& Member);
 	EArdaDependencyAccess GetArdaNodeCudaParameterAccess(const FArdaNodeParameterMember& Member);
 	class FArdaDependencyExecutionContext;
@@ -227,6 +284,12 @@ namespace arda
 		FArdaDependencyResourceHandle (*mGetResource)(const Parameters&) = nullptr;
 		void (*mAppendStages)(const Parameters&, eastl::vector<FArdaGraphStageValue>&) = nullptr;
 		void (*mAppendKey)(const Parameters&, FArdaDependencyKeyBuilder&) = nullptr;
+		/** Encode a declared portable member without accessing padding or hidden state. */
+		void (*mSerialize)(const Parameters&, FArdaGraphArchiveWriter&) = nullptr;
+		/** Restore a declared portable member with validated logical connection identities. */
+		void (*mDeserialize)(Parameters&, FArdaGraphArchiveReader&) = nullptr;
+		/** Validates instance-dependent fields before any dependency is appended. */
+		FArdaRHIStatus (*mValidate)(const Parameters&, const FArdaNodeParameterMember&) = nullptr;
 	};
 
 	/** Finds or creates the shared binding declaration for one shader schema and pipeline slot. */
@@ -284,6 +347,22 @@ namespace arda
 		    {Resource, Member.mAccess, Member.mState, Member.mView.mBufferRange, Member.mView.mTextureRange});
 	}
 
+	/** Appends the tensor's covering interval on its existing buffer identity.
+	 * Empty tensors conservatively retain a whole-buffer hazard because graph accesses also
+	 * establish allocation lifetime; their tensor descriptor still addresses zero elements.
+	 * The caller must first validate the descriptor with ValidateArdaNodeTensorParameter.
+	 */
+	inline void AppendArdaNodeParameterResource(const FArdaGraphTensor& Tensor,
+	    const FArdaNodeParameterMember& Member,
+	    FArdaDependencyNodeDesc& Description,
+	    uint32_t ArrayOffset = 0)
+	{
+		auto TensorMember = Member;
+		const auto Range = GetArdaRHITensorByteRange(Tensor.mDesc).mValue;
+		TensorMember.mView.mBufferRange = Range.mByteSize ? Range : FArdaRHIBufferRange{};
+		AppendArdaNodeParameterResource(Tensor.mBuffer, TensorMember, Description, ArrayOffset);
+	}
+
 	/** Recognizes supported array/vector fields without requiring arbitrary values to be iterable. */
 	template <class T>
 	struct TArdaNodeParameterSequence : eastl::false_type
@@ -310,6 +389,14 @@ namespace arda
 		TArdaNodeParameterMember<Parameters> Member;
 		static_cast<FArdaNodeParameterMember&>(Member) = eastl::move(Declaration);
 		Member.mKind = Kind;
+		Member.mSerialize = [](const Parameters& Values, FArdaGraphArchiveWriter& Archive)
+		{
+			Archive.Write(Values.*Field);
+		};
+		Member.mDeserialize = [](Parameters& Values, FArdaGraphArchiveReader& Archive)
+		{
+			Archive.Read(Values.*Field);
+		};
 		if constexpr (Kind == EArdaNodeParameterKind::ShaderResource || Kind == EArdaNodeParameterKind::CudaResource)
 		{
 			static_assert(TArdaNodeResourceField<FArdaValue>::value, "Schema mappings require typed graph resources.");
@@ -321,6 +408,39 @@ namespace arda
 			Member.mGetResource = [](const Parameters& Values) -> FArdaDependencyResourceHandle
 			{
 				return Values.*Field;
+			};
+		}
+		else if constexpr (eastl::is_same_v<FArdaValue, FArdaGraphTensor>)
+		{
+			Member.mGetResource = [](const Parameters& Values) -> FArdaDependencyResourceHandle
+			{
+				return (Values.*Field).mBuffer;
+			};
+		}
+		if constexpr (Kind == EArdaNodeParameterKind::Tensor)
+		{
+			Member.mValidate = [](const Parameters& Values, const FArdaNodeParameterMember& Definition)
+			{
+				if constexpr (TArdaNodeParameterSequence<FArdaValue>::value)
+				{
+					static_assert(eastl::is_same_v<typename TArdaNodeParameterSequence<FArdaValue>::FArdaElement,
+					                  FArdaGraphTensor>,
+					    "Tensor fields require shared graph tensor views.");
+					for (const auto& Tensor : Values.*Field)
+					{
+						if (auto Status = ValidateArdaNodeTensorParameter(Tensor, Definition); !Status)
+						{
+							return Status;
+						}
+					}
+					return FArdaRHIStatus{};
+				}
+				else
+				{
+					static_assert(eastl::is_same_v<FArdaValue, FArdaGraphTensor>,
+					    "Tensor fields require shared graph tensor views.");
+					return ValidateArdaNodeTensorParameter(Values.*Field, Definition);
+				}
 			};
 		}
 		if constexpr (Kind == EArdaNodeParameterKind::StageInput)
@@ -393,6 +513,40 @@ namespace arda
 			return mName;
 		}
 
+		/** Persist declared names and values; native and unsupported fields return Unsupported. */
+		FArdaRHIStatus Serialize(const Parameters& Values, FArdaGraphArchiveWriter& Archive) const
+		{
+			Archive.WriteInteger(mMembers.size(), 8);
+			for (const auto& Member : mMembers)
+			{
+				Archive.Write(eastl::string(Member.mName));
+				Member.mSerialize(Values, Archive);
+			}
+			return Archive.GetStatus();
+		}
+
+		/** Restore exactly this schema; mismatched field counts or names reject the document. */
+		FArdaRHIStatus Deserialize(Parameters& Values, FArdaGraphArchiveReader& Archive) const
+		{
+			if (Archive.ReadCount() != mMembers.size())
+			{
+				Archive.Fail("Archive node parameter schema has changed.");
+				return Archive.GetStatus();
+			}
+			for (const auto& Member : mMembers)
+			{
+				eastl::string Name;
+				Archive.Read(Name);
+				if (Name != Member.mName)
+				{
+					Archive.Fail("Archive node parameter name has changed.");
+					return Archive.GetStatus();
+				}
+				Member.mDeserialize(Values, Archive);
+			}
+			return Archive.GetStatus();
+		}
+
 		const eastl::vector<TArdaNodeParameterMember<Parameters>>& GetMembers() const noexcept
 		{
 			return mMembers;
@@ -457,6 +611,13 @@ namespace arda
 			}
 			for (const auto& Member : mMembers)
 			{
+				if (Member.mValidate)
+				{
+					if (auto Status = Member.mValidate(Values, Member); !Status)
+					{
+						return Status;
+					}
+				}
 				if (Member.mKind == EArdaNodeParameterKind::ShaderResource)
 				{
 					for (const auto& Bindings : Description.mShaderBindings)
@@ -494,7 +655,6 @@ namespace arda
 					Member.mApply(Values, Member, Description);
 				}
 			}
-			Description.mbDeclarativeParameters = true;
 			return {};
 		}
 
@@ -612,6 +772,9 @@ namespace arda
 	using TArdaNodeBufferArray = eastl::array<FArdaGraphBuffer, Count>;
 	template <size_t Count>
 	using TArdaNodeTextureArray = eastl::array<FArdaGraphTexture, Count>;
+	/** Fixed tensor-view arrays share the same declaration and key machinery. */
+	template <size_t Count>
+	using TArdaNodeTensorArray = eastl::array<FArdaGraphTensor, Count>;
 
 	/** Resolves CUDA resource fields using the node's canonical operand-member mappings. */
 	template <class Parameters, class HostParameters>
@@ -648,7 +811,7 @@ private:                                                                        
 	}                                                                                                                  \
 	typedef FArdaNodeNextMemberId##MemberName
 
-/** Begins a constructor-free node parameter aggregate; do not add undeclared instance fields. */
+/** Begins a node parameter schema; do not add undeclared instance fields. */
 #define ARDA_BEGIN_NODE_PARAMETER_STRUCT(StructType)                                                                   \
 	struct StructType                                                                                                  \
 	{                                                                                                                  \
@@ -669,7 +832,7 @@ private:                                                                        
 		typedef FArdaNodeFirstMemberId
 
 /** Ends the aggregate and exposes its immutable metadata and automatic semantic key. */
-#define ARDA_END_NODE_PARAMETER_STRUCT()                                                                               \
+#define ARDA_END_NODE_PARAMETER_STRUCT(...)                                                                            \
 	FArdaNodeLastMemberId;                                                                                             \
                                                                                                                        \
 public:                                                                                                                \
@@ -692,6 +855,7 @@ public:                                                                         
 	{                                                                                                                  \
 		return GetNodeParameterMetadata().GetCanonicalKey(Parameters);                                                 \
 	}                                                                                                                  \
+	__VA_ARGS__                                                                                                        \
 	}                                                                                                                  \
 	;
 
@@ -742,6 +906,24 @@ public:                                                                         
 	    MemberName,                                                                                                    \
 	    {},                                                                                                            \
 	    ::arda::EArdaNodeParameterKind::Texture,                                                                       \
+	    Access,                                                                                                        \
+	    State)
+
+/** Declares a tensor layout and its buffer access/state requirement. */
+#define ARDA_NODE_TENSOR(MemberName, Access, State)                                                                    \
+	ARDA_INTERNAL_NODE_PARAMETER(::arda::FArdaGraphTensor,                                                             \
+	    MemberName,                                                                                                    \
+	    {},                                                                                                            \
+	    ::arda::EArdaNodeParameterKind::Tensor,                                                                        \
+	    Access,                                                                                                        \
+	    State)
+
+/** Declares a fixed array of tensor views with a shared access/state requirement. */
+#define ARDA_NODE_TENSOR_ARRAY(MemberName, Count, Access, State)                                                       \
+	ARDA_INTERNAL_NODE_PARAMETER(::arda::TArdaNodeTensorArray<Count>,                                                  \
+	    MemberName,                                                                                                    \
+	    {},                                                                                                            \
+	    ::arda::EArdaNodeParameterKind::Tensor,                                                                        \
 	    Access,                                                                                                        \
 	    State)
 

@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ArdaInductor pipeline inference — Ardashir engineering documentation.">
+  <title>ArdaInductor pipeline inference | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRDG pages">
+      <h2>ArdaRDG</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="registering-nodes.html">Registering nodes</a>
+        <a href="node-recipes.html">Node recipes</a>
+        <a href="resources.html">Resources</a>
+        <a href="inductor.html">Inductor developer guide</a>
+        <a href="inductor-pipelines.html">Pipeline assembly</a>
+        <a href="inductor-bindings.html">Binding preparation</a>
+        <a href="batching.html">Batching and parallel edits</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaRDG</a>
+      </nav>
+      <article>
+<h1 id="ardainductor-pipeline-inference">ArdaInductor pipeline inference</h1>
+<nav class="toc" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ul>
+        <li><a href="#describe-contributions-and-slots">Describe contributions and slots</a></li>
+        <li><a href="#graphics-stage-values">Graphics stage values</a></li>
+        <li><a href="#pipeline-requests-selected-stages-and-ambiguity">Pipeline requests, selected stages, and ambiguity</a></li>
+        <li><a href="#the-five-pipeline-families">The five pipeline families</a></li>
+        <li><a href="#fixed-settings-and-ownership">Fixed settings and ownership</a></li>
+        <li><a href="#framebuffers-keys-and-cache-lifetime">Framebuffers, keys, and cache lifetime</a></li>
+        <li><a href="#use-the-resolved-pipeline-when-recording">Use the resolved pipeline when recording</a></li>
+        <li><a href="#native-api-references">Native API references</a></li>
+      </ul>
+    </nav>
+<section id="objectives"><h2>How to use this guide</h2><p>Compose graphics and ray shader stages through typed values, validate complete pipelines, and understand native pipeline creation and reuse.</p><p>Start with the <a href="index.html">module overview</a> and follow exact declarations in the <a href="api-reference.html">canonical API reference</a>.</p></section>
+
+<p>Persistent dependency-graph nodes describe shader contributions and request pipeline slots.
+<code>CompileAndWait()</code> infers each live request into a pipeline pattern. The first <code>SubmitAndWait()</code> creates or reuses native PSOs and framebuffers before any commands are recorded.
+All persistent revisions share the graph&#39;s native PSO cache, while each revision owns its compiled plan and prepared runtime. Switching to a newly compiled revision can reuse matching PSOs; selecting a cached revision reuses that revision&#39;s runtime as well.
+Recording callbacks receive the resolved PSO through <code>FArdaDependencyExecutionContext</code>; state helpers apply runtime-prepared bindings and shader parameters, while callbacks supply draw/dispatch arguments.
+Pipeline descriptions belong to <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Rules/ArdaInductorPipeline.h">Inductor/Rules/ArdaInductorPipeline.h</a>. The separate <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Compiler/ArdaInductorPipelineCompiler.h">Inductor/Compiler/ArdaInductorPipelineCompiler.h</a> exposes inference and native cache-resolution calls. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Public/ArdaDependencyGraph.h">ArdaDependencyGraph.h</a> includes both through the module entry point.</p>
+<h2 id="describe-contributions-and-slots">Describe contributions and slots</h2>
+<p>A registered class uses <code>TArdaNodeDefinition&lt;Node, Parameters, EArdaNodeType::...&gt;</code>
+and a macro-defined node parameter schema. Its optional static <code>Describe</code> hook
+returns pipeline contributions and other requirements in <code>FArdaDependencyNodeDesc</code>.
+Add any number of <code>FArdaInductorPipelineContribution</code> values to <code>mPipelineStages</code> and requests to <code>mPipelines</code>.
+Each contribution retains a shader; <code>IArdaRHIShader::GetStage()</code> supplies its stage and <code>GetPersistentCacheHash()</code> supplies its content identity.
+Each request selects <code>mKind</code>, optional <code>mGroup</code>, and a consumer-local <code>mSlot</code>.
+An empty slot becomes <code>&quot;default&quot;</code>; duplicate slot names on one node fail compilation.
+The graph assigns <code>mTerminalNodeId</code>, so ordinary node descriptions leave it unset.</p>
+<p>For example, this node maps its output to a registered compute shader&#39;s parameter
+schema and contributes the shader retained by its immutable prepared state:</p>
+<pre><code class="language-cpp">ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaComputeParameters)
+    ARDA_NODE_SHADER_BUFFER(mOutput, FArdaComputeShader::FArdaParameters, mOutput)
+    ARDA_NODE_PARAMETER(uint32_t, mGroupCount)
+ARDA_END_NODE_PARAMETER_STRUCT()
+
+FArdaDependencyNodeDesc FArdaComputeNode::Describe(const FArdaParameters&amp;, const FArdaState&amp; State)
+{
+    FArdaDependencyNodeDesc Desc;
+    Desc.mPipelineStages = {State.mStage};
+    FArdaInductorPipelineRequest Request;
+    Request.mKind = EArdaPipelineStateKind::Compute;
+    Request.mSlot = &quot;default&quot;;
+    Desc.mPipelines.push_back(eastl::move(Request));
+    return Desc;
+}
+</code></pre>
+<p>The node class also supplies <code>GetMetadata</code> and its execution hook. Its parameter
+metadata generates a canonical key covering the output identity and group count.
+An application value without a supported encoder requires an explicit semantic
+<code>GetCanonicalKey</code> or a <code>TArdaNodeParameterKey</code> specialization.
+Returning a PSO request alone does not declare resource accesses. Shader and CUDA
+resource macros inherit their source schema&#39;s requirements; attachment and
+non-shader resource macros declare copies, render targets and native build accesses.
+Dynamic ranges and bindless entries can be described in the custom hook. See
+<a href="node-recipes.html">class-authored recipes</a>.</p>
+<h2 id="graphics-stage-values">Graphics stage values</h2>
+<p>Standalone graphics nodes use <code>TArdaNodeDefinition&lt;Node, Parameters, Type&gt;</code> with
+<code>EArdaNodeType::Vertex</code>, <code>Raster</code> or <code>Pixel</code>. Their named calls
+return <code>FArdaGraphVertices</code>, <code>FArdaGraphFragments</code> and <code>FArdaGraphPixels</code> respectively.
+These graph-owned values describe shader dataflow; they are not memory allocations.</p>
+<pre><code class="language-cpp">const auto Vertices = TriangleVS(Edit, VertexBuffer, IndexBuffer);
+const auto Fragments = TriangleRasterize(Edit, Vertices, Width, Height);
+TrianglePS(Edit, Fragments, ColorTarget);
+</code></pre>
+<p>Declare the logical input with <code>ARDA_NODE_STAGE_INPUT(Type, Member)</code> in the
+node parameter schema. The member name is arbitrary. The graph records its
+producer edge from that metadata automatically. <code>Edit.Order</code> is not used to
+select or connect these stages. A preprocessing rule validates the chain before
+ordinary resource dependency resolution and creates a graphics terminal for each
+pixel operation. Rasterization accepts vertex results, pixel shading accepts
+fragments, and incompatible, missing, stale or foreign graph values are rejected.
+The compiler also validates erased stage declarations, so bypassing C++ type
+checking does not permit rasterizing the output of another raster operation.</p>
+<p>Before culling, preprocessing checks every declared graphics stage for a path to
+a pixel terminal. A standalone vertex operation, an unfinished raster branch or
+any other orphan stage fails compilation even when its output is unused. A
+successful explicit <code>FetchBuffer</code> materialization also completes its producer
+and that producer&#39;s upstream stage chain. This is the supported way to capture
+intermediate results without adding a pixel terminal; failed or unavailable
+materializers do not satisfy completeness. Stage order, input kinds and ownership
+remain validated for captured chains. Complete unused draws can subsequently be
+culled through the ordinary physical-output liveness rules.</p>
+<p>Each stage declares its own accesses, shader arguments and bindings. Compilation
+collects them onto the assembled draw. A vertex node contributes its vertex shader
+and optional <code>mGraphicsInputLayout</code>; a raster node contributes fixed state through
+<code>mPipelineStages</code> with a configuration and no shader; a pixel node contributes its
+pixel shader and framebuffer targets. Stage nodes do not request a pipeline slot
+or issue a draw themselves. Their optional <code>ConfigureGraphics</code> hooks fill shared
+<code>FArdaGraphicsWork</code> state and draw arguments, then the executor submits one draw.</p>
+<p>If one vertex value feeds two raster operations, there are two assembled draws.
+The vertex stage executes in both pipelines. Shader objects and compatible PSOs
+can still be cached and shared; the graph does not silently cache vertex results
+in a buffer. The <a href="Examples/AssembleNodes.cpp">compiled raster recipe</a> exercises
+this fan-out using two render targets.</p>
+<h2 id="pipeline-requests-selected-stages-and-ambiguity">Pipeline requests, selected stages, and ambiguity</h2>
+<p>Ray pipelines use the same definition template with <code>RayMiss</code>, <code>RayClosestHit</code>,
+<code>RayAnyHit</code>, <code>RayIntersection</code> and <code>RayCallable</code> providers returning
+<code>FArdaGraphRayShader</code>. A <code>RayGeneration</code> terminal selects those values in its
+provider list declared with <code>ARDA_NODE_STAGE_INPUTS(FArdaGraphRayShader, Member)</code>.
+Preprocessing validates the providers and collects
+their contributions, resource accesses and bindings onto that terminal. It
+supplies the default ray-tracing pipeline request when omitted. The terminal
+retains its authored <code>Record</code> callback for <code>SetRayTracingState</code> and <code>DispatchRays</code>.
+Provider values can be shared by multiple terminals; unrelated resource ancestry
+does not add ray shaders to these assembled pipelines. See <a href="registering-nodes.html#compose-ray-tracing-stages">ray stage registration</a>.</p>
+<p>For complete-operation compute, graphics, mesh, ray and work-graph requests, the
+graph infers each pipeline from the requesting node&#39;s own contributions and fixed
+configuration. Typed graphics and ray preprocessing first merges the stages
+selected by logical stage values onto their terminal. Resource dependencies and
+<code>Edit.Order</code> constraints schedule work; they never import another node&#39;s shaders,
+layouts or fixed settings. A missing local stage is an error even if an earlier
+node uses a suitable shader.</p>
+<p><code>Describe</code> contributes prepared shaders and settings but cannot set stage identity
+or connectivity. The framework rejects nondefault <code>mGraphicsStage</code>, <code>mRayStage</code>,
+<code>mGraphicsInput</code>, <code>mRayInputs</code> or <code>mbPipelineStageOnly</code>; <code>EArdaNodeType</code> and the
+parameter schema are their source of truth.</p>
+<p>The lower-level <code>InferArdaInductorPipeline()</code> utility also accepts dependency
+projections for compiler algorithms and tests. Ordinary graph compilation passes
+node-local contributions after typed assembly, so that utility does not introduce
+an alternate graph authoring path.</p>
+<p>Use the unified node definition template and typed stage parameter declarations
+for graphics dataflow. Every declared stage must reach a valid terminal or a
+successful explicit materializer; unused unfinished stages are rejected.</p>
+<p>The grouping rules are explicit:</p>
+<ul>
+<li>An empty contribution <code>mGroup</code> is shared by every selected group.</li>
+<li>An empty request <code>mGroup</code> accepts at most one named group within that node&#39;s selected contributions.</li>
+<li>Multiple selected named groups require the request to select one.</li>
+<li>Distinct shaders for the same stage/export in the selected group are ambiguous; repeating the same stage/content is accepted.</li>
+<li>Local contributions belonging to other pipeline families are ignored by that request; pixel shaders apply to both traditional graphics and mesh pipelines.</li>
+<li>Global layouts merge in canonical register-space and semantic order. Equal layouts are deduplicated. Distinct layouts in one space are accepted when their stage visibility is disjoint, matching the RHI graphics binding model; differing layouts with overlapping visibility are rejected. Use compatible shared settings when stages overlap.</li>
+</ul>
+<p>For example, one complete graphics operation contributing <code>VS_A</code> in group <code>&quot;terrain&quot;</code> and <code>VS_B</code> in group <code>&quot;water&quot;</code> can share an ungrouped pixel shader.
+A request with no group fails; <code>Request.mGroup = &quot;terrain&quot;</code> selects <code>VS_A</code> plus that shared pixel shader.
+Giving both vertex contributions an empty group still fails because they conflict within the selected pipeline.
+A node may instead request two slots, <code>&quot;terrain&quot;</code> and <code>&quot;water&quot;</code>, each with its corresponding group.</p>
+<h2 id="the-five-pipeline-families">The five pipeline families</h2>
+<p>The resolver maps all five <code>EArdaPipelineStateKind</code> values to the existing RHI pipeline cache:</p>
+<ul>
+<li><code>Compute</code>: exactly one compute shader; result member <code>mCompute</code>.</li>
+<li><code>Graphics</code>: vertex shader with optional pixel/geometry stages. Tessellation requires paired hull/domain shaders, <code>PatchList</code> topology, and valid patch-control-point settings; result <code>mGraphics</code>.</li>
+<li><code>Meshlet</code>: mesh shader with optional amplification and pixel shaders; result <code>mMeshlet</code>.</li>
+<li><code>RayTracing</code>: named ray-generation, miss, and callable exports plus named hit groups; at least one ray-generation shader is required; result <code>mRayTracing</code>.</li>
+<li><code>WorkGraph</code>: work-graph shaders plus program name, entry point, and nonzero maximum input records; result <code>mWorkGraph</code>.</li>
+</ul>
+<p>These are inference capabilities. Native creation still checks the selected device/backend&#39;s support and returns its ordinary failure status when a feature is unavailable.
+The resolver does not translate shader languages or provide a software substitute for unsupported native pipeline features.</p>
+<p>Ray-generation, miss, and callable contributions set <code>mExportName</code>.
+Closest-hit, any-hit, and intersection contributions set a common <code>mHitGroupName</code> to assemble one group; an intersection shader makes it procedural.
+Use <code>mLocalBindingLayout</code> for a ray export or hit group, and <code>mBindingLayouts</code> for global layouts.
+Conflicting local layouts or shader exports fail; general export names and hit-group names must be distinct.
+Null shaders without a settings contribution and empty configured hit groups are rejected.</p>
+<p>Work-graph program settings can be provided by the consumer:</p>
+<pre><code class="language-cpp">auto Settings = eastl::make_shared&lt;FArdaInductorPipelineConfiguration&gt;();
+Settings-&gt;mKind = EArdaPipelineStateKind::WorkGraph;
+Settings-&gt;mWorkGraph.mDesc.mProgramName = &quot;MyProgram&quot;;
+Settings-&gt;mWorkGraph.mDesc.mEntryPoint = &quot;MyEntry&quot;;
+Settings-&gt;mWorkGraph.mDesc.mMaxInputRecords = 32;
+Request.mKind = EArdaPipelineStateKind::WorkGraph;
+Request.mConfiguration = Settings;
+</code></pre>
+<h2 id="fixed-settings-and-ownership">Fixed settings and ownership</h2>
+<p><code>FArdaInductorPipelineConfiguration</code> holds the five existing pipeline initializers; only the member selected by <code>mKind</code> participates.
+Attach it to a contribution or request through <code>mConfiguration</code> to supply raster/input-layout settings, ray limits, or work-graph program settings.
+It may also seed shader fields and global layouts. Later contributions merge with those fields and cannot silently replace conflicting shaders.
+When several selected contributions supply fixed/program settings, those settings must agree; inference does not choose one by declaration order.</p>
+<p>Finish building a configuration before attaching the node. The graph snapshots description configuration values when attaching, while retaining immutable RHI shader/layout objects.
+Descriptor vectors and strings are owned by that snapshot; changing a caller&#39;s configuration alias must not rewrite already-attached node semantics.
+The same rule is the author&#39;s responsibility for arbitrary nested pointers in custom typed parameters: copying a <code>shared_ptr&lt;const T&gt;</code> does not freeze another mutable alias to <code>T</code>.
+Recording callbacks must use the described, immutable behavior. Replace changed semantics inside a graph edit and give them an updated canonical key.
+Readback destinations or diagnostic sinks can remain mutable outputs; they must not silently change the declared pipeline or resource behavior.</p>
+<h2 id="framebuffers-keys-and-cache-lifetime">Framebuffers, keys, and cache lifetime</h2>
+<p>Graphics and mesh consumers declare <code>mColorTargets</code> and/or <code>mDepthTarget</code> plus matching texture accesses.
+The runtime materializes their framebuffer and passes it to the cache during pipeline resolution.
+Empty <code>mColorFormats</code> and an <code>Unknown</code> depth format are completed from its attachments.
+Set <code>mSampleCount = 0</code> to derive samples; its default value of one remains an explicit requirement.
+Explicit formats or sample counts that disagree with the framebuffer fail.
+Without a framebuffer, the current cache requires nonempty explicit color formats and a nonzero sample count.</p>
+<p><a href="api-reference.html#api-arda-fardainductorpipelinepattern-mstablekey-cee78de4"><code>FArdaInductorPipelinePattern::mStableKey</code></a> identifies normalized shader and pipeline semantics before framebuffer completion.
+It includes pipeline family, shader stages/content hashes, global/local layouts, input layout, fixed state, formats/samples, and ray/work-graph settings.
+It excludes node IDs, graph instance labels, slot/group names, debug names, and caller-supplied persistent-cache labels.
+Layout spaces, ray exports/hit groups, and work-graph shaders are canonically ordered, so equivalent contribution orders produce the same key.
+The resolved result&#39;s key also includes the completed framebuffer formats and samples.
+These semantic keys are separate from native object addresses and the existing cache&#39;s internal descriptor keys.</p>
+<p><a href="api-reference.html#api-arda-resolveardainductorpipeline-eff1546a"><code>ResolveArdaInductorPipeline()</code></a> verifies the pattern key, then calls the appropriate <a href="../ArdaBackend/api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>FArdaPipelineStateCache::GetOrCreate*</code></a> method.
+The in-memory cache compares complete RHI pipeline descriptors, including shader, binding-layout and input-layout object references; it does not look up PSOs by the ArdaInductor stable key.
+Two separately created shaders or layouts with equivalent contents can therefore produce the same stable pattern key while occupying different in-memory PSO cache entries.
+Repeated requests that share the same RHI references and matching settings reuse the cached PSO while its entry remains resident.
+Native persistent caches receive a separate content-derived key during PSO creation; that metadata does not merge the in-memory entries.
+The graph retains its device-bound cache and compiled typed pipeline references across frames.
+Repeated <code>ExecuteAndWait()</code> records fresh commands using those resolved references; it does not infer or create the PSO again.
+Use <code>Graph.GetPipelineCacheStats()</code> to inspect entries, misses, hits, and creation failures for this cache.
+The lower-level device descriptor-cache counters measure a different layer.</p>
+<h2 id="use-the-resolved-pipeline-when-recording">Use the resolved pipeline when recording</h2>
+<p>During node recording, call <code>Context.GetPipeline(&quot;default&quot;)</code> or another declared slot name. Class hooks receive public parameters, immutable device state and private instance state separately. The base owns their retained storage.
+The returned <code>FArdaInductorResolvedPipeline</code> has the corresponding typed reference, such as <code>mCompute</code> or <code>mGraphics</code>; an unknown slot returns null.
+Use the context state helpers for compute, graphics, meshlet and ray tracing. They supply the inferred PSO, prepared bindings, framebuffer and shader parameters. Work-graph dispatch has a matching helper; <a href="inductor-bindings.html">automatic binding preparation</a> describes table and local-record handling.
+For graphics/mesh state, use <code>Context.GetFramebuffer()</code> for the compiled attachments.
+Then issue the normal draw, dispatch, ray, or work-graph command through <code>GetCommands()</code>.
+For compute specifically, check <code>SetComputeState()</code>&#39;s status, call the void <code>Dispatch()</code> method, then return <code>FArdaRHIStatus{}</code>.</p>
+<p>See <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorGpuTests.cpp">ArdaInductorGpuTests.cpp</a> for a complete typed compute node, bindings, consumer-before-producer attachment, and three-frame numerical readback.
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorPipelineTests.cpp">ArdaInductorPipelineTests.cpp</a> covers the lower-level inference utility&#39;s dependency projections, groups, layout conflicts, tessellation pairs, ray exports, work-graph identity, and invalid configurations without a GPU. Graph execution tests separately verify that resource/order edges do not transfer shader contributions.
+The implementation is in <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPipeline.cpp">ArdaInductorPipeline.cpp</a>; <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPreparation.cpp">ArdaInductorRuntime.cpp</a> connects inference to compilation and execution.</p>
+<h2 id="native-api-references">Native API references</h2>
+<p>The native model behind these settings is described by Microsoft&#39;s <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/managing-graphics-pipeline-state-in-direct3d-12">D3D12 pipeline-state overview</a> and Khronos&#39;s <a href="https://docs.vulkan.org/refpages/latest/refpages/source/VkGraphicsPipelineCreateInfo.html">VkGraphicsPipelineCreateInfo specification</a>.
+Ray exports, hit groups, and local-root associations follow the concepts in the <a href="https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html">DirectX Raytracing specification</a>.
+Microsoft&#39;s <a href="https://devblogs.microsoft.com/directx/d3d12-mesh-nodes-in-work-graphs/">work-graph mesh-node description</a> explains the native program/state-object model; the currently exposed Arda work-graph fields remain the implementation contract above.</p>
+<section id="summary"><h2>Review and next steps</h2><p>Typed stage values select shader composition. Resource and ordering edges control scheduling; they do not supply shaders to another operation.</p><p>Continue with the <a href="index.html">module guides</a> and <a href="api-reference.html">API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaRDG · Ardashir engineering documentation</p></footer>
+</body>
+</html>

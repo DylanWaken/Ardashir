@@ -5,10 +5,44 @@ import unittest
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from unittest.mock import patch
 
-from sync_api_inventories import backend_specs, make_symbols, preserve_symbol_ids, rdg_specs, reconcile_backend_sources, select_missing
+from sync_api_inventories import COMPLETE_BACKEND_SOURCE_ROOTS, backend_specs, make_symbols, preserve_symbol_ids, rdg_specs, reconcile_backend_sources, select_missing
 
 
 class HeaderOrderingTest(unittest.TestCase):
+    def test_file_contracts_never_inherit_gpu_status_boilerplate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = "Source/ArdaInfra/ArdaBackend/Public/FileOperations/ArdaFixture.h"
+            header = root / source
+            header.parent.mkdir(parents=True)
+            header.write_text(
+                "namespace arda {\n"
+                "class FArdaFileFixture {\npublic:\n"
+                "/** Reads a file. */\nvoid Read();\n"
+                "/** Waits for a file. @errors Invalid waits throw. @threading External callers may wait. */\n"
+                "void Wait();\n};\n}\n", encoding="utf-8")
+            symbols = make_symbols(root, [(source, "arda", "core")], "test")
+            by_name = {symbol["name"]: symbol for symbol in symbols}
+            self.assertEqual(by_name["Read"]["errors"], "")
+            self.assertEqual(by_name["Read"]["threading"], "")
+            self.assertEqual(by_name["Wait"]["errors"], "Invalid waits throw.")
+            self.assertEqual(by_name["Wait"]["threading"], "External callers may wait.")
+
+    def test_file_members_do_not_collide_with_other_modules(self):
+        source = "Source/ArdaInfra/ArdaBackend/Public/FileOperations/ArdaFileLocation.h"
+        declared = {
+            "name": "mFunction", "qualifiedName": "arda::FArdaFileFilter::mFunction",
+            "kind": "member variable", "source": source,
+            "signature": "std::function<void(const char*)> mFunction",
+        }
+        existing = {
+            "name": "mFunction", "qualifiedName": "arda::FArdaLogRecord::mFunction",
+            "kind": "member variable", "source": "ArdaLog.h",
+            "signature": "const char* mFunction",
+        }
+        complete = [source] if source.startswith(COMPLETE_BACKEND_SOURCE_ROOTS) else []
+        self.assertEqual(select_missing([declared], {"symbols": [existing]}, complete), [declared])
+
     def test_header_inventory_order_is_independent_of_path_flavour(self):
         with tempfile.TemporaryDirectory() as directory:
             repo = Path(directory)
@@ -160,6 +194,71 @@ class EnumExtractionTest(unittest.TestCase):
 
 
 class CallableExtractionTest(unittest.TestCase):
+    def test_identical_members_in_template_specializations_keep_distinct_scopes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Codec.h").write_text(
+                "namespace arda {\n"
+                "template <class T>\n"
+                "struct TArdaCodec<T, eastl::enable_if_t<IsIntegral<T>>>\n"
+                "{\n"
+                "    static void Read(FArchive& Archive, T& Value);\n"
+                "    static void Write(FArchive& Archive, const T& Value);\n"
+                "};\n"
+                "template <class T>\n"
+                "struct TArdaCodec<T, eastl::enable_if_t<IsFloating<T>>>\n"
+                "{\n"
+                "    static void Read(FArchive& Archive, T& Value);\n"
+                "    static void Write(FArchive& Archive, const T& Value);\n"
+                "};\n"
+                "template <>\n"
+                "struct TArdaCodec<int>\n"
+                "{\n"
+                "    TArdaCodec();\n"
+                "};\n"
+                "}\n", encoding="utf-8")
+            symbols = make_symbols(root, [("Codec.h", "arda", "core")], "test")
+            methods = [item for item in symbols if item["kind"] == "method"]
+            self.assertEqual(len(methods), 4)
+            self.assertEqual(len({item["id"] for item in methods}), 4)
+            self.assertEqual({item["qualifiedName"] for item in methods}, {
+                "arda::TArdaCodec<T, eastl::enable_if_t<IsIntegral<T>>>::Read",
+                "arda::TArdaCodec<T, eastl::enable_if_t<IsIntegral<T>>>::Write",
+                "arda::TArdaCodec<T, eastl::enable_if_t<IsFloating<T>>>::Read",
+                "arda::TArdaCodec<T, eastl::enable_if_t<IsFloating<T>>>::Write",
+            })
+            constructors = [item for item in symbols if item["kind"] == "constructor"]
+            self.assertEqual(len(constructors), 1)
+            self.assertEqual(constructors[0]["qualifiedName"], "arda::TArdaCodec<int>::TArdaCodec")
+
+    def test_trailing_return_initializers_are_not_function_bodies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Invoke.h").write_text(
+                "namespace arda {\n"
+                "struct FGraphEdit {\n"
+                "    template <class Node, class... Arguments>\n"
+                "    auto Invoke(Arguments&&... Values)\n"
+                "        -> decltype(typename Node::FArdaParameters{Forward(Values)...}, FOperation{})\n"
+                "    { return Record(Values...); }\n"
+                "    void After();\n"
+                "};\n"
+                "struct FExecutionNode {\n"
+                "    template <class... Arguments>\n"
+                "    static auto Invoke(FGraphEdit& Edit, Arguments&&... Values)\n"
+                "        -> decltype(FArdaParameters{Forward(Values)...}, FOperation{});\n"
+                "};\n"
+                "}\n", encoding="utf-8")
+            symbols = make_symbols(root, [("Invoke.h", "arda", "core")], "test")
+            by_name = {item["qualifiedName"]: item for item in symbols}
+            self.assertEqual(by_name["arda::FGraphEdit::Invoke"]["signature"],
+                "template <class Node, class... Arguments> auto Invoke(Arguments&&... Values) "
+                "-> decltype(typename Node::FArdaParameters{Forward(Values)...}, FOperation{})")
+            self.assertEqual(by_name["arda::FExecutionNode::Invoke"]["signature"],
+                "template <class... Arguments> static auto Invoke(FGraphEdit& Edit, Arguments&&... Values) "
+                "-> decltype(FArdaParameters{Forward(Values)...}, FOperation{})")
+            self.assertEqual(by_name["arda::FGraphEdit::After"]["signature"], "void After()")
+
     def test_function_template_types_are_not_methods_but_returning_methods_are(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -195,6 +294,52 @@ class CallableExtractionTest(unittest.TestCase):
 
 
 class SourceOwnershipTest(unittest.TestCase):
+    def test_new_specialization_at_an_old_source_line_does_not_steal_an_anchor(self):
+        common = {"kind": "constant", "signature": "static constexpr bool mSupported = true",
+                  "source": "Parameters.h"}
+        old = {"symbols": [{**common, "id": "api-arda-tardakey-buffer-msupported-original",
+            "qualifiedName": "arda::TArdaKey<Buffer>::mSupported", "sourceLine": 82}]}
+        new = [
+            {**common, "id": "new-external", "qualifiedName": "arda::TArdaKey<External<T>>::mSupported",
+             "sourceLine": 82},
+            {**common, "id": "new-buffer", "qualifiedName": "arda::TArdaKey<Buffer>::mSupported",
+             "sourceLine": 92},
+        ]
+        preserve_symbol_ids(new, old)
+        self.assertEqual([item["id"] for item in new],
+                         ["new-external", "api-arda-tardakey-buffer-msupported-original"])
+        corrupted = {"symbols": [{**item, "id": old["symbols"][0]["id"]} for item in new]}
+        new[1]["id"] = "new-buffer"
+        preserve_symbol_ids(new, corrupted)
+        self.assertEqual([item["id"] for item in new],
+                         ["new-external", "api-arda-tardakey-buffer-msupported-original"])
+
+    def test_corrected_trailing_returns_keep_overloaded_anchors(self):
+        old = {"symbols": [
+            {"id": "published-typed", "qualifiedName": "arda::Invoke", "kind": "function",
+             "signature": "auto Invoke(FParameters Value) -> FOperation"},
+            {"id": "published-positional", "qualifiedName": "arda::Invoke", "kind": "function",
+             "signature": "auto Invoke(Arguments&&... Values) -> decltype(FParameters"},
+        ]}
+        new = [
+            {"id": "new-typed", "qualifiedName": "arda::Invoke", "kind": "function",
+             "signature": "auto Invoke(FParameters Value) -> FOperation"},
+            {"id": "new-positional", "qualifiedName": "arda::Invoke", "kind": "function",
+             "signature": "auto Invoke(Arguments&&... Values) -> decltype(FParameters{Forward(Values)...}, FOperation{})"},
+            {"id": "new-unrelated", "qualifiedName": "arda::Invoke", "kind": "function",
+             "signature": "auto Invoke(int Value) -> decltype(FParameters{Value}, FOperation{})"},
+        ]
+        preserve_symbol_ids(new, old)
+        self.assertEqual([item["id"] for item in new],
+            ["published-typed", "published-positional", "new-unrelated"])
+        ambiguous = [
+            {**new[1], "id": "candidate-one"},
+            {**new[1], "id": "candidate-two",
+             "signature": "auto Invoke(Arguments&&... Values) -> decltype(FParameters{Other(Values)...}, FOperation{})"},
+        ]
+        preserve_symbol_ids(ambiguous, old)
+        self.assertEqual([item["id"] for item in ambiguous], ["candidate-one", "candidate-two"])
+
     def test_container_changes_keep_unique_anchors_without_guessing_overloads(self):
         old = {"symbols": [
             {"id": "published-read", "qualifiedName": "arda::Read", "kind": "function",

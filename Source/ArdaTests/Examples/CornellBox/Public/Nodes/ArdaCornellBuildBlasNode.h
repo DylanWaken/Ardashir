@@ -4,34 +4,34 @@
 namespace arda
 {
 	/** Parameters owned by one Cornell BuildBlas node instance. */
-	struct FArdaCornellBuildBlasParameters
-	{
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaCornellBuildBlasParameters)
 		/** Input vertex buffer. */
-		FArdaDependencyResourceHandle mVertices;
+		ARDA_NODE_BUFFER(mVertices, EArdaDependencyAccess::Read, EArdaRHIResourceState::AccelStructBuildInput)
 		/** Input index buffer. */
-		FArdaDependencyResourceHandle mIndices;
+		ARDA_NODE_BUFFER(mIndices, EArdaDependencyAccess::Read, EArdaRHIResourceState::AccelStructBuildInput)
 		/** Destination bottom-level acceleration structure. */
-		FArdaDependencyResourceHandle mBlas;
+		ARDA_NODE_ACCELERATION_STRUCTURE(mBlas, EArdaDependencyAccess::Write, EArdaRHIResourceState::AccelStructWrite)
 		/** Number of vertices in the geometry. */
-		uint32_t mVertexCount = 0;
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mVertexCount, 0)
 		/** Number of triangle indices in the geometry. */
-		uint32_t mIndexCount = 0;
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mIndexCount, 0)
 		/** Size of each vertex in bytes. */
-		uint32_t mVertexStride = 0;
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mVertexStride, 0)
 		/** Build policy for the bottom-level acceleration structure. */
-		EArdaRHIAccelStructBuildFlags mBuildFlags = EArdaRHIAccelStructBuildFlags::PreferFastTrace;
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(EArdaRHIAccelStructBuildFlags,
+		    mBuildFlags,
+		    EArdaRHIAccelStructBuildFlags::PreferFastTrace)
 		/** Required acceleration-structure build scratch size in bytes. */
-		uint64_t mWorkspaceBytes = 0;
-	};
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint64_t, mWorkspaceBytes, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	class FArdaCornellBuildBlasNode final
-	    : public TArdaComputeDependencyNode<FArdaCornellBuildBlasNode, FArdaCornellBuildBlasParameters>
+	    : public TArdaNodeDefinition<FArdaCornellBuildBlasNode, FArdaCornellBuildBlasParameters, EArdaNodeType::Compute>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata();
 		/** Hardware admission is checked before output declaration or device preparation. */
 		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters& Parameters);
-		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State);
 		static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context,
 		    const FArdaParameters& Parameters,

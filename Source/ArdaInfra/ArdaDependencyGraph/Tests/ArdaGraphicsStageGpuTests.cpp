@@ -1,3 +1,4 @@
+#include "ArdaGraphTestNodeTypes.h"
 #include "ArdaBackend.h"
 #include "ArdaTestBackend.h"
 #include "Graph/DefaultNodes/ArdaGraphicsOperations.h"
@@ -12,6 +13,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <map>
+#include <sstream>
 
 namespace arda::graphics_stage_gpu_tests
 {
@@ -194,10 +197,12 @@ namespace arda::graphics_stage_gpu_tests
 	{
 		FArdaGlobalShaderMap mShaders;
 		FArdaInductorPipelineContribution mStage;
+		FArdaRHIInputLayoutRef mInputLayout;
 	};
 
 	template <class Shader>
-	TArdaRHIResult<eastl::shared_ptr<const FArdaShaderState>> PrepareShader(FArdaRHIDeviceRef Device)
+	TArdaRHIResult<eastl::shared_ptr<const FArdaShaderState>> PrepareShader(FArdaRHIDeviceRef Device,
+	    FArdaRHIInputLayoutRef InputLayout = {})
 	{
 		auto State = eastl::make_shared<FArdaShaderState>();
 		if (!State->mShaders.Initialize(Device))
@@ -214,6 +219,7 @@ namespace arda::graphics_stage_gpu_tests
 		}
 		State->mStage.mShader = Compiled->GetShader();
 		State->mStage.mBindingLayouts = Compiled->GetBindingLayouts();
+		State->mInputLayout = eastl::move(InputLayout);
 		return {eastl::move(State), {}};
 	}
 
@@ -226,14 +232,15 @@ namespace arda::graphics_stage_gpu_tests
 		return Value;
 	}
 
-	struct FArdaVertexCaptureParameters
-	{
-		FArdaGraphBuffer mInput, mOutput;
-		uint32_t mCount = 3;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaVertexCaptureParameters)
+		ARDA_NODE_SHADER_BUFFER(mInput, FArdaVertexCaptureShader::FArdaParameters, mInput)
+		ARDA_NODE_SHADER_BUFFER(mOutput, FArdaVertexCaptureShader::FArdaParameters, mOutput)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCount, 3)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbKeepDispatch, false)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	class FArdaVertexCaptureNode final
-	    : public TArdaComputeDependencyNode<FArdaVertexCaptureNode, FArdaVertexCaptureParameters>
+	    : public TArdaNodeDefinition<FArdaVertexCaptureNode, FArdaVertexCaptureParameters, EArdaNodeType::Compute>
 	{
 	public:
 		using FArdaState = FArdaShaderState;
@@ -245,7 +252,12 @@ namespace arda::graphics_stage_gpu_tests
 
 		static eastl::string GetCanonicalKey(const FArdaParameters& P)
 		{
-			return FArdaDependencyKeyBuilder{}.Resource(P.mInput).Resource(P.mOutput).Value(P.mCount).Build();
+			return FArdaDependencyKeyBuilder{}
+			    .Resource(P.mInput)
+			    .Resource(P.mOutput)
+			    .Value(P.mCount)
+			    .Value(P.mbKeepDispatch)
+			    .Build();
 		}
 
 		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device)
@@ -256,9 +268,8 @@ namespace arda::graphics_stage_gpu_tests
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters& P, const FArdaState& State)
 		{
 			FArdaDependencyNodeDesc Desc;
-			Desc.BindShader<FArdaVertexCaptureShader::FArdaParameters>({{"mInput", P.mInput}, {"mOutput", P.mOutput}},
-			    "default",
-			    {CapacityValue(P.mCount)});
+			Desc.BindShader<FArdaVertexCaptureShader::FArdaParameters>({}, "default", {CapacityValue(P.mCount)});
+			Desc.mbSideEffect = P.mbKeepDispatch;
 			Desc.mPipelineStages = {State.mStage};
 			Desc.mPipelines = {{"default", 0, EArdaPipelineStateKind::Compute}};
 			return Desc;
@@ -281,13 +292,13 @@ namespace arda::graphics_stage_gpu_tests
 	ARDA_DECLARE_GRAPH_NODE(FArdaVertexCaptureNode, CaptureStageVertices);
 	ARDA_DEFINE_GRAPH_NODE(FArdaVertexCaptureNode, CaptureStageVertices);
 
-	struct FArdaVertexStageParameters
-	{
-		FArdaGraphBuffer mVertices;
-		uint32_t mCount = 3;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaVertexStageParameters)
+		ARDA_NODE_SHADER_BUFFER(mVertices, FArdaStageVertexShader::FArdaParameters, mInput)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCount, 3)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	class FArdaVertexStageNode final : public TArdaVertexStageNode<FArdaVertexStageNode, FArdaVertexStageParameters>
+	class FArdaVertexStageNode final
+	    : public TArdaNodeDefinition<FArdaVertexStageNode, FArdaVertexStageParameters, EArdaNodeType::Vertex>
 	{
 	public:
 		using FArdaState = FArdaShaderState;
@@ -311,7 +322,6 @@ namespace arda::graphics_stage_gpu_tests
 		{
 			FArdaDependencyNodeDesc Desc;
 			Desc.mPipelineStages = {State.mStage};
-			Desc.BindShader<FArdaStageVertexShader::FArdaParameters>({{"mInput", P.mVertices}});
 			return Desc;
 		}
 
@@ -350,41 +360,37 @@ namespace arda::graphics_stage_gpu_tests
 	ARDA_DECLARE_GRAPH_NODE(FArdaVertexStageNode, StageVertices);
 	ARDA_DEFINE_GRAPH_NODE(FArdaVertexStageNode, StageVertices);
 
-	struct FArdaGeometryStageParameters
-	{
-		FArdaGraphVertices mInput;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaGeometryStageParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphVertices, mInput)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaHullStageParameters
-	{
-		FArdaGraphVertices mInput;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaHullStageParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphVertices, mInput)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaDomainStageParameters
-	{
-		FArdaGraphControlPoints mInput;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaDomainStageParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphControlPoints, mInput)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaAmplificationStageParameters
-	{
-		FArdaGraphBuffer mVertices;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaAmplificationStageParameters)
+		ARDA_NODE_SHADER_BUFFER(mVertices, FArdaStageAmplificationShader::FArdaParameters, mInput)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaMeshStageParameters
-	{
-		FArdaGraphMeshPayload mInput;
-		FArdaGraphBuffer mVertices;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaMeshStageParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphMeshPayload, mInput)
+		ARDA_NODE_SHADER_BUFFER(mVertices, FArdaStageMeshShader::FArdaParameters, mInput)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaPayloadMeshStageParameters
-	{
-		FArdaGraphMeshPayload mInput;
-		FArdaGraphBuffer mVertices;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPayloadMeshStageParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphMeshPayload, mInput)
+		ARDA_NODE_SHADER_BUFFER(mVertices, FArdaStagePayloadMeshShader::FArdaParameters, mInput)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	template <class Shader, class Parameters, EArdaGraphicsStage Stage>
 	class TArdaAdditionalShaderNode final
-	    : public TArdaGraphicsStageNode<TArdaAdditionalShaderNode<Shader, Parameters, Stage>, Parameters, Stage>
+	    : public TArdaNodeDefinition<TArdaAdditionalShaderNode<Shader, Parameters, Stage>,
+	          Parameters,
+	          ArdaTestNodeType(Stage)>
 	{
 	public:
 		using FArdaParameters = Parameters;
@@ -428,15 +434,11 @@ namespace arda::graphics_stage_gpu_tests
 		{
 			FArdaDependencyNodeDesc Desc;
 			Desc.mPipelineStages = {State.mStage};
-			if constexpr (Stage == EArdaGraphicsStage::Amplification || Stage == EArdaGraphicsStage::Mesh)
-			{
-				Desc.BindShader<typename Shader::FArdaParameters>({{"mInput", P.mVertices}});
-			}
 			return Desc;
 		}
 	};
 
-	using TArdaGeometryStageNode =
+	using FArdaTestGeometryStageNode =
 	    TArdaAdditionalShaderNode<FArdaStageGeometryShader, FArdaGeometryStageParameters, EArdaGraphicsStage::Geometry>;
 	using TArdaHullTestStageNode =
 	    TArdaAdditionalShaderNode<FArdaStageHullShader, FArdaHullStageParameters, EArdaGraphicsStage::Hull>;
@@ -450,8 +452,8 @@ namespace arda::graphics_stage_gpu_tests
 	using TArdaPayloadMeshTestStageNode = TArdaAdditionalShaderNode<FArdaStagePayloadMeshShader,
 	    FArdaPayloadMeshStageParameters,
 	    EArdaGraphicsStage::Mesh>;
-	ARDA_DECLARE_GRAPH_NODE(TArdaGeometryStageNode, StageGeometry);
-	ARDA_DEFINE_GRAPH_NODE(TArdaGeometryStageNode, StageGeometry);
+	ARDA_DECLARE_GRAPH_NODE(FArdaTestGeometryStageNode, StageGeometry);
+	ARDA_DEFINE_GRAPH_NODE(FArdaTestGeometryStageNode, StageGeometry);
 	ARDA_DECLARE_GRAPH_NODE(TArdaHullTestStageNode, StageHull);
 	ARDA_DEFINE_GRAPH_NODE(TArdaHullTestStageNode, StageHull);
 	ARDA_DECLARE_GRAPH_NODE(TArdaDomainTestStageNode, StageDomain);
@@ -463,15 +465,16 @@ namespace arda::graphics_stage_gpu_tests
 	ARDA_DECLARE_GRAPH_NODE(TArdaPayloadMeshTestStageNode, StagePayloadMesh);
 	ARDA_DEFINE_GRAPH_NODE(TArdaPayloadMeshTestStageNode, StagePayloadMesh);
 
-	struct FArdaRasterStageParameters
-	{
-		FArdaGraphVertices mInput;
-		uint32_t mWidth = 8, mHeight = 8;
-		EArdaPipelineStateKind mFamily = EArdaPipelineStateKind::Graphics;
-		bool mbTessellation = false;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRasterStageParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphVertices, mInput)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mWidth, 8)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mHeight, 8)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(EArdaPipelineStateKind, mFamily, EArdaPipelineStateKind::Graphics)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbTessellation, false)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	class FArdaRasterStageNode final : public TArdaRasterStageNode<FArdaRasterStageNode, FArdaRasterStageParameters>
+	class FArdaRasterStageNode final
+	    : public TArdaNodeDefinition<FArdaRasterStageNode, FArdaRasterStageParameters, EArdaNodeType::Raster>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata()
@@ -532,14 +535,14 @@ namespace arda::graphics_stage_gpu_tests
 	ARDA_DECLARE_GRAPH_NODE(FArdaRasterStageNode, StageRasterize);
 	ARDA_DEFINE_GRAPH_NODE(FArdaRasterStageNode, StageRasterize);
 
-	struct FArdaPixelStageParameters
-	{
-		FArdaGraphFragments mInput;
-		FArdaGraphTexture mColor;
-		FArdaGraphBuffer mVertices;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPixelStageParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphFragments, mInput)
+		ARDA_NODE_COLOR_TARGET(mColor)
+		ARDA_NODE_SHADER_BUFFER(mVertices, FArdaStagePixelShader::FArdaParameters, mInput)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	class FArdaPixelStageNode final : public TArdaPixelStageNode<FArdaPixelStageNode, FArdaPixelStageParameters>
+	class FArdaPixelStageNode final
+	    : public TArdaNodeDefinition<FArdaPixelStageNode, FArdaPixelStageParameters, EArdaNodeType::Pixel>
 	{
 	public:
 		using FArdaState = FArdaShaderState;
@@ -563,9 +566,6 @@ namespace arda::graphics_stage_gpu_tests
 		{
 			FArdaDependencyNodeDesc Desc;
 			Desc.mPipelineStages = {State.mStage};
-			Desc.mAccesses = {{P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
-			Desc.mColorTargets = {P.mColor};
-			Desc.BindShader<FArdaStagePixelShader::FArdaParameters>({{"mInput", P.mVertices}});
 			return Desc;
 		}
 
@@ -582,16 +582,15 @@ namespace arda::graphics_stage_gpu_tests
 	ARDA_DECLARE_GRAPH_NODE(FArdaPixelStageNode, StagePixels);
 	ARDA_DEFINE_GRAPH_NODE(FArdaPixelStageNode, StagePixels);
 
-	struct FArdaFragmentCaptureParameters
-	{
-		FArdaGraphFragments mInput;
-		FArdaGraphBuffer mOutput;
-		FArdaGraphTexture mColor;
-		uint32_t mCapacity = 0;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaFragmentCaptureParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphFragments, mInput)
+		ARDA_NODE_SHADER_BUFFER(mOutput, FArdaFragmentCaptureShader::FArdaParameters, mOutput)
+		ARDA_NODE_COLOR_TARGET(mColor)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCapacity, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	class FArdaFragmentCaptureNode final
-	    : public TArdaPixelStageNode<FArdaFragmentCaptureNode, FArdaFragmentCaptureParameters>
+	    : public TArdaNodeDefinition<FArdaFragmentCaptureNode, FArdaFragmentCaptureParameters, EArdaNodeType::Pixel>
 	{
 	public:
 		using FArdaState = FArdaShaderState;
@@ -622,12 +621,7 @@ namespace arda::graphics_stage_gpu_tests
 		{
 			FArdaDependencyNodeDesc Desc;
 			Desc.mPipelineStages = {State.mStage};
-			Desc.BindShader<FArdaFragmentCaptureShader::FArdaParameters>(
-			    {{"mOutput", P.mOutput, 0, EArdaDependencyAccess::ReadWrite}},
-			    "default",
-			    {CapacityValue(P.mCapacity)});
-			Desc.mAccesses.push_back({P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget});
-			Desc.mColorTargets = {P.mColor};
+			Desc.BindShader<FArdaFragmentCaptureShader::FArdaParameters>({}, "default", {CapacityValue(P.mCapacity)});
 			return Desc;
 		}
 
@@ -760,9 +754,9 @@ namespace arda::graphics_stage_gpu_tests
 		auto FirstBytes = Readback(Edit, First);
 		auto SecondBytes = Readback(Edit, Second);
 		ASSERT_TRUE(Edit.Commit()) << Edit.GetStatus().mMessage.c_str();
-		auto Status = Graph.Compile();
+		auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
-		const auto Executed = Graph.Execute();
+		const auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		ASSERT_TRUE(Captured);
 		ASSERT_EQ(Captured->size(), 3 * sizeof(FArdaVertex));
@@ -798,9 +792,9 @@ namespace arda::graphics_stage_gpu_tests
 		auto Vertices = StageVertices(Edit, UploadVertices(Edit));
 		auto Captured = Readback(Edit, FetchBuffer(Edit, Vertices));
 		ASSERT_TRUE(Edit.Commit()) << Edit.GetStatus().mMessage.c_str();
-		auto Status = Graph.Compile();
+		auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
-		const auto Executed = Graph.Execute();
+		const auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		ASSERT_TRUE(Captured);
 		ASSERT_EQ(Captured->size(), 3 * sizeof(FArdaVertex));
@@ -824,9 +818,9 @@ namespace arda::graphics_stage_gpu_tests
 		auto Complete = Readback(Edit, FetchBuffer(Edit, Fragments, {128}));
 		auto Limited = Readback(Edit, FetchBuffer(Edit, Fragments, {1}));
 		ASSERT_TRUE(Edit.Commit()) << Edit.GetStatus().mMessage.c_str();
-		auto Status = Graph.Compile();
+		auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
-		const auto Executed = Graph.Execute();
+		const auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		ASSERT_TRUE(Complete);
 		ASSERT_TRUE(Limited);
@@ -881,9 +875,9 @@ namespace arda::graphics_stage_gpu_tests
 		StagePixels(Edit, StageRasterize(Edit, Vertices), Color, Input);
 		auto Bytes = Readback(Edit, Color);
 		ASSERT_TRUE(Edit.Commit()) << Edit.GetStatus().mMessage.c_str();
-		auto Status = Graph.Compile();
+		auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
-		auto Executed = Graph.Execute();
+		auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		ASSERT_TRUE(Bytes);
 		ASSERT_EQ(Bytes->size(), 8u * 8u * 4u);
@@ -916,9 +910,9 @@ namespace arda::graphics_stage_gpu_tests
 		StagePixels(Edit, StageRasterize(Edit, Vertices, 8u, 8u, EArdaPipelineStateKind::Graphics, true), Color, Input);
 		auto Bytes = Readback(Edit, Color);
 		ASSERT_TRUE(Edit.Commit()) << Edit.GetStatus().mMessage.c_str();
-		auto Status = Graph.Compile();
+		auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
-		auto Executed = Graph.Execute();
+		auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		ASSERT_TRUE(Bytes);
 		ASSERT_EQ(Bytes->size(), 8u * 8u * 4u);
@@ -964,9 +958,9 @@ namespace arda::graphics_stage_gpu_tests
 		auto FirstBytes = Readback(Edit, First);
 		auto SecondBytes = Readback(Edit, Second);
 		ASSERT_TRUE(Edit.Commit()) << Edit.GetStatus().mMessage.c_str();
-		auto Status = Graph.Compile();
+		auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
-		auto Executed = Graph.Execute();
+		auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		ASSERT_TRUE(FirstBytes);
 		ASSERT_TRUE(SecondBytes);
@@ -994,6 +988,434 @@ namespace arda::graphics_stage_gpu_tests
 	TEST_P(FArdaGraphicsStageGpu, AmplificationPayloadConnectsMeshStageWithResourceBindingsAcrossStages)
 	{
 		VerifyMeshStages(true);
+	}
+
+	class FArdaAutomaticInstanceVertexShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
+		ARDA_END_SHADER_PARAMETER_STRUCT()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaAutomaticInstanceVertexShader);
+	};
+	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaAutomaticInstanceVertexShader,
+	    ARDA_RDG_TEST_SHADER_SOURCE_DIR "/ArdaAutomaticInstancing.hlsl",
+	    "AutomaticInstanceVertex",
+	    "InstancingVS",
+	    EArdaRHIShaderStage::Vertex)
+
+	class FArdaAutomaticInstancePixelShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
+			ARDA_SHADER_PUSH_CONSTANTS(uint32_t, mTint, 0, 0, EArdaRHIShaderStage::Pixel)
+		ARDA_END_SHADER_PARAMETER_STRUCT()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaAutomaticInstancePixelShader);
+	};
+	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaAutomaticInstancePixelShader,
+	    ARDA_RDG_TEST_SHADER_SOURCE_DIR "/ArdaAutomaticInstancing.hlsl",
+	    "AutomaticInstancePixel",
+	    "InstancingPS",
+	    EArdaRHIShaderStage::Pixel)
+
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaAutomaticInstanceVertexParameters)
+		ARDA_NODE_BUFFER(mInstances, EArdaDependencyAccess::Read, EArdaRHIResourceState::VertexBuffer)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mStartInstance, 0)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mInstanceCount, 1)
+		ARDA_NODE_PARAMETER(FArdaGraphBuffer, mIndices)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	class FArdaAutomaticInstanceVertexNode final : public TArdaNodeDefinition<FArdaAutomaticInstanceVertexNode,
+	                                                   FArdaAutomaticInstanceVertexParameters,
+	                                                   EArdaNodeType::Vertex>
+	{
+	public:
+		using FArdaState = FArdaShaderState;
+		static constexpr EArdaGraphicsInstancing mGraphicsInstancing = EArdaGraphicsInstancing::ContiguousInstances;
+
+		static FArdaDependencyNodeMetadata GetMetadata()
+		{
+			return {"test.automatic-instancing.vertex", 1};
+		}
+
+		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device)
+		{
+			FArdaRHIVertexAttributeDesc Attribute;
+			Attribute.mSemanticName = "INSTANCE";
+			Attribute.mFormat = EArdaRHIFormat::RGBA32Float;
+			Attribute.mElementStride = 4 * sizeof(float);
+			Attribute.mbInstanced = true;
+			auto Layout = Device->CreateInputLayout({Attribute});
+			if (!Layout)
+			{
+				return {{}, Layout.mStatus};
+			}
+			return PrepareShader<FArdaAutomaticInstanceVertexShader>(eastl::move(Device), eastl::move(Layout.mValue));
+		}
+
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)
+		{
+			FArdaDependencyNodeDesc Desc;
+			Desc.mPipelineStages = {State.mStage};
+			Desc.mGraphicsInputLayout = State.mInputLayout;
+			if (Parameters.mIndices)
+			{
+				Desc.mAccesses.push_back(
+				    {Parameters.mIndices.GetHandle(), EArdaDependencyAccess::Read, EArdaRHIResourceState::IndexBuffer});
+			}
+			return Desc;
+		}
+
+		static FArdaRHIStatus ConfigureGraphics(FArdaDependencyExecutionContext& Context,
+		    const FArdaParameters& Parameters,
+		    const FArdaState&,
+		    FArdaInstanceState&,
+		    FArdaGraphicsWork& Work)
+		{
+			Work.mDraw.mVertexCount = 3;
+			Work.mDraw.mStartInstance = Parameters.mStartInstance;
+			Work.mDraw.mInstanceCount = Parameters.mInstanceCount;
+			Work.mState.mVertexBuffers = {{Context.GetBuffer(Parameters.mInstances), 0, 0}};
+			Work.mbIndexed = bool(Parameters.mIndices);
+			if (Work.mbIndexed)
+			{
+				Work.mState.mIndexBuffer = Context.GetBuffer(Parameters.mIndices);
+				Work.mState.mIndexFormat = EArdaRHIFormat::R32UInt;
+			}
+			return {};
+		}
+	};
+
+	ARDA_DECLARE_GRAPH_NODE(FArdaAutomaticInstanceVertexNode, AutomaticInstanceVerticesTest);
+	ARDA_DEFINE_GRAPH_NODE(FArdaAutomaticInstanceVertexNode, AutomaticInstanceVerticesTest);
+
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaAutomaticInstancePixelParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphFragments, mInput)
+		ARDA_NODE_COLOR_TARGET_ACCESS(mColor, EArdaDependencyAccess::ReadWrite)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mTint, 255)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	template <EArdaGraphicsInstancing Instancing>
+	class TArdaAutomaticInstancePixelNode final
+	    : public TArdaNodeDefinition<TArdaAutomaticInstancePixelNode<Instancing>,
+	          FArdaAutomaticInstancePixelParameters,
+	          EArdaNodeType::Pixel>
+	{
+	public:
+		using FArdaParameters = FArdaAutomaticInstancePixelParameters;
+		using FArdaState = FArdaShaderState;
+		static constexpr EArdaGraphicsInstancing mGraphicsInstancing = Instancing;
+
+		static FArdaDependencyNodeMetadata GetMetadata()
+		{
+			return {Instancing == EArdaGraphicsInstancing::Disabled ? "test.automatic-instancing.reference-pixel"
+			                                                        : "test.automatic-instancing.pixel",
+			    1};
+		}
+
+		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device)
+		{
+			return PrepareShader<FArdaAutomaticInstancePixelShader>(eastl::move(Device));
+		}
+
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)
+		{
+			FArdaDependencyNodeDesc Desc;
+			Desc.mPipelineStages = {State.mStage};
+			FArdaDependencyShaderValue Value;
+			Value.mMember = "mTint";
+			Value.mBytes.resize(sizeof(uint32_t));
+			std::memcpy(Value.mBytes.data(), &Parameters.mTint, sizeof(uint32_t));
+			Desc.BindShader<FArdaAutomaticInstancePixelShader::FArdaParameters>({}, "default", {Value});
+			return Desc;
+		}
+	};
+
+	using FArdaAutomaticInstancePixelNode =
+	    TArdaAutomaticInstancePixelNode<EArdaGraphicsInstancing::ContiguousInstances>;
+	using FArdaUnmergedInstancePixelNode = TArdaAutomaticInstancePixelNode<EArdaGraphicsInstancing::Disabled>;
+	ARDA_DECLARE_GRAPH_NODE(FArdaAutomaticInstancePixelNode, AutomaticInstancePixelsTest);
+	ARDA_DEFINE_GRAPH_NODE(FArdaAutomaticInstancePixelNode, AutomaticInstancePixelsTest);
+	ARDA_DECLARE_GRAPH_NODE(FArdaUnmergedInstancePixelNode, UnmergedInstancePixelsTest);
+	ARDA_DEFINE_GRAPH_NODE(FArdaUnmergedInstancePixelNode, UnmergedInstancePixelsTest);
+
+	void VerifyAutomaticInstancing(bool bIndexed, bool bResetInstanceRange)
+	{
+		FArdaDependencyGraph Graph(GetDevice());
+		FArdaGraphEdit Edit(Graph);
+		FArdaInductorOptions Options;
+		// Isolate batching/recording from the independent scheduler's memory-lifetime choices.
+		Options.mRules.mCompileRules.erase(eastl::remove_if(Options.mRules.mCompileRules.begin(),
+		                                       Options.mRules.mCompileRules.end(),
+		                                       [](const auto& Rule)
+		                                       {
+			                                       return dynamic_cast<const FArdaSearchOrderRule*>(Rule.get()) !=
+			                                           nullptr;
+		                                       }),
+		    Options.mRules.mCompileRules.end());
+		ASSERT_TRUE(Edit.SetOptions(Options));
+		const float Instances[8] = {-0.5f, 0.f, 0.f, 0.f, 0.5f, 0.f, 1.f, 0.f};
+		FArdaRHIBufferDesc InstanceDesc;
+		InstanceDesc.mByteSize = sizeof(Instances);
+		InstanceDesc.mStructureStride = 4 * sizeof(float);
+		eastl::vector<uint8_t> InstanceBytes(sizeof(Instances));
+		std::memcpy(InstanceBytes.data(), Instances, sizeof(Instances));
+		const auto InstanceBuffer = Upload(Edit, AllocateBuffer(Edit, InstanceDesc), eastl::move(InstanceBytes));
+		FArdaGraphBuffer IndexBuffer;
+		if (bIndexed)
+		{
+			const uint32_t Indices[3] = {0, 1, 2};
+			FArdaRHIBufferDesc IndexDesc;
+			IndexDesc.mByteSize = sizeof(Indices);
+			eastl::vector<uint8_t> IndexBytes(sizeof(Indices));
+			std::memcpy(IndexBytes.data(), Indices, sizeof(Indices));
+			IndexBuffer = Upload(Edit, AllocateBuffer(Edit, IndexDesc), eastl::move(IndexBytes));
+		}
+		const auto Reference = Clear(Edit, AllocateTexture(Edit, ColorDescription(32, 16)));
+		const auto Automatic = Clear(Edit, AllocateTexture(Edit, ColorDescription(32, 16)));
+		FArdaRasterConfig Raster;
+		Raster.mViewport = {0.f, 32.f, 0.f, 16.f, 0.f, 1.f};
+		Raster.mRasterState.mCullMode = EArdaRHICullMode::None;
+		// Compare against the original separate draws, including their base-instance fetch semantics.
+		UnmergedInstancePixelsTest(Edit,
+		    Rasterize(Edit, AutomaticInstanceVerticesTest(Edit, InstanceBuffer, 0u, 1u, IndexBuffer), Raster),
+		    Reference);
+		UnmergedInstancePixelsTest(Edit,
+		    Rasterize(Edit,
+		        AutomaticInstanceVerticesTest(Edit, InstanceBuffer, bResetInstanceRange ? 0u : 1u, 1u, IndexBuffer),
+		        Raster),
+		    Reference);
+		const auto First = AutomaticInstancePixelsTest(Edit,
+		    Rasterize(Edit, AutomaticInstanceVerticesTest(Edit, InstanceBuffer, 0u, 1u, IndexBuffer), Raster),
+		    Automatic);
+		const auto Second = AutomaticInstancePixelsTest(Edit,
+		    Rasterize(Edit,
+		        AutomaticInstanceVerticesTest(Edit, InstanceBuffer, bResetInstanceRange ? 0u : 1u, 1u, IndexBuffer),
+		        Raster),
+		    Automatic);
+		const auto ReferenceBytes = Readback(Edit, Reference);
+		const auto AutomaticBytes = Readback(Edit, Automatic);
+		ASSERT_TRUE(Edit.Commit()) << Edit.GetStatus().mMessage.c_str();
+		const auto Status = Graph.CompileAndWait();
+		ASSERT_TRUE(Status) << Status.mMessage.c_str();
+		const auto& Candidates = Graph.GetCompileResult().mInstancedDraws;
+		ASSERT_EQ(Candidates.size(), 1u);
+		ASSERT_EQ(Candidates.front().size(), 2u);
+		EXPECT_EQ(Candidates.front()[0], First.GetProducer());
+		EXPECT_EQ(Candidates.front()[1], Second.GetProducer());
+		const auto Executed = Graph.ExecuteAndWait();
+		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
+		EXPECT_EQ(Executed.mRecordedGraphicsDrawCount, bResetInstanceRange ? 4u : 3u);
+		EXPECT_EQ(Executed.mMergedGraphicsDrawCount, bResetInstanceRange ? 0u : 1u);
+		ASSERT_TRUE(ReferenceBytes);
+		ASSERT_TRUE(AutomaticBytes);
+		EXPECT_EQ(*ReferenceBytes, *AutomaticBytes);
+		uint32_t RedPixels = 0;
+		uint32_t GreenPixels = 0;
+		for (size_t Index = 0; Index < AutomaticBytes->size(); Index += 4)
+		{
+			RedPixels += (*AutomaticBytes)[Index] == 255;
+			GreenPixels += (*AutomaticBytes)[Index + 1] == 255;
+		}
+		EXPECT_GT(RedPixels, 12u);
+		if (bResetInstanceRange)
+		{
+			EXPECT_EQ(GreenPixels, 0u);
+		}
+		else
+		{
+			EXPECT_GT(GreenPixels, 12u);
+		}
+	}
+
+	TEST_P(FArdaGraphicsStageGpu, AutomaticInstancingPreservesIndexedInstanceRangesAndImage)
+	{
+		VerifyAutomaticInstancing(true, false);
+	}
+
+	TEST_P(FArdaGraphicsStageGpu, AutomaticInstancingPreservesNonindexedInstanceRangesAndImage)
+	{
+		VerifyAutomaticInstancing(false, false);
+	}
+
+	TEST_P(FArdaGraphicsStageGpu, AutomaticInstancingFallsBackWhenInstanceRangesReset)
+	{
+		VerifyAutomaticInstancing(false, true);
+	}
+
+	TEST_P(FArdaGraphicsStageGpu, PipelineBatchRecordsDifferentComputeBindingsAndDispatchArguments)
+	{
+		FArdaDependencyGraph Graph(GetDevice());
+		FArdaGraphEdit Edit(Graph);
+		FArdaInductorOptions Options;
+		Options.mRules.mCompileRules.erase(eastl::remove_if(Options.mRules.mCompileRules.begin(),
+		                                       Options.mRules.mCompileRules.end(),
+		                                       [](const auto& Rule)
+		                                       {
+			                                       return dynamic_cast<const FArdaSearchOrderRule*>(Rule.get()) !=
+			                                           nullptr;
+		                                       }),
+		    Options.mRules.mCompileRules.end());
+		ASSERT_TRUE(Edit.SetOptions(Options));
+		const auto Input = UploadVertices(Edit);
+		FArdaRHIBufferDesc Desc;
+		Desc.mByteSize = 3 * sizeof(FArdaVertex);
+		Desc.mStructureStride = sizeof(FArdaVertex);
+		const auto FirstOutput = AllocateBuffer(Edit, Desc);
+		Desc.mByteSize = sizeof(FArdaVertex);
+		const auto SecondOutput = AllocateBuffer(Edit, Desc);
+		const auto First = CaptureStageVertices(Edit, Input, FirstOutput, 3u);
+		const auto Second = CaptureStageVertices(Edit, Input, SecondOutput, 1u);
+		const auto FirstBytes = Readback(Edit, FirstOutput);
+		const auto SecondBytes = Readback(Edit, SecondOutput);
+		ASSERT_TRUE(Edit.Commit()) << Edit.GetStatus().mMessage.c_str();
+		const auto Status = Graph.CompileAndWait();
+		ASSERT_TRUE(Status) << Status.mMessage.c_str();
+		bool bFoundBatch = false;
+		for (const auto& Dispatch : Graph.GetCompileResult().mDispatches)
+		{
+			bFoundBatch |=
+			    Dispatch.mNodes == eastl::vector<FArdaGraphNodeHandle>{First.GetHandle(), Second.GetHandle()};
+		}
+		EXPECT_TRUE(bFoundBatch);
+		const auto Executed = Graph.ExecuteAndWait();
+		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
+		ASSERT_EQ(FirstBytes->size(), 3 * sizeof(FArdaVertex));
+		ASSERT_EQ(SecondBytes->size(), sizeof(FArdaVertex));
+		EXPECT_EQ(std::memcmp(FirstBytes->data(), SecondBytes->data(), sizeof(FArdaVertex)), 0);
+		FArdaVertex Value;
+		std::memcpy(&Value, SecondBytes->data(), sizeof(Value));
+		EXPECT_FLOAT_EQ(Value.mPosition[0], -0.75f);
+		EXPECT_FLOAT_EQ(Value.mPosition[1], -0.75f);
+	}
+
+	TEST_P(FArdaGraphicsStageGpu, ReusedTransientStorageKeepsPipelineBatchBoundary)
+	{
+		FArdaDependencyGraph Graph(GetDevice());
+		FArdaGraphEdit Edit(Graph);
+		FArdaInductorOptions Options;
+		Options.mObjective = EArdaInductorObjective::Memory;
+		Options.mRules.mCompileRules.erase(eastl::remove_if(Options.mRules.mCompileRules.begin(),
+		                                       Options.mRules.mCompileRules.end(),
+		                                       [](const auto& Rule)
+		                                       {
+			                                       return dynamic_cast<const FArdaSearchOrderRule*>(Rule.get()) !=
+			                                           nullptr;
+		                                       }),
+		    Options.mRules.mCompileRules.end());
+		ASSERT_TRUE(Edit.SetOptions(Options));
+		const auto Input = UploadVertices(Edit);
+		FArdaRHIBufferDesc Desc;
+		Desc.mByteSize = 3 * sizeof(FArdaVertex);
+		Desc.mStructureStride = sizeof(FArdaVertex);
+		const auto FirstOutput = AllocateBuffer(Edit, Desc);
+		const auto SecondOutput = AllocateBuffer(Edit, Desc);
+		const auto First = CaptureStageVertices(Edit, Input, FirstOutput, 3u, true);
+		const auto Second = CaptureStageVertices(Edit, Input, SecondOutput, 3u, true);
+		const auto Bytes = Readback(Edit, SecondOutput);
+		ASSERT_TRUE(Edit.Commit()) << Edit.GetStatus().mMessage.c_str();
+		const auto Status = Graph.CompileAndWait();
+		ASSERT_TRUE(Status) << Status.mMessage.c_str();
+		const auto& Plan = *Graph.GetCompileResult().mMemoryPlan;
+		bool bReusedStorage = false;
+		for (const auto& Activation : Plan.mAliasActivations)
+		{
+			bReusedStorage |= Activation.mResource == SecondOutput.GetHandle().mIndex &&
+			    Activation.mConsumer == Second.GetHandle().GetIndex() &&
+			    eastl::find(Activation.mPreviousResources.begin(),
+			        Activation.mPreviousResources.end(),
+			        FirstOutput.GetHandle().mIndex) != Activation.mPreviousResources.end();
+		}
+		ASSERT_TRUE(bReusedStorage);
+		for (const auto& Dispatch : Graph.GetCompileResult().mDispatches)
+		{
+			const bool bFirst =
+			    eastl::find(Dispatch.mNodes.begin(), Dispatch.mNodes.end(), First.GetHandle()) != Dispatch.mNodes.end();
+			const bool bSecond = eastl::find(Dispatch.mNodes.begin(), Dispatch.mNodes.end(), Second.GetHandle()) !=
+			    Dispatch.mNodes.end();
+			EXPECT_FALSE(bFirst && bSecond);
+		}
+		const auto Executed = Graph.ExecuteAndWait();
+		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
+		ASSERT_EQ(Bytes->size(), 3 * sizeof(FArdaVertex));
+		FArdaVertex Value;
+		std::memcpy(&Value, Bytes->data(), sizeof(Value));
+		EXPECT_FLOAT_EQ(Value.mPosition[0], -0.75f);
+		EXPECT_FLOAT_EQ(Value.mPosition[1], -0.75f);
+	}
+
+	TEST_P(FArdaGraphicsStageGpu, DifferentPixelConstantsBatchWithoutChangingDrawSemantics)
+	{
+		FArdaDependencyGraph Graph(GetDevice());
+		FArdaGraphEdit Edit(Graph);
+		const float Instances[8] = {-0.5f, 0.f, 0.f, 0.f, 0.5f, 0.f, 1.f, 0.f};
+		FArdaRHIBufferDesc Desc;
+		Desc.mByteSize = sizeof(Instances);
+		Desc.mStructureStride = 4 * sizeof(float);
+		eastl::vector<uint8_t> Bytes(sizeof(Instances));
+		std::memcpy(Bytes.data(), Instances, sizeof(Instances));
+		const auto InstanceBuffer = Upload(Edit, AllocateBuffer(Edit, Desc), eastl::move(Bytes));
+		const auto Target = Clear(Edit, AllocateTexture(Edit, ColorDescription(32, 16)));
+		FArdaRasterConfig Raster;
+		Raster.mViewport = {0.f, 32.f, 0.f, 16.f, 0.f, 1.f};
+		Raster.mRasterState.mCullMode = EArdaRHICullMode::None;
+		const auto First = AutomaticInstancePixelsTest(Edit,
+		    Rasterize(Edit, AutomaticInstanceVerticesTest(Edit, InstanceBuffer, 0u), Raster),
+		    Target,
+		    255u);
+		const auto Second = AutomaticInstancePixelsTest(Edit,
+		    Rasterize(Edit, AutomaticInstanceVerticesTest(Edit, InstanceBuffer, 1u), Raster),
+		    Target,
+		    127u);
+		const auto ReadbackBytes = Readback(Edit, Target);
+		ASSERT_TRUE(Edit.Commit()) << Edit.GetStatus().mMessage.c_str();
+		const auto Status = Graph.CompileAndWait();
+		ASSERT_TRUE(Status) << Status.mMessage.c_str();
+		bool bGrouped = false;
+		for (const auto& Batch : Graph.GetCompileResult().mPipelineBatches)
+		{
+			bGrouped |= Batch == eastl::vector<FArdaGraphNodeHandle>{First.GetProducer(), Second.GetProducer()};
+		}
+		EXPECT_TRUE(bGrouped);
+		EXPECT_TRUE(Graph.GetCompileResult().mInstancedDraws.empty());
+		const auto Executed = Graph.ExecuteAndWait();
+		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
+		EXPECT_EQ(Executed.mRecordedGraphicsDrawCount, 2u);
+		EXPECT_EQ(Executed.mMergedGraphicsDrawCount, 0u);
+		ASSERT_EQ(ReadbackBytes->size(), 32u * 16u * 4u);
+		uint32_t RedPixels = 0;
+		uint32_t GreenPixels = 0;
+		std::map<uint32_t, uint32_t> Histogram;
+		for (size_t Index = 0; Index < ReadbackBytes->size(); Index += 4)
+		{
+			RedPixels += (*ReadbackBytes)[Index] == 255;
+			GreenPixels += (*ReadbackBytes)[Index + 1] == 127;
+			uint32_t Color;
+			std::memcpy(&Color, ReadbackBytes->data() + Index, sizeof(Color));
+			++Histogram[Color];
+		}
+		std::ostringstream Diagnostic;
+		Diagnostic << "RGBA byte histogram:";
+		for (const auto& Entry : Histogram)
+		{
+			Diagnostic << " 0x" << std::hex << Entry.first << std::dec << ":" << Entry.second;
+		}
+		Diagnostic << "; execution:";
+		for (const auto Node : Graph.GetCompileResult().mExecutionOrder)
+		{
+			Diagnostic << " " << Node.GetIndex();
+		}
+		Diagnostic << "; dispatches:";
+		for (const auto& Dispatch : Graph.GetCompileResult().mDispatches)
+		{
+			Diagnostic << " [q" << uint32_t(Dispatch.mQueue) << ":";
+			for (const auto Node : Dispatch.mNodes)
+			{
+				Diagnostic << " " << Node.GetIndex();
+			}
+			Diagnostic << "]";
+		}
+		EXPECT_GT(RedPixels, 12u) << Diagnostic.str();
+		EXPECT_GT(GreenPixels, 12u) << Diagnostic.str();
 	}
 
 	INSTANTIATE_TEST_SUITE_P(Native, FArdaGraphicsStageGpu, testing::Values("native-d3d12", "native-vulkan"));

@@ -597,6 +597,20 @@
       "page": "capability-recipes.html#feature-tessellationshaders",
       "example": "gpu-examples.html#VerifyRasterStageCapabilityAndExecution"
     },
+    "VertexShaderStoresAndAtomics": {
+      "name": "VertexShaderStoresAndAtomics",
+      "expression": "C.mbVertexShaderStoresAndAtomics",
+      "probe": "VertexStorage",
+      "page": "capability-recipes.html#feature-vertexstorage",
+      "example": "gpu-examples.html#VerifyRasterStorageAndAtomics"
+    },
+    "FragmentShaderStoresAndAtomics": {
+      "name": "FragmentShaderStoresAndAtomics",
+      "expression": "C.mbFragmentShaderStoresAndAtomics",
+      "probe": "FragmentStorage",
+      "page": "capability-recipes.html#feature-fragmentstorage",
+      "example": "gpu-examples.html#VerifyRasterStorageAndAtomics"
+    },
     "TextureResolve": {
       "name": "TextureResolve",
       "expression": "C.mbTextureResolve",

@@ -9,9 +9,16 @@ namespace arda
 	bool AllowsArdaInductorTimingOptimization(const FArdaInductorOptions& Options)
 	{
 
-        const auto Allowed=[](const auto& Rules)
-        { return eastl::all_of(Rules.begin(),Rules.end(),[](const auto& Rule){return Rule && Rule->AllowsAdaptiveScheduling();}); };
-        return Allowed(Options.mRules.mPreprocessRules) && Allowed(Options.mRules.mCompileRules);
+		const auto Allowed = [](const auto& Rules)
+		{
+			return eastl::all_of(Rules.begin(),
+			    Rules.end(),
+			    [](const auto& Rule)
+			    {
+				    return Rule && Rule->AllowsAdaptiveScheduling();
+			    });
+		};
+		return Allowed(Options.mRules.mPreprocessRules) && Allowed(Options.mRules.mCompileRules);
 	}
 
 	namespace
@@ -135,7 +142,7 @@ namespace arda
 			for (uint32_t Position = 0; Position < Compile.mExecutionOrder.size(); ++Position)
 			{
 				const auto Handle = Compile.mExecutionOrder[Position];
-				for (const auto& Access : Graph.mTopology.TryGetNode(Handle)->mPayload.mDesc.mAccesses)
+				for (const auto& Access : Graph.mCompile.mNodes.at(Handle).mDesc.mAccesses)
 				{
 					if (!Mark(Access.mResource.mIndex, Position, Handle))
 					{

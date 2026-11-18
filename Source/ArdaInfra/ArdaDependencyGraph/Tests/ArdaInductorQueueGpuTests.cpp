@@ -1,6 +1,6 @@
+#include "ArdaGraphTestNodeTypes.h"
 #include "Graph/Node/ArdaGraphEdit.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
-#include "Graph/Node/ArdaDependencyNode.h"
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
 #include "RHI/Providers/ArdaBackendProvider.h"
@@ -9,7 +9,6 @@
 
 #include <gtest/gtest.h>
 #include <atomic>
-#include <cstdio>
 #include <cstring>
 
 namespace arda::inductor_queue_gpu_tests
@@ -17,21 +16,6 @@ namespace arda::inductor_queue_gpu_tests
 	using namespace arda;
 	constexpr uint32_t QueueTraceCount = 7;
 	constexpr uint32_t QueueTestWordCount = 64;
-
-	class FArdaQueueGpuDiagnostics final : public IArdaDiagnosticCallback
-	{
-	public:
-		void Message(EArdaDiagnosticSeverity Severity, const char* Text) override
-		{
-			if (Severity == EArdaDiagnosticSeverity::Error || Severity == EArdaDiagnosticSeverity::Fatal)
-			{
-				mErrors.fetch_add(1, std::memory_order_relaxed);
-				std::fprintf(stderr, "Inductor queue validation: %s\n", Text ? Text : "");
-			}
-		}
-
-		std::atomic<uint32_t> mErrors{0};
-	};
 
 	struct FArdaQueueGpuTrace
 	{
@@ -48,17 +32,18 @@ namespace arda::inductor_queue_gpu_tests
 		std::atomic<uint32_t> mCalls[QueueTraceCount];
 	};
 
-	struct FArdaQueueGpuParameters
-	{
-		FArdaDependencyResourceHandle mSource, mDestination;
-		uint32_t mValue = 0;
-		uint32_t mCost = 1;
-		uint32_t mTraceIndex = 0;
-		eastl::shared_ptr<FArdaQueueGpuTrace> mTrace;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaQueueGpuParameters)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mSource)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mDestination)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mValue, 0)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCost, 1)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mTraceIndex, 0)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<FArdaQueueGpuTrace>, mTrace)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	template <EArdaDependencyNodeKind Kind>
-	struct TArdaQueueGpuNode : TArdaDependencyNode<TArdaQueueGpuNode<Kind>, FArdaQueueGpuParameters, Kind>
+	struct TArdaQueueGpuNode
+	    : TArdaNodeDefinition<TArdaQueueGpuNode<Kind>, FArdaQueueGpuParameters, ArdaTestNodeType(Kind)>
 	{
 		using FArdaParameters = FArdaQueueGpuParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -192,10 +177,10 @@ namespace arda::inductor_queue_gpu_tests
 				mDevice.Reset();
 			}
 			ShutdownBackend();
-			EXPECT_EQ(mDiagnostics.mErrors.load(std::memory_order_relaxed), 0u);
+			EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
 		}
 
-		FArdaQueueGpuDiagnostics mDiagnostics;
+		FArdaTestDiagnosticCallback mDiagnostics;
 		FArdaRHIDeviceRef mDevice;
 	};
 
@@ -274,13 +259,15 @@ namespace arda::inductor_queue_gpu_tests
 			eastl::string Name = "read-after-join-";
 			Name.push_back(char('0' + Index));
 			Readbacks.push_back(eastl::make_shared<eastl::vector<uint8_t>>());
-			const auto Read = ReadbackNode(Edit, FArdaGraphReadbackParameters{Buffers[Index], Readbacks.back()}, Name);
+			const auto Read = ReadbackNode(Edit,
+			    FArdaGraphReadbackParameters{Edit.UseBuffer(Buffers[Index]), Readbacks.back()},
+			    Name);
 			ASSERT_TRUE(Read);
 			ASSERT_TRUE(Edit.Order(Join, Read));
 			ReadbackNodes.push_back(Read.GetHandle());
 		}
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		const auto Revision = Graph.GetCompileResult().mRevision;
 		const auto CompiledQueue = [&](FArdaGraphNodeHandle Node)
@@ -321,11 +308,11 @@ namespace arda::inductor_queue_gpu_tests
 			{
 				Bytes->assign(Desc.mByteSize, 0xff);
 			}
-			const auto Execution = Graph.Execute();
+			const auto Execution = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Execution.mStatus) << Execution.mStatus.mMessage.c_str();
 			ASSERT_TRUE(mDevice->WaitForIdle());
 			EXPECT_EQ(Execution.mStateConformanceFailureCount, 0u);
-			EXPECT_EQ(mDiagnostics.mErrors.load(std::memory_order_relaxed), 0u);
+			EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
 			EXPECT_EQ(Graph.GetCompileResult().mRevision, Revision);
 			for (uint32_t Index = 0; Index < Nodes.size(); ++Index)
 			{

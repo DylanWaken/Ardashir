@@ -7,21 +7,24 @@ namespace arda
 	{
 		// Immutable defaults share identity across independently constructed option values.
 		static const eastl::vector<eastl::shared_ptr<const FArdaGraphPreprocessRule>> Preprocess = {
+		    MakeArdaGraphRule<FArdaExpandSubgraphsRule>(),
 		    MakeArdaGraphRule<FArdaAssembleGraphicsStagesRule>(),
 		    MakeArdaGraphRule<FArdaAssembleRayTracingStagesRule>(),
 		    MakeArdaGraphRule<FArdaDeduceResourceUsageRule>(),
 		    MakeArdaGraphRule<FArdaValidateResourceAccessesRule>(),
 		    MakeArdaGraphRule<FArdaResolveDependenciesRule>(),
-		    MakeArdaGraphRule<FArdaValidateAcyclicRule>()};
+		    MakeArdaGraphRule<FArdaValidateAcyclicRule>(),
+		    MakeArdaGraphRule<FArdaCullUnreachableRule>()};
 		static const eastl::vector<eastl::shared_ptr<const FArdaGraphCompileRule>> Compile = {
 		    MakeArdaGraphRule<FArdaFlattenGraphRule>(),
 		    MakeArdaGraphRule<FArdaCheckRequiredFeaturesRule>(),
-		    MakeArdaGraphRule<FArdaCullUnreachableRule>(),
 		    MakeArdaGraphRule<FArdaInferPipelinesRule>(),
 		    MakeArdaGraphRule<FArdaSearchOrderRule>(),
 		    MakeArdaGraphRule<FArdaPlanMemoryRule>(),
 		    MakeArdaGraphRule<FArdaAssignQueuesRule>(),
 		    MakeArdaGraphRule<FArdaBatchCudaRule>(),
+		    MakeArdaGraphRule<FArdaBatchPipelinesRule>(),
+		    MakeArdaGraphRule<FArdaMergeDrawInstancesRule>(),
 		    MakeArdaGraphRule<FArdaFlattenDispatchesRule>(),
 		    MakeArdaGraphRule<FArdaResolveFencesRule>()};
 		mPreprocessRules = Preprocess;

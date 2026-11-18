@@ -1,3 +1,4 @@
+#include "RHI/Shaders/ArdaShaderParameters.h"
 #include "Inductor/Compiler/ArdaInductorPipelineCompiler.h"
 #include "RHI/Device/ArdaRHIDevice.h"
 
@@ -38,12 +39,28 @@ namespace
 		uint32_t mReferences = 0;
 	};
 
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaEmptyPipelineShaderParameters)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPipelineTextureSpaceOneParameters)
+		ARDA_SHADER_TEXTURE_SRV(mTexture, 0, 1, EArdaRHIShaderStage::Vertex)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPipelinePixelConstantParameters)
+		ARDA_SHADER_CONSTANT_BUFFER(mBuffer, 0, 0, EArdaRHIShaderStage::Pixel)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPipelineVertexConstantParameters)
+		ARDA_SHADER_CONSTANT_BUFFER(mBuffer, 0, 0, EArdaRHIShaderStage::Vertex)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPipelinePixelTextureParameters)
+		ARDA_SHADER_TEXTURE_SRV(mTexture, 0, 0, EArdaRHIShaderStage::Pixel)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+
 	class FArdaPipelineTestShader final : public TArdaPipelineTestResource<IArdaRHIShader, EArdaRHIResourceType::Shader>
 	{
 	public:
-		FArdaPipelineTestShader(EArdaRHIShaderStage Stage, uint64_t Key)
+		FArdaPipelineTestShader(EArdaRHIShaderStage Stage, uint64_t Key, const FArdaShaderParameterMetadata* Parameters)
 		    : mStage(Stage),
-		      mKey(Key)
+		      mKey(Key),
+		      mParameters(Parameters)
 		{
 		}
 
@@ -57,9 +74,15 @@ namespace
 			return mKey;
 		}
 
+		const FArdaShaderParameterMetadata* GetParameterMetadata() const noexcept override
+		{
+			return mParameters;
+		}
+
 	private:
 		EArdaRHIShaderStage mStage;
 		uint64_t mKey;
+		const FArdaShaderParameterMetadata* mParameters;
 	};
 
 	class FArdaPipelineTestLayout final
@@ -85,17 +108,20 @@ namespace
 		FArdaRHIBindingLayoutDesc mDesc;
 	};
 
-	FArdaInductorPipelineContribution Stage(EArdaRHIShaderStage Type, uint64_t Key, const char* Group = "")
+	FArdaInductorPipelineContribution Stage(EArdaRHIShaderStage Type,
+	    uint64_t Key,
+	    const char* Group = "",
+	    const FArdaShaderParameterMetadata* Parameters = &FArdaEmptyPipelineShaderParameters::GetStaticMetadata())
 	{
 		FArdaInductorPipelineContribution Result;
-		Result.mShader = FArdaRHIShaderRef(new FArdaPipelineTestShader(Type, Key));
+		Result.mShader = FArdaRHIShaderRef(new FArdaPipelineTestShader(Type, Key, Parameters));
 		Result.mGroup = Group;
 		return Result;
 	}
 
-	FArdaRHIBindingLayoutRef Layout(uint32_t Space, EArdaRHIBindingType Type)
+	FArdaRHIBindingLayoutRef Layout(uint32_t Space, EArdaRHIBindingType Type, EArdaRHIShaderStage Visibility)
 	{
-		return FArdaRHIBindingLayoutRef(new FArdaPipelineTestLayout(Space, Type));
+		return FArdaRHIBindingLayoutRef(new FArdaPipelineTestLayout(Space, Type, Visibility));
 	}
 
 	FArdaInductorPipelineRequest Request(uint64_t Terminal,
@@ -218,10 +244,11 @@ TEST(ArdaInductorPipeline, RejectsInvalidTopologyAndUnidentifiedShaders)
 
 TEST(ArdaInductorPipeline, CombinesCompatibleLayoutsAndRejectsConflictingSettings)
 {
-	auto Vertex = Stage(EArdaRHIShaderStage::Vertex, 1);
-	auto Pixel = Stage(EArdaRHIShaderStage::Pixel, 2);
-	Vertex.mBindingLayouts = {Layout(1, EArdaRHIBindingType::TextureSRV)};
-	Pixel.mBindingLayouts = {Layout(0, EArdaRHIBindingType::ConstantBuffer)};
+	auto Vertex =
+	    Stage(EArdaRHIShaderStage::Vertex, 1, "", &FArdaPipelineTextureSpaceOneParameters::GetStaticMetadata());
+	auto Pixel = Stage(EArdaRHIShaderStage::Pixel, 2, "", &FArdaPipelinePixelConstantParameters::GetStaticMetadata());
+	Vertex.mBindingLayouts = {Layout(1, EArdaRHIBindingType::TextureSRV, EArdaRHIShaderStage::Vertex)};
+	Pixel.mBindingLayouts = {Layout(0, EArdaRHIBindingType::ConstantBuffer, EArdaRHIShaderStage::Pixel)};
 	eastl::vector<FArdaInductorPipelineNode> Nodes{{1, {}, {Vertex}}, {2, {1}, {Pixel}}};
 	const auto First = InferArdaInductorPipeline(Nodes, Request(2));
 	ASSERT_TRUE(First) << First.mStatus.mMessage.c_str();
@@ -229,9 +256,11 @@ TEST(ArdaInductorPipeline, CombinesCompatibleLayoutsAndRejectsConflictingSetting
 	ASSERT_EQ(Layouts.size(), 2u);
 	EXPECT_EQ(Layouts[0]->GetDesc().mRegisterSpace, 0u);
 	EXPECT_EQ(Layouts[1]->GetDesc().mRegisterSpace, 1u);
-	Nodes[0].mContributions[0].mBindingLayouts = {Layout(1, EArdaRHIBindingType::TextureSRV)};
+	Nodes[0].mContributions[0].mBindingLayouts = {
+	    Layout(1, EArdaRHIBindingType::TextureSRV, EArdaRHIShaderStage::Vertex)};
 	EXPECT_EQ(InferArdaInductorPipeline(Nodes, Request(2)).mValue.mStableKey, First.mValue.mStableKey);
-	Nodes[1].mContributions[0].mBindingLayouts = {Layout(1, EArdaRHIBindingType::ConstantBuffer)};
+	Nodes[1].mContributions[0].mBindingLayouts = {
+	    Layout(1, EArdaRHIBindingType::ConstantBuffer, EArdaRHIShaderStage::Pixel)};
 	EXPECT_FALSE(InferArdaInductorPipeline(Nodes, Request(2)));
 	Nodes[1].mContributions[0].mBindingLayouts.clear();
 	auto A = eastl::make_shared<FArdaInductorPipelineConfiguration>();
@@ -244,8 +273,9 @@ TEST(ArdaInductorPipeline, CombinesCompatibleLayoutsAndRejectsConflictingSetting
 
 TEST(ArdaInductorPipeline, StageDisjointLayoutsShareRegisterSpaceWithStableIdentity)
 {
-	auto Vertex = Stage(EArdaRHIShaderStage::Vertex, 301);
-	auto Pixel = Stage(EArdaRHIShaderStage::Pixel, 302);
+	auto Vertex =
+	    Stage(EArdaRHIShaderStage::Vertex, 301, "", &FArdaPipelineVertexConstantParameters::GetStaticMetadata());
+	auto Pixel = Stage(EArdaRHIShaderStage::Pixel, 302, "", &FArdaPipelinePixelTextureParameters::GetStaticMetadata());
 	Vertex.mBindingLayouts = {FArdaRHIBindingLayoutRef(
 	    new FArdaPipelineTestLayout(0, EArdaRHIBindingType::ConstantBuffer, EArdaRHIShaderStage::Vertex))};
 	Pixel.mBindingLayouts = {FArdaRHIBindingLayoutRef(

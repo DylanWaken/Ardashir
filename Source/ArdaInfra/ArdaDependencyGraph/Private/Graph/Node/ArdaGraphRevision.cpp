@@ -1,6 +1,12 @@
 #include "Graph/Node/ArdaDependencyGraph.h"
+#include "Graph/Node/ArdaGraphEdit.h"
 #include "Graph/Node/ArdaGraphRevisionState.h"
 #include "Graph/Node/ArdaGraphConstructionKey.h"
+#include "Graph/Node/ArdaGraphClone.h"
+#include "Graph/Node/ArdaGraphExternalValues.h"
+#include "Graph/Node/ArdaGraphEditOrdering.h"
+#include "Graph/Node/ArdaGraphRecordingScope.h"
+#include "Inductor/Preprocess/ArdaPreprocessor.h"
 #include "Graph/Node/ArdaDependencyKey.h"
 #include "Graph/Node/ArdaDependencyGraphStatus.h"
 #include "Inductor/Compiler/ArdaInductor.h"
@@ -10,6 +16,17 @@ namespace arda
 {
 	namespace
 	{
+		void RetireCachedRevision(FArdaDependencyGraph::FArdaImpl& Graph,
+		    const FArdaDependencyGraph::FArdaImpl* Persistent)
+		{
+			CancelArdaInductorTimingOptimization(Graph);
+			if (&Graph != Persistent && Graph.mCompile.mExecution->mRuntime)
+			{
+				// A copied compile result may retain execution ownership after cache eviction.
+				(void)Graph.mCompile.mExecution->mRuntime->WaitAll();
+			}
+		}
+
 		eastl::vector<eastl::vector<uint64_t>> CollectResourceAliases(const FArdaDependencyGraph::FArdaImpl& Source,
 		    const eastl::vector<uint64_t>& CanonicalGenerations)
 		{
@@ -60,155 +77,192 @@ namespace arda
 			return true;
 		}
 
-		eastl::shared_ptr<FArdaDependencyGraph::FArdaImpl> SnapshotConstruction(
-		    const FArdaDependencyGraph::FArdaImpl& Source)
-		{
-			auto Snapshot = eastl::make_shared<FArdaDependencyGraph::FArdaImpl>();
-			const auto& Authored = Source.mCompilerSource ? *Source.mCompilerSource : Source;
-			Snapshot->mDevice = Source.mDevice;
-			Snapshot->mIdentity = Source.mIdentity;
-			Snapshot->mNextFrameSequence = Source.mNextFrameSequence;
-			Snapshot->mNextResourceGeneration = Source.mNextResourceGeneration;
-			Snapshot->mNextAttachmentOrder = Source.mNextAttachmentOrder;
-			Snapshot->mNextOperationName = Source.mNextOperationName;
-			Snapshot->mOptions = Source.mOptions;
-			Snapshot->mTopology = Authored.mTopology.CloneSnapshot();
-			Snapshot->mResources = Authored.mResources;
-			Snapshot->mResourceGenerations = Source.mResourceGenerations;
-			Snapshot->mResourceAliases = Source.mResourceAliases;
-			Snapshot->mCompiledResourceAliases = Source.mCompiledResourceAliases;
-			Snapshot->mNames = Authored.mNames;
-			Snapshot->mResourceNames = Authored.mResourceNames;
-			Snapshot->mManualEdges = Authored.mManualEdges;
-			Snapshot->mAutomaticLayouts = Source.mAutomaticLayouts;
-			Snapshot->mPersistentBuffers = Source.mPersistentBuffers;
-			Snapshot->mPersistentTextures = Source.mPersistentTextures;
-			Snapshot->mPipelineCache = Source.mPipelineCache;
-			if (Snapshot->mDevice && !Snapshot->mPipelineCache)
-			{
-				Snapshot->mPipelineCache = eastl::make_shared<FArdaPipelineStateCache>(Snapshot->mDevice);
-			}
-			return Snapshot;
-		}
-
-		eastl::string ConstructionQueueKey(const eastl::vector<FArdaQueuedGraphEdit>& Queue)
+		eastl::string ConstructionQueueKey(const eastl::vector<eastl::string>& EditKeys)
 		{
 			FArdaDependencyKeyBuilder Key;
-			Key.Value(static_cast<uint64_t>(Queue.size()));
-			for (const auto& Edit : Queue)
+			Key.Value(static_cast<uint64_t>(EditKeys.size()));
+			for (const auto& EditKey : EditKeys)
 			{
 				// The complete bytes disambiguate hash collisions and preserve edit boundaries/order.
-				Key.Value(Edit.mHash).String(Edit.mKey);
+				Key.Value(HashArdaGraphConstructionKey(EditKey)).String(EditKey);
 			}
 			return Key.Build();
 		}
 	}
 
-	FArdaRHIStatus FArdaDependencyGraph::BeginGraphEdit(bool bExtendPersistent)
+	FArdaRHIStatus FArdaDependencyGraph::BeginGraphEdit(FArdaGraphEdit& Edit)
 	{
+		if (auto Status = CheckArdaGraphRecordingReentry(mRevisions.get()); !Status)
+		{
+			return Status;
+		}
 		auto& State = *mRevisions;
-		if (mImpl->mbCompiling)
 		{
-			return GraphCompiling();
-		}
-		if (State.mbLocked || mImpl->mbEditing || mImpl->mbExecuting)
-		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
-			    "Graph edits require an unlocked queue; execute the staged revision before recording again.");
-		}
-		if (!State.mbBuilding)
-		{
-			State.mNextResourceGeneration = eastl::max(State.mNextResourceGeneration, mImpl->mNextResourceGeneration);
-			State.mNextFrameSequence = eastl::max(State.mNextFrameSequence, mImpl->mNextFrameSequence);
-			if (bExtendPersistent && State.mPersistent)
+			std::lock_guard<std::recursive_mutex> Lock(State.mMutex);
+			if (State.IsLocked() || mImpl->mbEditing || mImpl->mbCompiling || mImpl->mbPreprocessing ||
+			    mImpl->mbExecuting || GetArdaThreadGraphEdit(this))
 			{
-				mImpl = SnapshotConstruction(*State.mPersistent);
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "Graph edits require an unlocked execution stage and at most one scope per graph on each calling thread.");
 			}
-			else
+			if (!State.mbBuilding)
 			{
+				State.mNextFrameSequence =
+				    eastl::max(State.mNextFrameSequence, mImpl->mCompile.mExecution->mNextFrameSequence);
 				auto Draft = eastl::make_shared<FArdaImpl>();
-				Draft->mDevice = mImpl->mDevice;
+				Draft->mCompile.mExecution->mDevice = mImpl->mCompile.mExecution->mDevice;
 				Draft->mIdentity = mImpl->mIdentity;
 				Draft->mOptions = mImpl->mOptions;
-				Draft->mPipelineCache = mImpl->mPipelineCache;
-				Draft->mAutomaticLayouts = mImpl->mAutomaticLayouts;
+				Draft->mExternalValues = mImpl->mExternalValues;
+				Draft->mCompile.mExecution->mPipelineCache = mImpl->mCompile.mExecution->mPipelineCache;
+				Draft->mCompile.mExecution->mAutomaticLayouts = mImpl->mCompile.mExecution->mAutomaticLayouts;
+				Draft->mCompile.mExecution->mNextFrameSequence = State.mNextFrameSequence;
+				Draft->mResourceGenerationSource = State.mResourceGenerations;
 				mImpl = eastl::move(Draft);
+				State.mbBuilding = true;
 			}
-			mImpl->mNextResourceGeneration = State.mNextResourceGeneration;
-			mImpl->mNextFrameSequence = State.mNextFrameSequence;
-			State.mbBuilding = true;
+			Edit.mBase = mImpl;
+			Edit.mOptionsVersion = State.mOptionsVersion;
+			Edit.mGeneration = State.mNextEditGeneration++;
+			++State.mActiveEdits;
 		}
-		auto& Graph = *mImpl;
-		Graph.mSavedTopology = eastl::make_unique<FArdaDependencyTopology>(Graph.mTopology.CloneSnapshot());
-		Graph.mSavedResources = Graph.mResources;
-		Graph.mSavedManualEdges = Graph.mManualEdges;
-		Graph.mSavedOptions = Graph.mOptions;
-		Graph.mSavedResourceGenerations = Graph.mResourceGenerations;
-		State.mSavedOperationName = Graph.mNextOperationName;
-		Graph.mEditGeneration = State.mNextEditGeneration++;
-		Graph.mbEditing = true;
+		try
+		{
+			// Committed construction snapshots never mutate. Clone outside the publication lock.
+			Edit.mRecordingGraph = eastl::make_unique<FArdaDependencyGraph>();
+			Edit.mRecordingGraph->mImpl = CloneArdaGraphConstruction(*Edit.mBase);
+			Edit.mRecordingGraph->mImpl->mbPreprocessed = false;
+			Edit.mRecordingGraph->mImpl->mCompilerSource.reset();
+			Edit.mRecordingGraph->mImpl->mbEditing = true;
+			Edit.mRecordingGraph->mImpl->mEditGeneration = Edit.mGeneration;
+			SetArdaThreadGraphEdit(this, Edit.mRecordingGraph.get());
+		}
+		catch (...)
+		{
+			std::lock_guard<std::recursive_mutex> Lock(State.mMutex);
+			if (State.CancelEditReservation(Edit.mBase->mbPreprocessed && !State.mPersistent))
+			{
+				(void)DiscardPendingEdits();
+			}
+			throw;
+		}
 		return {};
 	}
 
-	FArdaRHIStatus FArdaDependencyGraph::EndGraphEdit()
+	FArdaRHIStatus FArdaDependencyGraph::EndGraphEdit(FArdaGraphEdit& Edit)
 	{
-		auto& Graph = *mImpl;
-		if (Graph.mbCompiling)
+		if (auto Status = CheckArdaGraphRecordingReentry(mRevisions.get()); !Status)
 		{
-			return GraphCompiling();
+			return Status;
 		}
-		if (!Graph.mbEditing || mRevisions->mbLocked)
+		auto& State = *mRevisions;
+		std::lock_guard<std::recursive_mutex> Lock(State.mMutex);
+		if (!Edit.IsOpen() || State.IsLocked() || mImpl->mbCompiling || mImpl->mbPreprocessing)
 		{
 			return GraphNotEditing();
 		}
-		FArdaQueuedGraphEdit Edit;
-		Edit.mKey = BuildArdaGraphConstructionKey(Graph);
-		Edit.mHash = HashArdaGraphConstructionKey(Edit.mKey);
-		Edit.mSnapshot = SnapshotConstruction(Graph);
-		mRevisions->mQueue.push_back(eastl::move(Edit));
-		mRevisions->mNextResourceGeneration = Graph.mNextResourceGeneration;
-		Graph.mbEditing = false;
-		Graph.mSavedTopology.reset();
-		Graph.mSavedResources.clear();
-		Graph.mSavedManualEdges.clear();
-		Graph.mSavedResourceGenerations.clear();
+		if (Edit.mbOptionsChanged && Edit.mOptionsVersion != State.mOptionsVersion)
+		{
+			return GraphInvalid("Concurrent edits changed compiler options. Cancel this edit and reopen it.");
+		}
+		eastl::shared_ptr<FArdaImpl> Combined;
+		if (Edit.mBase == mImpl)
+		{
+			Combined = CloneArdaGraphConstruction(*Edit.mRecordingGraph->mImpl);
+		}
+		else
+		{
+			FArdaDependencyGraph Destination;
+			Destination.mImpl = CloneArdaGraphConstruction(*mImpl);
+			Destination.mImpl->mbEditing = true;
+			if (auto Status = MergeGraphEdit(Edit, Destination); !Status)
+			{
+				return Status;
+			}
+			Destination.mImpl->mbEditing = false;
+			Combined = Destination.mImpl;
+		}
+		Combined->mbPreprocessed = false;
+		Combined->mCompilerSource.reset();
+		const auto& Source = *Edit.mRecordingGraph->mImpl;
+		const auto& Base = *Edit.mBase;
+		// Archives may restore several edit groups into one authoring transaction. Preserve those
+		// boundaries instead of adding an overlapping synthetic group for the import transaction.
+		Combined->mCommittedEdits.resize(mImpl->mCommittedEdits.size());
+		const auto AppendEdit = [&](FArdaCommittedGraphEdit Record)
+		{
+			for (auto& Node : Record.mNodes)
+			{
+				Node = Combined->ResolveNode(Node);
+			}
+			for (auto& Resource : Record.mResources)
+			{
+				Resource.mResource = Combined->ResolveResource(Resource.mResource);
+				Combined->mResources[Resource.mResource.mIndex].mbRevisionOrdered = true;
+			}
+			Combined->mCommittedEdits.push_back(eastl::move(Record));
+		};
+		if (Source.mCommittedEdits.size() > Base.mCommittedEdits.size())
+		{
+			for (size_t Index = Base.mCommittedEdits.size(); Index < Source.mCommittedEdits.size(); ++Index)
+			{
+				AppendEdit(Source.mCommittedEdits[Index]);
+			}
+		}
+		else
+		{
+			FArdaCommittedGraphEdit Record;
+			Record.mResources = Edit.mResourceRevisions;
+			for (const auto Node : Source.mTopology.GetNodes())
+			{
+				if (!Base.mTopology.ContainsNode(Node))
+				{
+					Record.mNodes.push_back(Node);
+				}
+			}
+			eastl::sort(Record.mNodes.begin(),
+			    Record.mNodes.end(),
+			    [&](const auto Left, const auto Right)
+			    {
+				    return Source.mTopology.TryGetNode(Left)->mPayload.mAttachmentOrder <
+				        Source.mTopology.TryGetNode(Right)->mPayload.mAttachmentOrder;
+			    });
+			AppendEdit(eastl::move(Record));
+		}
+		RefreshConstructionKeys(*Combined);
+		State.mEditKeys.push_back(BuildArdaGraphConstructionKey(*Combined));
+		mImpl = eastl::move(Combined);
+		if (Edit.mbOptionsChanged)
+		{
+			++State.mOptionsVersion;
+		}
+		Edit.mRecordingGraph->mImpl->mbEditing = false;
+		--State.mActiveEdits;
+		SetArdaThreadGraphEdit(this, nullptr);
+		Edit.mRecordingGraph.reset();
+		Edit.mBase.reset();
 		return {};
 	}
 
-	FArdaRHIStatus FArdaDependencyGraph::CancelGraphEdit()
+	FArdaRHIStatus FArdaDependencyGraph::CancelGraphEdit(FArdaGraphEdit& Edit)
 	{
-		auto& Graph = *mImpl;
-		if (Graph.mbCompiling)
+		if (auto Status = CheckArdaGraphRecordingReentry(mRevisions.get()); !Status)
 		{
-			return GraphCompiling();
+			return Status;
 		}
-		if (!Graph.mbEditing || !Graph.mSavedTopology)
+		auto& State = *mRevisions;
+		std::lock_guard<std::recursive_mutex> Lock(State.mMutex);
+		if (!Edit.IsOpen())
 		{
 			return GraphNotEditing();
 		}
-		Graph.mTopology = Graph.mSavedTopology->CloneSnapshot();
-		Graph.mResources = Graph.mSavedResources;
-		Graph.mManualEdges = Graph.mSavedManualEdges;
-		Graph.mOptions = Graph.mSavedOptions;
-		Graph.mResourceGenerations = Graph.mSavedResourceGenerations;
-		Graph.mNextOperationName = mRevisions->mSavedOperationName;
-		Graph.mNames.clear();
-		for (auto Node : Graph.mTopology.GetNodes())
-		{
-			Graph.mNames.emplace(Graph.mTopology.TryGetNode(Node)->mPayload.mName, Node);
-		}
-		Graph.mResourceNames.clear();
-		for (uint32_t Index = 0; Index < Graph.mResources.size(); ++Index)
-		{
-			Graph.mResourceNames.emplace(Graph.mResources[Index].mName, Index);
-		}
-		Graph.mSavedTopology.reset();
-		Graph.mSavedResources.clear();
-		Graph.mSavedManualEdges.clear();
-		Graph.mSavedResourceGenerations.clear();
-		Graph.mbEditing = false;
-		mRevisions->mNextResourceGeneration = Graph.mNextResourceGeneration;
-		if (mRevisions->mQueue.empty())
+		const bool bPreservePreprocessedGraph = Edit.mBase->mbPreprocessed && !State.mPersistent;
+		Edit.mRecordingGraph->mImpl->mbEditing = false;
+		const bool bDiscard = State.CancelEditReservation(bPreservePreprocessedGraph);
+		SetArdaThreadGraphEdit(this, nullptr);
+		Edit.mRecordingGraph.reset();
+		Edit.mBase.reset();
+		if (bDiscard)
 		{
 			return DiscardPendingEdits();
 		}
@@ -217,18 +271,53 @@ namespace arda
 
 	FArdaRHIStatus FArdaDependencyGraph::Compile(bool bForceRecompile)
 	{
+		if (auto Status = CheckArdaGraphRecordingReentry(mRevisions.get()); !Status)
+		{
+			return Status;
+		}
+		std::lock_guard<std::recursive_mutex> Lock(mRevisions->mMutex);
 		auto& State = *mRevisions;
-		if (mImpl->mbCompiling)
+		if (mImpl->mbCompiling || mImpl->mbPreprocessing)
 		{
 			return GraphCompiling();
 		}
-		if (IsEditing() || mImpl->mbExecuting || State.mbLocked)
+		if (IsEditing() || mImpl->mbExecuting || State.IsLocked())
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 			    "Compile requires closed edits and an unlocked execution stage.");
 		}
+
+		// Validate version ordering before cache retirement can wait or mutate retained runtimes.
+		// Ordering only touches this private clone; commit-order snapshots stay immutable.
+		struct FArdaConstructionRestore
+		{
+			eastl::shared_ptr<FArdaImpl>& mCurrent;
+			eastl::shared_ptr<FArdaImpl> mOriginal;
+			bool mbPublished = false;
+
+			~FArdaConstructionRestore()
+			{
+				if (!mbPublished)
+				{
+					mCurrent = eastl::move(mOriginal);
+				}
+			}
+		} Restore{mImpl, mImpl};
+
+		auto Draft = mImpl;
+		if (!mImpl->mbPreprocessed &&
+		    eastl::any_of(mImpl->mCommittedEdits.begin(),
+		        mImpl->mCommittedEdits.end(),
+		        [](const auto& Edit)
+		        {
+			        return !Edit.mResources.empty();
+		        }))
+		{
+			Draft = CloneArdaGraphConstruction(*mImpl);
+			OrderArdaGraphEdits(*Draft);
+		}
 		const auto Key =
-		    State.mbBuilding || !State.mPersistent ? ConstructionQueueKey(State.mQueue) : State.mPersistentKey;
+		    State.mbBuilding || !State.mPersistent ? ConstructionQueueKey(State.mEditKeys) : State.mPersistentKey;
 		const auto Hash = HashArdaGraphConstructionKey(Key);
 		eastl::shared_ptr<FArdaImpl> Selected;
 		uint64_t SelectedRevision = 0;
@@ -239,7 +328,7 @@ namespace arda
 				if (State.mCache[Index].mHash == Hash && State.mCache[Index].mKey == Key)
 				{
 					auto Entry = State.mCache[Index];
-					if (!IsReusableRuntime(Entry.mGraph->mRuntime.get()))
+					if (!IsReusableRuntime(Entry.mGraph->mCompile.mExecution->mRuntime.get()))
 					{
 						// Recompilation is also the recovery path after failed native recording/submission.
 						continue;
@@ -252,11 +341,13 @@ namespace arda
 				}
 			}
 		}
-		const auto Draft = mImpl;
 		// Capability/environment verdicts are never cached with compiled topology. Check every
 		// attached node before revision retirement can wait or a cached result can be published.
-		const auto FeatureSource =
-		    Selected ? Selected : (!State.mQueue.empty() ? State.mQueue.back().mSnapshot : Draft);
+		const auto FeatureSource = Selected ? Selected : Draft;
+		if (auto Status = ValidateArdaGraphExternalBindings(*FeatureSource); !Status)
+		{
+			return Status;
+		}
 		if (auto Status = CheckArdaGraphRequiredFeatures(*FeatureSource); !Status)
 		{
 			return Status;
@@ -265,9 +356,9 @@ namespace arda
 		if (State.mPersistent && State.mPersistent != Selected)
 		{
 			CancelArdaInductorTimingOptimization(*State.mPersistent);
-			if (State.mPersistent->mRuntime)
+			if (State.mPersistent->mCompile.mExecution->mRuntime)
 			{
-				if (auto Status = State.mPersistent->mRuntime->WaitAll(); !Status)
+				if (auto Status = State.mPersistent->mCompile.mExecution->mRuntime->WaitAll(); !Status)
 				{
 					return Status;
 				}
@@ -275,19 +366,72 @@ namespace arda
 		}
 		if (!Selected)
 		{
-			const auto Source = !State.mQueue.empty() ? State.mQueue.back().mSnapshot : Draft;
-			Selected = SnapshotConstruction(*Source);
-			Selected->mCompilerSource = SnapshotConstruction(*Selected);
+			Selected = CloneArdaGraphConstruction(*Draft, false);
+			Selected->mCompilerSource = CloneArdaGraphConstruction(*Selected, false);
 			Selected->mCompiledResourceAliases = CollectResourceAliases(*Selected, Selected->mResourceGenerations);
+			Selected->mCompiledResourceRemaps = Selected->mResourceRemaps;
 			if (State.mPersistent)
 			{
 				State.mNextRevision = eastl::max(State.mNextRevision, State.mPersistent->mCompile.mRevision + 1);
 			}
 			Selected->mCompile.mRevision = State.mNextRevision - 1;
-			Selected->mbEditing = true;
 			mImpl = Selected;
-			auto Status = FArdaInductor::CompilePending(*this);
-			Selected->mbEditing = false;
+			auto Preprocessed = FArdaPreprocessor::Preprocess(*this);
+			if (!Preprocessed)
+			{
+				mImpl = Draft;
+				return Preprocessed.mStatus;
+			}
+			Selected = Preprocessed.mValue->mImpl;
+			Selected->mCompile.mRevision = State.mNextRevision - 1;
+			mImpl = Selected;
+			FArdaInductorExecutionState Reuse;
+			const auto& Previous = State.mPersistent ? *State.mPersistent : *Draft;
+			Reuse.mPipelineCache = Previous.mCompile.mExecution->mPipelineCache;
+			Reuse.mAutomaticLayouts = Previous.mCompile.mExecution->mAutomaticLayouts;
+			Reuse.mPersistentBuffers.resize(Selected->mResources.size());
+			Reuse.mPersistentTextures.resize(Selected->mResources.size());
+			const bool bSameConstruction =
+			    State.mPersistent && State.mPersistentHash == Hash && State.mPersistentKey == Key;
+			for (size_t Index = 0; Index < Selected->mResources.size(); ++Index)
+			{
+				const auto& Resource = Selected->mResources[Index];
+				const auto SameStorage = [&](const FArdaDependencyResourceDesc& Other)
+				{
+					return Resource.mbPersistent && Other.mbPersistent && Resource.mbTexture == Other.mbTexture &&
+					    Resource.mBufferInitializer == Other.mBufferInitializer &&
+					    (Resource.mbTexture ? Resource.mTexture == Other.mTexture : Resource.mBuffer == Other.mBuffer);
+				};
+				const auto Found = eastl::find(Previous.mResourceGenerations.begin(),
+				    Previous.mResourceGenerations.end(),
+				    Selected->mResourceGenerations[Index]);
+				size_t PreviousIndex = static_cast<size_t>(Found - Previous.mResourceGenerations.begin());
+				if (Found == Previous.mResourceGenerations.end() && bSameConstruction)
+				{
+					// Expanding the same subgraph body creates fresh internal generations. Its stable
+					// qualified name may retain storage only when rebuilding this exact construction.
+					const auto Named = eastl::find_if(Previous.mResources.begin(),
+					    Previous.mResources.end(),
+					    [&](const auto& Other)
+					    {
+						    return Other.mName == Resource.mName && SameStorage(Other);
+					    });
+					PreviousIndex = static_cast<size_t>(Named - Previous.mResources.begin());
+				}
+				if (PreviousIndex >= Previous.mResources.size() || !SameStorage(Previous.mResources[PreviousIndex]))
+				{
+					continue;
+				}
+				if (PreviousIndex < Previous.mCompile.mExecution->mPersistentBuffers.size())
+				{
+					Reuse.mPersistentBuffers[Index] = Previous.mCompile.mExecution->mPersistentBuffers[PreviousIndex];
+				}
+				if (PreviousIndex < Previous.mCompile.mExecution->mPersistentTextures.size())
+				{
+					Reuse.mPersistentTextures[Index] = Previous.mCompile.mExecution->mPersistentTextures[PreviousIndex];
+				}
+			}
+			auto Status = FArdaInductor::CompilePending(*this, &Reuse);
 			mImpl = Draft;
 			if (!Status)
 			{
@@ -296,7 +440,7 @@ namespace arda
 			++State.mCompileCount;
 			SelectedRevision = State.mCompileCount;
 			State.mNextRevision = Selected->mCompile.mRevision + 1;
-			Selected->mTiming->Configure(Selected->mOptions.mGpuTimingEmaAlpha,
+			Selected->mCompile.mExecution->mTiming->Configure(Selected->mOptions.mGpuTimingEmaAlpha,
 			    Selected->mOptions.mGpuTimingHistoryCapacity);
 			State.mCache.erase(eastl::remove_if(State.mCache.begin(),
 			                       State.mCache.end(),
@@ -308,7 +452,7 @@ namespace arda
 			State.mCache.push_back({Hash, Key, Selected, SelectedRevision});
 			while (State.mCache.size() > State.mCacheCapacity)
 			{
-				CancelArdaInductorTimingOptimization(*State.mCache.front().mGraph);
+				RetireCachedRevision(*State.mCache.front().mGraph, State.mPersistent.get());
 				State.mCache.erase(State.mCache.begin());
 			}
 		}
@@ -320,33 +464,45 @@ namespace arda
 				// Preserve every incoming accepted handle, including extension aliases from another
 				// revision. Fresh scripts replace authoring aliases instead of accumulating each frame.
 				Selected->mResourceAliases = CollectResourceAliases(*Draft, Selected->mResourceGenerations);
+				Selected->mResourceRemaps = Draft->mResourceRemaps;
+				for (auto& Mapping : Selected->mResourceRemaps)
+				{
+					Mapping.second.mGeneration = Selected->mResourceGenerations[Mapping.second.mIndex];
+				}
 			}
 		}
 		State.mNextResourceGeneration = eastl::max(State.mNextResourceGeneration, Draft->mNextResourceGeneration);
-		State.mNextFrameSequence = eastl::max(State.mNextFrameSequence, Draft->mNextFrameSequence);
-		Selected->mNextFrameSequence = State.mNextFrameSequence;
+		State.mNextFrameSequence = eastl::max(State.mNextFrameSequence, Draft->mCompile.mExecution->mNextFrameSequence);
+		Selected->mCompile.mExecution->mNextFrameSequence = State.mNextFrameSequence;
 		State.mPersistent = Selected;
 		State.mPersistentKey = Key;
 		State.mPersistentHash = Hash;
 		State.mPersistentRevision = SelectedRevision;
-		State.mQueue.clear();
+		State.mEditKeys.clear();
 		State.mbBuilding = false;
 		State.mbLocked = true;
 		mImpl = eastl::move(Selected);
+		Restore.mbPublished = true;
 		return {};
 	}
 
 	FArdaRHIStatus FArdaDependencyGraph::DiscardPendingEdits()
 	{
+		if (auto Status = CheckArdaGraphRecordingReentry(mRevisions.get()); !Status)
+		{
+			return Status;
+		}
+		std::lock_guard<std::recursive_mutex> Lock(mRevisions->mMutex);
 		auto& State = *mRevisions;
-		if (IsEditing() || mImpl->mbCompiling || mImpl->mbExecuting || State.mbLocked)
+		if (IsEditing() || mImpl->mbCompiling || mImpl->mbPreprocessing || mImpl->mbExecuting || State.IsLocked())
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
-			    "Discard requires closed edits and an unlocked queue.");
+			    "Discard requires closed edits and an unlocked execution stage.");
 		}
 		State.mNextResourceGeneration = eastl::max(State.mNextResourceGeneration, mImpl->mNextResourceGeneration);
-		State.mQueue.clear();
+		State.mEditKeys.clear();
 		State.mbBuilding = false;
+		State.mbLocked = false;
 		if (State.mPersistent)
 		{
 			mImpl = State.mPersistent;
@@ -354,10 +510,10 @@ namespace arda
 		else
 		{
 			auto Empty = eastl::make_shared<FArdaImpl>();
-			Empty->mDevice = mImpl->mDevice;
+			Empty->mCompile.mExecution->mDevice = mImpl->mCompile.mExecution->mDevice;
 			Empty->mIdentity = mImpl->mIdentity;
 			Empty->mOptions = mImpl->mOptions;
-			Empty->mPipelineCache = mImpl->mPipelineCache;
+			Empty->mCompile.mExecution->mPipelineCache = mImpl->mCompile.mExecution->mPipelineCache;
 			Empty->mNextResourceGeneration = State.mNextResourceGeneration;
 			mImpl = eastl::move(Empty);
 		}
@@ -366,14 +522,19 @@ namespace arda
 
 	FArdaRHIStatus FArdaDependencyGraph::InvalidatePersistentCache()
 	{
-		if (IsEditing() || mImpl->mbCompiling || mImpl->mbExecuting)
+		if (auto Status = CheckArdaGraphRecordingReentry(mRevisions.get()); !Status)
+		{
+			return Status;
+		}
+		std::lock_guard<std::recursive_mutex> Lock(mRevisions->mMutex);
+		if (IsEditing() || mImpl->mbCompiling || mImpl->mbPreprocessing || mImpl->mbExecuting)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 			    "Invalidate the revision cache outside graph callbacks and edits.");
 		}
 		for (const auto& Entry : mRevisions->mCache)
 		{
-			CancelArdaInductorTimingOptimization(*Entry.mGraph);
+			RetireCachedRevision(*Entry.mGraph, mRevisions->mPersistent.get());
 		}
 		mRevisions->mCache.clear();
 		return {};
@@ -381,35 +542,51 @@ namespace arda
 
 	FArdaRHIStatus FArdaDependencyGraph::SetRevisionCacheCapacity(uint32_t Capacity)
 	{
+		if (auto Status = CheckArdaGraphRecordingReentry(mRevisions.get()); !Status)
+		{
+			return Status;
+		}
+		std::lock_guard<std::recursive_mutex> Lock(mRevisions->mMutex);
 		if (!Capacity)
 		{
 			return GraphInvalid("The revision cache must retain at least one revision.");
 		}
-		if (IsEditing() || mImpl->mbCompiling || mImpl->mbExecuting)
+		if (IsEditing() || mImpl->mbCompiling || mImpl->mbPreprocessing || mImpl->mbExecuting)
 		{
 			return GraphNotEditing();
 		}
 		mRevisions->mCacheCapacity = Capacity;
 		while (mRevisions->mCache.size() > Capacity)
 		{
-			CancelArdaInductorTimingOptimization(*mRevisions->mCache.front().mGraph);
+			RetireCachedRevision(*mRevisions->mCache.front().mGraph, mRevisions->mPersistent.get());
 			mRevisions->mCache.erase(mRevisions->mCache.begin());
 		}
 		return {};
 	}
 
+	FArdaGraphRevisionStats FArdaDependencyGraph::FArdaRevisionState::Snapshot() const
+	{
+		const auto& State = *this;
+		FArdaGraphRevisionStats Result;
+		Result.mConstructionHash = State.mbBuilding
+		    ? HashArdaGraphConstructionKey(ConstructionQueueKey(State.mEditKeys))
+		    : State.mPersistentHash;
+		Result.mPersistentRevision = State.mPersistentRevision;
+		Result.mCompileCount = State.mCompileCount;
+		Result.mCacheHitCount = State.mCacheHitCount;
+		Result.mCachedRevisionCount = static_cast<uint32_t>(State.mCache.size());
+		Result.mPendingEditCount = static_cast<uint32_t>(State.mEditKeys.size());
+		Result.mbEditQueueLocked = State.IsLocked();
+		return Result;
+	}
+
 	FArdaGraphRevisionStats FArdaDependencyGraph::GetRevisionStats() const
 	{
-		FArdaGraphRevisionStats Result;
-		Result.mConstructionHash = mRevisions->mbBuilding
-		    ? HashArdaGraphConstructionKey(ConstructionQueueKey(mRevisions->mQueue))
-		    : mRevisions->mPersistentHash;
-		Result.mPersistentRevision = mRevisions->mPersistentRevision;
-		Result.mCompileCount = mRevisions->mCompileCount;
-		Result.mCacheHitCount = mRevisions->mCacheHitCount;
-		Result.mCachedRevisionCount = static_cast<uint32_t>(mRevisions->mCache.size());
-		Result.mPendingEditCount = static_cast<uint32_t>(mRevisions->mQueue.size());
-		Result.mbEditQueueLocked = mRevisions->mbLocked;
-		return Result;
+		if (const auto Recording = FArdaGraphRecordingScope::Find(mRevisions.get()))
+		{
+			return Recording->mRevisionStats;
+		}
+		std::lock_guard<std::recursive_mutex> Lock(mRevisions->mMutex);
+		return mRevisions->Snapshot();
 	}
 }

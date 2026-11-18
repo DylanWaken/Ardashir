@@ -33,23 +33,7 @@ namespace arda
 			return *this;
 		}
 
-		FArdaDependencyKeyBuilder& Resource(FArdaDependencyResourceHandle Handle)
-		{
-			// Construction identity follows logical slots across fresh frame descriptions.
-			// Ordinary keys retain generations so attachment and stale-handle checks stay strict.
-			if (const auto* Context = GetConstructionContext())
-			{
-				const bool bValid =
-				    Handle.mGraph == Context->mGraphIdentity && Context->mValidate(Context->mGraph, Handle);
-				// Keep invalid serialized handles disjoint from a normalized valid resource.
-				Value(bValid);
-				if (bValid)
-				{
-					return Value(uint64_t{0}).Value(Handle.mIndex).Value(uint64_t{0});
-				}
-			}
-			return Value(Handle.mGraph).Value(Handle.mIndex).Value(Handle.mGeneration);
-		}
+		FArdaDependencyKeyBuilder& Resource(FArdaDependencyResourceHandle Handle);
 
 		FArdaDependencyKeyBuilder& BufferRange(const FArdaRHIBufferRange& Range)
 		{
@@ -57,21 +41,7 @@ namespace arda
 		}
 
 		/** Encodes a logical stage connection, normalizing valid producer identities for revision reuse. */
-		FArdaDependencyKeyBuilder& Stage(FArdaGraphStageValue Input)
-		{
-			const auto Handle = Input.GetProducer();
-			Value(Input.GetKind());
-			if (const auto* Context = GetConstructionContext())
-			{
-				const bool bValid = Context->mValidateStage(Context->mGraph, Handle);
-				Value(bValid);
-				if (bValid)
-				{
-					return Value(uint64_t{0}).Value(Handle.GetIndex()).Value(uint32_t{0});
-				}
-			}
-			return Value(Handle.GetGraphIdentity()).Value(Handle.GetIndex()).Value(Handle.GetGeneration());
-		}
+		FArdaDependencyKeyBuilder& Stage(FArdaGraphStageValue Input);
 
 		FArdaDependencyKeyBuilder& TextureRange(const FArdaRHITextureSubresourceRange& Range)
 		{
@@ -107,18 +77,6 @@ namespace arda
 		}
 
 	private:
-		friend class FArdaDependencyGraph;
-
-		struct FArdaConstructionResourceContext
-		{
-			uint64_t mGraphIdentity;
-			const void* mGraph;
-			bool (*mValidate)(const void*, FArdaDependencyResourceHandle);
-			bool (*mValidateStage)(const void*, FArdaGraphNodeHandle);
-		};
-
-		/** Returns module-owned thread-local state shared with external node callbacks during attachment. */
-		static const FArdaConstructionResourceContext*& GetConstructionContext() noexcept;
 		eastl::string mBytes;
 	};
 }

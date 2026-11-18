@@ -4,8 +4,8 @@ Terrain (`ARDGExample`), Cornell Box, and Pixel Sort use the persistent dependen
 graph. The triangle sample in `../RHITest` follows the same layout:
 
 ```text
-Public/Nodes/       Individual node classes and their logical parameters
-Private/Nodes/      Shader registration, layouts, node descriptions, and recording
+Public/Nodes/       Node classes, shader contracts, and declarative node parameters
+Private/Nodes/      Shader registration, preparation, pipeline descriptions, and recording
 Private/Nodes/Shaders/  HLSL sources used by the node implementations
 ```
 
@@ -14,10 +14,13 @@ host variant selector and compiled `.cu` kernels in `Private/Nodes`. CMake deplo
 its shader assets beneath `Nodes/Shaders` beside the executable.
 
 Each operation has its own header and implementation file. Its class derives from
-`TArdaDependencyNode<Derived, Parameters, Kind>` through a domain specialization
-such as `TArdaComputeDependencyNode`. The base exposes `FArdaParameters` and implements
-registration and invocation. The
-renderer includes the selected node headers (or an include-only umbrella) and
+`TArdaNodeDefinition<Derived, Parameters, EArdaNodeType::...>`. The base exposes
+`FArdaParameters` and implements registration and invocation. Declare parameters with
+`ARDA_BEGIN_NODE_PARAMETER_STRUCT` and map GPU fields to their shader or CUDA parameter
+members with `ARDA_NODE_SHADER_*` or `ARDA_NODE_CUDA_*`. The referenced schema owns the
+binding category and required access. Use attachment and non-shader resource macros
+for color/depth outputs, copies, vertex/index buffers, and acceleration-structure builds.
+The renderer includes the selected node headers (or an include-only umbrella) and
 records operations through an edit scope:
 
 ```cpp
@@ -25,7 +28,7 @@ FArdaGraphEdit Edit(Graph);
 TerrainGenerate(Edit, Settings, RawHeightmap);
 TerrainErode(Edit, RawHeightmap, Heightmap);
 if (auto S = Edit.Commit(); !S) return S;
-if (auto S = Graph.Compile(); !S) return S;
+if (auto S = Graph.CompileAndWait(); !S) return S;
 ```
 
 The surrounding renderer obtains logical resources through `AllocateBuffer`,
@@ -35,11 +38,16 @@ no node-library object or renderer-side registration/initialization call. Each n
 exports one globally unique callable beside its class declaration with
 `ARDA_DECLARE_GRAPH_NODE(FArdaTerrainGenerateNode, TerrainGenerate);`, paired with
 one `ARDA_DEFINE_GRAPH_NODE` in its implementation. The same callable accepts
-parameter structs and initializer callbacks with an optional diagnostic name.
+parameter structs or positional fields in declaration order, with an optional diagnostic
+name on structured calls.
 
-Each node implements `GetMetadata`, `GetCanonicalKey`, `Describe`, and `Record`
-(or `PrepareCuda` for CUDA). The base checks these hooks at compile time and
-registers a device-independent definition on first attachment. Nodes with setup
+Each node implements `GetMetadata` and `Record` (or `PrepareCuda` for CUDA). Parameter
+metadata generates the dependency description and canonical key. `Describe` adds
+pipeline requests, estimated costs, side effects, or other dynamic requirements; it
+does not repeat resource declarations. A custom `GetCanonicalKey` is needed only for
+application values without a built-in semantic key, such as retained frame inputs.
+The base checks these hooks at compile time and registers a device-independent
+definition on first invocation. Nodes with setup
 declare a private implementation of nested `FArdaState` and supply `Prepare(Device)`
 for their shaders, layouts, operand and pipeline configuration. Nodes needing
 mutable runtime state can declare `FArdaInstanceState` and supply `CreateInstance`;
@@ -61,9 +69,10 @@ The graph/executor prepares binding sets and the path tracer's shader table per
 compiled frame slot. Upload/readback nodes can attach without initializing unrelated shaders.
 
 Camera/window control, resource sizing, graph composition, presentation, and CPU
-verification belong in the renderer. Shader classes, binding metadata, kernel
-selection, command recording, and fixed pipeline settings belong in each node's
-implementation file.
+verification belong in the renderer. Public node headers expose the canonical shader
+parameter contract needed by their node parameter schema. Shader source registration,
+kernel selection, command recording, and fixed pipeline settings belong in each
+node's implementation file.
 
 Executable startup selects compiler policy through the shared
 `ConfigureArdaExampleShaderCompiler` helper in `../Public/ArdaExampleShaders.h`.
@@ -141,15 +150,16 @@ metadata, preparation, description and recording alongside its shaders. Inherit
 registration and invocation. Add `ARDA_DECLARE_GRAPH_NODE(NodeClass, InvocationName);`
 after the class and the matching `ARDA_DEFINE_GRAPH_NODE` once in its `.cpp`;
 the renderer calls `InvocationName(Edit, Parameters)` or passes positional fields.
-Raw graph mutation is private. See [registering a node](../../../Docs/ArdaRDG/Registering-Nodes.md)
+Raw graph mutation is private. See [registering a node](../../../Docs/ArdaRDG/registering-nodes.html)
 for the complete header and implementation contract.
 An optional `Node::Register()` lets a library enumerate definitions before any
-device exists. Describe every resource access
-and pipeline contribution. The canonical key must cover frozen resources and
-settings; mutable frame inputs are sampled during recording on the render thread.
-Keep those inputs alive and avoid changing them during recording. Nodes declare
-outputs in DeclareResources and map shader metadata to logical arguments in
-Describe. The graph allocates the outputs and prepares binding sets, bindless
+device exists. Declare every resource access in the parameter schema and add pipeline
+contributions in `Describe`. Generated canonical keys cover the declared resources and
+settings; custom keys must include any extra frozen application identity. Mutable
+frame inputs are sampled during recording on the render thread. Keep those inputs
+alive and avoid changing them during recording. Nodes create outputs in
+`DeclareResources`. Shader bindings come from `ARDA_NODE_SHADER_*`; CUDA nodes resolve
+their mapped resources with `ResolveNodeCudaParameters`. The graph allocates the outputs and prepares binding sets, bindless
 tables, shader parameters and ray tables per compiled frame slot. Recording uses
 the execution context's prepared state; node callbacks do not create binding sets.
 Renderers compose typed outputs from `Operation.GetBuffer` / `GetTexture`. See the
@@ -162,7 +172,7 @@ verification or capture needs completion. Recycling an occupied graph frame slot
 can still wait. Every example reuses a graph while its frozen resource and
 configuration identity remains valid.
 
-See the [ArdaInductor guide](../../../Docs/ArdaRDG/ArdaInductor.md) for the graph
+See the [ArdaInductor guide](../../../Docs/ArdaRDG/inductor.html) for the graph
 contract and the [compilation chapter](../../../Docs/ArdaRDG/compilation.html) for
 scheduling and pipeline inference.
 

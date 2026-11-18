@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="GPU test validation layers — Ardashir engineering documentation.">
+  <title>GPU test validation layers | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick guide</a>
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="gpu-allocator.html">GPU allocator</a>
+        <a href="cuda-interop.html">CUDA operands</a>
+        <a href="cuda-sequences.html">CUDA sequences</a>
+        <a href="cuda-external-calls.html">External CUDA calls</a>
+        <a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+        <a href="validation.html">GPU validation</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaBackend</a>
+      </nav>
+      <article>
+<h1 id="gpu-test-validation-layers">GPU test validation layers</h1>
+<nav class="toc" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ul>
+        <li><a href="#build-and-run">Build and run</a></li>
+        <li><a href="#options-and-runtime-discovery">Options and runtime discovery</a></li>
+        <li><a href="#test-semantics">Test semantics</a></li>
+        <li><a href="#release-verification-and-rollback">Release verification and rollback</a></li>
+        <li><a href="#rhi-audit-implementation-validation--2026-09-17">RHI audit implementation validation — 2026-09-17</a></li>
+      </ul>
+    </nav>
+<section id="objectives"><h2>How to use this guide</h2><p>Configure native GPU validation, run the verification suites, and distinguish unavailable layers from workload or diagnostic failures.</p><p>Start with the <a href="index.html">module overview</a> and follow exact declarations in the <a href="api-reference.html">canonical API reference</a>.</p></section>
+
+<p>With the default <code>ARDASHIR_ENABLE_GPU_VALIDATION=ON</code>, dedicated GPU test
+executables request installed validation layers. ARDGExample, CornellBox, RHITest
+and PixelSort enable native GPU validation only when launched with <code>--validation</code>.
+PixelSort <code>--verify</code> independently checks CPU/GPU results; ARDGExample <code>--verify</code>
+checks terrain geometry, gradients, and sampled CPU/GPU noise and erosion results
+through readback. Example targets do not
+depend on validation-layer provisioning. Ordinary builds do not download or
+compile Vulkan validation; run <code>python SetupGraphicsSDK.py</code> to install missing
+SDK components. Missing requested validation is reported as a skipped test, with
+the native backend diagnostic, rather than an assertion failure. Tests which do
+not request validation continue to run.</p>
+<h2 id="build-and-run">Build and run</h2>
+<pre><code class="language-sh">cmake -S . -B build -DARDASHIR_BUILD_TESTS=ON
+cmake --build build --config Debug
+ctest --test-dir build -C Debug --output-on-failure
+</code></pre>
+<ul>
+<li><strong>D3D12:</strong> the existing pinned Agility SDK NuGet dependency supplies the matching
+<code>D3D12Core.dll</code> and <code>d3d12SDKLayers.dll</code>. Executables deploy them into their
+<code>D3D12</code> subdirectory. Failure to deploy the optional debug layer produces a
+warning; the core runtime remains a required dependency.</li>
+<li><strong>Vulkan:</strong> <code>ArdaValidationLayers</code> looks for a supplied layer directory, enabled
+Windows registrations in the x64 registry, a previous local installation,
+SDK/environment paths, and common Linux install paths. With the explicit
+<code>ARDASHIR_PROVISION_VALIDATION=ON</code> option, missing layers are downloaded from
+pinned Khronos sources and built under <code>&lt;build&gt;/validation-layers</code>.
+This requires Git, Python 3.10+, a C++ compiler, and CMake 3.22.1+ for the
+upstream layer build. The first build can take several minutes.</li>
+<li>Network, toolchain, or optional-layer build failures produce warnings and logs
+in <code>&lt;build&gt;/validation-layers</code>; they do not fail the Ardashir build. Unchanged
+reconfigures and incremental builds reuse the previous attempt. Changing setup
+options or removing <code>&lt;build&gt;/validation-layers/attempt.stamp</code> retries it.
+Interrupted attempts and missing generated path files are retried automatically.</li>
+</ul>
+<p>CMake provisioning does not install into system directories, the registry, or
+Windows optional features. Cross-compiling does not automatically build host
+validation layers. The separate root SDK script has a system-install policy
+described below.</p>
+<h2 id="options-and-runtime-discovery">Options and runtime discovery</h2>
+<ul>
+<li><code>ARDASHIR_ENABLE_GPU_VALIDATION=OFF</code> builds all examples and GPU fixtures without
+requesting Vulkan validation or the D3D12 debug layer. This works independently
+of Debug/Release and <code>ARDASHIR_BUILD_TESTS</code>. The external Vulkan host fixture also
+omits its validation layer/debug messenger. No validation provisioning target or
+local validation-layer discovery is attached to these builds. Keep ON/OFF
+versions in separate build directories; launch scripts preserve the cache value.
+Assertions and result verification remain enabled, including PixelSort and
+ARDGExample <code>--verify</code>.
+All four examples reject <code>--validation</code> when compiled OFF. The D3D12
+validation-initialization test skips in OFF builds; other tests continue
+exercising their GPU workloads.
+This policy is private to examples/tests; applications retain the public backend
+configuration, and externally forced layers are outside this option&#39;s control.</li>
+<li><code>ARDASHIR_PROVISION_VALIDATION=OFF</code> is the default and disables automatic Vulkan
+downloading and building. Set it explicitly when reusing a build tree that
+previously cached ON. Already supplied/discoverable layers still work. Agility
+runtime deployment remains part of the D3D12 build.</li>
+<li><code>ARDASHIR_VULKAN_VALIDATION_DIR=/path/to/layers</code> supplies the directory containing
+<code>VkLayer_khronos_validation.json</code> and its loadable library. This explicit
+selection suppresses automatic downloads, even if the directory is invalid.</li>
+<li><code>ARDASHIR_VULKAN_VALIDATION_SOURCE_DIR=/path/to/Vulkan-ValidationLayers</code> uses a
+local source checkout when provisioning is ON and no installed layer was found.
+Upstream dependencies may still require downloads.</li>
+</ul>
+<p>When validation is requested, backend, RHI, graph, and presentation executables
+read any configured generated layer directory and add it to <code>VK_ADD_LAYER_PATH</code>
+only when Khronos validation is not already discoverable. This avoids duplicate manifests when a
+system SDK is installed. Direct executable runs and CTest use the same setup.
+An explicit <code>VK_LAYER_PATH</code> takes precedence; existing <code>VK_ADD_LAYER_PATH</code>
+entries are retained. Use <code>VK_LAYER_PATH</code> when selecting a particular layer
+version instead of the installed layer.</p>
+<p>Vulkan-enabled examples and tests also disable RTSS and OBS Vulkan capture
+overlays in their own process by default. Older overlay layers advertise lower
+Vulkan API versions and cause loader warnings for these Vulkan 1.4 applications.
+Set <code>ARDASHIR_ENABLE_VULKAN_OVERLAYS=1</code> before launching to retain those overlays
+for capture. Existing <code>DISABLE_RTSS_LAYER</code> and <code>DISABLE_VULKAN_OBS_CAPTURE</code> values
+remain authoritative. This applies with validation ON or OFF, does not disable
+validation or other layers, and changes neither system settings nor the public
+backend&#39;s layer policy.</p>
+<p>These CMake helpers install locally. Separately, the root <code>SetupGraphicsSDK.py</code>
+now installs/registers validation machine-wide by default on Windows, with
+Administrator privileges; <code>--local-only</code> opts out. That system install supports
+elevated applications, which ignore local Vulkan layer-path overrides.</p>
+<h2 id="test-semantics">Test semantics</h2>
+<p>Native D3D12 and Vulkan providers return
+<code>EArdaInitializeResult::ValidationUnavailable</code> when requested validation cannot
+be enabled. Vulkan also handles a discovered manifest whose library cannot load.
+<code>GetBackendInitializeResult()</code> exposes the most recent headless initialization
+outcome; presentation initialization returns the enum directly.</p>
+<p>GoogleTest initialization assertions use <code>ARDA_REQUIRE_BACKEND()</code> from
+<code>Source/ArdaTests/TestSupport/ArdaTestBackend.h</code>. It skips only the missing-validation
+result in validation-enabled builds and retains assertion failures for other
+initialization errors (including unexpected validation requests in OFF builds). Like a
+fatal assertion, it returns from the surrounding function; callers of helpers
+must not continue using an uninitialized device. Presentation smoke programs
+return the existing CTest skip code, 77, for missing validation.</p>
+<p>Native CUDA and graph recipe fixtures retain an atomic diagnostic callback through
+device shutdown and fail on validation errors, including deferred retirement
+errors. Malformed kernel registrations and unexpected initialization failures are
+test failures, not missing-hardware skips. Warnings remain visible in test output.
+Only a confirmed <code>ValidationUnavailable</code> initialization skip bypasses the shutdown
+error assertion, because a broken layer installation can itself emit loader errors.
+Hardware-feature skips after successful initialization still check diagnostics.</p>
+<p>PixelSort includes both CPU-oracle verification runs and <code>AsyncReplay</code> tests.
+Verification waits for each readback; asynchronous replay submits twelve frames
+without that per-frame wait, then retires work and checks shutdown diagnostics.
+Bounded runs fail if the window closes before the requested frames complete.
+The examples&#39; existing GPU CTest cases run without native validation. Separate
+<code>Validation</code> cases pass <code>--validation</code> in ON builds, including an asynchronous
+PixelSort case. Dedicated GPU test executables keep their strict validation
+requirements.
+<code>ARDGExample.D3D12.Verify</code> and <code>ARDGExample.Vulkan.Verify</code> opt into terrain
+geometry, gradient, and sampled height readback checks. The height checks detect
+zero, flat, stale, or incorrectly generated heightmaps even when topology is valid.
+Run <code>ARDGExample --backend vulkan --frames 3 --hidden --verify</code> on machines without
+validation layers; failures report the grid coordinate and expected/actual height.
+The normal terrain viewer omits those diagnostics. Ordinary Vulkan example CTest
+cases point <code>VK_LAYER_PATH</code> to an empty directory and clear <code>VK_ADD_LAYER_PATH</code> to
+hide explicit validation layers.</p>
+<p>To reproduce absence without changing the machine, copy a test executable and
+<code>D3D12/D3D12Core.dll</code> to a separate deployment directory, omit
+<code>D3D12/d3d12SDKLayers.dll</code>, and set <code>VK_LAYER_PATH</code> to an empty directory. A stale
+Vulkan manifest pointing to a missing library exercises failed layer loading.</p>
+<h2 id="release-verification-and-rollback">Release verification and rollback</h2>
+<p>Run full suites in separate Debug/validation-ON, Debug/validation-OFF, and
+Release/validation-ON build directories. Build CUDA kernels when validating CUDA;
+record the toolkit, driver and GPU used. A successful external-call adapter test
+does not certify a cuBLAS or cuDNN library that was not linked and executed.
+Keep capability skips in the report and inspect build output and runtime
+diagnostics as well as the CTest exit code. Shader compilation and native API
+validation are separate checks.</p>
+<p>Shader-compilation fixtures explicitly enable the compilation behavior they test.
+The source-distributed examples likewise select a shared compilation policy in
+both Debug and Release; <code>load-only</code> still requires cooked artifacts. This does not
+change the backend&#39;s Release default. See the
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaTests/Examples/README.md">example startup policy</a>.</p>
+<p>Before publishing application binaries, retain the previous known-good deployment
+as a complete versioned directory: executable, backend modules, shader artifacts,
+and required runtime DLLs. Isolate writable pipeline caches by release version.
+This repository&#39;s checks do not publish or replace a deployment automatically.</p>
+<p>Rollback is triggered by new GPU validation errors, device loss, incorrect output,
+or a reproducible scheduling regression on a supported configuration. Stop the
+affected application, select the retained deployment directory in the launcher,
+restore that version&#39;s cache location, and run its D3D12/Vulkan smoke checks before
+reopening normal workloads. Preserve failure logs and the rejected release for
+diagnosis. Target recovery is one application restart plus smoke-test time; verify
+that procedure on the actual deployment host before release. No source reset or
+in-place DLL replacement is part of rollback.</p>
+<p>References: <a href="https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/e4786f7ce8f1319215eff0d938f4be4651cbb85d/BUILD.md">Khronos build instructions</a>,
+<a href="https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderLayerInterface.md">Vulkan loader discovery</a>,
+and <a href="https://devblogs.microsoft.com/directx/gettingstarted-dx12agility/">Microsoft Agility deployment</a>.</p>
+<h2 id="rhi-audit-implementation-validation--2026-09-17">RHI audit implementation validation — 2026-09-17</h2>
+<p>The accepted RHI audit implementation was validated on NVIDIA RTX PRO 6000
+Blackwell Workstation Edition, driver 610.62:</p>
+<ul>
+<li>Full Debug build with D3D12/Vulkan and validation enabled: <strong>799 passed,
+146 skipped, zero failures</strong> across 945 CTest cases.</li>
+<li>CUDA 13.4.59 Release build with D3D12 and validation enabled: <strong>615 passed,
+112 skipped, zero failures</strong> across all 727 cases from the rebuilt
+backend, RHI and graph executables. Vulkan was disabled in that configuration.</li>
+</ul>
+<p>Tests cover command-generation errors, required binding sets, repeated push-only
+binding reuse, descriptor/native limits, selected framebuffer views, sparse
+remapping and prefix preservation, failed retirement signals/waits, shutdown
+quarantine and later reclamation. GPU byte/pixel readbacks supplement ownership
+counters. Capability and environment skips remain distinct from passing tests.
+Configuration-specific fixtures omit/skip explicitly disabled providers and
+continue to fail on unexpected initialization errors for enabled providers.</p>
+<p>The skip audit identified unresolved coverage gaps: two symlink fixtures in each
+run reported already-existing destinations, and two CUDA Release surface tests
+in D3D12 graphics-queue mode skipped after a <code>CUDA_ERROR_UNKNOWN</code> capability
+probe. Their normal CUDA-context counterparts passed. These are not evidence of
+ordinary hardware limitations. Vulkan+CUDA was not exercised in either build;
+the audit records all skip categories and counts.</p>
+<p>Full commands, logs, documentation checks and hardware qualifications are in the
+<a href="unreal-rhi-audit.html#validation-and-remaining-coverage">current audit</a>. No physical
+GPU removal, real GPU-hang recovery, Vulkan CUDA run or separate validation-off
+run was attempted for this implementation pass.</p>
+<section id="summary"><h2>Review and next steps</h2><p>Keep validation-enabled and disabled builds separate. Preserve real backend failures and only skip cases whose stated capability or validation prerequisites are unavailable.</p><p>Continue with the <a href="index.html">module guides</a> and <a href="api-reference.html">API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend · Ardashir engineering documentation</p></footer>
+</body>
+</html>

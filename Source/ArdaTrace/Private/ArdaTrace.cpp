@@ -27,14 +27,12 @@ namespace arda
 			std::ofstream mStream;
 			eastl::atomic<bool> mbActive = false;
 			eastl::atomic<std::uint64_t> mGeneration = 0;
-			eastl::atomic<std::uint32_t> mNextNameId = 1;
+
 			eastl::atomic<std::uint32_t> mNextThreadId = 1;
 			eastl::atomic<std::uint64_t> mNextScopeId = 1;
 			eastl::unordered_map<eastl::string, std::uint32_t> mNameIds;
-			eastl::unordered_map<std::uint32_t, eastl::string> mNames;
 			eastl::vector<eastl::shared_ptr<FArdaThreadBuffer>> mThreadBuffers;
 			eastl::string mError;
-			std::uint64_t mOriginNanoseconds = 0;
 		};
 
 		FArdaTraceState& GetState()
@@ -214,9 +212,8 @@ namespace arda
 				return ExistingName->second;
 			}
 
-			const std::uint32_t NameId = State.mNextNameId.fetch_add(1, eastl::memory_order_relaxed);
+			const std::uint32_t NameId = static_cast<std::uint32_t>(State.mNameIds.size()) + 1;
 			State.mNameIds.emplace(StableName, NameId);
-			State.mNames.emplace(NameId, StableName);
 			if (State.mbActive.load(eastl::memory_order_relaxed))
 			{
 				WriteNameRecord(State.mStream, NameId, StableName);
@@ -255,15 +252,15 @@ namespace arda
 		}
 
 		State.mError.clear();
-		State.mOriginNanoseconds = arda::GetTraceTimestampNanoseconds();
+		const auto OriginNanoseconds = arda::GetTraceTimestampNanoseconds();
 		const std::uint64_t Generation = State.mGeneration.fetch_add(1, eastl::memory_order_relaxed) + 1;
 		(void)Generation;
 
 		WriteBytes(State.mStream, arda::TraceMagic.data(), arda::TraceMagic.size());
 		WriteValue(State.mStream, arda::TraceVersion);
 		WriteValue(State.mStream, arda::TraceEndianMarker);
-		WriteValue(State.mStream, State.mOriginNanoseconds);
-		for (const auto& [NameId, Name] : State.mNames)
+		WriteValue(State.mStream, OriginNanoseconds);
+		for (const auto& [Name, NameId] : State.mNameIds)
 		{
 			WriteNameRecord(State.mStream, NameId, Name);
 		}

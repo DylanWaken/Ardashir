@@ -93,7 +93,7 @@ def render(verify=False):
     evidence = sources(verify)
     snapshot = json.loads((HERE / 'snapshot.json').read_text(encoding='utf-8'))
     body += '''\n<section class="chapter" id="source-notes"><h2>Reading the source behind the diagrams</h2>
-<p>This essay studies the local working tree captured on 14 October 2026. It includes APIs and compiler stages that were not yet present in the published source at the time of writing. The source ranges below identify the inspected files and record SHA-256 hashes of their normalized lines. They are evidence for this snapshot, not a claim that another checkout has identical declarations. The existing module API reference may describe an earlier version.</p>
+<p>The compiler and GPU-runtime source study below records the local working tree captured on 14 October 2026. The execution chapters were updated on 18 November 2026 for caller-driven recording and submission. The current canonical API reference documents those changes. They identify the inspected files and record SHA-256 hashes of their normalized lines, providing evidence for the original snapshot rather than a claim that another checkout has identical declarations.</p>
 <p>The article’s generators and evidence live under <code>Scripts/Docs/arda_graph_essay/</code>. Run <code>build.py --check --verify-source</code> against the matching working tree to verify both the authored page and its source ranges. The <a href="assets/arda-graph/source-snapshot.json">source snapshot manifest</a> records complete file hashes. All timeline costs, memory sizes and sample values in the original diagrams are teaching examples, not benchmark measurements.</p>
 '''
     for record in evidence:

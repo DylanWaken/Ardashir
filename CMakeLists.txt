@@ -23,7 +23,7 @@ set(_ardashir_pixel_sort_default OFF)
 if(WIN32 AND ARDASHIR_BUILD_CUDA_KERNELS)
     set(_ardashir_pixel_sort_default ON)
 endif()
-option(ARDASHIR_BUILD_PIXEL_SORT "Build the backend-only Windows CUDA pixel-sort example" ${_ardashir_pixel_sort_default})
+option(ARDASHIR_BUILD_PIXEL_SORT "Build the Windows CUDA pixel-sort graph example" ${_ardashir_pixel_sort_default})
 set(ARDASHIR_CUDA_ARCHITECTURES "80;86;89;90;100;120" CACHE STRING "Explicit native CUDA binary targets; no virtual/PTX targets")
 set(ARDASHIR_CUDA_INCLUDE_DIR "" CACHE PATH "CUDA 12.0 or newer include directory (CiG capture requires 13.3+); public RHI headers do not require it")
 option(ARDASHIR_BACKEND_VULKAN

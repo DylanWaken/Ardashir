@@ -1,3 +1,4 @@
+#include "ArdaExampleNodeState.h"
 #include "ArdaARDGExamplePch.h"
 #include "Nodes/ArdaTerrainDrawNode.h"
 #include "ArdaTerrainNodeInternal.h"
@@ -5,24 +6,6 @@
 namespace arda
 {
 	ARDA_DEFINE_GRAPH_NODE(FArdaTerrainDrawNode, TerrainDraw);
-
-	class FArdaTerrainVertexShader final : public arda::FArdaGlobalShader
-	{
-	public:
-		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
-			ARDA_SHADER_CONSTANT_BUFFER(mCamera, 0, 0, arda::EArdaRHIShaderStage::Vertex)
-		ARDA_END_SHADER_PARAMETER_STRUCT()
-		ARDA_DECLARE_GLOBAL_SHADER(FArdaTerrainVertexShader);
-	};
-
-	class FArdaTerrainPixelShader final : public arda::FArdaGlobalShader
-	{
-	public:
-		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
-			ARDA_SHADER_TEXTURE_SRV(mHeightmap, 0, 0, arda::EArdaRHIShaderStage::Pixel)
-		ARDA_END_SHADER_PARAMETER_STRUCT()
-		ARDA_DECLARE_GLOBAL_SHADER(FArdaTerrainPixelShader);
-	};
 
 	struct FArdaTerrainDrawNode::FArdaState
 	{
@@ -109,58 +92,17 @@ namespace arda
 		return {"example.terrain.draw", 1};
 	}
 
-	eastl::string FArdaTerrainDrawNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		FArdaDependencyKeyBuilder Key;
-
-		Key.Resource(P.mHeightmap);
-		Key.Resource(P.mVertices);
-		Key.Resource(P.mIndices);
-		Key.Resource(P.mCamera);
-		Key.Resource(P.mColor);
-		Key.Resource(P.mDepth);
-		Key.Value(P.mWidth);
-		Key.Value(P.mHeight);
-		Key.Value(uint64_t(P.mColorFormat));
-
-		return Key.Build();
-	}
-
 	TArdaRHIResult<eastl::shared_ptr<const FArdaTerrainDrawNode::FArdaState>> FArdaTerrainDrawNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
-		if (!Device)
-		{
-			return {{},
-			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This node requires an initialized device.")};
-		}
-
-		auto State = eastl::make_shared<FArdaState>();
-		State->mDevice = eastl::move(Device);
-
-		// Publish prepared state only after all node-owned setup succeeds.
-		auto Status = State->Initialize();
-		if (!Status)
-		{
-			return {{}, eastl::move(Status)};
-		}
-
-		return {eastl::move(State), {}};
+		return PrepareExampleNodeState<FArdaState>(eastl::move(Device));
 	}
 
 	FArdaDependencyNodeDesc FArdaTerrainDrawNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
-		D.BindShader<FArdaTerrainPixelShader::FArdaParameters>({{"mHeightmap", P.mHeightmap}});
-		D.BindShader<FArdaTerrainVertexShader::FArdaParameters>({{"mCamera", P.mCamera}});
-		D.mAccesses = {{P.mVertices, EArdaDependencyAccess::Read, EArdaRHIResourceState::VertexBuffer},
-		    {P.mIndices, EArdaDependencyAccess::Read, EArdaRHIResourceState::IndexBuffer},
-		    {P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget},
-		    {P.mDepth, EArdaDependencyAccess::Write, EArdaRHIResourceState::DepthWrite}};
 		D.mPipelines = {{"default", 0, EArdaPipelineStateKind::Graphics, {}, Prepared.mConfiguration}};
 		D.mEstimatedCost = 8;
-		D.mColorTargets = {P.mColor};
-		D.mDepthTarget = P.mDepth;
 		return D;
 	}
 

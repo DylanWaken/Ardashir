@@ -4,10 +4,6 @@
 #include "ArdaTrace.h"
 
 #include <EASTL/algorithm.h>
-#include <EASTL/sort.h>
-
-#include <future>
-#include <thread>
 
 namespace arda
 {
@@ -42,6 +38,7 @@ namespace arda
 	    const FArdaGraphExecuteOptions& Options)
 	{
 		auto& Graph = *Program.mImpl;
+		Graph.mPassSubmissions.clear();
 		if (!Graph.mbCompiled || !Graph.mDevice || Graph.mbFailed || !Graph.mActivePassAccess.empty() ||
 		    (Graph.mbExecutionStarted && !Graph.mbExecuted))
 		{
@@ -65,135 +62,37 @@ namespace arda
 		}
 
 		eastl::vector<FArdaInductorRecordedCommand> Recorded(Graph.mPasses.GetCount());
-		eastl::vector<uint32_t> Levels(Graph.mPasses.GetCount(), 0);
-		uint32_t MaxLevel = 0;
-		for (FArdaInductorCommandHandle Handle : Graph.mPlan.mExecutionOrder)
+		const auto Record = [&](FArdaInductorCommandHandle Handle)
 		{
-			const FArdaInductorCommand& Pass = Graph.mPasses.Get(Handle);
-			if (Handle == Graph.mPlan.mPrologue)
+			const auto Index = Handle.GetIndex();
+			Recorded[Index] =
+			    RecordPass(Program, Graph, Handle, RuntimeTransitions[Index], Options.mbValidateResourceStates);
+		};
+
+		for (const auto Handle : Graph.mPlan.mExecutionOrder)
+		{
+			const auto& Pass = Graph.mPasses.Get(Handle);
+			if (Pass.mbRecordAtSubmit ||
+			    (Pass.GetState().mbSentinel && RuntimeTransitions[Handle.GetIndex()].IsEmpty()))
 			{
 				continue;
 			}
-			uint32_t Level = 0;
-
-			// Fold both data producers and explicit synchronization producers
-			// into the earliest safe CPU recording wave for this pass.
-			auto AccumulateLevel = [&Graph, &Levels, &Level](FArdaInductorCommandHandle Producer)
+			Record(Handle);
+			if (!Recorded[Handle.GetIndex()].mStatus)
 			{
-				const FArdaInductorCommand* ProducerPass = Graph.mPasses.TryGet(Producer);
-				if (ProducerPass != nullptr)
-				{
-					Level = eastl::max(Level, Levels[Producer.GetIndex()] + 1u);
-				}
-			};
-			for (FArdaInductorCommandHandle Producer : Pass.GetState().mProducers)
-			{
-				AccumulateLevel(Producer);
-			}
-
-			Levels[Handle.GetIndex()] = Level;
-			MaxLevel = eastl::max(MaxLevel, Level);
-		}
-
-		const auto RecordBatch = [&](FArdaInductorCommandHandle Head)
-		{
-			Recorded[Head.GetIndex()] =
-			    RecordPass(Program, Graph, Head, RuntimeTransitions[Head.GetIndex()], Options.mbValidateResourceStates);
-		};
-
-		const uint32_t HardwareThreads = eastl::max(1u, std::thread::hardware_concurrency());
-		const uint32_t MaxWorkers =
-		    Options.mMaxRecordingThreads == 0 ? HardwareThreads : eastl::max(1u, Options.mMaxRecordingThreads);
-		for (uint32_t Level = 0; Level <= MaxLevel; ++Level)
-		{
-			eastl::vector<FArdaInductorCommandHandle> ParallelPasses;
-			eastl::vector<FArdaInductorCommandHandle> SerialPasses;
-			for (FArdaInductorCommandHandle Handle : Graph.mPlan.mExecutionOrder)
-			{
-				if (Levels[Handle.GetIndex()] != Level)
-				{
-					continue;
-				}
-				const FArdaInductorCommand& Pass = Graph.mPasses.Get(Handle);
-				const bool bHasWork = !Pass.GetState().mbSentinel ||
-				    !RuntimeTransitions[Handle.GetIndex()].mTextures.empty() ||
-				    !RuntimeTransitions[Handle.GetIndex()].mBuffers.empty() ||
-				    !RuntimeTransitions[Handle.GetIndex()].mAccelStructs.empty() ||
-				    !RuntimeTransitions[Handle.GetIndex()].mTextureAcquires.empty() ||
-				    !RuntimeTransitions[Handle.GetIndex()].mBufferAcquires.empty() ||
-				    !RuntimeTransitions[Handle.GetIndex()].mTextureReleases.empty() ||
-				    !RuntimeTransitions[Handle.GetIndex()].mBufferReleases.empty() ||
-				    !RuntimeTransitions[Handle.GetIndex()].mAliasingResources.empty();
-				if (Pass.mbRecordAtSubmit)
-				{
-					continue;
-				}
-				if (!bHasWork)
-				{
-					continue;
-				}
-				if (Options.mbParallelRecording && !Pass.mbSerialRecord)
-				{
-					ParallelPasses.push_back(Handle);
-				}
-				else
-				{
-					SerialPasses.push_back(Handle);
-				}
-			}
-
-			for (size_t Begin = 0; Begin < ParallelPasses.size(); Begin += MaxWorkers)
-			{
-				const size_t End = eastl::min(ParallelPasses.size(), Begin + MaxWorkers);
-				eastl::vector<std::future<void>> Futures;
-				Futures.reserve(End - Begin);
-				Graph.mExecutionResult.mbUsedParallelRecording |= End - Begin > 1;
-				for (size_t Index = Begin; Index < End; ++Index)
-				{
-					const FArdaInductorCommandHandle Handle = ParallelPasses[Index];
-					Futures.push_back(std::async(std::launch::async,
-
-					    // Each job owns a distinct command list and writes a
-					    // distinct pass-indexed result slot; shared graph data
-					    // is read-only during recording except guarded access
-					    // validation managed by execution contexts.
-					    [&RecordBatch, Handle]
-					    {
-						    RecordBatch(Handle);
-					    }));
-				}
-				for (auto& Future : Futures)
-				{
-					Future.get();
-				}
-			}
-			for (FArdaInductorCommandHandle Handle : SerialPasses)
-			{
-				RecordBatch(Handle);
-			}
-		}
-
-		// Ordinary recording completes before submission. RecordAtSubmit passes
-		// can fail later; report every accepted submission so the frame can retire safely.
-		for (const auto& Pass : Recorded)
-		{
-			if (!Pass.mStatus)
-			{
-				Graph.mExecutionResult.mStatus = Pass.mStatus;
+				Graph.mExecutionResult.mStatus = Recorded[Handle.GetIndex()].mStatus;
 				return Graph.mExecutionResult;
 			}
 		}
-		eastl::vector<uint64_t> PassInstances(Graph.mPasses.GetCount(), 0);
+		Graph.mPassSubmissions.resize(Graph.mPasses.GetCount(), 0);
 
-		// Submission order remains deterministic even when recording completed
-		// out of order. Per-pass instances become synchronization tokens for
-		// later cross-queue consumers.
+		// Submission tokens order subsequent cross-queue consumers.
 		for (FArdaInductorCommandHandle Handle : Graph.mPlan.mExecutionOrder)
 		{
 			FArdaInductorRecordedCommand& Pass = Recorded[Handle.GetIndex()];
 			if (Graph.mPasses.Get(Handle).mbRecordAtSubmit)
 			{
-				RecordBatch(Handle);
+				Record(Handle);
 				if (!Pass.mStatus)
 				{
 					Graph.mExecutionResult.mStatus = Pass.mStatus;
@@ -229,7 +128,7 @@ namespace arda
 				{
 					continue;
 				}
-				const uint64_t ProducerInstance = PassInstances[Dependency.mProducer];
+				const uint64_t ProducerInstance = Graph.mPassSubmissions[Dependency.mProducer];
 				if (ProducerInstance == 0)
 				{
 					continue;
@@ -273,7 +172,7 @@ namespace arda
 				break;
 			}
 			const uint64_t Instance = SubmitResult.mValue;
-			PassInstances[Handle.GetIndex()] = Instance;
+			Graph.mPassSubmissions[Handle.GetIndex()] = Instance;
 			Graph.mExecutionResult.mLastSubmittedInstances[ConsumerQueueIndex] = Instance;
 			++Graph.mExecutionResult.mSubmittedCommandListCount;
 		}

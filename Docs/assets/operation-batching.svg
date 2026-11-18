@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 410" role="img" aria-labelledby="title description">
+<title id="title">From private recording to native batches</title>
+<desc id="description">Edits record concurrently, then publish in order. Compilation batches matching pipelines, splits at hazards, and may merge contiguous instance ranges within a batch.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#37657e"/></marker></defs>
+<rect width="880" height="410" fill="#f5f8fc"/>
+<g font-family="system-ui,sans-serif" font-size="17" fill="#152e47">
+<text x="28" y="31" font-weight="bold">CPU recording</text><text x="310" y="31" font-weight="bold">Atomic publication</text><text x="612" y="31" font-weight="bold">Compilation and recording</text>
+<g stroke="#37657e" stroke-width="2" fill="#e2edf7"><rect x="28" y="56" width="206" height="65" rx="8"/><rect x="28" y="147" width="206" height="65" rx="8"/><rect x="303" y="94" width="238" height="102" rx="8"/><rect x="607" y="65" width="241" height="97" rx="8"/><rect x="607" y="208" width="241" height="69" rx="8"/><rect x="607" y="316" width="241" height="63" rx="8"/></g>
+<text x="43" y="83">Private edit A</text><text x="43" y="106">Draw A, Draw B</text><text x="43" y="176">Private edit B</text><text x="43" y="199">Dispatch C</text>
+<text x="320" y="123">Ordered edit queue</text><text x="320" y="150">A commits before B</text><text x="320" y="177">A → B → C</text>
+<text x="623" y="92">Batch 1: Draw A + B</text><text x="623" y="119">Same pipeline/queue</text><text x="623" y="146">Safe resource accesses</text><text x="623" y="236">Required barrier</text><text x="623" y="260">Batch 2: Dispatch C</text><text x="623" y="342">One instanced draw*</text><text x="623" y="365">Ranges [0,3) + [3,5)</text>
+<path d="M234 88H266V120H299M234 180H266V168H299M541 135H603M728 163V203" fill="none" stroke="#37657e" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M848 121H865V345H851" fill="none" stroke="#37657e" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<text x="28" y="279">Solid arrows: construction and execution order</text><text x="28" y="308">Dashed arrow: optional draw merge inside batch 1</text><text x="28" y="350">* Requires stage permission, equal bound state/geometry</text><text x="28" y="375">and contiguous ranges; otherwise keep both draws.</text>
+</g></svg>

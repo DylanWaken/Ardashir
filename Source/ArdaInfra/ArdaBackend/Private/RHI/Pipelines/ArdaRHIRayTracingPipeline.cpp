@@ -2,7 +2,7 @@
 #include "RHI/Pipelines/ArdaRHIRayTracingPipeline.h"
 #include "RHI/Shaders/ArdaRHIShader.h"
 
-#include "RHI/Resources/ArdaHash.h"
+#include "RHI/Pipelines/ArdaRHIPipelineHash.h"
 
 #include <EASTL/algorithm.h>
 
@@ -12,32 +12,6 @@ namespace arda
 {
 	namespace
 	{
-		template <typename T>
-		void Combine(size_t& Seed, const T& Value) noexcept
-		{
-			ArdaHashCombine(Seed, Value);
-		}
-
-		void CombineString(size_t& Seed, const eastl::string& Value) noexcept
-		{
-			ArdaHashString(Seed, Value);
-		}
-
-		template <typename T>
-		void CombineRef(size_t& Seed, const TArdaRHIRef<T>& Value) noexcept
-		{
-			Combine(Seed, reinterpret_cast<uintptr_t>(Value.Get()));
-		}
-
-		template <typename T>
-		void CombineRefs(size_t& Seed, const eastl::vector<TArdaRHIRef<T>>& Values) noexcept
-		{
-			Combine(Seed, Values.size());
-			for (const auto& Value : Values)
-			{
-				CombineRef(Seed, Value);
-			}
-		}
 
 		FArdaRHIStatus Invalid(const char* Message)
 		{
@@ -48,42 +22,42 @@ namespace arda
 	size_t HashValue(const FArdaRHIRayTracingPipelineShaderDesc& V) noexcept
 	{
 		size_t H = 0;
-		CombineString(H, V.mExportName);
-		CombineRef(H, V.mShader);
-		CombineRef(H, V.mLocalBindingLayout);
+		ArdaHashString(H, V.mExportName);
+		HashPipelineRef(H, V.mShader);
+		HashPipelineRef(H, V.mLocalBindingLayout);
 		return H;
 	}
 
 	size_t HashValue(const FArdaRHIRayTracingHitGroupDesc& V) noexcept
 	{
 		size_t H = 0;
-		CombineString(H, V.mExportName);
-		CombineRef(H, V.mClosestHitShader);
-		CombineRef(H, V.mAnyHitShader);
-		CombineRef(H, V.mIntersectionShader);
-		CombineRef(H, V.mLocalBindingLayout);
-		Combine(H, V.mbProceduralPrimitive);
+		ArdaHashString(H, V.mExportName);
+		HashPipelineRef(H, V.mClosestHitShader);
+		HashPipelineRef(H, V.mAnyHitShader);
+		HashPipelineRef(H, V.mIntersectionShader);
+		HashPipelineRef(H, V.mLocalBindingLayout);
+		ArdaHashCombine(H, V.mbProceduralPrimitive);
 		return H;
 	}
 
 	size_t HashValue(const FArdaRHIRayTracingPipelineDesc& V) noexcept
 	{
 		size_t H = 0;
-		Combine(H, V.mShaders.size());
+		ArdaHashCombine(H, V.mShaders.size());
 		for (const auto& S : V.mShaders)
 		{
-			Combine(H, HashValue(S));
+			ArdaHashCombine(H, HashValue(S));
 		}
-		Combine(H, V.mHitGroups.size());
+		ArdaHashCombine(H, V.mHitGroups.size());
 		for (const auto& G : V.mHitGroups)
 		{
-			Combine(H, HashValue(G));
+			ArdaHashCombine(H, HashValue(G));
 		}
-		CombineRefs(H, V.mGlobalBindingLayouts);
-		Combine(H, V.mMaxPayloadSize);
-		Combine(H, V.mMaxAttributeSize);
-		Combine(H, V.mMaxRecursionDepth);
-		Combine(H, V.mbAllowOpacityMicromaps);
+		HashPipelineRefs(H, V.mGlobalBindingLayouts);
+		ArdaHashCombine(H, V.mMaxPayloadSize);
+		ArdaHashCombine(H, V.mMaxAttributeSize);
+		ArdaHashCombine(H, V.mMaxRecursionDepth);
+		ArdaHashCombine(H, V.mbAllowOpacityMicromaps);
 		return H;
 	}
 

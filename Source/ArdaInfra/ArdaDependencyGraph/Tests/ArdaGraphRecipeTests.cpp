@@ -1,5 +1,5 @@
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include "Inductor/Compiler/ArdaInductorCompilerInternal.h"
-#include "Graph/Node/ArdaDependencyNode.h"
 #include "Graph/Node/ArdaGraphEdit.h"
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
@@ -20,12 +20,12 @@ namespace arda::graph_recipe_tests
 {
 	using namespace arda;
 
-	struct FArdaRecipeCostParameters
-	{
-		uint32_t mCost = 1;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRecipeCostParameters)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCost, 1)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaRecipeCostNode : TArdaGraphicsDependencyNode<FArdaRecipeCostNode, FArdaRecipeCostParameters>
+	struct FArdaRecipeCostNode
+	    : TArdaNodeDefinition<FArdaRecipeCostNode, FArdaRecipeCostParameters, EArdaNodeType::Graphics>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata()
 		{
@@ -64,21 +64,21 @@ namespace arda::graph_recipe_tests
 		{
 			FArdaGraphEdit Edit(Graph);
 			FArdaInductorOptions Options;
-			Options.mRules.mPreprocessRules.push_back(MakeArdaGraphRule<examples::FMinimumNodeCostRule>(Minimum));
+			Options.mRules.mPreprocessRules.push_back(MakeArdaGraphRule<examples::FArdaMinimumNodeCostRule>(Minimum));
 			Edit.SetOptions(Options);
 			RecipeCost(Edit, FArdaRecipeCostParameters{2}, "low");
 			RecipeCost(Edit, FArdaRecipeCostParameters{12}, "high");
 			return Edit.Commit();
 		};
 		ASSERT_TRUE(Record(5));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto& Topology = Graph.GetTopology();
-		EXPECT_EQ(Topology.TryGetNode(Graph.FindNode("low"))->mPayload.mDesc.mEstimatedCost, 5u);
-		EXPECT_EQ(Topology.TryGetNode(Graph.FindNode("high"))->mPayload.mDesc.mEstimatedCost, 12u);
+		EXPECT_EQ(Graph.GetNodeDescription(Graph.FindNode("low")).mEstimatedCost, 5u);
+		EXPECT_EQ(Graph.GetNodeDescription(Graph.FindNode("high")).mEstimatedCost, 12u);
 		// A device-less execution attempt releases the revision for the invalid next construction.
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		ASSERT_TRUE(Record(0));
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 		EXPECT_TRUE(Graph.DiscardPendingEdits());
 	}
 
@@ -91,7 +91,7 @@ namespace arda::graph_recipe_tests
 
 		FArdaDependencyGraph::FArdaImpl State;
 		const auto View = FArdaInductorGraphAccess::View(State);
-		auto Order = examples::FCostFirstReadyPolicy{}.Order(View, Nodes);
+		auto Order = examples::FArdaCostFirstReadyPolicy{}.Order(View, Nodes);
 		ASSERT_TRUE(Order) << Order.mStatus.mMessage.c_str();
 		EXPECT_EQ(Order.mValue, (eastl::vector<uint32_t>{12, 47, 89}));
 	}

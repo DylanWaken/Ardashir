@@ -3,13 +3,13 @@
 
 namespace arda
 {
-	class FArdaPixelSortPresentNode final
-	    : public TArdaGraphicsDependencyNode<FArdaPixelSortPresentNode, FArdaPixelSortPresentParameters>
+	class FArdaPixelSortPresentNode final : public TArdaNodeDefinition<FArdaPixelSortPresentNode,
+	                                            FArdaPixelSortPresentParameters,
+	                                            EArdaNodeType::Graphics>
 	{
 	public:
 		struct FArdaState;
 		static FArdaDependencyNodeMetadata GetMetadata();
-		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
 		static FArdaRHIStatus Validate(const FArdaParameters& Parameters);
 		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device);
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State);

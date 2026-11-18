@@ -32,7 +32,7 @@ namespace arda
 			return mHandle;
 		}
 
-		/** Allows typed values in existing custom-node parameter structs. */
+		/** Supplies the checked logical identity to compiler descriptions and execution lookups. */
 		operator FArdaDependencyResourceHandle() const noexcept
 		{
 			return mHandle;
@@ -47,6 +47,7 @@ namespace arda
 	private:
 		friend class FArdaGraphEdit;
 		friend class FArdaDependencyResourceContext;
+		friend class FArdaGraphArchiveReader;
 
 		explicit TArdaGraphValue(FArdaDependencyResourceHandle Handle)
 		    : mHandle(Handle)

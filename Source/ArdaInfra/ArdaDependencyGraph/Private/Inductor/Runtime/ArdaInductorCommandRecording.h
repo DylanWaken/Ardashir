@@ -41,6 +41,13 @@ namespace arda
 		eastl::vector<FArdaBufferQueueTransfer> mBufferReleases;
 		/** Placed resources whose overlapping heap range becomes active in this pass. */
 		eastl::vector<FArdaAliasingResource> mAliasingResources;
+
+		bool IsEmpty() const noexcept
+		{
+			return mTextures.empty() && mBuffers.empty() && mAccelStructs.empty() && mTextureAcquires.empty() &&
+			    mBufferAcquires.empty() && mTextureReleases.empty() && mBufferReleases.empty() &&
+			    mAliasingResources.empty();
+		}
 	};
 
 	struct FArdaInductorRecordedCommand

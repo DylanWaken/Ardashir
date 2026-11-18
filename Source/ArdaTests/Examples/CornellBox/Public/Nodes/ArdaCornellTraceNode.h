@@ -1,37 +1,74 @@
 #pragma once
+#include "RHI/Shaders/ArdaShaderType.h"
 #include "ArdaCornellNodeParameters.h"
 
 namespace arda
 {
-	/** Parameters owned by one Cornell Trace node instance. */
-	struct FArdaCornellTraceParameters
+#define ARDA_CORNELL_RAY_PARAMETERS()                                                                                  \
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)                                                                \
+		ARDA_SHADER_ACCELERATION_STRUCTURE(mScene, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                     \
+		ARDA_SHADER_BUFFER_SRV(mVertices, 1, 0, arda::EArdaRHIShaderStage::AllRayTracing)                              \
+		ARDA_SHADER_BUFFER_SRV(mIndices, 2, 0, arda::EArdaRHIShaderStage::AllRayTracing)                               \
+		ARDA_SHADER_BUFFER_SRV(mMaterials, 3, 0, arda::EArdaRHIShaderStage::AllRayTracing)                             \
+		ARDA_SHADER_BUFFER_UAV(mSampleRadiance, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                        \
+		ARDA_SHADER_BUFFER_UAV(mSampleGuides, 1, 0, arda::EArdaRHIShaderStage::AllRayTracing)                          \
+		ARDA_SHADER_UNIFORM_BUFFER(mFrame, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                             \
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+
+	class FArdaCornellRayGenerationShader final : public arda::FArdaGlobalShader
 	{
-		/** Input scene top-level acceleration structure. */
-		FArdaDependencyResourceHandle mTlas;
-		/** Input vertex buffer. */
-		FArdaDependencyResourceHandle mVertices;
-		/** Input index buffer. */
-		FArdaDependencyResourceHandle mIndices;
-		/** Input material buffer. */
-		FArdaDependencyResourceHandle mMaterials;
-		/** Output sample radiance buffer; leave empty for graph allocation. */
-		FArdaDependencyResourceHandle mRadiance;
-		/** Input frame constant buffer. */
-		FArdaDependencyResourceHandle mConstants;
-		/** Input bottom-level acceleration structure referenced by the scene. */
-		FArdaDependencyResourceHandle mBlas;
-		/** Ray dispatch width in pixels. */
-		uint32_t mWidth = 1;
-		/** Ray dispatch height in pixels. */
-		uint32_t mHeight = 1;
-		/** Samples traced per pixel in this dispatch. */
-		uint32_t mSamples = 1;
-		/** Scratch memory reserved while recording this node. */
-		uint64_t mWorkspaceBytes = 0;
+	public:
+		ARDA_CORNELL_RAY_PARAMETERS()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaCornellRayGenerationShader);
 	};
 
+	class FArdaCornellMissShader final : public arda::FArdaGlobalShader
+	{
+	public:
+		ARDA_CORNELL_RAY_PARAMETERS()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaCornellMissShader);
+	};
+
+	class FArdaCornellClosestHitShader final : public arda::FArdaGlobalShader
+	{
+	public:
+		ARDA_CORNELL_RAY_PARAMETERS()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaCornellClosestHitShader);
+	};
+
+#undef ARDA_CORNELL_RAY_PARAMETERS
+
+	/** Parameters owned by one Cornell Trace node instance. */
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaCornellTraceParameters)
+		/** Input scene top-level acceleration structure. */
+		ARDA_NODE_SHADER_ACCELERATION_STRUCTURE(mTlas, FArdaCornellRayGenerationShader::FArdaParameters, mScene)
+		/** Input vertex buffer. */
+		ARDA_NODE_SHADER_BUFFER(mVertices, FArdaCornellRayGenerationShader::FArdaParameters, mVertices)
+		/** Input index buffer. */
+		ARDA_NODE_SHADER_BUFFER(mIndices, FArdaCornellRayGenerationShader::FArdaParameters, mIndices)
+		/** Input material buffer. */
+		ARDA_NODE_SHADER_BUFFER(mMaterials, FArdaCornellRayGenerationShader::FArdaParameters, mMaterials)
+		/** Output sample radiance buffer; leave empty for graph allocation. */
+		ARDA_NODE_SHADER_BUFFER(mRadiance, FArdaCornellRayGenerationShader::FArdaParameters, mSampleRadiance)
+		/** Optional first-hit normal/distance and material color, two float4 records per path. */
+		ARDA_NODE_SHADER_BUFFER(mGuides, FArdaCornellRayGenerationShader::FArdaParameters, mSampleGuides)
+		/** Input frame constant buffer. */
+		ARDA_NODE_SHADER_BUFFER(mConstants, FArdaCornellRayGenerationShader::FArdaParameters, mFrame)
+		/** Input bottom-level acceleration structure referenced by the scene. */
+		ARDA_NODE_ACCELERATION_STRUCTURE(mBlas, EArdaDependencyAccess::Read, EArdaRHIResourceState::AccelStructRead)
+		/** Ray dispatch width in pixels. */
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mWidth, 1)
+		/** Ray dispatch height in pixels. */
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mHeight, 1)
+		/** Samples traced per pixel in this dispatch. */
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mSamples, 1)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbWriteGuides, false)
+		/** Scratch memory reserved while recording this node. */
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint64_t, mWorkspaceBytes, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
 	class FArdaCornellTraceNode final
-	    : public TArdaComputeDependencyNode<FArdaCornellTraceNode, FArdaCornellTraceParameters>
+	    : public TArdaNodeDefinition<FArdaCornellTraceNode, FArdaCornellTraceParameters, EArdaNodeType::RayTracing>
 	{
 	public:
 		struct FArdaState;
@@ -39,7 +76,6 @@ namespace arda
 		/** Hardware admission is checked before output declaration or device preparation. */
 		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters& Parameters);
 		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P);
-		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
 		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device);
 
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State);

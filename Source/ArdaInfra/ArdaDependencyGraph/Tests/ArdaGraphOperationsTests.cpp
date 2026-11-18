@@ -1,7 +1,7 @@
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
 #include "Graph/DefaultNodes/ArdaDependencyGraphNodes.h"
 #include "Graph/DefaultNodes/ArdaMemoryNodes.h"
-#include "Graph/Node/ArdaDependencyNode.h"
 #include "ArdaBackend.h"
 #include "RHI/Providers/ArdaBackendProvider.h"
 #include "ArdaTestBackend.h"
@@ -31,15 +31,14 @@ namespace arda::operation_tests
 		return Desc;
 	}
 
-	struct FArdaOperationOutputParameters
-	{
-		FArdaDependencyResourceHandle mOutput;
-		uint32_t mValue = 7;
-		bool mbReject = false;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaOperationOutputParameters)
+		ARDA_NODE_BUFFER(mOutput, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mValue, 7)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbReject, false)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	class FArdaOperationOutputNode final
-	    : public TArdaCopyDependencyNode<FArdaOperationOutputNode, FArdaOperationOutputParameters>
+	    : public TArdaNodeDefinition<FArdaOperationOutputNode, FArdaOperationOutputParameters, EArdaNodeType::Copy>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata()
@@ -67,8 +66,6 @@ namespace arda::operation_tests
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState&)
 		{
 			FArdaDependencyNodeDesc Desc;
-			Desc.mAccesses.push_back(
-			    {Parameters.mOutput, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest});
 			return Desc;
 		}
 
@@ -108,7 +105,7 @@ namespace arda::operation_tests
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		EXPECT_FALSE(Edit.IsOpen());
 		EXPECT_FALSE(Graph.IsEditing());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder, Attached);
 	}
 
@@ -143,7 +140,7 @@ namespace arda::operation_tests
 		Edit.Keep(FirstOutput);
 		Edit.Keep(SecondOutput);
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), 2u);
 	}
 
@@ -257,7 +254,7 @@ namespace arda::operation_tests
 		Edit.Keep(Destination);
 		const auto Compiled = Edit.Commit();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder, Nodes);
 	}
 
@@ -272,10 +269,10 @@ namespace arda::operation_tests
 			Edit.Keep(Committed);
 			ASSERT_TRUE(Edit.Commit());
 		}
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto Revision = Graph.GetCompileResult().mRevision;
 		const auto OriginalOrder = Graph.GetCompileResult().mExecutionOrder;
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		FArdaGraphBuffer Abandoned;
 		{
 			FArdaGraphEdit Edit(Graph);
@@ -316,42 +313,6 @@ namespace arda::operation_tests
 		Upload(Owner, Buffer, eastl::vector<uint8_t>(16, 3));
 		Owner.Keep(Buffer);
 		ASSERT_TRUE(Owner.Commit());
-	}
-
-	TEST(ArdaGraphOperations, FailedCompilationRetainsClosedEditsUntilTheDraftIsDiscarded)
-	{
-		FArdaDependencyGraph Graph;
-		{
-			FArdaGraphEdit Edit(Graph);
-			const auto Buffer = AllocateBuffer(Edit, MakeOperationBufferDesc());
-			Upload(Edit, Buffer, eastl::vector<uint8_t>(16, 19));
-			Edit.Keep(Buffer);
-			ASSERT_TRUE(Edit.Commit());
-		}
-		ASSERT_TRUE(Graph.Compile());
-		const auto Revision = Graph.GetCompileResult().mRevision;
-		const auto Schedule = Graph.GetCompileResult().mExecutionOrder;
-		EXPECT_FALSE(Graph.Execute().mStatus);
-		FArdaGraphBuffer Uninitialized;
-		{
-			FArdaGraphEdit Edit(Graph);
-			Uninitialized = AllocateBuffer(Edit, MakeOperationBufferDesc());
-			ASSERT_TRUE(Readback(Edit, Uninitialized));
-			ASSERT_TRUE(Edit.GetStatus());
-			ASSERT_TRUE(Edit.Commit());
-			EXPECT_FALSE(Graph.Compile());
-			EXPECT_TRUE(Edit.GetStatus());
-			EXPECT_FALSE(Edit.IsOpen());
-			EXPECT_FALSE(Graph.IsEditing());
-		}
-		EXPECT_FALSE(Graph.IsEditing());
-		EXPECT_NE(Graph.FindResource(Uninitialized.GetHandle()), nullptr);
-		EXPECT_EQ(Graph.GetRevisionStats().mPendingEditCount, 1u);
-		ASSERT_TRUE(Graph.DiscardPendingEdits());
-		EXPECT_EQ(Graph.FindResource(Uninitialized.GetHandle()), nullptr);
-		EXPECT_EQ(Graph.GetCompileResult().mRevision, Revision);
-		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder, Schedule);
-		EXPECT_EQ(Graph.GetTopology().GetNodes(), Schedule);
 	}
 
 	TEST(ArdaGraphOperations, ResourceConversionsRejectWrongKindsAndForeignGraphs)
@@ -427,7 +388,7 @@ namespace arda::operation_tests
 		Upload(Edit, Buffer, eastl::vector<uint8_t>(16, 5));
 		Edit.Keep(Buffer);
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto Revision = Graph.GetCompileResult().mRevision;
 		EXPECT_FALSE(Clear(Edit, Buffer));
 		EXPECT_EQ(Edit.GetStatus().mCode, EArdaRHIResult::InvalidState);
@@ -436,44 +397,8 @@ namespace arda::operation_tests
 		EXPECT_FALSE(Graph.IsEditing());
 	}
 
-	class FArdaGraphOperationsGpu : public testing::TestWithParam<const char*>
+	class FArdaGraphOperationsGpu : public FArdaTestBackendFixture
 	{
-	protected:
-		void SetUp() override
-		{
-			ShutdownBackend();
-			if (!FindBackendModule(GetParam()))
-			{
-				GTEST_SKIP() << "Backend not built";
-			}
-			auto Configuration = MakeArdaTestBackendConfiguration();
-			Configuration.mBackendName = GetParam();
-			Configuration.mMessageCallback = &mDiagnostics;
-			ASSERT_TRUE(ConfigureBackend(Configuration)) << GetBackendError().c_str();
-			ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
-			mDevice = GetDevice();
-			ASSERT_TRUE(mDevice);
-		}
-
-		void TearDown() override
-		{
-			const bool bMissingValidation = testing::Test::IsSkipped() && ArdaTestValidationEnabled &&
-			    GetBackendInitializeResult() == EArdaInitializeResult::ValidationUnavailable;
-			if (mDevice)
-			{
-				EXPECT_TRUE(mDevice->WaitForIdle());
-				mDevice->RunGarbageCollection();
-				mDevice.Reset();
-			}
-			ShutdownBackend();
-			if (!bMissingValidation)
-			{
-				EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
-			}
-		}
-
-		FArdaTestDiagnosticCallback mDiagnostics;
-		FArdaRHIDeviceRef mDevice;
 	};
 
 	TEST_P(FArdaGraphOperationsGpu, BufferVariablesCaptureSnapshotsAndPreserveValuesAcrossInPlaceWrites)
@@ -493,14 +418,14 @@ namespace arda::operation_tests
 		SourceBytes.assign(16, 255);
 		const auto Compiled = Edit.Commit();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		ASSERT_TRUE(Cleared);
 		ASSERT_TRUE(Patched);
 		ASSERT_TRUE(Original);
 		for (uint32_t Frame = 0; Frame < 2; ++Frame)
 		{
 			SCOPED_TRACE(Frame);
-			const auto Executed = Graph.Execute();
+			const auto Executed = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 			EXPECT_EQ(*Cleared, eastl::vector<uint8_t>(16, 0));
 			EXPECT_EQ(*Original, Expected);
@@ -546,8 +471,8 @@ namespace arda::operation_tests
 		    FArdaMemoryCopyTextureNode::GetMetadata().mName);
 		const auto Compiled = Edit.Commit();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
-		ASSERT_TRUE(Graph.Compile());
-		const auto Executed = Graph.Execute();
+		ASSERT_TRUE(Graph.CompileAndWait());
+		const auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		ASSERT_TRUE(Bytes);
 		ASSERT_TRUE(Padded);

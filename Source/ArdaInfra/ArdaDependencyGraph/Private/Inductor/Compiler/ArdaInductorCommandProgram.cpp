@@ -306,14 +306,13 @@ namespace arda
 	    EArdaRHIQueueType Queue,
 	    FArdaInductorCommandAccesses Accesses,
 	    FArdaInductorRecordFunction Record,
-	    bool Serial,
 	    bool AtSubmit)
 	{
 		if (mImpl->mbCompiled)
 		{
 			ARDA_CHECK_MSG("Inductor command program is already finalized.");
 		}
-		const auto Handle = mImpl->mPasses.Append(eastl::move(Name), Queue, eastl::move(Record), Serial, AtSubmit);
+		const auto Handle = mImpl->mPasses.Append(eastl::move(Name), Queue, eastl::move(Record), AtSubmit);
 		auto& State = mImpl->mPasses.Get(Handle).GetState();
 		State.mTextureStates = eastl::move(Accesses.mTextures);
 		State.mBufferStates = eastl::move(Accesses.mBuffers);

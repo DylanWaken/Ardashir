@@ -1,4 +1,4 @@
-#include "Graph/Node/ArdaDependencyNode.h"
+#include "ArdaGraphTestNodeTypes.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
 #include "Inductor/Rules/ArdaInductorAdaptiveSchedule.h"
 #include "Graph/Node/ArdaDependencyGraphImpl.h"
@@ -11,15 +11,15 @@ namespace arda::inductor_adaptive_schedule_tests
 	using namespace arda;
 
 	// Parameters define both measured-work identity and optional resource requirements.
-	struct FArdaAdaptiveScheduleParameters
-	{
-		uint32_t mCost = 1;
-		FArdaDependencyResourceHandle mResource;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaAdaptiveScheduleParameters)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCost, 1)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mResource)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	template <EArdaDependencyNodeKind Kind>
-	struct TArdaAdaptiveScheduleFixtureNode
-	    : TArdaDependencyNode<TArdaAdaptiveScheduleFixtureNode<Kind>, FArdaAdaptiveScheduleParameters, Kind>
+	struct TArdaAdaptiveScheduleFixtureNode : TArdaNodeDefinition<TArdaAdaptiveScheduleFixtureNode<Kind>,
+	                                              FArdaAdaptiveScheduleParameters,
+	                                              ArdaTestNodeType(Kind)>
 	{
 		using FArdaParameters = FArdaAdaptiveScheduleParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -89,9 +89,7 @@ namespace arda::inductor_adaptive_schedule_tests
 	void SetMeasuredCost(FArdaDependencyGraph::FArdaImpl& G, FArdaGraphNodeHandle Handle, double Cost)
 	{
 		const auto& Node = G.mTopology.TryGetNode(Handle)->mPayload;
-		G.mCostOverrides[Node.mName] = Cost;
-		G.mCostOverrideKeys[Node.mName] = Node.mCanonicalKey;
-		G.mCostOverrideDefinitions[Node.mName] = Node.mDefinition;
+		G.mCompile.mExecution->mCostOverrides[Node.mName] = {Cost, Node.mCanonicalKey, Node.mDefinition};
 	}
 
 	struct FArdaScheduleFixture
@@ -132,8 +130,9 @@ namespace arda::inductor_adaptive_schedule_tests
 				    ScheduleGraphics(Edit, FArdaAdaptiveScheduleParameters{1}, "prior alias occupant").GetHandle();
 			}
 			EXPECT_TRUE(Edit.Commit());
-			EXPECT_TRUE(Construction.Compile());
+			EXPECT_TRUE(Construction.CompileAndWait());
 			mGraph.mTopology = Construction.GetTopology().CloneSnapshot();
+			mGraph.mCompile.mNodes = Construction.GetCompileResult().mNodes;
 			mIndependent = Independent.GetHandle();
 			mProducer = Producer.GetHandle();
 			mCompute = Compute.GetHandle();
@@ -163,7 +162,7 @@ namespace arda::inductor_adaptive_schedule_tests
 			mPlan.mTotalBytes = mPlan.mOwnedBytes = mPlan.mTransientBytes = 256;
 			mGraph.mCompile.mAllocatedBytes = 256;
 			mGraph.mCompile.mWorkspaceResourceIds[mIndependent.GetIndex()] = 0;
-			mGraph.mTopology.TryGetNode(mIndependent)->mPayload.mDesc.mTransientWorkspaceBytes = 256;
+			mGraph.mCompile.mNodes.at(mIndependent).mDesc.mTransientWorkspaceBytes = 256;
 		}
 	};
 
@@ -297,8 +296,9 @@ namespace arda::inductor_adaptive_schedule_tests
 		ASSERT_TRUE(Edit.Order(GraphicsA, ComputeA));
 		ASSERT_TRUE(Edit.Order(GraphicsB, ComputeB));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Construction.Compile());
+		ASSERT_TRUE(Construction.CompileAndWait());
 		G.mTopology = Construction.GetTopology().CloneSnapshot();
+		G.mCompile.mNodes = Construction.GetCompileResult().mNodes;
 		const auto A = GraphicsA.GetHandle(), B = GraphicsB.GetHandle();
 		const auto C = ComputeA.GetHandle(), D = ComputeB.GetHandle();
 		G.mCompile.mExecutionOrder = {A, C, B, D};
@@ -355,8 +355,9 @@ namespace arda::inductor_adaptive_schedule_tests
 		const auto Second = ScheduleCuda(Edit, FArdaAdaptiveScheduleParameters{1}, "CUDA B");
 		ASSERT_TRUE(Edit.Order(First, Second));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Construction.Compile());
+		ASSERT_TRUE(Construction.CompileAndWait());
 		G.mTopology = Construction.GetTopology().CloneSnapshot();
+		G.mCompile.mNodes = Construction.GetCompileResult().mNodes;
 		const auto A = First.GetHandle(), B = Second.GetHandle();
 		G.mCompile.mExecutionOrder = {A, B};
 		G.mCompile.mQueues = {EArdaRHIQueueType::Graphics, EArdaRHIQueueType::Graphics};
@@ -371,11 +372,61 @@ namespace arda::inductor_adaptive_schedule_tests
 		}
 	}
 
+	TEST(ArdaInductorAdaptiveSchedule, BatchedTelemetryProducesExplicitProportionalCostEstimates)
+	{
+		FArdaScheduleFixture Fixture;
+		auto& Graph = Fixture.mGraph;
+		SetMeasuredCost(Graph, Fixture.mIndependent, 3);
+		FArdaInductorTimingSample Batch;
+		Batch.mNodes = {Fixture.mIndependent, Fixture.mProducer};
+		Batch.mGpuSeconds = 0.04;
+		Batch.mSampleCount = 5;
+		Batch.mLastFrameSequence = 1;
+		FArdaInductorTimingSample Individual = Batch;
+		Individual.mNodes = {Fixture.mCompute};
+		Individual.mGpuSeconds = 0.01;
+		ASSERT_TRUE(ApplyArdaInductorTimingCosts(Graph, {Batch, Individual}, 5));
+		EXPECT_NEAR(GetArdaInductorScheduleNodeCost(Graph, Graph.mTopology.TryGetNode(Fixture.mIndependent)->mPayload),
+		    12.6,
+		    0.00001);
+		EXPECT_NEAR(GetArdaInductorScheduleNodeCost(Graph, Graph.mTopology.TryGetNode(Fixture.mProducer)->mPayload),
+		    4.2,
+		    0.00001);
+		EXPECT_NEAR(GetArdaInductorScheduleNodeCost(Graph, Graph.mTopology.TryGetNode(Fixture.mCompute)->mPayload),
+		    4.2,
+		    0.00001);
+		EXPECT_DOUBLE_EQ(Batch.mGpuSeconds, 0.04); // Raw telemetry is still a measured whole-batch duration.
+		EXPECT_FALSE(ApplyArdaInductorTimingCosts(Graph, {Batch}, 6));
+		Batch.mNodes = {Fixture.mIndependent, Fixture.mIndependent};
+		EXPECT_FALSE(ApplyArdaInductorTimingCosts(Graph, {Batch}, 5));
+	}
+
+	TEST(ArdaInductorAdaptiveSchedule, BatchOnlyProfileCanRequestTimingOptimization)
+	{
+		FArdaScheduleFixture Fixture;
+		auto& Graph = Fixture.mGraph;
+		Graph.mOptions.mbEnableGpuTiming = true;
+		Graph.mCompile.mExecution->mRuntime = eastl::make_unique<FArdaInductorRuntime>();
+		Graph.mCompile.mExecution->mRuntime->mAdaptiveSeed = CloneArdaInductorTimingInputs(Graph);
+		Graph.mCompile.mExecution->mRuntime->mAdaptivePlan = eastl::make_shared<const FArdaMemoryPlan>(Fixture.mPlan);
+		Graph.mCompile.mExecution->mRuntime->mReuseFrames =
+		    eastl::make_shared<const eastl::vector<FArdaInductorReuseFrame>>();
+		Graph.mCompile.mExecution->mTiming->Add("native pipeline batch",
+		    0.02,
+		    {Fixture.mIndependent, Fixture.mProducer},
+		    1,
+		    EArdaRHIQueueType::Graphics,
+		    Graph.mCompile.mExecution->mTiming->GetEpoch());
+		const auto Status = RequestArdaInductorTimingOptimization(Graph, false);
+		EXPECT_TRUE(Status) << Status.mMessage.c_str();
+		CancelArdaInductorTimingOptimization(Graph);
+	}
+
 	TEST(ArdaInductorAdaptiveSchedule, GraphicsStatesPreventAsyncPlacementDespiteEnoughSlack)
 	{
 		FArdaScheduleFixture Fixture(false, true);
 		auto& Graph = Fixture.mGraph;
-		auto& Desc = Graph.mTopology.TryGetNode(Fixture.mCompute)->mPayload.mDesc;
+		auto& Desc = Graph.mCompile.mNodes.at(Fixture.mCompute).mDesc;
 
 		// The branch normally qualifies for async placement; combined shader reads normalize to compute reads.
 		auto Normal = EvaluateArdaInductorFixedSchedule(Graph, Fixture.mPlan, Graph.mCompile.mExecutionOrder, true);

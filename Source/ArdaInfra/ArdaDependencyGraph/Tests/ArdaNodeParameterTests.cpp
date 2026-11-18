@@ -392,20 +392,22 @@ namespace arda::node_parameter_tests
 		const auto& First = Graph.GetTopology().TryGetNode(Structured.GetHandle())->mPayload;
 		const auto& Second = Graph.GetTopology().TryGetNode(Positional.GetHandle())->mPayload;
 		EXPECT_EQ(First.mCanonicalKey, Second.mCanonicalKey);
-		ASSERT_EQ(First.mDesc.mAccesses.size(), 2u);
-		EXPECT_EQ(First.mDesc.mAccesses[0].mResource, Source.GetHandle());
-		EXPECT_EQ(First.mDesc.mAccesses[0].mAccess, EArdaDependencyAccess::Read);
-		EXPECT_EQ(First.mDesc.mAccesses[0].mState, EArdaRHIResourceState::ShaderResource);
-		EXPECT_EQ(First.mDesc.mAccesses[1].mResource, Destination.GetHandle());
-		EXPECT_EQ(First.mDesc.mAccesses[1].mAccess, EArdaDependencyAccess::Write);
-		EXPECT_EQ(First.mDesc.mAccesses[1].mState, EArdaRHIResourceState::UnorderedAccess);
-		FArdaDependencyExecutionContext Context;
-		ASSERT_TRUE(Second.mDefinition->mRecord(Context, Second.mParameters.get()));
-		EXPECT_EQ(FArdaDeclaredComputeNode::mRecordedCount, 7u);
+		ASSERT_EQ(Graph.GetNodeDescription(First.mHandle).mAccesses.size(), 2u);
+		EXPECT_EQ(Graph.GetNodeDescription(First.mHandle).mAccesses[0].mResource, Source.GetHandle());
+		EXPECT_EQ(Graph.GetNodeDescription(First.mHandle).mAccesses[0].mAccess, EArdaDependencyAccess::Read);
+		EXPECT_EQ(Graph.GetNodeDescription(First.mHandle).mAccesses[0].mState, EArdaRHIResourceState::ShaderResource);
+		EXPECT_EQ(Graph.GetNodeDescription(First.mHandle).mAccesses[1].mResource, Destination.GetHandle());
+		EXPECT_EQ(Graph.GetNodeDescription(First.mHandle).mAccesses[1].mAccess, EArdaDependencyAccess::Write);
+		EXPECT_EQ(Graph.GetNodeDescription(First.mHandle).mAccesses[1].mState, EArdaRHIResourceState::UnorderedAccess);
+		const auto Definition = Second.mDefinition;
 		Edit.Keep(Destination);
 		ASSERT_TRUE(Edit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
+		FArdaDependencyExecutionContext Context;
+		ASSERT_TRUE(
+		    Definition->mRecord(Context, Graph.GetCompileResult().mNodes.at(Positional.GetHandle()).mParameters.get()));
+		EXPECT_EQ(FArdaDeclaredComputeNode::mRecordedCount, 7u);
 		EXPECT_EQ(Graph.FindResource(Source)->mBuffer.mUsage, EArdaRHIBufferUsage::ShaderResource);
 		EXPECT_EQ(Graph.FindResource(Destination)->mBuffer.mUsage, EArdaRHIBufferUsage::UnorderedAccess);
 	}
@@ -430,10 +432,12 @@ namespace arda::node_parameter_tests
 		const auto& Resource = Graph.GetTopology().TryGetNode(ChangedResource.GetHandle())->mPayload;
 		EXPECT_NE(Frozen.mCanonicalKey, Count.mCanonicalKey);
 		EXPECT_NE(Count.mCanonicalKey, Resource.mCanonicalKey);
-		ASSERT_EQ(Frozen.mDesc.mAccesses.size(), 2u);
-		EXPECT_EQ(Frozen.mDesc.mAccesses[1].mResource, Original.GetHandle());
+		ASSERT_EQ(Graph.GetNodeDescription(Frozen.mHandle).mAccesses.size(), 2u);
+		EXPECT_EQ(Graph.GetNodeDescription(Frozen.mHandle).mAccesses[1].mResource, Original.GetHandle());
 		FArdaDependencyExecutionContext Context;
-		ASSERT_TRUE(Frozen.mDefinition->mRecord(Context, Frozen.mParameters.get()));
+		const auto Prepared = Frozen.mDefinition->mPrepare(Graph.GetDevice(), Frozen.mSourceParameters);
+		ASSERT_TRUE(Prepared);
+		ASSERT_TRUE(Frozen.mDefinition->mRecord(Context, Prepared.mValue.get()));
 		EXPECT_EQ(FArdaDeclaredComputeNode::mRecordedCount, 11u);
 		EXPECT_EQ(FArdaDeclaredComputeNode::mRecordedDestination, Original.GetHandle());
 	}
@@ -450,7 +454,7 @@ namespace arda::node_parameter_tests
 		ASSERT_TRUE(DeclaredCompute(Edit, Source, Destination));
 		Edit.Keep(Destination);
 		ASSERT_TRUE(Edit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		EXPECT_FALSE(Status);
 		EXPECT_NE(Status.mMessage.find("Explicit usage"), eastl::string::npos);
 	}
@@ -465,7 +469,7 @@ namespace arda::node_parameter_tests
 		ASSERT_TRUE(DeclaredDepthInitialization(Edit, Depth));
 		const auto Operation = DeclaredAttachments(Edit, RGB, Normal, Depth);
 		ASSERT_TRUE(Operation) << Edit.GetStatus().mMessage.c_str();
-		const auto& Description = Graph.GetTopology().TryGetNode(Operation.GetHandle())->mPayload.mDesc;
+		const auto& Description = Graph.GetNodeDescription(Operation.GetHandle());
 		EXPECT_TRUE(Description.mbSideEffect);
 		EXPECT_EQ(Description.mEstimatedCost, 23u);
 		ASSERT_EQ(Description.mColorTargets.size(), 2u);
@@ -476,7 +480,7 @@ namespace arda::node_parameter_tests
 		EXPECT_EQ(Description.mAccesses[2].mAccess, EArdaDependencyAccess::ReadWrite);
 		EXPECT_EQ(Description.mAccesses[2].mState, EArdaRHIResourceState::DepthWrite);
 		ASSERT_TRUE(Edit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		EXPECT_EQ(Graph.FindResource(RGB)->mTexture.mUsage, EArdaRHITextureUsage::RenderTarget);
 		EXPECT_EQ(Graph.FindResource(Normal)->mTexture.mUsage, EArdaRHITextureUsage::RenderTarget);
@@ -532,7 +536,7 @@ namespace arda::node_parameter_tests
 		ASSERT_TRUE(Fragments) << Edit.GetStatus().mMessage.c_str();
 		const auto Pixels = DeclaredPixels(Edit, Fragments, Color);
 		ASSERT_TRUE(Pixels) << Edit.GetStatus().mMessage.c_str();
-		const auto& Description = Graph.GetTopology().TryGetNode(Pixels.GetProducer())->mPayload.mDesc;
+		const auto& Description = Graph.GetNodeDescription(Pixels.GetProducer());
 		EXPECT_EQ(Description.mGraphicsInput.GetProducer(), Fragments.GetProducer());
 		EXPECT_EQ(Description.mGraphicsInput.GetKind(), EArdaGraphStageValueKind::Fragments);
 		ASSERT_EQ(Description.mColorTargets.size(), 1u);
@@ -629,15 +633,15 @@ namespace arda::node_parameter_tests
 			return Edit.Commit();
 		};
 		ASSERT_TRUE(Build(7));
-		ASSERT_TRUE(Graph.Compile());
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		ASSERT_TRUE(Graph.CompileAndWait());
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		ASSERT_TRUE(Build(7));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 1u);
 		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 1u);
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		ASSERT_TRUE(Build(8));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 2u);
 	}
 
@@ -664,10 +668,10 @@ namespace arda::node_parameter_tests
 		const auto& Node = Graph.GetTopology().TryGetNode(Operation.GetHandle())->mPayload;
 		EXPECT_TRUE(bool(Node.mDefinition->mPrepareCuda));
 		EXPECT_FALSE(bool(Node.mDefinition->mRecord));
-		ASSERT_EQ(Node.mDesc.mAccesses.size(), 1u);
-		EXPECT_EQ(Node.mDesc.mAccesses[0].mResource, Destination.GetHandle());
-		EXPECT_EQ(Node.mDesc.mAccesses[0].mAccess, EArdaDependencyAccess::Write);
-		EXPECT_EQ(Node.mDesc.mAccesses[0].mState, EArdaRHIResourceState::UnorderedAccess);
+		ASSERT_EQ(Graph.GetNodeDescription(Node.mHandle).mAccesses.size(), 1u);
+		EXPECT_EQ(Graph.GetNodeDescription(Node.mHandle).mAccesses[0].mResource, Destination.GetHandle());
+		EXPECT_EQ(Graph.GetNodeDescription(Node.mHandle).mAccesses[0].mAccess, EArdaDependencyAccess::Write);
+		EXPECT_EQ(Graph.GetNodeDescription(Node.mHandle).mAccesses[0].mState, EArdaRHIResourceState::UnorderedAccess);
 	}
 
 	TEST(ArdaNodeParameters, MetadataRejectsAmbiguousDepthAndGraphicsStageInputs)
@@ -719,10 +723,11 @@ namespace arda::node_parameter_tests
 		const auto Reversed = DeclaredRayGeneration(Edit, P);
 		ASSERT_TRUE(First && Reversed) << Edit.GetStatus().mMessage.c_str();
 		const auto& Frozen = Graph.GetTopology().TryGetNode(First.GetHandle())->mPayload;
-		ASSERT_EQ(Frozen.mDesc.mRayInputs.size(), 2u);
-		EXPECT_EQ(Frozen.mDesc.mRayInputs[0].GetProducer(), FirstMiss.GetProducer());
-		EXPECT_EQ(Frozen.mDesc.mRayInputs[1].GetProducer(), SecondMiss.GetProducer());
-		EXPECT_EQ(Frozen.mDesc.mRayInputs[0].GetKind(), EArdaGraphStageValueKind::RayShader);
+		ASSERT_EQ(Graph.GetNodeDescription(Frozen.mHandle).mRayInputs.size(), 2u);
+		EXPECT_EQ(Graph.GetNodeDescription(Frozen.mHandle).mRayInputs[0].GetProducer(), FirstMiss.GetProducer());
+		EXPECT_EQ(Graph.GetNodeDescription(Frozen.mHandle).mRayInputs[1].GetProducer(), SecondMiss.GetProducer());
+		EXPECT_EQ(Graph.GetNodeDescription(Frozen.mHandle).mRayInputs[0].GetKind(),
+		    EArdaGraphStageValueKind::RayShader);
 		EXPECT_NE(Frozen.mCanonicalKey, Graph.GetTopology().TryGetNode(Reversed.GetHandle())->mPayload.mCanonicalKey);
 	}
 }

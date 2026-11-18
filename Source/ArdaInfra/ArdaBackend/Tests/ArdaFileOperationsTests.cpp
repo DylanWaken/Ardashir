@@ -30,6 +30,11 @@ namespace
 		const eastl::string Binary("a\0b\xff", 4);
 		const auto Path = mRoot / "binary";
 		ASSERT_TRUE(fileops::AtomicWrite(Path, Binary));
+		eastl::string Limited;
+		ASSERT_EQ(fileops::ReadBinaryFile(Path, Limited, Binary.size()), fileops::EArdaFileReadResult::Success);
+		EXPECT_EQ(Limited, Binary);
+		EXPECT_EQ(fileops::ReadBinaryFile(Path, Limited, Binary.size() - 1), fileops::EArdaFileReadResult::ReadFailed);
+		EXPECT_TRUE(Limited.empty());
 		eastl::vector<uint8_t> Bytes;
 		ASSERT_EQ(fileops::ReadBinaryFile(Path, Bytes), fileops::EArdaFileReadResult::Success);
 		ASSERT_EQ(Bytes.size(), Binary.size());

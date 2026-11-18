@@ -12,7 +12,7 @@ do not include native provider SDKs or private implementation headers.
 
 | Directory | Responsibility |
 | --- | --- |
-| `RHI/Context` | Backend and registry state, resource lifetime tracking, shader compiler/registry/directory state, and CUDA execution contexts. Each context has its own header. Internal process state remains private. |
+| `RHI/Context` | Shared backend and registry state, resource lifetime tracking, shader compiler/registry/directory state, and CUDA execution contexts. State used by one implementation file stays local to that file. Internal process state remains private. |
 | `RHI/Device` | Adapter identity, backend lifecycle, device interface and facade implementation, device diagnostics. |
 | `RHI/Providers` | Backend module, provider device, command list and translated provider object contracts; module registration. |
 | `RHI/Resources` | Abstract resource and reference ownership, buffer/texture/view/sampler/framebuffer/acceleration structure categories and resource creation. |

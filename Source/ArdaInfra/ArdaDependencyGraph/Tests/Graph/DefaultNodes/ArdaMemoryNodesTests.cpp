@@ -148,10 +148,11 @@ namespace arda::memorynodes_tests
 			    ReadbackBuffer,
 			    FArdaMemoryReadbackBufferNode::FArdaParameters{Invalid, Bytes},
 			    "bad readback");
-			ExpectRejectedOperation(Graph,
-			    ClearBuffer,
-			    FArdaMemoryClearBufferNode::FArdaParameters{Invalid, 0},
-			    "bad clear");
+			FArdaGraphEdit InvalidEdit(Graph);
+			const auto InvalidBuffer = InvalidEdit.UseBuffer(Invalid);
+			EXPECT_FALSE(InvalidBuffer);
+			EXPECT_FALSE(ClearBuffer(InvalidEdit, InvalidBuffer, 0u));
+			EXPECT_FALSE(InvalidEdit.Commit());
 		}
 		ExpectRejectedOperation(Graph,
 		    CopyBuffer,
@@ -489,14 +490,14 @@ namespace arda::memorynodes_tests
 		    FArdaMemoryReadbackBufferNode::FArdaParameters{Source, SourceSlice, 4, 8},
 		    "read source slice"));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		for (uint32_t Frame = 0; Frame < 3; ++Frame)
 		{
 			SCOPED_TRACE(Frame);
 			*Readback = {254};
 			*SourceSlice = {253};
-			const auto Submitted = Graph.Submit();
+			const auto Submitted = Graph.SubmitAndWait();
 			ASSERT_TRUE(Submitted) << Submitted.mStatus.mMessage.c_str();
 			ASSERT_TRUE(mDevice->WaitForIdle());
 			EXPECT_EQ(*Readback, (eastl::vector<uint8_t>{254}));
@@ -541,12 +542,12 @@ namespace arda::memorynodes_tests
 		ASSERT_TRUE(
 		    ReadbackBuffer(Edit, FArdaMemoryReadbackBufferNode::FArdaParameters{Destination, Readback}, "read all"));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		for (uint32_t Frame = 0; Frame < 3; ++Frame)
 		{
 			SCOPED_TRACE(Frame);
-			const auto Executed = Graph.Execute();
+			const auto Executed = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 			ASSERT_EQ(Readback->size(), 64u);
 			for (size_t Byte = 0; Byte < Readback->size(); ++Byte)
@@ -570,11 +571,11 @@ namespace arda::memorynodes_tests
 		auto Readback = eastl::make_shared<eastl::vector<uint8_t>>();
 		ASSERT_TRUE(ReadbackBuffer(Edit, FArdaMemoryReadbackBufferNode::FArdaParameters{Buffer, Readback}, "readback"));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		for (uint32_t Frame = 0; Frame < 3; ++Frame)
 		{
-			const auto Executed = Graph.Execute();
+			const auto Executed = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 			ASSERT_EQ(Readback->size(), 64u);
 			for (size_t Byte = 0; Byte < Readback->size(); Byte += sizeof(Value))
@@ -607,9 +608,9 @@ namespace arda::memorynodes_tests
 		        5},
 		    "read initialized range"));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
-		const auto Executed = Graph.Execute();
+		const auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		EXPECT_EQ(*Bytes, (eastl::vector<uint8_t>{2, 3, 4, 5, 6}));
 	}

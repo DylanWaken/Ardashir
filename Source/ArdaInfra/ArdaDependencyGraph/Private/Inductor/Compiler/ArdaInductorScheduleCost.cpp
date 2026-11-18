@@ -4,17 +4,14 @@ namespace arda::inductor_detail
 {
 	double NodeCost(const FArdaDependencyGraph::FArdaImpl& Graph, const FArdaDependencyNode& Node)
 	{
-		if (IsDeclaration(Node))
+		if (IsDeclaration(Graph, Node))
 		{
 			return 0;
 		}
-		const auto Cost = Graph.mCostOverrides.find(Node.mName);
-		const auto Key = Graph.mCostOverrideKeys.find(Node.mName);
-		const auto Definition = Graph.mCostOverrideDefinitions.find(Node.mName);
-		return Cost != Graph.mCostOverrides.end() && Key != Graph.mCostOverrideKeys.end() &&
-		        Definition != Graph.mCostOverrideDefinitions.end() && Definition->second.lock() == Node.mDefinition &&
-		        Key->second == Node.mCanonicalKey
-		    ? Cost->second
-		    : double(Node.mDesc.mEstimatedCost);
+		const auto Cost = Graph.mCompile.mExecution->mCostOverrides.find(Node.mName);
+		return Cost != Graph.mCompile.mExecution->mCostOverrides.end() &&
+		        Cost->second.mDefinition.lock() == Node.mDefinition && Cost->second.mCanonicalKey == Node.mCanonicalKey
+		    ? Cost->second.mCost
+		    : double(Graph.GetNodeDescription(Node).mEstimatedCost);
 	}
 }

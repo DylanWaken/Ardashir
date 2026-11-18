@@ -315,10 +315,10 @@ device.WriteDescriptorTable(table.mValue, textureItem);</code></pre>
 
         <section id="render-graph">
           <h2>Persistent dependency graph integration</h2>
-          <p><a href="../ArdaRDG/ArdaInductor.md"><code>FArdaDependencyGraph</code></a> holds typed nodes and resource values across frames. Register implementations in <code>FArdaNodeRegistry</code>, then author operations only through an <code>FArdaGraphEdit</code> scope.</p>
+          <p><a href="../ArdaRDG/inductor.html"><code>FArdaDependencyGraph</code></a> holds typed nodes and resource values across frames. Register implementations in <code>FArdaNodeRegistry</code>, then author operations only through an <code>FArdaGraphEdit</code> scope.</p>
           <p>ArdaInductor resolves resource and explicit dependencies independently of attachment order, removes dead branches, creates pipelines from stage declarations, coalesces CUDA nodes, assigns queues, and plans reusable physical storage. Its search can optimize execution cost or memory under a configured VRAM budget.</p>
           <p><code>Submit</code> returns a frame ticket; <code>Wait</code> retires that frame and publishes readbacks. <code>Execute</code> combines both. Independent frame slots own transient storage, while imported resources and retained adapter allocations remain shared.</p>
-          <p><code>FArdaDependencyExecutionContext</code> resolves declared resources and compiler-assigned pipeline slots. <code>FArdaGraphExecuteOptions</code> controls parallel recording and state validation. <code>FArdaGraphExecutionResult</code> records accepted submissions, queue waits, state checkpoints, and completion identities. The compile result reports scheduling and memory decisions.</p>
+          <p><code>FArdaDependencyExecutionContext</code> resolves declared resources and compiler-assigned pipeline slots. <code>FArdaGraphExecuteOptions</code> controls resource-state validation. <code>FArdaGraphExecutionResult</code> records accepted submissions, queue waits, state checkpoints, and completion identities. The compile result reports scheduling and memory decisions.</p>
           <p>All graphics, CUDA, copy, and acceleration-structure graph work uses this system. Direct RHI commands remain available for applications managing their own dependencies.</p>
         </section>
 
@@ -382,7 +382,7 @@ device.WriteDescriptorTable(table.mValue, textureItem);</code></pre>
             <li>HDR/display-mode policy, multi-GPU topology, Unreal's render-pass/subpass breadth, multi-draw/count variants, and its full validation/replay ecosystem are not part of the current contract; and</li>
             <li>an adapter can initialize for a limited profile while a real-time RT module is separately rejected. Capability truth is per device and per feature profile.</li>
           </ul>
-          <p>The engineering order and Unreal source references are maintained in <a href="Unreal-RHI-Parity-Plan.md">the Unreal RHI/RDG parity review</a>.</p>
+          <p>The engineering order and Unreal source references are maintained in <a href="unreal-rhi-parity-plan.html">the Unreal RHI/RDG parity review</a>.</p>
         </section>
 
         <section id="testing">
@@ -411,7 +411,7 @@ device.WriteDescriptorTable(table.mValue, textureItem);</code></pre>
             <li><a href="commands.html">Commands</a> &mdash; recording state, hazards, synchronization, and direct/RDG execution.</li>
             <li><a href="shaders.html">Shaders</a> and <a href="pipelines.html">pipeline states</a> &mdash; artifact identity, layouts, PSO compatibility, and caches.</li>
             <li><a href="../ArdaRDG/index.html">ArdaDependencyGraph documentation</a> &mdash; graph concepts, passes, resources, compilation, execution, and debugging.</li>
-            <li><a href="Unreal-RHI-Parity-Plan.md">Unreal RHI/RDG parity review</a> &mdash; audited comparison, implementation status, test contract, and prioritized backlog.</li>
+            <li><a href="unreal-rhi-parity-plan.html">Unreal RHI/RDG parity review</a> &mdash; audited comparison, implementation status, test contract, and prioritized backlog.</li>
             <li><a href="https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html">DirectX Raytracing</a>, <a href="https://microsoft.github.io/DirectX-Specs/d3d/SamplerFeedback.html">Sampler Feedback</a>, and <a href="https://microsoft.github.io/DirectX-Specs/d3d/WorkGraphs.html">Work Graphs</a> &mdash; Microsoft native behavior used by the D3D12 backend.</li>
             <li><a href="https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html">Vulkan specification</a> &mdash; synchronization2, descriptor indexing/heaps, sparse binding, mesh shading, ray tracing, and opacity micromap contracts used by the Vulkan backend.</li>
           </ul>

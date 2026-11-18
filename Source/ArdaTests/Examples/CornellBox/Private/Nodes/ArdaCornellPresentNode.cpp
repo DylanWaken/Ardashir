@@ -1,3 +1,4 @@
+#include "ArdaExampleNodeState.h"
 #include "ArdaCornellBoxPch.h"
 #include "Nodes/ArdaCornellPresentNode.h"
 #include "ArdaCornellNodeInternal.h"
@@ -10,16 +11,6 @@ namespace arda
 	{
 	public:
 		ARDA_DECLARE_GLOBAL_SHADER(FArdaCornellPresentVertexShader);
-	};
-
-	class FArdaCornellPresentPixelShader final : public arda::FArdaGlobalShader
-	{
-	public:
-		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
-			ARDA_SHADER_TEXTURE_SRV(mAccumulation, 0, 0, arda::EArdaRHIShaderStage::Pixel)
-			ARDA_SHADER_UNIFORM_BUFFER(mFrame, 0, 0, arda::EArdaRHIShaderStage::Pixel)
-		ARDA_END_SHADER_PARAMETER_STRUCT()
-		ARDA_DECLARE_GLOBAL_SHADER(FArdaCornellPresentPixelShader);
 	};
 
 	struct FArdaCornellPresentNode::FArdaState
@@ -76,48 +67,16 @@ namespace arda
 		return {"cornell.present", 1};
 	}
 
-	eastl::string FArdaCornellPresentNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		FArdaDependencyKeyBuilder Key;
-		Key.Resource(P.mAccumulation);
-		Key.Resource(P.mConstants);
-		Key.Resource(P.mColor);
-		Key.Value(P.mWidth);
-		Key.Value(P.mHeight);
-		Key.Value(P.mWorkspaceBytes);
-		return Key.Build();
-	}
-
 	TArdaRHIResult<eastl::shared_ptr<const FArdaCornellPresentNode::FArdaState>> FArdaCornellPresentNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
-		if (!Device)
-		{
-			return {{},
-			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This node requires an initialized device.")};
-		}
-
-		auto State = eastl::make_shared<FArdaState>();
-		State->mDevice = eastl::move(Device);
-
-		// Publish prepared state only after all node-owned setup succeeds.
-		auto Status = State->Initialize();
-		if (!Status)
-		{
-			return {{}, eastl::move(Status)};
-		}
-
-		return {eastl::move(State), {}};
+		return PrepareExampleNodeState<FArdaState>(eastl::move(Device));
 	}
 
 	FArdaDependencyNodeDesc FArdaCornellPresentNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
 		D.mWorkspaceBytes = P.mWorkspaceBytes;
-		D.BindShader<FArdaCornellPresentPixelShader::FArdaParameters>(
-		    {{"mAccumulation", P.mAccumulation}, {"mFrame", P.mConstants}});
-		D.mAccesses = {{P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
-		D.mColorTargets = {P.mColor};
 
 		D.mPipelineStages = Prepared.mStages;
 		D.mPipelines = {{"default", 0, EArdaPipelineStateKind::Graphics, {}, Prepared.mConfiguration}};

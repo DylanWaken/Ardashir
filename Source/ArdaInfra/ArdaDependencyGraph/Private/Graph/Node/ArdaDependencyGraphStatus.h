@@ -13,7 +13,7 @@ namespace arda
 	inline FArdaRHIStatus GraphNotEditing()
 	{
 		return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
-		    "Modify the dependency graph only between BeginGraphEdit and EndGraphEdit.");
+		    "Record graph operations only inside an open FArdaGraphEdit scope.");
 	}
 
 	inline FArdaRHIStatus GraphCompiling()

@@ -51,6 +51,8 @@ namespace
 			Configuration.mCudaExecutionMode = GetCudaExecutionMode();
 			Configuration.mMessageCallback = &mDiagnostics;
 			Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+			// Binding diagnostics must not depend on a previous run's driver-specific pipeline cache.
+			Configuration.mPipelineCacheDirectory.clear();
 			ASSERT_TRUE(ConfigureBackend(Configuration));
 			ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 			mDevice = GetDevice();

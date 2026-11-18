@@ -56,15 +56,6 @@ namespace arda
 		return {"recipe.mesh-triangle", 1};
 	}
 
-	eastl::string FArdaMeshTriangleNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		FArdaDependencyKeyBuilder Key;
-		Key.Resource(P.mColor);
-		Key.Value(P.mWidth);
-		Key.Value(P.mHeight);
-		return Key.Build();
-	}
-
 	FArdaRHIStatus FArdaMeshTriangleNode::Validate(const FArdaParameters& P)
 	{
 		if (!P.mWidth || !P.mHeight)
@@ -114,8 +105,6 @@ namespace arda
 	FArdaDependencyNodeDesc FArdaMeshTriangleNode::Describe(const FArdaParameters& P, const FArdaState& State)
 	{
 		FArdaDependencyNodeDesc D;
-		D.mAccesses = {{P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
-		D.mColorTargets = {P.mColor};
 		D.mPipelineStages = State.mStages;
 		D.mPipelines = {{"default", 0, EArdaPipelineStateKind::Meshlet, {}, State.mConfiguration}};
 		return D;

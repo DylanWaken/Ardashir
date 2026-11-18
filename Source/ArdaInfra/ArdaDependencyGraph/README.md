@@ -1,14 +1,278 @@
 # ArdaDependencyGraph
 
-The graph describes resources, nodes and their dependencies. ArdaInductor applies
-an explicit rule program to compile those declarations into a schedule and memory
-plan. Runtime materialization and GPU execution are separate from compilation.
+The graph describes resources, nodes and their dependencies. Preprocessing returns
+a normal transformed graph. ArdaInductor reads that graph and produces a separate
+schedule and memory plan; an executor owns its native resource and frame lifetime.
+
+`Compile()` returns its status on the calling thread. `Submit()` records commands and returns a GPU frame ticket.
+`Wait(ticket)` retires that frame and publishes readbacks. `Execute()` combines submission and retirement.
+The existing `CompileAndWait`, `SubmitAndWait`, and `ExecuteAndWait` names forward to those operations.
+
+## Runtime kernels, tensor ports and model packages
+
+Class-authored operations and imported CUDA kernels use the same registry, graph
+edits, dependency analysis, resource planning and executor. Applications can keep
+using `TArdaNodeDefinition` and named callables. Imported kernels use
+[`FArdaRuntimeNodeDefinition`](Public/Graph/Node/ArdaRuntimeNodeDefinition.h): an
+immutable descriptor supplies PTX/cubin, entry point, target, scalar/buffer ABI and
+declared access modes. Invocation supplies scalar bytes, graph buffer ranges and
+launch dimensions. Registering a library is atomic; repeated registration requires
+identical definitions. No C++ operation class is generated for each model operator.
+
+[`FArdaGraphPackage`](Public/Graph/Node/ArdaGraphPackage.h) loads an `.ardagpu` model
+descriptor containing a reusable subgraph recipe and named typed state slots.
+`LoadStateDict` loads a separate `.ardastate` checkpoint; `Invoke` joins the loaded
+dispatch/fill/copy program into the caller's edit. Weights and graph constants use
+the general `AllocateInitializedBuffer` mechanism, which initializes
+persistent storage once when a new physical allocation is prepared. Model inference
+does not load PyTorch, ONNX Runtime, TensorRT, OIDN or IREE runtime libraries.
+
+For an OIDN package, given an `Input` tensor already produced or bound in this edit:
+
+```cpp
+const auto Descriptor = FArdaGraphPackage::Load("oidn_hdr_small_256.ardagpu");
+if (!Descriptor) return Descriptor.mStatus;
+const auto Package = Descriptor.mValue->LoadStateDict("oidn_hdr_small_256.ardastate");
+if (!Package) return Package.mStatus;
+
+// Graph and Edit are the same ones used by the renderer.
+const auto Model = Package.mValue->Invoke(Edit, {{"noisy_hdr", Input}}, "Denoise");
+if (!Model) return Model.mStatus;
+const auto* Output = Model.mValue.Find("denoised_hdr");
+if (!Output)
+    return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Missing model output.");
+
+// Consume Output with another graph operation, or retain it as a terminal result.
+Edit.Keep(Output->mBuffer);
+if (auto Status = Edit.Commit(); !Status) return Status;
+if (auto Status = Graph.CompileAndWait(); !Status) return Status;
+return Graph.ExecuteAndWait().mStatus;
+```
+
+Inspect the loaded package with `GetTensors()` before binding ports. `mDesc` includes dtype,
+dimensions, element strides and byte origin; `mStorageByteSize` is the full required
+backing allocation. Ports with the same `mBuffer` index are views of the same
+storage. Preserve their relative offsets and allocation identity when supplying
+outputs, or let `Invoke` allocate outputs. A tensor is a view of an ordinary buffer,
+not a separate resource kind; graphics packing, copies and readback use that buffer.
+
+`GetStateSlots()` reflects checkpoint names, types and shapes. Loading validates the
+complete key set, dtype, dimensions and byte counts before returning a new immutable
+instance. `HasStateDict()` must be true before invoking a descriptor with required
+state. Load another checkpoint through the same descriptor and invoke the returned
+instance in the next edit; existing invocations retain their original weights.
+`Invoke` can also author a typed subgraph's body through `Context.GetEdit()`, so model
+operations participate in normal parent-graph preprocessing and scheduling.
+
+### Implemented and remaining scope
+
+| Area | Implemented | Remaining work |
+| --- | --- | --- |
+| Runtime definitions | Immutable ABI-described kernels, atomic registration, driver module loading and shared native modules | More execution providers and a shared code-asset table in graph archives |
+| Tensor metadata | Backend dtype, dimensions, strides and byte offsets; graph views share buffer storage; static dense FP32/FP16/BF16/FP8/INT8/INT32 export | Dynamic dimensions, arbitrary strided exported ports and broader operator coverage |
+| Checkpoints and archives | Separate named state dicts, immutable loaded instances and portable runtime definitions; graph archive v4 reads v2 and v3 | Larger/streamed weight assets and migration tooling |
+| Offline model export | Supported static ONNX lowered to standalone CUDA kernels; pretrained OIDN and NPPD examples | Universal PyTorch/operator coverage, dynamic shapes and data-dependent host control flow |
+| Graphics integration | Cornell rendering, feature packing, CUDA inference and presentation in one graph; temporal state feedback | Moving-camera motion/reprojection in the Cornell demonstration |
+
+The compiler adapter targets one CUDA device and supported dense typed ports with
+fixed dimensions. FP16/BF16/FP8/INT8 export is gated by the requested architecture;
+FP8 conversions currently use compiler-generated bit arithmetic, not guaranteed
+native FP8 acceleration. Backend storage support is independent of arithmetic
+capability. Unsupported operators, host operations and unresolved external
+device calls fail export. This path compiles a supported model offline; it does not
+extract a complete portable kernel program from an arbitrary `torch.compile` model
+or a CUDA Graph capture.
+
+Architecture exports are individual artifacts plus a manifest, not an automatic
+runtime variant selector. Select a compatible package in the application and validate
+it on the deployment GPU. PTX may be JIT-compiled by the installed driver; a declared
+target is not proof of compatibility with every GPU or driver.
+
+Package and graph archive readers currently cap input at 512 MiB. A package stores
+each module once and the CUDA provider shares native modules, but each expanded
+portable runtime definition still carries its code in graph serialization. A saved
+expanded graph can therefore be much larger than its original descriptor. Named
+model state is externalized before compilation and can be replaced without changing
+the descriptor. Topology, static input shapes, dtypes or frozen configuration changes
+require a new export. Legacy version-one packages still load as embedded snapshots.
+
+The installed offline Python package exposes an ONNX-style call:
+`arda.export(model, args=(), f=None, *, kwargs=None, target_archs=("sm_80",), ...)`.
+Actual tensor arguments define shapes and dtypes; nested inputs are flattened and
+scalar configuration is frozen. Each selected target produces its own package.
+`f` is a bundle directory; when omitted, `result.save(directory)` persists the
+temporary result. The default ONNX opset is 22. See [offline installation, export and validation](../../../Tools/ModelExport/README.md)
+and the [Cornell denoising example](../../ArdaTests/Examples/CornellDenoising/README.md).
+
+## Independent preprocessing and execution
+
+`Graph.Preprocess()` and `FArdaPreprocessor::Preprocess(const Graph&)` copy the
+closed source and apply its ordered preprocessing rules. The returned
+`unique_ptr<FArdaDependencyGraph>` has no execution plan. It is marked by
+`IsPreprocessed()`, can be inspected, serialized, or extended through normal edits,
+and retains graph optimizations and culling flags. Editing invalidates the marker.
+The original graph is unchanged even when a rule fails or throws.
+
+`FArdaInductor::Compile(const FArdaDependencyGraph&)` requires a preprocessed graph
+with its external slots bound. It returns `TArdaRHIResult<FArdaInductorCompileResult>`
+without changing the input graph. The plan retains the graph declarations it needs;
+`FArdaGraphExecutor` can own and execute it after the source graphs are destroyed.
+A compile result, including all copies of it, can be claimed by one executor;
+compile again to create an independent execution lifetime. Pass a destination
+`Device` to `Compile(Graph, Device)` for an offline or loaded graph. The one-argument
+overload uses the graph's optional authoring device.
+
+```cpp
+auto Preprocessed = Graph.Preprocess();
+if (!Preprocessed) return Preprocessed.mStatus;
+auto Compiled = FArdaInductor::Compile(*Preprocessed.mValue, Device);
+if (!Compiled) return Compiled.mStatus;
+FArdaGraphExecutor Executor(eastl::move(Compiled.mValue));
+if (!Executor.GetStatus()) return Executor.GetStatus();
+return Executor.Execute().mStatus;
+```
+
+The persistent `Graph.CompileAndWait()` / `Graph.ExecuteAndWait()` facade remains available. It
+coordinates preprocessing, compilation, revision reuse and execution internally.
+Use the standalone calls when storing optimized graphs or owning plans separately.
+
+## Recursive subgraph nodes and archives
+
+`TArdaNodeDefinition<Node, Parameters, EArdaNodeType::Subgraph>` defines a named
+operation whose `Build(FArdaSubgraphContext&, const Parameters&)` hook records its
+body with ordinary graph edits. Invocation retains the interface and frozen
+parameters; `FArdaExpandSubgraphsRule` expands the body recursively as the first
+default preprocessing rule, before stage assembly, dependency analysis, culling
+and scheduling. Custom rule programs may replace or repeat expansion, but must
+leave no unresolved subgraph nodes before compile rules run. Cached revisions
+reuse the expanded result.
+
+Declare the interface through the existing parameter macros and
+`DeclareResources`. In `Build`, use `Context.GetEdit()` to create transient
+resources and invoke operations, including other subgraphs. Request inputs by
+their parameter field names, such as `Context.RequestBufferInput("mSource")`.
+Publish every declared output with `Context.DeclareOutput("Destination", Value)`.
+The value may be the parent's predeclared output, a compatible transient
+created in the body, or a declared readable input passed through to a node-owned
+output; preprocessing unifies storage without a copy. Explicit
+operation and resource names inside the body are scoped to the parent instance.
+Missing outputs, undeclared parent accesses and unbounded recursion fail
+preprocessing while preserving the source construction. Build must derive its
+contents from frozen parameters and declared inputs so cached revisions remain
+valid. Resource and scalar boundary parameters are supported; compose shader
+stage connections entirely inside the body. Expansion is limited to 64 levels.
+
+For example, a subgraph's build hook can copy its declared input through an
+internal transient and publish the result:
+
+```cpp
+static FArdaRHIStatus Build(FArdaSubgraphContext& Context, const FArdaParameters&)
+{
+    auto& Edit = Context.GetEdit();
+    const auto Source = Context.RequestBufferInput("mSource");
+    const auto Result = Clone(Edit, Source);
+    return Context.DeclareOutput("Destination", Result);
+}
+```
+
+The parameter schema declares readable `mSource` and writable output fields;
+`DeclareResources` declares a `Destination` buffer matching the source shape.
+The preprocessor owns this content edit, so the hook returns its status without
+committing or canceling it. See the [subgraph tests](Tests/ArdaSubgraphTests.cpp)
+for complete recursive node definitions.
+
+`ARDA_DECLARE_GRAPH_NODE` automatically registers the named node type without
+preparing device state. The [graph's archive interfaces](Public/Graph/Node/ArdaDependencyGraph.h)
+use that registry to restore public parameter snapshots and connections:
+
+```cpp
+auto Status = Graph.Save("pipeline.ardg");
+if (!Status)
+{
+    return Status;
+}
+auto Loaded = FArdaDependencyGraph::Load("pipeline.ardg", Device);
+if (!Loaded)
+{
+    return Loaded.mStatus;
+}
+return Loaded.mValue->CompileAndWait();
+```
+
+`Graph.Serialize()` and `FArdaDependencyGraph::Deserialize(Data, Device)` provide
+the same format in memory. The existing `FArdaGraphSerialization` service remains
+available and shares the same implementation. Save uses the
+backend's shared atomic-write helper and Load uses its binary-read helper.
+Archives contain resource declarations, registered node type names and versions,
+public parameters, connections, and registered rule options. Preprocessed graphs
+retain their transformed topology and culling annotations. Nested bodies in an
+authored graph expand from their registered implementation during preprocessing.
+Every external import requires a stable nonempty name. Native resources become
+typed placeholders retaining the required descriptor, without saving pointers.
+To author without a device, use `DeclareExternalBuffer(Edit, Expected, Name)`,
+`DeclareExternalTexture`, or `DeclareExternalAccelerationStructure` to record
+an expected shape directly. `BindBuffer`, `BindTexture`, and
+`BindAccelerationStructure` declare the same named slots with existing objects.
+Loading leaves these slots unbound; inspect `Graph.GetExternalResourceSlots(true)`
+and supply compatible device resources through `Graph.BindExternalResource(Name, Resource)`.
+Unbound graphs support preprocessing; compilation reports missing binding names.
+Loading reconstructs declarations without preparing node or device state. A graph
+can remain offline until `FArdaInductor::Compile(*PreprocessedGraph, Device)`
+creates its execution plan for the destination device.
+Unknown types, incompatible versions, malformed connections and fields without a
+portable codec produce explicit errors. Additional value types can implement
+`TArdaGraphCodec`; process addresses and prepared execution state are never persisted.
+
+Graphs retain semantic node descriptions, public parameters, connections and
+culling annotations. Compilation prepares result-owned parameter wrappers, native
+binding layouts and per-draw state in `FArdaInductorCompileResult::mNodes`; schedules,
+allocations, runtime and telemetry belong to that result. `Graph.GetNodeDescription`
+exposes graph semantics before compilation and the accepted execution overlay on
+the persistent facade after compilation.
+
+Opaque external values also need stable names and type names. Declare slots with
+`Graph.DeclareExternalValue<T>(Name, TypeName)` and supply values through
+`Graph.BindExternalValue<T>(Name, Value)`. `GetExternalValueSlots(true)` reports
+unbound values after loading. Built-in rule configuration has portable codecs;
+custom rule implementations register their configuration with
+`RegisterArdaGraphRuleArchive`. Unknown rule codecs fail explicitly rather than
+silently replacing custom programs with defaults.
+
+Name a host readback destination after committing the edit that uses it. The
+application owns the portable type name; keep its meaning stable across processes:
+
+```cpp
+// Destination is the shared byte vector passed to ReadbackBuffer's parameters.
+auto Status = Graph.BindExternalValue("Readback output", Destination, "host.bytes.v1");
+if (!Status) { return Status; }
+Status = Graph.Save("pipeline.ardg");
+if (!Status) { return Status; }
+auto Loaded = FArdaDependencyGraph::Load("pipeline.ardg", Device);
+if (!Loaded) { return Loaded.mStatus; }
+auto NewDestination = eastl::make_shared<eastl::vector<uint8_t>>();
+return Loaded.mValue->BindExternalValue("Readback output", NewDestination);
+```
+
+The same mechanism names raw pointers, retained host objects and externally owned
+shader or pipeline references in public parameters. Loading restores their slot
+names, then binding supplies objects from the new context. Binding checks both
+the C++ parameter type and the portable type name and invalidates cached execution.
+Raw pointers remain borrowed; shared and native references retain their objects.
+
+For values resolved during recording, including callbacks, store a named
+`TArdaGraphExternal<T>` parameter. For example, a parameter field of
+`TArdaGraphExternal<eastl::function<void()>>` can hold `{"On recorded"}`. Bind the
+slot on the closed graph with
+`Graph.BindExternalValue("On recorded", Callback, "callback.recorded.v1")`;
+inside `Record`, call `Context.ResolveExternal(Parameters.mOnRecorded)`, check
+the returned status, and invoke its `mValue`. The archive contains the slot's name
+and type, while each compiled executor retains the binding from its own context.
 
 ## Program with resource variables
 
 Use `FArdaGraphEdit` to record operations on typed buffer and texture variables.
 The scope begins a transaction, each operation adds its registered node and
-resource dependencies, and `Commit()` closes and queues the edit. `Graph.Compile()`
+resource dependencies, and `Commit()` closes and queues the edit. `Graph.CompileAndWait()`
 then selects or compiles a persistent revision. For example, this
 function records a clear followed by a copy into an existing native texture:
 
@@ -21,7 +285,7 @@ arda::FArdaRHIStatus RecordTextureCopy(arda::FArdaDependencyGraph& Graph,
     using namespace arda;
     FArdaGraphEdit Edit(Graph);
     const auto Image = AllocateTexture(Edit, Desc);
-    const auto Output = BindTexture(Edit, NativeOutput);
+    const auto Output = BindTexture(Edit, NativeOutput, "Output");
     Clear(Edit, Image, {0, 0, 0, 1});
     CopyTo(Edit, Image, Output);
     Edit.Keep(Output);
@@ -29,19 +293,20 @@ arda::FArdaRHIStatus RecordTextureCopy(arda::FArdaDependencyGraph& Graph,
     {
         return Status;
     }
-    return Graph.Compile();
+    return Graph.CompileAndWait();
 }
 ```
 
 `Desc` must describe a supported color render target matching `NativeOutput`.
 `AllocateBuffer` / `AllocateTexture` declare graph-owned resources;
-`BindBuffer` / `BindTexture` import existing native resources. Both accept an
-optional diagnostic name after their descriptor or native reference. Allocation
+`BindBuffer` / `BindTexture` import existing native resources and require a stable
+nonempty name for each external slot. Allocations accept an optional diagnostic
+name after the descriptor. Allocation
 accepts `EArdaGraphResourceLifetime::Persistent` as a fourth argument when storage
 must retain contents across executions of that revision. Typed
 `FArdaGraphBuffer` and `FArdaGraphTexture` variables identify resources owned or
 retained by the graph; allocating a variable does not perform GPU work. Call
-`Graph.Execute()` after successful compilation, or submit and wait asynchronously.
+`Graph.ExecuteAndWait()` after successful compilation, or submit and wait asynchronously.
 
 `Clear`, `Upload`, `CopyTo`, `Clone`, and `Readback` compose the default nodes.
 Overloads route the same function name to different nodes according to the
@@ -121,13 +386,13 @@ can simply be omitted next frame; the application does not need to find and
 remove their old nodes. The lifecycle is:
 
 1. Open an edit, record operations, and call `Edit.Commit()`.
-   Each successful close appends an edit hash to the graph's ordered queue.
+   Each successful close appends its canonical key to the graph's ordered queue.
    Multiple edits may contribute resources and operations before compilation.
-2. Call `Graph.Compile()`. It combines the ordered edit hashes into a construction
+2. Call `Graph.CompileAndWait()`. It combines the ordered edit hashes into a construction
    hash and reuses a matching persistent revision, including its compilation
    results and prepared runtime. Otherwise it compiles and caches a new revision.
    Successful compilation clears the queue and locks editing.
-3. Call `Graph.Execute()` or `Graph.Submit()`. Attempting execution unlocks editing.
+3. Call `Graph.ExecuteAndWait()` or `Graph.SubmitAndWait()`. Attempting execution unlocks editing.
    The next ordinary edit begins an empty construction while cached revisions
    remain available. Switching revisions at compilation retires outstanding work
    from the outgoing runtime; reusing the same runtime preserves frame overlap.
@@ -135,11 +400,16 @@ remove their old nodes. The lifecycle is:
 The cache retains up to four revisions by default, so an A/B/A sequence can reuse
 the earlier A revision. Repeating the same edit sequence, resource identities and
 semantic parameters skips compilation. Edit boundaries and order contribute to
-the construction hash. Calling `Execute()` again without recording new edits
+the construction hash. Calling `ExecuteAndWait()` again without recording new edits
 also replays the selected revision.
 
+The graph retains the latest accumulated construction. The queue stores only the
+keys needed to preserve edit identity and order; active editors retain their own
+bases until they close. Committing many edits does not retain a full graph copy
+for every earlier prefix.
+
 To submit an intentionally empty frame, close an empty edit and compile it.
-Calling `Compile()` without recording edits re-stages the selected construction.
+Calling `CompileAndWait()` without recording edits re-stages the selected construction.
 
 Native shader pipeline objects use one graph-wide PSO cache shared by all revisions.
 Each revision retains its own compiled schedule, resource placements and prepared
@@ -150,18 +420,18 @@ different runtime; a revision hit reuses the complete existing runtime as well.
 // Repeat for each frame, using the same Graph and NativeOutput.
 FArdaGraphEdit Edit(Graph);
 const auto Image = AllocateTexture(Edit, Desc);
-const auto Output = BindTexture(Edit, NativeOutput);
+const auto Output = BindTexture(Edit, NativeOutput, "Output");
 Clear(Edit, Image, bHighlight ? FArdaRHIColor{1, 0, 0, 1} : FArdaRHIColor{0, 0, 0, 1});
 CopyTo(Edit, Image, Output);
 Edit.Keep(Output);
 Check(Edit.Commit());
-Check(Graph.Compile());
-Check(Graph.Execute().mStatus);
+Check(Graph.CompileAndWait());
+Check(Graph.ExecuteAndWait().mStatus);
 ```
 
-`Graph.Compile(true)` forces compilation even when a matching revision exists.
+`Graph.CompileAndWait(true)` forces compilation even when a matching revision exists.
 `Graph.InvalidatePersistentCache()` clears reusable cache entries while keeping the
-selected executable valid for replay. The next `Compile()` rebuilds; it can re-stage
+selected executable valid for replay. The next `CompileAndWait()` rebuilds; it can re-stage
 the selected construction without another edit. `SetRevisionCacheCapacity(Count)`
 changes the retained revision limit (at least one). `GetRevisionStats()` exposes cache and compilation
 activity; its persistent revision identity remains stable when background timing optimization
@@ -192,8 +462,8 @@ for (unsigned Frame = 0; Frame != 3; ++Frame)
     Clear(Edit, Buffer, 7);
     ReadbackBuffer(Edit, {Buffer, Bytes});
     Check(Edit.Commit());
-    Check(Graph.Compile());
-    Check(Graph.Execute().mStatus);
+    Check(Graph.CompileAndWait());
+    Check(Graph.ExecuteAndWait().mStatus);
     // Consume *Bytes here, before the next execution can replace its contents.
 }
 ```
@@ -208,8 +478,8 @@ construction to change its structure; cached revisions preserve reusable work.
 
 ## Callable nodes and registration
 
-Every class derived from `TArdaDependencyNode` or its domain specializations
-inherits a call operator. Each public node publishes one named global callable;
+Every class derived from `TArdaNodeDefinition<Node, Parameters, EArdaNodeType::...>`
+inherits a call operator. Parameters must use the node parameter declaration macros. Each public node publishes one named global callable;
 include its header and pass a parameter struct or its fields directly:
 
 ```cpp
@@ -238,8 +508,8 @@ const auto Bytes = Readback(Edit, Copied);
 Calls return `FArdaGraphOperation`. Use `GetBuffer(Slot)` or `GetTexture(Slot)`
 to obtain typed outputs before committing or canceling the edit; their default slot is
 `"Destination"`. `GetHandle()` exposes the node handle for read-only diagnostics. Use
-`Edit.Order(Producer, Consumer)` when an ordering constraint has no resource edge. Typed resources also convert to raw resource handles when filling
-a custom node's parameter struct.
+`Edit.Order(Producer, Consumer)` when an ordering constraint has no resource edge. Keep resource variables typed in custom node parameter schemas; use `GetHandle()`
+only when inspecting their logical identity.
 
 Every invocation creates a fresh operation. Names are generated automatically.
 For an explicit diagnostic name, use the parameter-struct or initializer form
@@ -272,16 +542,16 @@ ARDA_DEFINE_GRAPH_NODE(FArdaMyNode, RunMyOperation);
 
 The invocation name must be unique across the `arda` namespace. The separate
 `GetMetadata().mName` identifies the runtime implementation in the node registry.
-Macros establish one C++ callable object without startup registration; the first
-call registers on demand. Use `FArdaMyNode::Register()` explicitly for discovery
-before invocation. See [registering a graph node](../../../Docs/ArdaRDG/Registering-Nodes.md)
+Declaration registers the named type automatically without device setup;
+definition establishes one C++ callable object. `FArdaMyNode::Register()` remains
+idempotent and reports registration errors explicitly. See [registering a graph node](../../../Docs/ArdaRDG/registering-nodes.html)
 for a complete header, implementation, linking and error-handling walkthrough.
 
 ## Declare node parameters and dependencies together
 
 Use the macros in `Graph/Node/ArdaNodeParameters.h` (also included by
 `Graph/Node/ArdaNodeDefinition.h`) to define aggregate parameters with dependency
-metadata. For example, a pixel node that samples albedo and writes color/depth
+metadata. Plain parameter structs are rejected during node registration. For example, a pixel node that samples albedo and writes color/depth
 declares:
 
 ```cpp
@@ -308,6 +578,9 @@ Declare a read/write UAV once in its shader schema with
 Node `*_ACCESS` overrides can conservatively add UAV access but cannot narrow
 the shader contract. `ARDA_NODE_CUDA_BUFFER` / `ARDA_NODE_CUDA_TEXTURE` similarly
 derive resource kinds and access from an existing CUDA/compute parameter schema.
+Inside `PrepareCuda`, call `ResolveNodeCudaParameters(Context, Parameters, Host)`
+to resolve those exact mappings into the operand's host arguments before appending
+the operation to its sequence.
 `ARDA_NODE_BUFFER` and `ARDA_NODE_TEXTURE` declare non-shader accesses with an
 explicit access direction and RHI state. `ARDA_NODE_PARAMETER` and
 `ARDA_NODE_PARAMETER_WITH_DEFAULT` declare ordinary values.
@@ -327,7 +600,7 @@ resource mappings, conflicting access declarations, and duplicate/out-of-range
 array bindings before device preparation. The canonical shader/CUDA schema is
 the source of required resource access; the graph does not infer hidden accesses
 from shader instructions or arbitrary native pointers. See the [parameter declaration
-guide](../../../Docs/ArdaRDG/Registering-Nodes.md#describe-dependencies-in-parameter-declarations)
+guide](../../../Docs/ArdaRDG/registering-nodes.html#describe-dependencies-in-parameter-declarations)
 for the complete macro list and node examples.
 
 ## Module layout and compilation
@@ -341,41 +614,45 @@ private implementations share the following ownership boundaries:
 | `Graph/Node` | Node definitions, registration, requirements, topology and graph edits. |
 | `Graph/DefaultNodes` | Reusable buffer, texture and acceleration-structure operations. |
 | `Inductor/Config` | Compiler, execution, budgeting and telemetry options. |
-| `Inductor/Rules` | Explicit compiler stages, pipeline inference and ordering policies. |
-| `Inductor/Compiler` | Rule orchestration and immutable schedule/memory-plan results. |
+| `Inductor/Preprocess` | Standalone graph transforms, recursive expansion, dependencies and culling. |
+| `Inductor/Rules` | Shared helpers and compatibility includes for moved rule headers. |
+| `Inductor/Compiler` | Const graph compilation, result rules, scheduling and memory planning. |
 | `Inductor/Runtime` | Resource materialization, shader bindings, command recording, submission and retirement. |
 
 `Edit.Commit()` validates and queues an edit.
-`Graph.Compile()` publishes or reuses a pending plan. It does not allocate
-graph-owned GPU buffers or textures. The first `Submit()` materializes that plan's
-native resources and execution state; subsequent frames reuse them. `Execute()`
+`Graph.CompileAndWait()` publishes or reuses a pending plan. It does not allocate
+graph-owned GPU buffers or textures. The first `SubmitAndWait()` materializes that plan's
+native resources and execution state; subsequent frames reuse them. `ExecuteAndWait()`
 performs submission and waiting. Attachment-time node preparation can still load
 shaders or create node-owned setup objects.
 
 Configure `FArdaInductorOptions::mRules.mPreprocessRules` and `mCompileRules` with
-ordered instances created by `MakeArdaGraphRule<Rule>(configuration...)`. Every
-rule derives from `FArdaGraphRule`, owns its configuration and uses non-static
-`Apply`. Preprocess rules transform a working graph snapshot; compile rules
-transform the current result with a read-only graph view. Public category headers
-under `Inductor/Rules` declare the individual transformations. No stage enum,
-fixed slot list or completion bits control execution.
+ordered instances created by `MakeArdaGraphRule<Rule>(configuration...)`.
+`TArdaGraphPreprocessRule<Derived>` forwards to `Derived::Preprocess(Graph) const`;
+`TArdaGraphCompileRule<Derived>` forwards to `Derived::Compile(Graph, Result) const`.
+Both use `static GetRuleName()` and may own immutable configuration. Their public
+headers and implementations live under `Inductor/Preprocess` and
+`Inductor/Compiler`, respectively; old category includes under `Inductor/Rules`
+forward to those locations.
 
-The default program validates and resolves dependencies, flattens and culls nodes,
-infers pipeline patterns, selects an order, plans memory, assigns queues, batches
-CUDA operations, flattens dispatches and resolves fences. Rules can be omitted or
-repeated while satisfying their data contracts. For example, a configured
-`FArdaMinimizeMemoryRule` only refines node order; `FArdaPlanMemoryRule` separately
-plans that order. Changing order later requires rebuilding downstream products.
-The result retains the accepted allocation plan, per-queue/stream dispatch IDs
-and cross-domain synchronization dependencies for runtime lowering.
+Preprocessing can invoke registered node types and allocate logical resources
+through `Graph.Edit([](FArdaGraphEdit& Edit) { ... })`, remove nodes with
+`Graph.RemoveNode`, or edit topology connections and resource descriptions.
+Callbacks return status; the preprocessor owns their borrowed edit and publication.
+The default rules expand subgraphs, assemble stages, deduce resource usage, validate
+accesses, resolve dependencies, check cycles and mark unreachable nodes culled.
 
-Instances are immutable while retained by graphs or snapshots. Reuse them for
-unchanged settings; replacement and list order affect revision-cache identity.
-Compilation scratch stays local. Failed rules discard the working snapshot, and
-forced recompilation starts from original declarations. Timing-based optimization
-requires every selected rule to explicitly allow adaptive reordering.
-See the [compiler guide](../../../Docs/ArdaRDG/compilation.html#rules) for
-composition, custom policies and failure handling.
+Compilation reads this graph through a const view. Flattening respects the stored
+culling flags; subsequent rules infer pipelines, order nodes, plan memory, assign
+queues, batch work, flatten dispatches and resolve fences. Ordering changes require
+rebuilding downstream products. Compiler rules never publish graph mutations.
+
+Rule instances remain immutable while retained. Reuse instances for unchanged
+settings; replacement and list order affect revision-cache identity. Failures
+discard only the phase's private output. Timing-based optimization requires every
+selected rule to explicitly allow adaptive reordering. See the
+[compiler guide](../../../Docs/ArdaRDG/compilation.html#rules) for examples and
+failure handling.
 
 ## Default node library
 
@@ -467,8 +744,8 @@ eastl::vector<uint8_t> MemoryRoundTrip(arda::FArdaRHIDeviceRef Device)
     const auto Copied = Clone(Edit, Buffer);
     const auto Bytes = Readback(Edit, Copied, 4, 4);
     Check(Edit.Commit());
-    Check(Graph.Compile());
-    Check(Graph.Execute().mStatus);
+    Check(Graph.CompileAndWait());
+    Check(Graph.ExecuteAndWait().mStatus);
     return *Bytes;
 }
 ```
@@ -476,7 +753,7 @@ eastl::vector<uint8_t> MemoryRoundTrip(arda::FArdaRHIDeviceRef Device)
 ## Ownership and execution
 
 Record operations inside `FArdaGraphEdit`, check `Commit()`, then check
-`Graph.Compile()` before executing.
+`Graph.CompileAndWait()` before executing.
 Buffer upload and copy expose their supplied or inferred buffer through the
 `"Destination"` output slot. Texture upload, copy, and clear expose their supplied
 destination through that same slot. The facade returns typed variables directly;
@@ -494,7 +771,7 @@ rejected, even for disjoint ranges, because its native buffer state is shared.
 Texture dependencies cover mip/layer subresources; partial writes preserve
 previously initialized texels outside the selected region.
 
-`Execute()` submits and waits. For asynchronous execution, use `Submit()`, keep
+`ExecuteAndWait()` submits and waits. For asynchronous execution, use `SubmitAndWait()`, keep
 the returned ticket, and check `Graph.Wait(Ticket).mStatus` before consuming the
 readback. Buffer and texture uploads retain their host byte snapshots.
 Readback destinations remain retained through completion and are replaced only
@@ -502,7 +779,7 @@ when the frame succeeds; failed frames clear registered destinations. No extra
 device-idle wait is needed.
 
 Serialize executions that share a readback destination. Do not read or mutate
-that vector while completion may publish, including when `Submit()` recycles a
+that vector while completion may publish, including when `SubmitAndWait()` recycles a
 frame slot. Independent overlapping work should use separate destinations.
 
 Buffer upload and clear destinations require `mCpuAccess == None`. Buffer copy permits
@@ -547,7 +824,7 @@ are recomputed at attachment and should be left at their defaults.
 ### Example: packed texture round trip
 
 This function clears a 2-by-2 RGBA texture, uploads one red pixel, copies the
-texture, and returns 16 packed bytes. The top-right pixel occupies bytes 4–7.
+texture, and returns 16 packed bytes. The top-right pixel occupies bytes 4â€“7.
 
 ```cpp
 #include "ArdaDependencyGraph.h"
@@ -581,8 +858,8 @@ eastl::vector<uint8_t> TextureRoundTrip(arda::FArdaRHIDeviceRef Device)
     CopyTo(Edit, Source, Destination);
     const auto Bytes = Readback(Edit, Destination);
     Check(Edit.Commit());
-    Check(Graph.Compile());
-    Check(Graph.Execute().mStatus);
+    Check(Graph.CompileAndWait());
+    Check(Graph.ExecuteAndWait().mStatus);
     return *Bytes;
 }
 ```
@@ -614,8 +891,8 @@ support.
   The completed-size query can wait for prior GPU work. Keep the source unchanged
   until compaction completes; build or update it in a separate execution.
 
-Bind both objects using `BindAccelerationStructure(Edit, NativeObject)`, then pass
-their variables to `CopyTo(Edit, Source, Destination)` for cloning. Use
+Bind both objects using `BindAccelerationStructure(Edit, NativeObject, Name)`
+with distinct stable nonempty names, then pass their variables to `CopyTo(Edit, Source, Destination)` for cloning. Use
 `CompactAccelerationStructure(Edit, {Source, Destination})`
 for compaction.
 Add consumers of the destination or call `Edit.Keep(Destination)` to retain

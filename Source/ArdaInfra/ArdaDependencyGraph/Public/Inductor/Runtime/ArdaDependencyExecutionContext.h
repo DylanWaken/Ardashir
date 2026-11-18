@@ -14,6 +14,19 @@ namespace arda
 	public:
 		IArdaRHICommandList& GetCommands() const;
 		FArdaRHIDeviceRef GetDevice() const;
+
+		/** Resolve an explicitly declared application-owned value retained by this compiled execution. */
+		template <class T>
+		TArdaRHIResult<T> ResolveExternal(const TArdaGraphExternal<T>& Slot) const
+		{
+			auto Value = ResolveExternalValue(Slot.mName, &ArdaGraphExternalType<T>);
+			if (!Value)
+			{
+				return {{}, Value.mStatus};
+			}
+			return {*eastl::static_pointer_cast<const T>(Value.mValue), {}};
+		}
+
 		FArdaRHIBufferRef GetBuffer(FArdaDependencyResourceHandle Resource) const;
 		FArdaRHIBufferRef GetWorkspaceBuffer() const;
 		uint32_t GetFrameIndex() const;
@@ -63,6 +76,8 @@ namespace arda
 		FArdaGraphNodeHandle GetNode() const;
 
 	private:
+		TArdaRHIResult<eastl::shared_ptr<const void>> ResolveExternalValue(const eastl::string& Name,
+		    const void* Type) const;
 		friend class FArdaInductor;
 		friend class FArdaDependencyGraph;
 		friend struct FArdaInductorRuntime;

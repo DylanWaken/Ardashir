@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CUDA operand implementation record — Ardashir engineering documentation.">
+  <title>CUDA operand implementation record | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick guide</a>
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="gpu-allocator.html">GPU allocator</a>
+        <a href="cuda-interop.html">CUDA operands</a>
+        <a href="cuda-sequences.html">CUDA sequences</a>
+        <a href="cuda-external-calls.html">External CUDA calls</a>
+        <a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+        <a href="validation.html">GPU validation</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaBackend</a>
+      </nav>
+      <article>
+<h1 id="cuda-operand-implementation-record">CUDA operand implementation record</h1>
+<nav class="toc" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ul>
+        <li><a href="#public-contract">Public contract</a></li>
+        <li><a href="#build-and-packaging">Build and packaging</a></li>
+        <li><a href="#native-execution-and-synchronization">Native execution and synchronization</a></li>
+        <li><a href="#dependency-graph-integration">Dependency graph integration</a></li>
+        <li><a href="#qualification-and-limits">Qualification and limits</a></li>
+        <li><a href="#reproduction">Reproduction</a></li>
+      </ul>
+    </nav>
+<section id="objectives"><h2>How to use this guide</h2><p>Distinguish implemented CUDA integration from planned work, and identify the native tests and hardware limits behind each qualification result.</p><p>Start with the <a href="index.html">module overview</a> and follow exact declarations in the <a href="api-reference.html">canonical API reference</a>.</p></section>
+
+<p>The current design is implemented in the native D3D12/Vulkan providers and the RDG adapter. Read <a href="cuda-interop.html">operand authoring</a> for source-backed recipes and <a href="cuda-graphics.html">CUDA in graphics</a> for the general memory/scheduling model.</p>
+<h2 id="public-contract">Public contract</h2>
+<p>An operand dispatch launches exactly one precompiled kernel. Authors implement <code>BindKernelVariants()</code> and <code>SelectKernel()</code> plus a diagnostic name. <code>Dispatch()</code>, <code>DispatchDeferred()</code>, <code>PrepareDispatch()</code> and support validation belong to the framework and cannot be overridden. Algorithms needing several kernels can compose these operands with <code>FArdaCudaSequence</code>, or attach registered CUDA nodes to <code>FArdaDependencyGraph</code> for automatic batching, keeping one stream and one graphics handoff around the whole sequence. See <a href="cuda-sequences.html">CUDA sequences</a> for usage and validation rules.</p>
+<p><code>ARDA_CUDA_PARAMETER_STRUCT</code> generates a host resource/value representation and its plain <code>FArdaCuda</code> argument type from one field list. Node parameter macros <code>ARDA_NODE_CUDA_BUFFER</code> and <code>ARDA_NODE_CUDA_TEXTURE</code> reference the same schema members to derive logical graph accesses and resolve native arguments. Every bound kernel accepts the exact <code>FArdaCuda</code> type by value as its only parameter.</p>
+<p>Schema eligibility, unsupported host values, signatures, native coverage, resource formats/ranges/alignment and ownership are runtime checks with error statuses. Normal C++/CUDA syntax and template rules still apply. Nontrivial values and raw scalar pointers are rejected; authors must not hide host pointers or dependencies inside plain value aggregates.</p>
+<p>Resource conversion means preparing CUDA pointers and arrays/surfaces from declared shared RHI resources. It does not normalize, change color space, swizzle or pack tensors. Such transformations require explicit passes. Buffer views are checked for bounds, element size and alignment; texture views select one mip and all layers of an admitted raw format. Graphics acceleration structures and specialized graphics objects are not CUDA storage handles.</p>
+<p>Each <code>TArdaCudaKernelVariant&lt;Kernel, Payload&gt;</code> has a distinct symbol-specific wrapper type. A registry checks its signature and retains the compiled entry, diagnostic name, payload, requirements and generated build information. Binding is synchronized once per operand and freezes an immutable registry. Selection filters native coverage and execution requirements before consulting the author. The chosen launch plan freezes values and retained resource views; provider recording resolves addresses and checks actual compiled-kernel limits.</p>
+<p>The backend provider interface version is now 12, including allocation-requirements and residency queries, retained CUDA Graph execution, submission completion and queue-qualified timestamp capabilities. The RHI supports explicit sequence recording, and native CUDA dispatch accepts a nonempty ordered batch of compiled kernels and external library calls against one resource binding table. Rebuild external provider modules and consumers against these headers; providers must process every operation in a batch or reject it. <a href="cuda-external-calls.html">External CUDA calls</a> describes cuBLAS/cuDNN adapters and their context-owned handle/plan lifetime. <a href="cuda-texture-buffers.html">CUDA texture buffers</a> describes the explicit GPU copy path for processing graphics textures through linear CUDA pointers, including D3D12 CiG without native surface support.</p>
+<h2 id="build-and-packaging">Build and packaging</h2>
+<p><code>Cmake/ArdaCudaKernels.cmake</code> locates nvcc only during project configuration when <code>ARDASHIR_BUILD_CUDA_KERNELS</code> is enabled. Explicit <code>CMAKE_CUDA_COMPILER</code> or first-configure <code>CUDACXX</code> selects it for Ninja; Visual Studio uses its CUDA toolset. <code>find_package(CUDAToolkit)</code> provides matching libraries/includes. Disabling kernel builds skips compiler discovery; compiling the provider itself still needs CUDA SDK headers.</p>
+<p><code>ardashir_add_cuda_kernels</code> creates separate static targets for finite flag/architecture profiles, generates native coverage and a profile identity, and selects static cudart. Template permutations use C++17 integer sequences; compiler-option permutations use CMake targets/loops. Exported binding functions and generated profile namespaces prevent archive stripping and symbol collisions. <code>DEPENDS</code> adds included project files to the profile fingerprint; normal compiler dependency scanning also handles rebuilds.</p>
+<p>The runtime PTX/module/compiler route is removed completely: no <code>FArdaCudaModule</code>, <code>FArdaCudaCompiler</code>, NVRTC adapter, string entry lookup or provider PTX launch path remains. The helper uses explicit <code>-real</code> native images. Missing architecture coverage returns Unsupported and requires a rebuilt package. Ordinary C++ <code>.h</code> consumers need no CUDA SDK; binding <code>.cu</code> translation units include the nvcc bridge.</p>
+<p>Ship linked native code and required runtime libraries, with a compatible installed NVIDIA driver. End users do not need nvcc or a full CUDA Toolkit. The supplied static-library workflow keeps compiled code loaded for process lifetime; unloadable CUDA plugins require an additional explicit module-lifetime contract.</p>
+<h2 id="native-execution-and-synchronization">Native execution and synchronization</h2>
+<ul>
+<li>D3D12 CiG associates a CUDA context with the graphics queue and captures registered entry launches into the actual D3D12 command list. Streams, entries, mappings and allocations survive until graphics retirement. The current backend allows one captured-but-unsubmitted list per context and rejects replay or capture-order violations.</li>
+<li>Vulkan CiG reserves external compute capacity during Vulkan device creation, creates <code>VK_NV_external_compute_queue</code>, obtains its opaque data and creates a CUDA CiG context using the NV blob. Kernel invocation is a native CUDA stream launch. The prior <code>VK_NV_cuda_kernel_launch</code> module route is removed. Borrowed Vulkan devices have no external-queue reservation contract and cannot use this CiG path.</li>
+<li>Ordinary CUDA uses a context matched by D3D12 LUID/node mask or Vulkan UUID. The bridge pushes/restores its current context on each calling thread; it does not change a process-global device or expose raw streams to operands.</li>
+<li>Both ordinary contexts and Vulkan CiG use GPU synchronization around CUDA segments. D3D12 signals shared fence value 1; CUDA waits 1, launches, then signals 2; graphics waits 2. Vulkan exports a binary Ready/Done semaphore pair and releases/reacquires external queue-family ownership with appropriate image layout/barriers. Successful launches have no per-segment CPU idle wait. Failure cleanup drains partially enqueued CUDA work before releasing resources.</li>
+<li>The final graphics submission fence/timeline joins CUDA completion and determines retirement. Explicit <code>WaitForIdle</code> and host readbacks still wait as their public contracts require. CUDA-containing lists are single-use.</li>
+</ul>
+<p><code>Automatic</code> prefers CiG and falls back to ordinary CUDA when context creation or D3D12 surface qualification fails. <code>GraphicsQueue</code> requires CiG; <code>ContextSwitch</code> forces an ordinary context. Mode selection happens before resource allocation. Capabilities report surface support and layered support independently; allocation can still fail for a particular descriptor.</p>
+<h2 id="dependency-graph-integration">Dependency graph integration</h2>
+<p><code>TArdaNodeDefinition&lt;..., EArdaNodeType::Cuda&gt;</code> uses the common node registration contract. Node parameter macros reference the operand schema, and <code>PrepareCuda</code> resolves those graph values with <code>ResolveNodeCudaParameters</code> before appending the operand to the framework sequence. Prepared state or a declared parameter retains the device-bound operand.
+ArdaInductor derives resource dependencies, coalesces eligible CUDA chains, prepares
+all steps, and retains a native capture cache per frame slot and batch. Single-producer regions resolve independently of attachment order. Regions with multiple writer nodes order overlapping reads and writes by original successful attachment order, using the same resource storage. See the <a href="../ArdaRDG/resources.html#worked-example">repeated-write rules</a>.</p>
+<p>D3D12 CiG batches use ordered graphics-queue capture/submission. Failures can occur
+after earlier work submitted; frame receipts retain accepted submissions until
+completion and failed frames do not publish readbacks. <code>FArdaCudaSequence</code> remains
+the backend&#39;s direct batch API for applications that do not use a dependency graph.</p>
+<h2 id="qualification-and-limits">Qualification and limits</h2>
+<p>Local hardware: Windows, NVIDIA RTX PRO 6000 Blackwell Workstation Edition, compute capability 12.0, driver 610.62, nvcc 13.3.33. The build-only toolkit is local ignored tooling, not an application runtime dependency.</p>
+<p>Native tests verify immediate/deferred shared plans, frozen values, single-use recordings, resource runtime errors, nonzero buffer offsets/guards, kernel/resource lifetime and the coalesced graph result <code>Output[i] = Input[i] + 18</code>. These buffer/RDG tests pass on D3D12 ordinary CUDA, Vulkan ordinary CUDA, D3D12 CiG and Vulkan CiG. Nonzero-mip R32UInt surface tests pass on ordinary D3D12/Vulkan and Vulkan CiG.</p>
+<p>D3D12 CiG surface mapping returns <code>CUDA_ERROR_UNKNOWN</code> on this driver. The provider&#39;s startup probe reports surface unavailability; that test explicitly skips and Automatic selects an ordinary context. Layered Vulkan imports remain excluded because earlier cross-API layer-stride qualification failed; the removal of the former Vulkan native-module route does not carry its old image-matrix qualification forward. This implementation does not claim all 24 raw formats × all dimensions have been requalified through the new compiled entries.</p>
+<p>Host tests cover paired layout metadata, runtime signature/schema rejection, immutable registration, concurrent one-time binding, architecture filtering, permutations and single-kernel launch validation. CUDA-off builds compile the public facade without CUDA headers/compiler. Inspect packaged binaries with <code>cuobjdump --list-elf</code> and <code>--list-ptx</code>; the local tested executable contains native <code>sm_80</code>/<code>sm_120</code> code and no PTX.</p>
+<p>Other architectures, Linux, alternate drivers, arbitrary external CUDA libraries, sampled textures, cooperative/cluster launches, dynamically unloaded kernel libraries and application-owned independent streams are not qualified by these tests. No automatic graphics retry occurs after CUDA recording or partial writes.</p>
+<h2 id="reproduction">Reproduction</h2>
+<p>Use the <a href="cuda-interop.html#nvcc-build">build-time nvcc lookup recipe</a>, then build <code>ArdaBackendTests</code>, <code>ArdaBackendPublicHeaders</code> and <code>ArdaGraphTests</code>. Run the backend executable with <code>--gtest_filter=ArdaCompute*:ArdaCuda*:*FArdaCudaGpu*</code>, followed by the broader backend/RHI/RDG regression suites. Configure another build with CUDA disabled for the SDK-free contract. Native validation must be available; distinguish its explicit capability skips from executed tests.</p>
+<p>Documentation is generated from the Python sources named in <a href="documentation.html">documentation.html</a>. Regenerate inventories/recipes, run <code>validate_docs.py</code>, check responsive and no-JavaScript reading, and use a fresh Docs-only reader before publishing.</p>
+<p>Local validation completed on 2026-09-10:</p>
+<ul>
+<li>CUDA-enabled backend/public-header/RDG targets and CUDA-disabled backend/public-header targets build successfully. After cleanup, the focused CUDA/operand/provider suite passes 31 tests with one D3D12 CiG surface capability skip; the CUDA-disabled suite passes all 12 tests. Regression cases include independent parameter snapshots for two dispatches in one command list, operand destruction before submission, and fast-math opt-in/portable fallback.</li>
+<li>The native-validation RDG regression suite passes all 57 tests. The broader backend run passes 291 tests with 31 explicit skips, and the RHI suite passes all 17 tests. Focused CUDA tests run separately to qualify all four execution modes independently of broader-suite adapter selection.</li>
+<li>The standalone triple-chevron example builds. <code>cuobjdump --list-elf</code> reports native <code>sm_80</code>/<code>sm_120</code> images and <code>--list-ptx</code> reports no PTX. <code>dumpbin /dependents</code> confirms the tested executable has no dynamic CUDA runtime dependency; the NVIDIA driver remains required.</li>
+<li>Configuration probes confirm missing nvcc produces the build-time diagnostic and <code>80-virtual</code> is rejected. Namespace and opaque-RHI boundary checks pass with <code>ARDASHIR_SOURCE_DIR</code> set to the repository&#39;s <code>Source</code> directory; <code>git diff --check</code> passes.</li>
+<li>API inventory and recipe <code>--check</code> commands pass. <code>validate_docs.py</code> checks 34 HTML pages, 52 SVGs and the complete public inventories with zero errors. Twenty browser scenarios cover both CUDA chapters and the affected RDG guides at desktop/tablet/mobile/zoom-equivalent widths, local subpath hosting without external network access, no-JavaScript CUDA reading, keyboard navigation, glossary focus and API search.</li>
+<li>A fresh isolated Docs-only reader passes the sampled authoring, runtime, build/deployment, graphics synchronization, RDG failure and worked-example tasks, with 402 local page/fragment/image references resolving successfully.</li>
+</ul>
+<p>Cleanup consolidates device admission and candidate filtering into one preparation path, resolves native parameter patches once during recording, and retains only the compiled entry, launch configuration and patched values. The single-use validation template/header, unused device argument to metadata <code>Prepare</code>, unnecessary device-header dependency, redundant single-kernel loops and unreferenced context-switch diagram are removed. Resource eligibility checks at the host, RHI and native boundaries remain necessary for callers entering at those different layers.</p>
+<section id="summary"><h2>Review and next steps</h2><p>CUDA admission, shared-resource lifetime and replay must be verified for the selected backend and execution mode; a capability skip is not a passing workload.</p><p>Continue with the <a href="index.html">module guides</a> and <a href="api-reference.html">API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend · Ardashir engineering documentation</p></footer>
+</body>
+</html>

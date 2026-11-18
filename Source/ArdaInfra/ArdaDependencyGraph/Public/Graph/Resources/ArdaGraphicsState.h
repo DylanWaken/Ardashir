@@ -79,6 +79,7 @@ namespace arda
 
 	private:
 		friend class FArdaGraphOperation;
+		friend class FArdaGraphArchiveReader;
 
 		explicit TArdaGraphStageValue(FArdaGraphNodeHandle Producer)
 		    : FArdaGraphStageValue(Producer, Kind)
@@ -96,6 +97,20 @@ namespace arda
 	using FArdaGraphPixels = TArdaGraphStageValue<EArdaGraphStageValueKind::Pixels>;
 	using FArdaGraphControlPoints = TArdaGraphStageValue<EArdaGraphStageValueKind::ControlPoints>;
 	using FArdaGraphMeshPayload = TArdaGraphStageValue<EArdaGraphStageValueKind::MeshPayload>;
+
+	/** Explicit semantic permission for automatic instancing of a graphics stage.
+	 * ContiguousInstances promises ConfigureGraphics only fills Work, without recording commands,
+	 * changing external or instance state, or relying on a draw boundary. Shader behavior must be
+	 * invariant when adjacent instance ranges become one draw, including instance-ID addressing.
+	 * D3D SV_InstanceID is relative to each draw; it alone cannot index a globally based instance table.
+	 * Prefer per-instance vertex inputs or another explicitly base-aware, merge-invariant shader contract.
+	 * Every stage in a traditional draw must opt in. Geometry, bindings and ranges are still checked.
+	 */
+	enum class EArdaGraphicsInstancing : uint8_t
+	{
+		Disabled,
+		ContiguousInstances
+	};
 
 	/** Dynamic inputs collected from stage hooks for one compiler-generated native draw.
 	 * ConfigureGraphics hooks may configure state and record setup, but must not submit or issue the draw.

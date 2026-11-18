@@ -113,6 +113,16 @@ namespace arda
 		return {};
 	}
 
+	FArdaRHIStatus ValidateArdaNodeTensorParameter(const FArdaGraphTensor& Tensor,
+	    const FArdaNodeParameterMember& Member)
+	{
+		if (!Tensor.mBuffer || Member.mAccess > EArdaDependencyAccess::ReadWrite)
+		{
+			return MappingError(Member, "tensor fields require a buffer and an explicit read/write access.");
+		}
+		return ValidateArdaRHITensorDesc(Tensor.mDesc, UINT64_MAX, Member.mAccess != EArdaDependencyAccess::Read);
+	}
+
 	EArdaDependencyAccess GetArdaNodeShaderParameterAccess(const FArdaNodeParameterMember& Member)
 	{
 		if (Member.mAccess != EArdaDependencyAccess::AutoDeduction)

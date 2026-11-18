@@ -33,7 +33,9 @@ namespace arda
 		RayClosestHit,
 		RayAnyHit,
 		RayIntersection,
-		RayCallable
+		RayCallable,
+		/** Deferred graph content, authored by Build(FArdaSubgraphContext&, const Parameters&). */
+		Subgraph
 	};
 
 	template <EArdaNodeType Type>
@@ -44,7 +46,7 @@ namespace arda
 	struct TArdaNodeDefinitionTraits<EArdaNodeType::Type>                                                              \
 	{                                                                                                                  \
 		template <class Node, class Parameters>                                                                        \
-		using FArdaBase = TArdaDependencyNode<Node, Parameters, EArdaDependencyNodeKind::Domain>;                      \
+		using FArdaBase = node_detail::TArdaExecutionNode<Node, Parameters, EArdaDependencyNodeKind::Domain>;          \
 	}
 	ARDA_NODE_DEFINITION_DOMAIN(Compute, Compute);
 	ARDA_NODE_DEFINITION_DOMAIN(Cuda, Cuda);
@@ -54,6 +56,7 @@ namespace arda
 	ARDA_NODE_DEFINITION_DOMAIN(Meshlet, Graphics);
 	ARDA_NODE_DEFINITION_DOMAIN(RayTracing, Compute);
 	ARDA_NODE_DEFINITION_DOMAIN(WorkGraph, Compute);
+	ARDA_NODE_DEFINITION_DOMAIN(Subgraph, Synchronization);
 #undef ARDA_NODE_DEFINITION_DOMAIN
 
 #define ARDA_NODE_DEFINITION_GRAPHICS(Stage)                                                                           \
@@ -61,7 +64,7 @@ namespace arda
 	struct TArdaNodeDefinitionTraits<EArdaNodeType::Stage>                                                             \
 	{                                                                                                                  \
 		template <class Node, class Parameters>                                                                        \
-		using FArdaBase = TArdaGraphicsStageNode<Node, Parameters, EArdaGraphicsStage::Stage>;                         \
+		using FArdaBase = node_detail::TArdaGraphicsStageDefinition<Node, Parameters, EArdaGraphicsStage::Stage>;      \
 	}
 	ARDA_NODE_DEFINITION_GRAPHICS(Vertex);
 	ARDA_NODE_DEFINITION_GRAPHICS(Hull);
@@ -78,7 +81,7 @@ namespace arda
 	struct TArdaNodeDefinitionTraits<EArdaNodeType::Type>                                                              \
 	{                                                                                                                  \
 		template <class Node, class Parameters>                                                                        \
-		using FArdaBase = TArdaRayTracingStageNode<Node, Parameters, EArdaRHIShaderStage::Stage>;                      \
+		using FArdaBase = node_detail::TArdaRayStageDefinition<Node, Parameters, EArdaRHIShaderStage::Stage>;          \
 	}
 	ARDA_NODE_DEFINITION_RAY(RayGeneration, RayGeneration);
 	ARDA_NODE_DEFINITION_RAY(RayMiss, Miss);
@@ -101,6 +104,8 @@ namespace arda
 	{
 	public:
 		static constexpr EArdaNodeType mNodeType = Type;
+		/** Subgraphs expand during compilation and have no execution callback of their own. */
+		static constexpr bool mbSubgraph = Type == EArdaNodeType::Subgraph;
 
 		static void AddIntrinsicRequirements(FArdaDependencyNodeRequirements& Requirements)
 		{

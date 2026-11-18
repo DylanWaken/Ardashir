@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Backend documentation — Ardashir engineering documentation.">
+  <title>Backend documentation | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick guide</a>
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="gpu-allocator.html">GPU allocator</a>
+        <a href="cuda-interop.html">CUDA operands</a>
+        <a href="cuda-sequences.html">CUDA sequences</a>
+        <a href="cuda-external-calls.html">External CUDA calls</a>
+        <a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+        <a href="validation.html">GPU validation</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaBackend</a>
+      </nav>
+      <article>
+<h1 id="backend-documentation">Backend documentation</h1>
+<nav class="toc" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ul>
+        <li><a href="#keeping-the-docs-synchronized">Keeping the docs synchronized</a></li>
+      </ul>
+    </nav>
+<section id="objectives"><h2>How to use this guide</h2><p>Find the appropriate module guide and keep authored pages, compiled examples and the canonical API inventory synchronized.</p><p>Start with the <a href="index.html">module overview</a> and follow exact declarations in the <a href="api-reference.html">canonical API reference</a>.</p></section>
+
+<p>Start at <a href="index.html">the overview</a>. The backend guides include:</p>
+<ul>
+<li><a href="resource-recipes.html">Resource recipes</a>: every RHI resource kind, allocation and ownership, with usage examples.</li>
+<li><a href="gpu-allocator.html">GPU allocator</a>: device-wide heap and resource reuse, submission leases, retention controls, diagnostics, and the backend memory planner.</li>
+<li><a href="capability-recipes.html">Capability recipes</a>: every predicate in the native capability conformance matrix, its guard and executable workload.</li>
+<li><a href="cuda-graphics.html">How CUDA works with graphics</a>: general concepts, shared memory, graphics/CUDA handoffs, execution modes, lifetime and performance.</li>
+<li><a href="cuda-interop.html#launch-methods">CUDA operands and both launch methods</a>: precompiled typed variants, registered and triple-chevron launches, runtime validation, RDG scheduling and submission lifetime.</li>
+<li><a href="validation.html">GPU validation setup</a>: local provisioning, discovery, unavailable-layer skips and failure diagnosis.</li>
+<li><a href="commands.html#command-admission">Command validation</a>, <a href="rhi.html#native-admission">native resource admission and sparse retirement</a>, and <a href="diagnostics.html#fault-snapshots">bounded GPU fault snapshots</a>: implemented audit contracts and failure handling.</li>
+<li><a href="unreal-rhi-audit.html">Unreal RHI audit</a>: current defect ledger, lifetime fixes, missing features and implementation/defer decisions against local Unreal 5.8.1.</li>
+<li><a href="gpu-examples.html">Complete examples</a>: compiled test helpers, shared fixtures, HLSL and artifact registrations.</li>
+<li><a href="api-reference.html">Canonical API reference</a>: exact symbols and contracts, readable without JavaScript; JavaScript adds search and filtering.</li>
+</ul>
+<h2 id="keeping-the-docs-synchronized">Keeping the docs synchronized</h2>
+<p>Public header comments own the CUDA and operand contracts. Explicit ownership, errors and threading comments also replace older authored API boilerplate while preserving canonical anchors. Edit these contracts in the header, then regenerate; do not edit the generated HTML or generated blocks in API data.</p>
+<p><code>Skills/document-codebase/scripts/backend_recipes.py</code> owns recipe explanations and selects literal code excerpts from compiled tests. It reads resource kinds from <code>ArdaRHIResource.h</code> and capability predicates from <code>ArdaExtendedRHIParityTests.cpp</code>, failing if any kind or predicate lacks coverage. <code>recipe-coverage.json</code> is a generated audit artifact.</p>
+<p>The generator imports <code>cuda_recipes.py</code> and <code>cuda_build.py</code> for the operand/build/deployment guide and <code>cuda_graphics.py</code> for the general CUDA/graphics chapter. Edit those sources and regenerate their HTML. <code>Examples/ArdaCudaDirectLaunch.cu</code> is a documentation-only CUDA host helper embedded literally in the operand guide; it requires application-owned CUDA mappings and a stream and is not an implemented RHI adapter or backend GPU test. Its standalone <code>Examples/CMakeLists.txt</code> demonstrates build-time CUDA compiler discovery. See <a href="cuda-interop.html#nvcc-build">nvcc lookup</a> and <a href="cuda-interop.html#runtime-deployment">runtime packaging</a>: users of a packaged application do not need nvcc installed.</p>
+<p>Run from the repository root with Python 3.10+ and Node.js on PATH:</p>
+<pre><code class="language-sh">python Skills/document-codebase/scripts/sync_api_inventories.py
+python Skills/document-codebase/scripts/backend_recipes.py
+python Skills/document-codebase/scripts/sync_api_inventories.py --check
+python Skills/document-codebase/scripts/backend_recipes.py --check
+python Skills/document-codebase/scripts/validate_docs.py --verbose
+</code></pre>
+<p>Serve the repository with <code>python -m http.server 8873 --bind 127.0.0.1</code> and open <code>http://127.0.0.1:8873/Docs/ArdaBackend/</code> to check subpath hosting. Check mobile/desktop reflow, keyboard navigation, glossary focus, API search and JavaScript-disabled reading after layout changes. Source-backed examples still need native GPU tests; a skipped capability is not an executed test. See the validation guide before interpreting GPU results.</p>
+<section id="summary"><h2>Review and next steps</h2><p>Edit authored HTML or the generator that owns an output, then run source inventory, excerpt and static-site checks before publishing.</p><p>Continue with the <a href="index.html">module guides</a> and <a href="api-reference.html">API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend · Ardashir engineering documentation</p></footer>
+</body>
+</html>

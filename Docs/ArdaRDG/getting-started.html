@@ -33,6 +33,7 @@
         <a href="architecture.html">Architecture</a>
         <a href="resources.html">Resources</a>
         <a href="passes.html">Typed nodes</a>
+        <a href="batching.html">Batching and parallel edits</a>
         <a href="compilation.html">Compilation</a>
         <a href="execution.html">Execution</a>
         <a href="debugging.html">Debugging</a>
@@ -49,7 +50,7 @@
 <header class="page-header"><p class="eyebrow">Persistent dependency graphs</p><h1>Getting started</h1><p>Create one persistent graph and replay its compiled program.</p></header>
 <nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">Learning objectives</a><a href="#prerequisites">Libraries and headers</a><a href="#minimal-example">Clear and read back three frames</a><a href="#dependencies">Automatic dependencies</a><a href="#lifecycle">Change semantics through edits</a><a href="#validation">Check every result</a><a href="#summary">Chapter summary</a></nav>
 <section id="objectives"><h2>Learning objectives</h2><p>Build and execute a minimal clear/readback graph, explain automatic dependencies and handle failed edits.</p></section>
-<section id="prerequisites"><h2>Libraries and headers</h2><p>Initialize a native <code>FArdaRHIDeviceRef</code>, link <code>Ardashir::ArdaDependencyGraph</code>, and include <code>ArdaDependencyGraph.h</code>. The registry automatically installs upload, buffer-copy, clear, readback and synchronization definitions. CUDA adapters are in <code>ArdaDependencyGraphCuda.h</code>.</p></section>
+<section id="prerequisites"><h2>Libraries and headers</h2><p>Initialize a native <code>FArdaRHIDeviceRef</code>, link <code>Ardashir::ArdaDependencyGraph</code>, and include <code>ArdaDependencyGraph.h</code>. The registry automatically installs upload, buffer-copy, clear, readback and synchronization definitions. CUDA nodes use <code>TArdaNodeDefinition</code>, schema-backed <code>ARDA_NODE_CUDA_BUFFER</code>/<code>ARDA_NODE_CUDA_TEXTURE</code> fields and <code>ResolveNodeCudaParameters</code>, all available through the umbrella header.</p></section>
 <section id="minimal-example"><h2>Clear and read back three frames</h2><pre><code class="language-cpp">#include &quot;ArdaDependencyGraph.h&quot;
 using namespace arda;
 FArdaRHIStatus Run(FArdaRHIDeviceRef Device)
@@ -63,10 +64,10 @@ FArdaRHIStatus Run(FArdaRHIDeviceRef Device)
     Clear(Edit, Output, 7);
     const auto Bytes = Readback(Edit, Output);
     if (auto S = Edit.Commit(); !S) return S;
-    if (auto S = Graph.Compile(); !S) return S;
+    if (auto S = Graph.CompileAndWait(); !S) return S;
     for (unsigned Frame = 0; Frame != 3; ++Frame)
     {
-        auto Result = Graph.Execute();
+        auto Result = Graph.ExecuteAndWait();
         if (!Result.mStatus) return Result.mStatus;
         // Bytes holds 64 uint32_t values, each equal to 7.
     }
@@ -84,10 +85,10 @@ ClearNode(Edit,
         P.mValue = 42;
     }, &quot;clear second&quot;);</code></pre><p>The callback runs synchronously once before validation or preparation and may return <code>FArdaRHIStatus</code>. Do not retain its temporary reference or edit the graph inside it. Each invocation creates a new operation; optional names are diagnostic and must be unique. Resolve node-owned outputs through <code>GetBuffer(Slot)</code> or <code>GetTexture(Slot)</code> before closing the edit. One <code>Edit.Commit()</code> reports the first authoring error and queues only successful work.</p></section>
 <section id="dependencies"><h2>Automatic dependencies</h2><p>Readback consumes the value produced by clear, so compilation orders clear first and retains its producer. Use <code>Edit.Keep(Resource)</code> for an owned output without another observable consumer. Resource types select operation overloads: <code>CopyTo</code> supports buffer-to-buffer, texture-to-texture and both mixed transfer directions. For a dependency that has no resource access, use <code>Edit.Order(ProducerOperation, ConsumerOperation)</code>.</p></section>
-<section id="lifecycle"><h2>Change semantics through edits</h2><p>After execution, record the next frame in a new edit on the same graph. Its construction starts empty; omit unwanted operations without removing their old nodes. Close each edit, then call <code>Compile()</code>. Matching ordered constructions reuse a persistent revision. Successful compilation locks edits until execution is attempted. A failed compilation retains queued edits for a correction edit or <code>DiscardPendingEdits()</code>.</p></section>
+<section id="lifecycle"><h2>Change semantics through edits</h2><p>After execution, record the next frame in a new edit on the same graph. Its construction starts empty; omit unwanted operations without removing their old nodes. Close each edit, then call <code>CompileAndWait()</code>. Matching ordered constructions reuse a persistent revision. Successful compilation locks edits until execution is attempted. A failed compilation retains queued edits for a correction edit or <code>DiscardPendingEdits()</code>.</p></section>
 <section id="validation"><h2>Check every result</h2><p>Invalid handles, uncovered reads, contradictory dependencies, cycles and ambiguous pipelines fail compilation. For repeated writes to an overlapping region, attach writers and intervening readers in their intended order; <a href="resources.html#worked-example">the resource example</a> shows which contents each read observes. Regions with one producer still allow readers to be attached first. Native recording, submission and completion failures propagate through execution status. GPU work already accepted by a queue cannot be rolled back.</p></section>
 <section id="summary"><h2>Chapter summary</h2><p>Readback makes the clear output observable; a closed edit followed by successful compilation selects the plan reused by all three executions.</p></section>
-<section id="source-guide"><h2>Source and API</h2><p>Read the <a href="ArdaInductor.md">developer guide</a>, <a href="ArdaInductor-Pipelines.md">pipeline guide</a>, <a href="api-reference.html">public API reference</a> and <a href="api-reference.html">graph declarations</a>.</p></section>
+<section id="source-guide"><h2>Source and API</h2><p>Read the <a href="inductor.html">developer guide</a>, <a href="inductor-pipelines.html">pipeline guide</a>, <a href="api-reference.html">public API reference</a> and <a href="api-reference.html">graph declarations</a>.</p></section>
 <!-- Stable destinations for existing chapter links. -->
 <span id="builder" aria-hidden="true"></span><span id="checklist" aria-hidden="true"></span><span id="cleanup" aria-hidden="true"></span><span id="compile-execute" aria-hidden="true"></span><span id="failures" aria-hidden="true"></span><span id="include-context" aria-hidden="true"></span><span id="mental-model" aria-hidden="true"></span><span id="outputs" aria-hidden="true"></span><span id="passes" aria-hidden="true"></span><span id="performance" aria-hidden="true"></span><span id="worked-example" aria-hidden="true"></span>
 </article>

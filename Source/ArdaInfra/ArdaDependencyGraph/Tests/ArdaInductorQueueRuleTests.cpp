@@ -1,3 +1,4 @@
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include "ArdaDependencyGraph.h"
 #include <gtest/gtest.h>
 
@@ -5,12 +6,11 @@ namespace arda::queue_rule_tests
 {
 	using namespace arda;
 
-	struct FArdaQueueRuleParameters
-	{
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaQueueRuleParameters)
 
-	struct FArdaQueueRuleNode
-	    : TArdaDependencyNode<FArdaQueueRuleNode, FArdaQueueRuleParameters, EArdaDependencyNodeKind::Copy>
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	struct FArdaQueueRuleNode : TArdaNodeDefinition<FArdaQueueRuleNode, FArdaQueueRuleParameters, EArdaNodeType::Copy>
 	{
 		using FArdaParameters = FArdaQueueRuleParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -130,7 +130,7 @@ namespace arda::queue_rule_tests
 		ASSERT_TRUE(Edit.SetOptions(QueueOptions(EArdaQueuePolicyResult::Graphics, &Invocations)));
 		ASSERT_TRUE(QueueRuleOperation(Edit, {}, "copy"));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_GT(Invocations, 1u);
 		EXPECT_EQ(Graph.GetCompileResult().mQueues, (eastl::vector<EArdaRHIQueueType>{EArdaRHIQueueType::Graphics}));
 		EXPECT_GT(Graph.GetCompileResult().mSchedulesExamined, 0u);
@@ -143,10 +143,10 @@ namespace arda::queue_rule_tests
 		FArdaGraphEdit Initial(Graph);
 		ASSERT_TRUE(QueueRuleOperation(Initial, {}, "copy"));
 		ASSERT_TRUE(Initial.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto Before = Graph.GetCompileResult();
 		// A device-less execution attempt releases the compiled stage for the next construction.
-		(void)Graph.Execute();
+		(void)Graph.ExecuteAndWait();
 		for (const auto Invalid : {EArdaQueuePolicyResult::MissingQueue,
 		         EArdaQueuePolicyResult::InvalidQueue,
 		         EArdaQueuePolicyResult::ForeignNode,
@@ -158,7 +158,7 @@ namespace arda::queue_rule_tests
 			ASSERT_TRUE(Edit.SetOptions(QueueOptions(Invalid)));
 			ASSERT_TRUE(QueueRuleOperation(Edit, {}, "copy"));
 			ASSERT_TRUE(Edit.Commit());
-			const auto Status = Graph.Compile();
+			const auto Status = Graph.CompileAndWait();
 			EXPECT_FALSE(Status);
 			EXPECT_FALSE(Status.mMessage.empty());
 			EXPECT_EQ(Graph.GetCompileResult().mRevision, Before.mRevision);

@@ -1,8 +1,19 @@
 #pragma once
+#include "RHI/Shaders/ArdaShaderType.h"
 #include "Graph/Node/ArdaNodeDefinition.h"
 
 namespace arda
 {
+	class FArdaRecipeVertexCaptureShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
+			ARDA_SHADER_BUFFER_UAV(mOutput, 0, 0, EArdaRHIShaderStage::Compute)
+			ARDA_SHADER_PUSH_CONSTANTS(uint32_t, mVertexCount, 0, 0, EArdaRHIShaderStage::Compute)
+		ARDA_END_SHADER_PARAMETER_STRUCT()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaRecipeVertexCaptureShader);
+	};
+
 	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRecipeTriangleVertexParameters)
 		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mVertexCount, 3)
 	ARDA_END_NODE_PARAMETER_STRUCT()
@@ -30,11 +41,10 @@ namespace arda
 	ARDA_DECLARE_GRAPH_NODE(FArdaRecipeTriangleVertexNode, RecipeTriangleVS);
 
 	/** Capture a prefix of the procedural triangle's clip-space float4 positions. */
-	struct FArdaRecipeVertexCaptureParameters
-	{
-		FArdaDependencyResourceHandle mOutput;
-		uint32_t mVertexCount = 3;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRecipeVertexCaptureParameters)
+		ARDA_NODE_SHADER_BUFFER(mOutput, FArdaRecipeVertexCaptureShader::FArdaParameters, mOutput)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mVertexCount, 3)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	class FArdaRecipeVertexCaptureNode final : public TArdaNodeDefinition<FArdaRecipeVertexCaptureNode,
 	                                               FArdaRecipeVertexCaptureParameters,
@@ -43,7 +53,6 @@ namespace arda
 	public:
 		struct FArdaState;
 		static FArdaDependencyNodeMetadata GetMetadata();
-		static eastl::string GetCanonicalKey(const FArdaParameters& P);
 		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P);
 		static FArdaRHIStatus Validate(const FArdaParameters& P);
 		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device);

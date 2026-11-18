@@ -26,7 +26,7 @@ namespace arda
 		{
 			const auto& M = mMembers[I];
 			if (!M.mName || !*M.mName || !M.mCppType || !*M.mCppType ||
-			    M.mKind > EArdaComputeParameterKind::NestedStruct || M.mAccess > EArdaComputeAccess::ReadWrite ||
+			    M.mKind > EArdaComputeParameterKind::TensorBuffer || M.mAccess > EArdaComputeAccess::ReadWrite ||
 			    !M.mAlignment || (M.mAlignment & (M.mAlignment - 1)) || M.mAlignment > Alignment ||
 			    M.mOffset % M.mAlignment || !M.mElementCount || !M.mElementStride || M.mElementStride % M.mAlignment ||
 			    M.mElementCount > SIZE_MAX / M.mElementStride || M.mSize != M.mElementCount * M.mElementStride ||
@@ -72,6 +72,11 @@ namespace arda
 				{
 					ExpectedSize = sizeof(FArdaComputeTextureParameter);
 					ExpectedAlignment = alignof(FArdaComputeTextureParameter);
+				}
+				if (M.mKind == EArdaComputeParameterKind::TensorBuffer)
+				{
+					ExpectedSize = sizeof(FArdaRHITensorView);
+					ExpectedAlignment = alignof(FArdaRHITensorView);
 				}
 			}
 			if (M.mElementStride != ExpectedSize || M.mAlignment != ExpectedAlignment)
@@ -146,11 +151,14 @@ namespace arda
 	    eastl::vector<FArdaComputeResourceAccess>& OutAccesses) const
 	{
 		eastl::vector<FArdaComputeResourceAccess> Accesses;
+		FArdaRHIStatus TensorStatus;
 		auto Status = Enumerate(Parameters,
 		    [&](const FArdaComputeParameter& Parameter)
 		    {
 			    const auto Kind = Parameter.mMember->mKind;
-			    if (Kind != EArdaComputeParameterKind::Buffer && Kind != EArdaComputeParameterKind::Texture)
+			    if (!TensorStatus ||
+			        (Kind != EArdaComputeParameterKind::Buffer && Kind != EArdaComputeParameterKind::Texture &&
+			            Kind != EArdaComputeParameterKind::TensorBuffer))
 			    {
 				    return;
 			    }
@@ -164,6 +172,22 @@ namespace arda
 				    Access.mResource = Value.mBuffer;
 				    Access.mBufferRange = Value.mRange;
 			    }
+			    else if (Kind == EArdaComputeParameterKind::TensorBuffer)
+			    {
+				    const auto& Value = *static_cast<const FArdaRHITensorView*>(Parameter.mValue);
+				    Access.mResource = Value.mBuffer;
+				    Access.mTensorDesc = Value.mDesc;
+				    Access.mBufferRange = {Value.mDesc.mByteOffset, 0};
+				    if (Value.mBuffer)
+				    {
+					    TensorStatus = ValidateArdaRHITensorView(Value, Access.mAccess != EArdaComputeAccess::Read);
+					    if (!TensorStatus)
+					    {
+						    return;
+					    }
+					    Access.mBufferRange = GetArdaRHITensorByteRange(Value.mDesc).mValue;
+				    }
+			    }
 			    else
 			    {
 				    const auto& Value = *static_cast<const FArdaComputeTextureParameter*>(Parameter.mValue);
@@ -172,6 +196,10 @@ namespace arda
 			    }
 			    Accesses.push_back(eastl::move(Access));
 		    });
+		if (Status && !TensorStatus)
+		{
+			return TensorStatus;
+		}
 		if (Status)
 		{
 			OutAccesses = eastl::move(Accesses);

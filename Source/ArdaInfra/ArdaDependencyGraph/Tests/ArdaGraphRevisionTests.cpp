@@ -5,6 +5,9 @@
 #include "ArdaTestBackend.h"
 
 #include <gtest/gtest.h>
+#include <atomic>
+#include <thread>
+#include <vector>
 
 namespace
 {
@@ -43,7 +46,7 @@ namespace
 	void UnlockRevisionWithoutDevice(FArdaDependencyGraph& Graph)
 	{
 		// A submission attempt consumes the compile/edit lock even when no device can execute it.
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		EXPECT_FALSE(Graph.GetRevisionStats().mbEditQueueLocked);
 	}
 
@@ -57,9 +60,9 @@ namespace
 		EXPECT_EQ(Queued.mCachedRevisionCount, 0u);
 		EXPECT_FALSE(Queued.mbEditQueueLocked);
 		EXPECT_TRUE(Graph.GetCompileResult().mExecutionOrder.empty());
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		EXPECT_EQ(Graph.GetRevisionStats().mPendingEditCount, 1u);
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto Compiled = Graph.GetRevisionStats();
 		EXPECT_EQ(Compiled.mPendingEditCount, 0u);
 		EXPECT_EQ(Compiled.mCompileCount, 1u);
@@ -72,7 +75,7 @@ namespace
 	{
 		FArdaDependencyGraph Graph;
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 7));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto Revision = Graph.GetCompileResult().mRevision;
 		{
 			FArdaGraphEdit Rejected(Graph);
@@ -84,8 +87,8 @@ namespace
 		FArdaGraphEdit Fresh(Graph);
 		ASSERT_TRUE(Fresh.IsOpen());
 		EXPECT_TRUE(Graph.GetTopology().GetNodes().empty());
-		EXPECT_FALSE(Graph.Compile());
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		EXPECT_FALSE(Graph.CompileAndWait());
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		EXPECT_TRUE(Fresh.IsOpen());
 		ASSERT_TRUE(Fresh.Cancel());
 	}
@@ -107,7 +110,7 @@ namespace
 		EXPECT_NE(Graph.GetRevisionStats().mConstructionHash, FirstHash);
 		const auto Attached = Graph.GetTopology().GetNodes();
 		ASSERT_EQ(Attached.size(), 2u);
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder, Attached);
 		EXPECT_EQ(Graph.GetRevisionStats().mPendingEditCount, 0u);
 	}
@@ -117,7 +120,7 @@ namespace
 		FArdaDependencyGraph Graph;
 		FArdaGraphBuffer First;
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 7, 16, &First));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto Revision = Graph.GetCompileResult().mRevision;
 		const auto ConstructionHash = Graph.GetRevisionStats().mConstructionHash;
 		const auto Schedule = Graph.GetCompileResult().mExecutionOrder;
@@ -125,7 +128,7 @@ namespace
 		FArdaGraphBuffer Second;
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 7, 16, &Second));
 		EXPECT_NE(First.GetHandle(), Second.GetHandle());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mRevision, Revision);
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder, Schedule);
 		const auto Stats = Graph.GetRevisionStats();
@@ -140,17 +143,17 @@ namespace
 	{
 		FArdaDependencyGraph Graph;
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 11));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto FirstRevision = Graph.GetCompileResult().mRevision;
 		const auto FirstHash = Graph.GetRevisionStats().mConstructionHash;
 		UnlockRevisionWithoutDevice(Graph);
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 23));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_NE(Graph.GetCompileResult().mRevision, FirstRevision);
 		EXPECT_NE(Graph.GetRevisionStats().mConstructionHash, FirstHash);
 		UnlockRevisionWithoutDevice(Graph);
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 11));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mRevision, FirstRevision);
 		const auto Stats = Graph.GetRevisionStats();
 		EXPECT_EQ(Stats.mConstructionHash, FirstHash);
@@ -163,21 +166,21 @@ namespace
 	{
 		FArdaDependencyGraph Graph;
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 7, 16, nullptr, "first"));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto OriginalHash = Graph.GetRevisionStats().mConstructionHash;
 		UnlockRevisionWithoutDevice(Graph);
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 7, 32, nullptr, "first"));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_NE(Graph.GetRevisionStats().mConstructionHash, OriginalHash);
 		UnlockRevisionWithoutDevice(Graph);
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 7, 16, nullptr, "renamed"));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_NE(Graph.GetRevisionStats().mConstructionHash, OriginalHash);
 		UnlockRevisionWithoutDevice(Graph);
 		auto Options = Graph.GetOptions();
 		Options.mObjective = EArdaInductorObjective::Memory;
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 7, 16, nullptr, "first", &Options));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_NE(Graph.GetRevisionStats().mConstructionHash, OriginalHash);
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 4u);
 		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 0u);
@@ -202,7 +205,7 @@ namespace
 				Upload(Edit, Buffer, eastl::vector<uint8_t>(16, Frame == 0 ? 5 : 3));
 				ASSERT_TRUE(Edit.Commit());
 			}
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			if (Frame == 0)
 			{
 				FirstHash = Graph.GetRevisionStats().mConstructionHash;
@@ -222,7 +225,7 @@ namespace
 		FArdaDependencyGraph Graph;
 		FArdaGraphBuffer Old;
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 7, 16, &Old));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		UnlockRevisionWithoutDevice(Graph);
 		FArdaGraphEdit Edit(Graph);
 		const auto Fresh = AllocateBuffer(Edit, MakeRevisionBufferDesc());
@@ -245,11 +248,11 @@ namespace
 			ASSERT_TRUE(Readback(Edit, Uninitialized));
 			ASSERT_TRUE(Edit.Commit());
 		}
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 		EXPECT_FALSE(Graph.IsEditing());
 		EXPECT_EQ(Graph.GetRevisionStats().mPendingEditCount, 1u);
 		EXPECT_FALSE(Graph.GetRevisionStats().mbEditQueueLocked);
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		EXPECT_EQ(Graph.GetRevisionStats().mPendingEditCount, 1u);
 		{
 			FArdaGraphEdit Repair(Graph);
@@ -257,7 +260,7 @@ namespace
 			ASSERT_TRUE(Repair.Commit());
 		}
 		EXPECT_EQ(Graph.GetRevisionStats().mPendingEditCount, 2u);
-		const auto Repaired = Graph.Compile();
+		const auto Repaired = Graph.CompileAndWait();
 		ASSERT_TRUE(Repaired) << Repaired.mMessage.c_str();
 		EXPECT_EQ(Graph.GetRevisionStats().mPendingEditCount, 0u);
 		EXPECT_TRUE(Graph.GetRevisionStats().mbEditQueueLocked);
@@ -269,7 +272,7 @@ namespace
 		FArdaDependencyGraph Graph;
 		FArdaGraphBuffer Persistent;
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 7, 16, &Persistent));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto Revision = Graph.GetCompileResult().mRevision;
 		const auto Schedule = Graph.GetCompileResult().mExecutionOrder;
 		UnlockRevisionWithoutDevice(Graph);
@@ -278,9 +281,16 @@ namespace
 			FArdaGraphEdit Edit(Graph);
 			Invalid = AllocateBuffer(Edit, MakeRevisionBufferDesc());
 			ASSERT_TRUE(Readback(Edit, Invalid));
+			ASSERT_TRUE(Edit.GetStatus());
 			ASSERT_TRUE(Edit.Commit());
+			EXPECT_FALSE(Graph.CompileAndWait());
+			EXPECT_TRUE(Edit.GetStatus());
+			EXPECT_FALSE(Edit.IsOpen());
+			EXPECT_FALSE(Graph.IsEditing());
 		}
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.IsEditing());
+		EXPECT_NE(Graph.FindResource(Invalid.GetHandle()), nullptr);
+		EXPECT_EQ(Graph.GetRevisionStats().mPendingEditCount, 1u);
 		ASSERT_TRUE(Graph.DiscardPendingEdits());
 		EXPECT_EQ(Graph.GetRevisionStats().mPendingEditCount, 0u);
 		EXPECT_EQ(Graph.GetCompileResult().mRevision, Revision);
@@ -304,7 +314,7 @@ namespace
 		EXPECT_EQ(Graph.GetRevisionStats().mPendingEditCount, 1u);
 		EXPECT_EQ(Graph.GetRevisionStats().mConstructionHash, Hash);
 		EXPECT_EQ(Graph.GetTopology().GetNodes().size(), 1u);
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), 1u);
 	}
 
@@ -312,11 +322,11 @@ namespace
 	{
 		FArdaDependencyGraph Graph;
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 7));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto FirstRevision = Graph.GetCompileResult().mRevision;
 		UnlockRevisionWithoutDevice(Graph);
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 7));
-		ASSERT_TRUE(Graph.Compile(true));
+		ASSERT_TRUE(Graph.CompileAndWait(true));
 		EXPECT_NE(Graph.GetCompileResult().mRevision, FirstRevision);
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 2u);
 		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 0u);
@@ -326,7 +336,7 @@ namespace
 		EXPECT_EQ(Graph.GetRevisionStats().mCachedRevisionCount, 0u);
 		EXPECT_EQ(Graph.GetCompileResult().mRevision, ForcedRevision);
 		ASSERT_TRUE(QueueRevisionUpload(Graph, 7));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_NE(Graph.GetCompileResult().mRevision, ForcedRevision);
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 3u);
 		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 0u);
@@ -339,7 +349,7 @@ namespace
 		for (const uint8_t Value : {11, 23, 11})
 		{
 			ASSERT_TRUE(QueueRevisionUpload(Graph, Value));
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			EXPECT_EQ(Graph.GetRevisionStats().mCachedRevisionCount, 1u);
 			UnlockRevisionWithoutDevice(Graph);
 		}
@@ -347,42 +357,9 @@ namespace
 		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 0u);
 	}
 
-	class FArdaGraphRevisionGpu : public testing::TestWithParam<const char*>
+	class FArdaGraphRevisionGpu : public FArdaTestBackendFixture
 	{
 	protected:
-		void SetUp() override
-		{
-			ShutdownBackend();
-			if (!FindBackendModule(GetParam()))
-			{
-				GTEST_SKIP() << "Backend not built";
-			}
-			auto Configuration = MakeArdaTestBackendConfiguration();
-			Configuration.mBackendName = GetParam();
-			Configuration.mMessageCallback = &mDiagnostics;
-			ASSERT_TRUE(ConfigureBackend(Configuration)) << GetBackendError().c_str();
-			ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
-			mDevice = GetDevice();
-			ASSERT_TRUE(mDevice);
-		}
-
-		void TearDown() override
-		{
-			const bool bMissingValidation = testing::Test::IsSkipped() && ArdaTestValidationEnabled &&
-			    GetBackendInitializeResult() == EArdaInitializeResult::ValidationUnavailable;
-			if (mDevice)
-			{
-				EXPECT_TRUE(mDevice->WaitForIdle());
-				mDevice->RunGarbageCollection();
-				mDevice.Reset();
-			}
-			ShutdownBackend();
-			if (!bMissingValidation)
-			{
-				EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
-			}
-		}
-
 		FArdaRHIStatus QueueReadbackRevision(FArdaDependencyGraph& Graph,
 		    uint8_t Value,
 		    const eastl::shared_ptr<eastl::vector<uint8_t>>& Destination)
@@ -394,10 +371,24 @@ namespace
 			ReadbackBuffer(Edit, {Copy, Destination});
 			return Edit.Commit();
 		}
-
-		FArdaTestDiagnosticCallback mDiagnostics;
-		FArdaRHIDeviceRef mDevice;
 	};
+
+	TEST_P(FArdaGraphRevisionGpu, DestructionRetiresSubmittedReadbacksWhenACompileResultIsRetained)
+	{
+		FArdaInductorCompileResult Retained;
+		auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
+		{
+			FArdaDependencyGraph Graph(mDevice);
+			ASSERT_TRUE(QueueReadbackRevision(Graph, 47, Bytes));
+			ASSERT_TRUE(Graph.CompileAndWait());
+			Retained = Graph.GetCompileResult();
+			const auto Submission = Graph.SubmitAndWait();
+			ASSERT_TRUE(Submission) << Submission.mStatus.mMessage.c_str();
+			EXPECT_TRUE(Bytes->empty());
+		}
+		EXPECT_EQ(*Bytes, eastl::vector<uint8_t>(16, 47));
+		EXPECT_FALSE(Retained.mExecutionOrder.empty());
+	}
 
 	TEST_P(FArdaGraphRevisionGpu, AlternatingRevisionsReuseCompiledWorkAndKeepOldFrameTicketsValid)
 	{
@@ -405,14 +396,14 @@ namespace
 		auto FirstBytes = eastl::make_shared<eastl::vector<uint8_t>>();
 		auto SecondBytes = eastl::make_shared<eastl::vector<uint8_t>>();
 		ASSERT_TRUE(QueueReadbackRevision(Graph, 17, FirstBytes));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto FirstRevision = Graph.GetCompileResult().mRevision;
-		const auto First = Graph.Submit();
+		const auto First = Graph.SubmitAndWait();
 		ASSERT_TRUE(First) << First.mStatus.mMessage.c_str();
 		EXPECT_FALSE(Graph.GetRevisionStats().mbEditQueueLocked);
 		ASSERT_TRUE(QueueReadbackRevision(Graph, 29, SecondBytes));
-		ASSERT_TRUE(Graph.Compile());
-		const auto Second = Graph.Submit();
+		ASSERT_TRUE(Graph.CompileAndWait());
+		const auto Second = Graph.SubmitAndWait();
 		ASSERT_TRUE(Second) << Second.mStatus.mMessage.c_str();
 		const auto FirstCompleted = Graph.Wait(First.mValue);
 		ASSERT_TRUE(FirstCompleted.mStatus) << FirstCompleted.mStatus.mMessage.c_str();
@@ -421,10 +412,10 @@ namespace
 		ASSERT_TRUE(SecondCompleted.mStatus) << SecondCompleted.mStatus.mMessage.c_str();
 		EXPECT_EQ(*SecondBytes, eastl::vector<uint8_t>(16, 29));
 		ASSERT_TRUE(QueueReadbackRevision(Graph, 17, FirstBytes));
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mRevision, FirstRevision);
 		FirstBytes->clear();
-		const auto Reused = Graph.Execute();
+		const auto Reused = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Reused.mStatus) << Reused.mStatus.mMessage.c_str();
 		EXPECT_EQ(*FirstBytes, eastl::vector<uint8_t>(16, 17));
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 2u);
@@ -435,7 +426,7 @@ namespace
 		EXPECT_TRUE(Graph.Wait(Second.mValue).mStatus);
 		// With no new construction queued, the current persistent revision can be replayed directly.
 		FirstBytes->clear();
-		ASSERT_TRUE(Graph.Execute().mStatus);
+		ASSERT_TRUE(Graph.ExecuteAndWait().mStatus);
 		EXPECT_EQ(*FirstBytes, eastl::vector<uint8_t>(16, 17));
 	}
 
@@ -445,11 +436,11 @@ namespace
 		auto FirstBytes = eastl::make_shared<eastl::vector<uint8_t>>();
 		auto SecondBytes = eastl::make_shared<eastl::vector<uint8_t>>();
 		ASSERT_TRUE(QueueReadbackRevision(Graph, 17, FirstBytes));
-		ASSERT_TRUE(Graph.Compile());
-		ASSERT_TRUE(Graph.Execute().mStatus);
+		ASSERT_TRUE(Graph.CompileAndWait());
+		ASSERT_TRUE(Graph.ExecuteAndWait().mStatus);
 		ASSERT_TRUE(QueueReadbackRevision(Graph, 17, SecondBytes));
-		ASSERT_TRUE(Graph.Compile());
-		ASSERT_TRUE(Graph.Execute().mStatus);
+		ASSERT_TRUE(Graph.CompileAndWait());
+		ASSERT_TRUE(Graph.ExecuteAndWait().mStatus);
 		EXPECT_EQ(*FirstBytes, eastl::vector<uint8_t>(16, 17));
 		EXPECT_EQ(*SecondBytes, eastl::vector<uint8_t>(16, 17));
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 2u);
@@ -469,12 +460,13 @@ namespace
 		{
 			{
 				FArdaGraphEdit Edit(Graph);
-				const auto Buffer = BindBuffer(Edit, Frame == 1 ? SecondNative.mValue : FirstNative.mValue);
+				const auto Buffer =
+				    BindBuffer(Edit, Frame == 1 ? SecondNative.mValue : FirstNative.mValue, "Frame buffer");
 				Upload(Edit, Buffer, eastl::vector<uint8_t>(16, 41));
 				ReadbackBuffer(Edit, {Buffer, Bytes});
 				ASSERT_TRUE(Edit.Commit());
 			}
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			if (Frame == 0)
 			{
 				FirstRevision = Graph.GetCompileResult().mRevision;
@@ -488,12 +480,104 @@ namespace
 				EXPECT_EQ(Graph.GetCompileResult().mRevision, FirstRevision);
 			}
 			Bytes->clear();
-			const auto Execution = Graph.Execute();
+			const auto Execution = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Execution.mStatus) << Execution.mStatus.mMessage.c_str();
 			EXPECT_EQ(*Bytes, eastl::vector<uint8_t>(16, 41));
 		}
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 2u);
 		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 1u);
+	}
+
+	TEST_P(FArdaGraphRevisionGpu, ConcurrentEditsExecuteRemappedResourcesAndReuseTheirRevision)
+	{
+		constexpr uint32_t ThreadCount = 4;
+		FArdaDependencyGraph Graph(mDevice);
+		std::vector<eastl::shared_ptr<eastl::vector<uint8_t>>> Readbacks(ThreadCount);
+		for (auto& Bytes : Readbacks)
+		{
+			Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
+		}
+		for (uint32_t Frame = 0; Frame < 2; ++Frame)
+		{
+			std::atomic<uint32_t> Ready{0};
+			std::atomic<uint32_t> Turn{0};
+			std::vector<std::thread> Threads;
+			std::vector<FArdaRHIStatus> Status(ThreadCount);
+			for (uint32_t Index = 0; Index < ThreadCount; ++Index)
+			{
+				Readbacks[Index]->clear();
+				Threads.emplace_back(
+				    [&, Index]
+				    {
+					    FArdaGraphEdit Edit(Graph);
+					    const auto Buffer = AllocateBuffer(Edit, MakeRevisionBufferDesc());
+					    Upload(Edit, Buffer, eastl::vector<uint8_t>(16, uint8_t(20 + Index)));
+					    const auto Copy = Clone(Edit, Buffer);
+					    ReadbackBuffer(Edit, {Copy, Readbacks[Index]});
+					    Ready.fetch_add(1, std::memory_order_release);
+					    while (Ready.load(std::memory_order_acquire) != ThreadCount ||
+					        Turn.load(std::memory_order_acquire) != Index)
+					    {
+						    std::this_thread::yield();
+					    }
+					    Status[Index] = Edit.Commit();
+					    Turn.fetch_add(1, std::memory_order_release);
+				    });
+			}
+			for (auto& Thread : Threads)
+			{
+				Thread.join();
+			}
+			for (const auto& Result : Status)
+			{
+				ASSERT_TRUE(Result) << Result.mMessage.c_str();
+			}
+			ASSERT_TRUE(Graph.CompileAndWait());
+			const auto Execution = Graph.ExecuteAndWait();
+			ASSERT_TRUE(Execution.mStatus) << Execution.mStatus.mMessage.c_str();
+			for (uint32_t Index = 0; Index < ThreadCount; ++Index)
+			{
+				EXPECT_EQ(*Readbacks[Index], eastl::vector<uint8_t>(16, uint8_t(20 + Index)));
+			}
+		}
+		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 1u);
+		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 1u);
+	}
+
+	TEST_P(FArdaGraphRevisionGpu, ConcurrentDuplicateNativeImportsRejectOneWholeEdit)
+	{
+		const auto Buffer = mDevice->CreateBuffer(MakeRevisionBufferDesc());
+		ASSERT_TRUE(Buffer);
+		FArdaDependencyGraph Graph(mDevice);
+		std::atomic<uint32_t> Ready{0};
+		std::vector<std::thread> Threads;
+		std::vector<FArdaRHIStatus> Status(2);
+		for (uint32_t Index = 0; Index < 2; ++Index)
+		{
+			Threads.emplace_back(
+			    [&, Index]
+			    {
+				    FArdaGraphEdit Edit(Graph);
+				    const auto Imported = BindBuffer(Edit, Buffer.mValue, "External buffer");
+				    Upload(Edit, Imported, eastl::vector<uint8_t>(16, uint8_t(Index)));
+				    Edit.Keep(Imported);
+				    Ready.fetch_add(1, std::memory_order_release);
+				    while (Ready.load(std::memory_order_acquire) != 2)
+				    {
+					    std::this_thread::yield();
+				    }
+				    Status[Index] = Edit.Commit();
+			    });
+		}
+		for (auto& Thread : Threads)
+		{
+			Thread.join();
+		}
+		EXPECT_NE(bool(Status[0]), bool(Status[1]));
+		EXPECT_EQ(Graph.GetRevisionStats().mPendingEditCount, 1u);
+		EXPECT_EQ(Graph.GetTopology().GetNodeCount(), 1u);
+		ASSERT_TRUE(Graph.CompileAndWait());
+		ASSERT_TRUE(Graph.ExecuteAndWait().mStatus);
 	}
 
 	INSTANTIATE_TEST_SUITE_P(Native, FArdaGraphRevisionGpu, testing::Values("native-d3d12", "native-vulkan"));

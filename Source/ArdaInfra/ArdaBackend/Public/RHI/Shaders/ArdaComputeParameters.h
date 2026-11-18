@@ -4,6 +4,7 @@
 #pragma once
 #include <EASTL/type_traits.h>
 #include "RHI/CUDA/ArdaRHICuda.h"
+#include "RHI/Resources/ArdaRHITensor.h"
 #include <EASTL/array.h>
 #include <EASTL/functional.h>
 #include <cstddef>
@@ -20,10 +21,12 @@ namespace arda
 		/** Retained texture subresources and declared access. */
 		Texture,
 		/** Recursively described parameter struct. */
-		NestedStruct
+		NestedStruct,
+		/** Retained buffer with the shared Backend tensor descriptor. */
+		TensorBuffer
 	};
 
-	/** Retained buffer view; shapes and dtype/layout are application-defined value parameters. */
+	/** Retained untyped buffer view; typed layouts use FArdaRHITensorView. */
 	struct FArdaComputeBufferParameter
 	{
 		/** Referenced buffer; null can denote an unused optional input. */
@@ -88,7 +91,7 @@ namespace arda
 	{
 		/** Full parameter path. */
 		eastl::string mPath;
-		/** Buffer or Texture. */
+		/** Buffer, Texture, or TensorBuffer. */
 		EArdaComputeParameterKind mKind = EArdaComputeParameterKind::Buffer;
 		/** Read, Write or ReadWrite as declared by the author. */
 		EArdaComputeAccess mAccess = EArdaComputeAccess::Read;
@@ -98,6 +101,8 @@ namespace arda
 		FArdaRHIBufferRange mBufferRange;
 		/** Original texture subresource range. */
 		FArdaRHITextureSubresourceRange mTextureRange;
+		/** Original layout for TensorBuffer fields; mBufferRange covers its addressed bytes. */
+		FArdaRHITensorDesc mTensorDesc;
 	};
 
 	/** Immutable C++ layout metadata, with no compilation or GPU execution. */
@@ -154,8 +159,9 @@ namespace arda
 
 		/** Replaces OutAccesses with retained resource declarations, including null optional
          * fields; preserves ranges and aliases without merging. Failure leaves output unchanged.
-         * This does not validate required inputs, ranges, device or CUDA sharing: dispatch owns
-         * those checks. It does not register an RDG pass or automatically marshal kernel arguments.
+         * Bound tensor fields validate byte bounds and require non-overlapping writable layouts.
+         * Untyped buffer/texture ranges, required inputs, device and CUDA sharing remain dispatch
+         * checks. This does not register a pass or automatically marshal kernel arguments.
          * @ownership Output retains resource references independently of the parameter object.
          * @threading Metadata is immutable; synchronize parameter mutations and output access.
          */
@@ -227,7 +233,7 @@ private:                                                                        
 public:                                                                                                                \
 	static const ::arda::FArdaComputeParameterMetadata& GetStaticMetadata()                                            \
 	{                                                                                                                  \
-		static_assert(eastl::is_standard_layout_v<FArdaComputeThisStruct>,                                               \
+		static_assert(eastl::is_standard_layout_v<FArdaComputeThisStruct>,                                             \
 		    "Compute parameter structs must have standard layout.");                                                   \
 		static const ::arda::FArdaComputeParameterMetadata Metadata = []                                               \
 		{                                                                                                              \
@@ -273,6 +279,16 @@ public:                                                                         
 	    1,                                                                                                             \
 	    nullptr)
 
+/** Declares a retained tensor view with author-defined access. */
+#define ARDA_COMPUTE_TENSOR(MemberName, Access)                                                                        \
+	ARDA_INTERNAL_COMPUTE_PARAMETER(::arda::EArdaComputeParameterKind::TensorBuffer,                                   \
+	    Access,                                                                                                        \
+	    ::arda::FArdaRHITensorView,                                                                                    \
+	    ::arda::FArdaRHITensorView,                                                                                    \
+	    MemberName,                                                                                                    \
+	    1,                                                                                                             \
+	    nullptr)
+
 /** Declares recursively inspected nested parameters. */
 #define ARDA_COMPUTE_PARAMETER_STRUCT(StructType, MemberName)                                                          \
 	ARDA_INTERNAL_COMPUTE_PARAMETER(::arda::EArdaComputeParameterKind::NestedStruct,                                   \
@@ -313,6 +329,15 @@ public:                                                                         
 	ARDA_INTERNAL_COMPUTE_ARRAY(::arda::EArdaComputeParameterKind::Texture,                                            \
 	    Access,                                                                                                        \
 	    ::arda::FArdaComputeTextureParameter,                                                                          \
+	    MemberName,                                                                                                    \
+	    Count,                                                                                                         \
+	    nullptr)
+
+/** Declares a fixed array of retained tensor views. */
+#define ARDA_COMPUTE_TENSOR_ARRAY(MemberName, Count, Access)                                                           \
+	ARDA_INTERNAL_COMPUTE_ARRAY(::arda::EArdaComputeParameterKind::TensorBuffer,                                       \
+	    Access,                                                                                                        \
+	    ::arda::FArdaRHITensorView,                                                                                    \
 	    MemberName,                                                                                                    \
 	    Count,                                                                                                         \
 	    nullptr)

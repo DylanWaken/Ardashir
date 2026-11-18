@@ -49,15 +49,6 @@ namespace arda
 		return ValidatePixelSortExtent(P.mWidth, P.mHeight);
 	}
 
-	FArdaDependencyNodeDesc FArdaPixelSortUploadFrameNode::Describe(const FArdaParameters& P,
-	    const FArdaState& Prepared)
-	{
-		FArdaDependencyNodeDesc D;
-		D.mAccesses = {{P.mConstants, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest}};
-
-		return D;
-	}
-
 	FArdaRHIStatus FArdaPixelSortUploadFrameNode::Record(FArdaDependencyExecutionContext& C,
 	    const FArdaParameters& P,
 	    const FArdaState& Prepared,

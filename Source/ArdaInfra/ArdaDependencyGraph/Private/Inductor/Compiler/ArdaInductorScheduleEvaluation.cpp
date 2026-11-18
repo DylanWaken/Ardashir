@@ -98,7 +98,7 @@ namespace arda::inductor_detail
 			{
 				Ready = eastl::max(Ready, Finish[Pred]);
 			}
-			if (IsDeclaration(Node))
+			if (IsDeclaration(mGraph, Node))
 			{
 				Finish[Index] = Ready;
 				continue;

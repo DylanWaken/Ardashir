@@ -14,6 +14,23 @@
 
 namespace arda
 {
+	TArdaRHIResult<eastl::shared_ptr<const void>> FArdaDependencyExecutionContext::ResolveExternalValue(
+	    const eastl::string& Name,
+	    const void* Type) const
+	{
+		if (mGraph)
+		{
+			const auto Found = mGraph->mExternalValues.find(Name);
+			if (Found != mGraph->mExternalValues.end() && Found->second.mType == Type && Found->second.mValue)
+			{
+				return {Found->second.mValue, {}};
+			}
+		}
+		return {{},
+		    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+		        (eastl::string("External value slot '") + Name + "' has no compatible binding.").c_str())};
+	}
+
 	namespace
 	{
 		const FArdaInductorNodeBindings& GetNodeBindings(const FArdaInductorFrame* Frame, FArdaGraphNodeHandle Node)
@@ -44,7 +61,7 @@ namespace arda
 			{
 				return false;
 			}
-			const auto& Desc = Record->mPayload.mDesc;
+			const auto& Desc = Graph.GetNodeDescription(Record->mPayload);
 			return eastl::any_of(Desc.mAccesses.begin(),
 			           Desc.mAccesses.end(),
 			           [Resource](const auto& Access)
@@ -87,7 +104,7 @@ namespace arda
 			return mPass->GetStatus();
 		}
 		// No callback/promise copy escapes this call except the one owned by the
-		// native list (or its submitted completion thread). Failed recording destroys
+		// command list or the device retaining its submission. Failed recording destroys
 		// that owner and makes the registered future ready with broken_promise.
 		return GetCommands().CopyBufferDeviceToHostAsync(*Buffer, eastl::move(Callback), SourceOffset, Size);
 	}
@@ -191,7 +208,7 @@ namespace arda
 
 	FArdaRHIDeviceRef FArdaDependencyExecutionContext::GetDevice() const
 	{
-		return mGraph ? mGraph->mDevice : FArdaRHIDeviceRef{};
+		return mGraph ? mGraph->mCompile.mExecution->mDevice : FArdaRHIDeviceRef{};
 	}
 
 	uint32_t FArdaDependencyExecutionContext::GetFrameIndex() const
@@ -226,6 +243,7 @@ namespace arda
 
 	FArdaRHIBufferRef FArdaDependencyExecutionContext::GetBuffer(FArdaDependencyResourceHandle Resource) const
 	{
+		Resource = mGraph ? mGraph->ResolveResource(Resource) : Resource;
 		if (!mGraph || !mFrame || !mPass || !DeclaresResource(*mGraph, mNode, Resource) ||
 		    mGraph->mResources[Resource.mIndex].mbTexture || !mFrame->mBuffers[Resource.mIndex])
 		{
@@ -242,6 +260,7 @@ namespace arda
 	FArdaRHIAccelStructRef FArdaDependencyExecutionContext::GetAccelerationStructure(
 	    FArdaDependencyResourceHandle Resource) const
 	{
+		Resource = mGraph ? mGraph->ResolveResource(Resource) : Resource;
 		if (!mGraph || !mFrame || !mPass || !DeclaresResource(*mGraph, mNode, Resource) ||
 		    Resource.mIndex >= mFrame->mAccelerationStructures.size() ||
 		    !mFrame->mAccelerationStructures[Resource.mIndex])
@@ -258,6 +277,7 @@ namespace arda
 
 	FArdaRHITextureRef FArdaDependencyExecutionContext::GetTexture(FArdaDependencyResourceHandle Resource) const
 	{
+		Resource = mGraph ? mGraph->ResolveResource(Resource) : Resource;
 		if (!mGraph || !mFrame || !mPass || !DeclaresResource(*mGraph, mNode, Resource) ||
 		    !mGraph->mResources[Resource.mIndex].mbTexture || !mFrame->mTextures[Resource.mIndex])
 		{

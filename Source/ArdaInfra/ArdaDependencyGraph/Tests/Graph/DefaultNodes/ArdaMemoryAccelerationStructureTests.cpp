@@ -217,22 +217,22 @@ namespace arda::memoryaccelerationstructure_tests
 		const auto Second = BindAccelerationStructure(Edit, SecondClone, "second clone");
 		ASSERT_TRUE(Source && First && Second);
 		const auto CopyOne = CopyAccelerationStructure(Edit,
-		    FArdaMemoryCopyAccelerationStructureNode::FArdaParameters{Source.GetHandle(), First.GetHandle()},
+		    FArdaMemoryCopyAccelerationStructureNode::FArdaParameters{Source, First},
 		    "clone BLAS");
 		const auto CopyTwo = CopyAccelerationStructure(Edit,
-		    FArdaMemoryCopyAccelerationStructureNode::FArdaParameters{First.GetHandle(), Second.GetHandle()},
+		    FArdaMemoryCopyAccelerationStructureNode::FArdaParameters{First, Second},
 		    "clone again");
 		ASSERT_TRUE(CopyOne && CopyTwo);
 		Edit.Keep(Second.GetHandle());
 		ASSERT_TRUE(Edit.GetStatus());
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_TRUE(Graph.GetTopology().IsReachable(CopyOne.GetHandle(), CopyTwo.GetHandle()));
 		for (auto Queue : Graph.GetCompileResult().mQueues)
 		{
 			EXPECT_EQ(Queue, EArdaRHIQueueType::Graphics);
 		}
-		const auto Executed = Graph.Execute();
+		const auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		EXPECT_EQ(SecondClone->GetBuildState(), EArdaRHIAccelStructBuildState::Built);
 		const auto Tlas = Create(mTlasDesc);
@@ -253,14 +253,13 @@ namespace arda::memoryaccelerationstructure_tests
 		const auto TlasDestination = BindAccelerationStructure(TlasEdit, TlasClone, "TLAS clone");
 		ASSERT_TRUE(TlasSource && TlasDestination);
 		ASSERT_TRUE(CopyAccelerationStructure(TlasEdit,
-		    FArdaMemoryCopyAccelerationStructureNode::FArdaParameters{TlasSource.GetHandle(),
-		        TlasDestination.GetHandle()},
+		    FArdaMemoryCopyAccelerationStructureNode::FArdaParameters{TlasSource, TlasDestination},
 		    "clone TLAS"));
 		TlasEdit.Keep(TlasDestination.GetHandle());
 		ASSERT_TRUE(TlasEdit.GetStatus());
 		ASSERT_TRUE(TlasEdit.Commit());
-		ASSERT_TRUE(TlasGraph.Compile());
-		ASSERT_TRUE(TlasGraph.Execute().mStatus);
+		ASSERT_TRUE(TlasGraph.CompileAndWait());
+		ASSERT_TRUE(TlasGraph.ExecuteAndWait().mStatus);
 		EXPECT_EQ(TlasClone->GetBuildState(), EArdaRHIAccelStructBuildState::Built);
 		Trace(TlasClone);
 	}
@@ -294,16 +293,16 @@ namespace arda::memoryaccelerationstructure_tests
 			const auto Copied = BindAccelerationStructure(Edit, Clone, "cloned compact");
 			ASSERT_TRUE(Input && Packed && Copied);
 			ASSERT_TRUE(CompactAccelerationStructure(Edit,
-			    FArdaMemoryCompactAccelerationStructureNode::FArdaParameters{Input.GetHandle(), Packed.GetHandle()},
+			    FArdaMemoryCompactAccelerationStructureNode::FArdaParameters{Input, Packed},
 			    "compact"));
 			ASSERT_TRUE(CopyAccelerationStructure(Edit,
-			    FArdaMemoryCopyAccelerationStructureNode::FArdaParameters{Packed.GetHandle(), Copied.GetHandle()},
+			    FArdaMemoryCopyAccelerationStructureNode::FArdaParameters{Packed, Copied},
 			    "clone compact"));
 			Edit.Keep(Copied.GetHandle());
 			ASSERT_TRUE(Edit.GetStatus());
 			ASSERT_TRUE(Edit.Commit());
-			ASSERT_TRUE(Graph.Compile());
-			const auto Executed = Graph.Execute();
+			ASSERT_TRUE(Graph.CompileAndWait());
+			const auto Executed = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 			EXPECT_TRUE(Compact->IsCompacted());
 			EXPECT_TRUE(Clone->IsCompacted());
@@ -343,10 +342,10 @@ namespace arda::memoryaccelerationstructure_tests
 		FArdaDependencyGraph Graph(mDevice);
 		FArdaGraphEdit Edit(Graph);
 		ASSERT_TRUE(Edit.GetStatus());
-		const auto Source = BindAccelerationStructure(Edit, Blas, "BLAS").GetHandle();
-		const auto Destination = BindAccelerationStructure(Edit, OtherBlas, "other BLAS").GetHandle();
-		const auto WrongKind = BindAccelerationStructure(Edit, Tlas, "TLAS").GetHandle();
-		const auto WrongFlags = BindAccelerationStructure(Edit, Incompatible, "flags").GetHandle();
+		const auto Source = BindAccelerationStructure(Edit, Blas, "BLAS");
+		const auto Destination = BindAccelerationStructure(Edit, OtherBlas, "other BLAS");
+		const auto WrongKind = BindAccelerationStructure(Edit, Tlas, "TLAS");
+		const auto WrongFlags = BindAccelerationStructure(Edit, Incompatible, "flags");
 		FArdaRHIBufferDesc BufferDesc;
 		BufferDesc.mByteSize = 64;
 		const auto Buffer = AllocateBuffer(Edit, BufferDesc, "buffer").GetHandle();
@@ -355,10 +354,11 @@ namespace arda::memoryaccelerationstructure_tests
 		    CopyAccelerationStructure,
 		    FArdaMemoryCopyAccelerationStructureNode::FArdaParameters{},
 		    "empty");
-		ExpectRejectedOperation(Graph,
-		    CopyAccelerationStructure,
-		    FArdaMemoryCopyAccelerationStructureNode::FArdaParameters{Buffer, Destination},
-		    "buffer");
+		{
+			FArdaGraphEdit InvalidEdit(Graph);
+			EXPECT_FALSE(InvalidEdit.UseAccelerationStructure(Buffer));
+			EXPECT_FALSE(InvalidEdit.Commit());
+		}
 		ExpectRejectedOperation(Graph,
 		    CopyAccelerationStructure,
 		    FArdaMemoryCopyAccelerationStructureNode::FArdaParameters{Source, Source},
@@ -432,7 +432,7 @@ namespace arda::memoryaccelerationstructure_tests
 		const auto Destination = BindAccelerationStructure(Edit, Small, "small");
 		ASSERT_TRUE(Input && Destination);
 		const auto Unbuilt = CompactAccelerationStructure(Edit,
-		    FArdaMemoryCompactAccelerationStructureNode::FArdaParameters{Input.GetHandle(), Destination.GetHandle()},
+		    FArdaMemoryCompactAccelerationStructureNode::FArdaParameters{Input, Destination},
 		    "unbuilt");
 		EXPECT_FALSE(Unbuilt);
 		EXPECT_EQ(Edit.GetStatus().mCode, EArdaRHIResult::InvalidState);
@@ -448,14 +448,13 @@ namespace arda::memoryaccelerationstructure_tests
 		const auto BuiltDestination = BindAccelerationStructure(BuiltEdit, Small, "small destination");
 		ASSERT_TRUE(BuiltInput && BuiltDestination);
 		ASSERT_TRUE(CompactAccelerationStructure(BuiltEdit,
-		    FArdaMemoryCompactAccelerationStructureNode::FArdaParameters{BuiltInput.GetHandle(),
-		        BuiltDestination.GetHandle()},
+		    FArdaMemoryCompactAccelerationStructureNode::FArdaParameters{BuiltInput, BuiltDestination},
 		    "undersized"));
 		BuiltEdit.Keep(BuiltDestination.GetHandle());
 		ASSERT_TRUE(BuiltEdit.GetStatus());
 		ASSERT_TRUE(BuiltEdit.Commit());
-		ASSERT_TRUE(Graph.Compile());
-		const auto Executed = Graph.Execute();
+		ASSERT_TRUE(Graph.CompileAndWait());
+		const auto Executed = Graph.ExecuteAndWait();
 		EXPECT_FALSE(Executed.mStatus);
 		EXPECT_EQ(Executed.mStatus.mCode, EArdaRHIResult::InvalidArgument);
 		EXPECT_EQ(Small->GetBuildState(), EArdaRHIAccelStructBuildState::Unbuilt);

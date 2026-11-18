@@ -68,8 +68,9 @@ namespace arda
 			const auto Slots = Frame.mNodeBindings.find(Handle.GetIndex());
 			if (Slots == Frame.mNodeBindings.end() || Slots->second.mPipelines.empty())
 			{
-				if (!Node.mDesc.mShaderBindings.empty() || !Node.mDesc.mBindlessTables.empty() ||
-				    !Node.mDesc.mShaderTables.empty())
+				if (!G.GetNodeDescription(Node).mShaderBindings.empty() ||
+				    !G.GetNodeDescription(Node).mBindlessTables.empty() ||
+				    !G.GetNodeDescription(Node).mShaderTables.empty())
 				{
 					return BindingError("No compiled pipeline for declared shader arguments.");
 				}
@@ -80,21 +81,21 @@ namespace arda
 			for (const auto& Slot : Slots->second.mPipelines)
 			{
 				const auto& Layouts = PipelineLayouts(Slot.second);
-				const bool Automatic = eastl::any_of(Node.mDesc.mShaderBindings.begin(),
-				                           Node.mDesc.mShaderBindings.end(),
+				const bool Automatic = eastl::any_of(G.GetNodeDescription(Node).mShaderBindings.begin(),
+				                           G.GetNodeDescription(Node).mShaderBindings.end(),
 				                           [&](const auto& B)
 				                           {
 					                           return B.mPipelineSlot == Slot.first;
 				                           }) ||
-				    eastl::any_of(Node.mDesc.mBindlessTables.begin(),
-				        Node.mDesc.mBindlessTables.end(),
+				    eastl::any_of(G.GetNodeDescription(Node).mBindlessTables.begin(),
+				        G.GetNodeDescription(Node).mBindlessTables.end(),
 				        [&](const auto& B)
 				        {
 					        return B.mPipelineSlot == Slot.first;
 				        });
 				if (Automatic)
 				{
-					for (const auto& B : Node.mDesc.mShaderBindings)
+					for (const auto& B : G.GetNodeDescription(Node).mShaderBindings)
 					{
 						if (B.mPipelineSlot != Slot.first)
 						{
@@ -129,23 +130,25 @@ namespace arda
 						}
 						if (Layout->GetBindlessDesc())
 						{
-							const auto B = eastl::find_if(Node.mDesc.mBindlessTables.begin(),
-							    Node.mDesc.mBindlessTables.end(),
+							const auto B = eastl::find_if(G.GetNodeDescription(Node).mBindlessTables.begin(),
+							    G.GetNodeDescription(Node).mBindlessTables.end(),
 							    [&](const auto& T)
 							    {
 								    return T.mPipelineSlot == Slot.first &&
 								        T.mLayout.mRegisterSpace == Layout->GetDesc().mRegisterSpace;
 							    });
-							if (B == Node.mDesc.mBindlessTables.end())
+							if (B == G.GetNodeDescription(Node).mBindlessTables.end())
 							{
 								return BindingError("Pipeline bindless layout has no declared table.");
 							}
-							auto Table = G.mDevice->CreateDescriptorTable(Layout);
+							auto Table = G.mCompile.mExecution->mDevice->CreateDescriptorTable(Layout);
 							if (!Table)
 							{
 								return Table.mStatus;
 							}
-							if (auto S = G.mDevice->ResizeDescriptorTable(Table.mValue, B->mCapacity); !S)
+							if (auto S =
+							        G.mCompile.mExecution->mDevice->ResizeDescriptorTable(Table.mValue, B->mCapacity);
+							    !S)
 							{
 								return S;
 							}
@@ -157,7 +160,8 @@ namespace arda
 								Item.mType = R.mType;
 								Item.mView = R.mView;
 								Item.mResource = Physical(G, Frame, R.mResource, R.mSampler);
-								if (auto S = G.mDevice->WriteDescriptorTable(Table.mValue, Item); !S)
+								if (auto S = G.mCompile.mExecution->mDevice->WriteDescriptorTable(Table.mValue, Item);
+								    !S)
 								{
 									return S;
 								}
@@ -168,7 +172,7 @@ namespace arda
 						}
 						FArdaRHIBindingSetDesc Set;
 						bool Matched = false;
-						for (const auto& B : Node.mDesc.mShaderBindings)
+						for (const auto& B : G.GetNodeDescription(Node).mShaderBindings)
 						{
 							if (B.mPipelineSlot != Slot.first || !MatchesSchema(B, Layout))
 							{
@@ -187,7 +191,7 @@ namespace arda
 							return BindingError("Compiled pipeline layout has no matching shader parameter schema.");
 						}
 						Set.mDebugName = Node.mName;
-						auto Created = G.mDevice->CreateBindingSet(Set);
+						auto Created = G.mCompile.mExecution->mDevice->CreateBindingSet(Set);
 						if (!Created)
 						{
 							return Created.mStatus;
@@ -199,7 +203,7 @@ namespace arda
 				// Relocate logical descriptor references only after table storage and heap indices are known.
 				bool HavePush = false;
 				auto& Push = Slots->second.mShaderParameters[Slot.first];
-				for (const auto& B : Node.mDesc.mShaderBindings)
+				for (const auto& B : G.GetNodeDescription(Node).mShaderBindings)
 				{
 					if (B.mPipelineSlot != Slot.first)
 					{
@@ -224,13 +228,13 @@ namespace arda
 									return BindingError("Duplicate descriptor-index parameter field.");
 								}
 							}
-							const auto Table = eastl::find_if(Node.mDesc.mBindlessTables.begin(),
-							    Node.mDesc.mBindlessTables.end(),
+							const auto Table = eastl::find_if(G.GetNodeDescription(Node).mBindlessTables.begin(),
+							    G.GetNodeDescription(Node).mBindlessTables.end(),
 							    [&](const auto& T)
 							    {
 								    return T.mName == Index.mTable && T.mPipelineSlot == Slot.first;
 							    });
-							if (Table == Node.mDesc.mBindlessTables.end() ||
+							if (Table == G.GetNodeDescription(Node).mBindlessTables.end() ||
 							    !eastl::any_of(Table->mEntries.begin(),
 							        Table->mEntries.end(),
 							        [&](const auto& E)

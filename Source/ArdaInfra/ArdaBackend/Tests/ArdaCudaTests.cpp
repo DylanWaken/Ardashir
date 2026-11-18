@@ -6,6 +6,9 @@
 #include "RHI/Resources/ArdaCudaTextureBuffer.h"
 #include "ArdaDependencyGraph.h"
 #include <gtest/gtest.h>
+#include <atomic>
+#include <thread>
+#include <vector>
 #include <cstdio>
 #include <cstring>
 
@@ -1078,11 +1081,72 @@ namespace arda::cuda_tests
 	}
 
 	// A single registered node type adapts the compiled add operand for all persistent graph scenarios.
-	struct FArdaPersistentAddNode : TArdaCudaOperandNode<FArdaPersistentAddNode, FArdaAddOperand>
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPersistentAddParameters)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<FArdaAddOperand>, mOperation)
+		ARDA_NODE_CUDA_BUFFER(mInput, FArdaAddParameters, mInput)
+		ARDA_NODE_CUDA_BUFFER(mOutput, FArdaAddParameters, mOutput)
+		ARDA_NODE_PARAMETER(uint32_t, mCount)
+		ARDA_NODE_PARAMETER(uint32_t, mBias)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	struct FArdaPersistentAddNode
+	    : TArdaNodeDefinition<FArdaPersistentAddNode, FArdaPersistentAddParameters, EArdaNodeType::Cuda>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata()
 		{
 			return {"test.cuda.persistent-add", 1};
+		}
+
+		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters& Parameters)
+		{
+			FArdaDependencyNodeRequirements Requirements;
+			Requirements.mbRequireCuda = true;
+			if (Parameters.mOperation)
+			{
+				Requirements.mEnvironment.push_back({"CUDA operand",
+				    [Operation = Parameters.mOperation](const IArdaRHIDevice& Device)
+				    {
+					    return Operation->GetDevice().Get() == &Device
+					        ? Operation->GetOperandSupport()
+					        : FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+					              "CUDA operand belongs to another device.");
+				    }});
+			}
+			return Requirements;
+		}
+
+		static FArdaRHIStatus Validate(const FArdaParameters& Parameters)
+		{
+			return Parameters.mOperation
+			    ? FArdaRHIStatus{}
+			    : FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA nodes require an operand.");
+		}
+
+		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)
+		{
+			return FArdaDependencyKeyBuilder()
+			    .Value(reinterpret_cast<uintptr_t>(Parameters.mOperation.get()))
+			    .Resource(Parameters.mInput)
+			    .Resource(Parameters.mOutput)
+			    .Value(Parameters.mCount)
+			    .Value(Parameters.mBias)
+			    .Build();
+		}
+
+		static FArdaRHIStatus PrepareCuda(FArdaDependencyExecutionContext& Context,
+		    const FArdaParameters& Parameters,
+		    const FArdaState&,
+		    FArdaInstanceState&,
+		    FArdaCudaSequence& Sequence)
+		{
+			FArdaAddParameters Host;
+			Host.mCount = Parameters.mCount;
+			Host.mBias = Parameters.mBias;
+			if (auto Status = ResolveNodeCudaParameters(Context, Parameters, Host); !Status)
+			{
+				return Status;
+			}
+			return Sequence.Add(*Parameters.mOperation, Host);
 		}
 	};
 
@@ -1160,41 +1224,211 @@ namespace arda::cuda_tests
 		ASSERT_TRUE(SchemaCudaAdd(Edit, Input, Middle, 128u, 7u));
 		ASSERT_TRUE(SchemaCudaAdd(Edit, FArdaSchemaCudaAddParameters{Middle, Output, 128u, 11u}));
 		auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output.GetHandle(), Bytes}, "schema readback"));
+		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output, Bytes}, "schema readback"));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
-		const auto Executed = Graph.Execute();
+		const auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		ExpectWords(*Bytes, 128, 18);
 	}
 
-	/** Deliberately disagree with the operand schema to exercise the runtime contract boundary. */
-	template <bool bNarrowRange>
-	struct TArdaMismatchedCudaNode : TArdaCudaOperandNode<TArdaMismatchedCudaNode<bNarrowRange>, FArdaAddOperand>
+	TEST_P(FArdaCudaGpu, ArrayNodeParametersBatchCudaLanesWithIndependentBindingsAndValues)
 	{
-		using FArdaBase = TArdaCudaOperandNode<TArdaMismatchedCudaNode<bNarrowRange>, FArdaAddOperand>;
-		using FArdaParameters = typename FArdaBase::FArdaParameters;
-		using FArdaState = typename FArdaBase::FArdaState;
+		constexpr uint32_t Count = 128;
+		constexpr uint32_t LaneCount = 4;
+		ASSERT_TRUE(FArdaSchemaCudaAddNode::Register());
+		FArdaScopedPersistentCudaRegistration Registration{FArdaSchemaCudaAddNode::GetMetadata().mName};
+		FArdaDependencyGraph Graph(mDevice);
+		FArdaGraphEdit Edit(Graph);
+		TArdaNodeArray<FArdaGraphBuffer> Inputs;
+		TArdaNodeArray<FArdaGraphBuffer> Outputs;
+		TArdaNodeArray<uint32_t> Biases{7, 11, 13, 17};
+		TArdaNodeArray<eastl::shared_ptr<eastl::vector<uint8_t>>> Readbacks;
+		for (uint32_t Lane = 0; Lane < LaneCount; ++Lane)
+		{
+			Inputs.push_back(AllocateBuffer(Edit, BufferDesc(Count * 4)));
+			Outputs.push_back(AllocateBuffer(Edit, BufferDesc(Count * 4)));
+			Readbacks.push_back(eastl::make_shared<eastl::vector<uint8_t>>());
+			auto Parameters = CudaGraphUpload(Inputs[Lane], Count);
+			for (uint32_t Index = 0; Index < Count; ++Index)
+			{
+				const uint32_t Value = Index * 3 + Lane * 100;
+				std::memcpy(Parameters.mBytes.data() + Index * 4, &Value, sizeof(Value));
+			}
+			ASSERT_TRUE(UploadNode(Edit, eastl::move(Parameters)));
+		}
+		const auto Kernels = SchemaCudaAdd(Edit, Inputs, Outputs, Count, Biases);
+		ASSERT_EQ(Kernels.size(), LaneCount);
+		const auto ReadbackOperations = ReadbackNode(Edit, Outputs, Readbacks);
+		ASSERT_EQ(ReadbackOperations.size(), LaneCount);
+		// The owning invocation arrays are copied into immutable lane parameters.
+		Biases[0] = 999;
+		Inputs[0] = {};
+		ASSERT_TRUE(Edit.Commit());
+		const auto Compiled = Graph.CompileAndWait();
+		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
+		ASSERT_EQ(Graph.GetCompileResult().mCudaBatches.size(), 1u);
+		EXPECT_EQ(Graph.GetCompileResult().mCudaBatches.front().size(), LaneCount);
+		EXPECT_NE(eastl::find(Graph.GetCompileResult().mPipelineBatches.begin(),
+		              Graph.GetCompileResult().mPipelineBatches.end(),
+		              Graph.GetCompileResult().mCudaBatches.front()),
+		    Graph.GetCompileResult().mPipelineBatches.end());
+		for (uint32_t Frame = 0; Frame < 2; ++Frame)
+		{
+			const auto Executed = Graph.ExecuteAndWait();
+			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
+			const uint32_t ExpectedBiases[] = {7, 111, 213, 317};
+			for (uint32_t Lane = 0; Lane < LaneCount; ++Lane)
+			{
+				ExpectWords(*Readbacks[Lane], Count, ExpectedBiases[Lane]);
+			}
+		}
+	}
+
+	TEST_P(FArdaCudaGpu, ConcurrentArrayEditsResolveCudaResourcesAfterAtomicCommit)
+	{
+		constexpr uint32_t Count = 64;
+		constexpr uint32_t ThreadCount = 2;
+		constexpr uint32_t LanesPerThread = 3;
+		constexpr uint32_t TotalLanes = ThreadCount * LanesPerThread;
+		ASSERT_TRUE(FArdaSchemaCudaAddNode::Register());
+		FArdaScopedPersistentCudaRegistration Registration{FArdaSchemaCudaAddNode::GetMetadata().mName};
+		FArdaDependencyGraph Graph(mDevice);
+		FArdaGraphBuffer Input;
+		{
+			FArdaGraphEdit Setup(Graph);
+			auto Options = Setup.GetGraph().GetOptions();
+			Options.mSearchMode = EArdaInductorSearchMode::Greedy;
+			ASSERT_TRUE(Setup.SetOptions(Options));
+			Input = AllocateBuffer(Setup, BufferDesc(Count * 4));
+			ASSERT_TRUE(UploadNode(Setup, CudaGraphUpload(Input, Count)));
+			ASSERT_TRUE(Setup.Commit());
+		}
+		eastl::vector<FArdaGraphBuffer> Outputs(TotalLanes);
+		TArdaNodeArray<eastl::shared_ptr<eastl::vector<uint8_t>>> Readbacks;
+		for (uint32_t Lane = 0; Lane < TotalLanes; ++Lane)
+		{
+			Readbacks.push_back(eastl::make_shared<eastl::vector<uint8_t>>());
+		}
+		std::atomic<uint32_t> Ready{0};
+		std::atomic<uint32_t> Turn{0};
+		std::vector<std::thread> Threads;
+		std::vector<FArdaRHIStatus> Status(ThreadCount);
+		for (uint32_t Thread = 0; Thread < ThreadCount; ++Thread)
+		{
+			Threads.emplace_back(
+			    [&, Thread]
+			    {
+				    FArdaGraphEdit Edit(Graph);
+				    TArdaNodeArray<FArdaGraphBuffer> LaneOutputs;
+				    TArdaNodeArray<uint32_t> Biases;
+				    for (uint32_t Lane = 0; Lane < LanesPerThread; ++Lane)
+				    {
+					    const uint32_t Index = Thread * LanesPerThread + Lane;
+					    Outputs[Index] = AllocateBuffer(Edit, BufferDesc(Count * 4));
+					    LaneOutputs.push_back(Outputs[Index]);
+					    Biases.push_back(5 + Index * 7);
+				    }
+				    const auto Kernels = SchemaCudaAdd(Edit, Input, LaneOutputs, Count, Biases);
+				    EXPECT_EQ(Kernels.size(), LanesPerThread);
+				    Ready.fetch_add(1, std::memory_order_release);
+				    while (Ready.load(std::memory_order_acquire) != ThreadCount ||
+				        Turn.load(std::memory_order_acquire) != Thread)
+				    {
+					    std::this_thread::yield();
+				    }
+				    Status[Thread] = Edit.Commit();
+				    Turn.fetch_add(1, std::memory_order_release);
+			    });
+		}
+		for (auto& Thread : Threads)
+		{
+			Thread.join();
+		}
+		for (const auto& Result : Status)
+		{
+			ASSERT_TRUE(Result) << Result.mMessage.c_str();
+		}
+		{
+			FArdaGraphEdit ReadbackEdit(Graph);
+			const auto ReadbackOperations =
+			    ReadbackNode(ReadbackEdit, TArdaNodeArray<FArdaGraphBuffer>(Outputs), Readbacks);
+			ASSERT_EQ(ReadbackOperations.size(), TotalLanes);
+			ASSERT_TRUE(ReadbackEdit.Commit());
+		}
+		const auto Compiled = Graph.CompileAndWait();
+		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
+		ASSERT_EQ(Graph.GetCompileResult().mCudaBatches.size(), 1u);
+		EXPECT_EQ(Graph.GetCompileResult().mCudaBatches.front().size(), TotalLanes);
+		const auto Executed = Graph.ExecuteAndWait();
+		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
+		for (uint32_t Lane = 0; Lane < TotalLanes; ++Lane)
+		{
+			ExpectWords(*Readbacks[Lane], Count, 5 + Lane * 7);
+		}
+	}
+
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaMismatchedCudaParameters)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<FArdaAddOperand>, mOperation)
+		ARDA_NODE_PARAMETER(FArdaGraphBuffer, mInput)
+		ARDA_NODE_PARAMETER(FArdaGraphBuffer, mOutput)
+		ARDA_NODE_PARAMETER(uint32_t, mCount)
+		ARDA_NODE_PARAMETER(uint32_t, mBias)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	/** Deliberately submit wider operand accesses than this dynamic declaration permits. */
+	template <bool bNarrowRange>
+	struct TArdaMismatchedCudaNode
+	    : TArdaNodeDefinition<TArdaMismatchedCudaNode<bNarrowRange>, FArdaMismatchedCudaParameters, EArdaNodeType::Cuda>
+	{
+		using FArdaParameters = FArdaMismatchedCudaParameters;
+		using FArdaState = FArdaEmptyDependencyNodeState;
+		using FArdaInstanceState = FArdaEmptyDependencyNodeState;
 
 		static FArdaDependencyNodeMetadata GetMetadata()
 		{
 			return {bNarrowRange ? "test.cuda.contract-range" : "test.cuda.contract-write", 1};
 		}
 
-		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)
+		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters)
 		{
-			auto Desc = FArdaBase::Describe(Parameters, State);
+			return FArdaDependencyKeyBuilder()
+			    .Value(reinterpret_cast<uintptr_t>(Parameters.mOperation.get()))
+			    .Resource(Parameters.mInput)
+			    .Resource(Parameters.mOutput)
+			    .Value(Parameters.mCount)
+			    .Value(Parameters.mBias)
+			    .Build();
+		}
+
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState&)
+		{
+			FArdaDependencyNodeDesc Desc;
 			Desc.mbSideEffect = true;
+			Desc.mAccesses = {{Parameters.mInput, EArdaDependencyAccess::Read, EArdaRHIResourceState::UnorderedAccess},
+			    {Parameters.mOutput,
+			        bNarrowRange ? EArdaDependencyAccess::Write : EArdaDependencyAccess::Read,
+			        EArdaRHIResourceState::UnorderedAccess}};
 			if constexpr (bNarrowRange)
 			{
 				Desc.mAccesses.back().mBufferRange = {0, 256};
 			}
-			else
-			{
-				Desc.mAccesses.back().mAccess = EArdaDependencyAccess::Read;
-			}
 			return Desc;
+		}
+
+		static FArdaRHIStatus PrepareCuda(FArdaDependencyExecutionContext& Context,
+		    const FArdaParameters& Parameters,
+		    const FArdaState&,
+		    FArdaInstanceState&,
+		    FArdaCudaSequence& Sequence)
+		{
+			FArdaAddParameters Host;
+			Host.mInput = {Context.GetBuffer(Parameters.mInput), {}};
+			Host.mOutput = {Context.GetBuffer(Parameters.mOutput), {}};
+			Host.mCount = Parameters.mCount;
+			Host.mBias = Parameters.mBias;
+			return Sequence.Add(*Parameters.mOperation, Host);
 		}
 	};
 
@@ -1218,23 +1452,24 @@ namespace arda::cuda_tests
 			const auto Output = BindBuffer(Edit, NativeOutput.mValue, "CUDA contract output");
 			ASSERT_TRUE(Input);
 			ASSERT_TRUE(Output);
-			TArdaDependencyCudaParameters<FArdaAddParameters> Parameters;
-			Parameters.mInput.mResource = Input;
-			Parameters.mOutput.mResource = Output;
+			FArdaMismatchedCudaParameters Parameters;
+			Parameters.mOperation = Operand;
+			Parameters.mInput = Input;
+			Parameters.mOutput = Output;
 			Parameters.mCount = 128;
 			Parameters.mBias = 7;
 			if (bNarrowRange)
 			{
-				ASSERT_TRUE(MismatchedCudaRange(Edit, Operand, Parameters));
+				ASSERT_TRUE(MismatchedCudaRange(Edit, Parameters));
 			}
 			else
 			{
-				ASSERT_TRUE(MismatchedCudaWrite(Edit, Operand, Parameters));
+				ASSERT_TRUE(MismatchedCudaWrite(Edit, Parameters));
 			}
 			ASSERT_TRUE(Edit.Commit());
-			const auto Compiled = Graph.Compile();
+			const auto Compiled = Graph.CompileAndWait();
 			ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
-			const auto Executed = Graph.Execute();
+			const auto Executed = Graph.ExecuteAndWait();
 			EXPECT_FALSE(Executed.mStatus);
 			EXPECT_EQ(Executed.mSubmittedCommandListCount, 0u);
 			EXPECT_NE(Executed.mStatus.mMessage.find("writes outside"), eastl::string::npos)
@@ -1259,27 +1494,28 @@ namespace arda::cuda_tests
 		ASSERT_TRUE(Middle);
 		ASSERT_TRUE(Output);
 		ASSERT_TRUE(UploadNode(Edit, CudaGraphUpload(Input.GetHandle(), 128), "upload"));
-		TArdaDependencyCudaParameters<FArdaAddParameters> P;
-		P.mInput.mResource = Input.GetHandle();
-		P.mOutput.mResource = Middle.GetHandle();
+		FArdaPersistentAddParameters P;
+		P.mOperation = Operand;
+		P.mInput = Input;
+		P.mOutput = Middle;
 		P.mCount = 128;
 		P.mBias = 7;
-		auto First = PersistentCudaAdd(Edit, {Operand, P}, "add seven");
+		auto First = PersistentCudaAdd(Edit, P, "add seven");
 		ASSERT_TRUE(First) << Edit.GetStatus().mMessage.c_str();
-		P.mInput.mResource = Middle.GetHandle();
-		P.mOutput.mResource = Output.GetHandle();
+		P.mInput = Middle;
+		P.mOutput = Output;
 		P.mBias = 11;
-		auto Second = PersistentCudaAdd(Edit, {Operand, P}, "add eleven");
+		auto Second = PersistentCudaAdd(Edit, P, "add eleven");
 		ASSERT_TRUE(Second) << Edit.GetStatus().mMessage.c_str();
 		auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output.GetHandle(), Bytes}, "readback"));
+		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output, Bytes}, "readback"));
 		ASSERT_TRUE(Edit.Commit());
-		auto Compiled = Graph.Compile();
+		auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		ASSERT_EQ(Graph.GetCompileResult().mCudaBatches.size(), 1u);
 		EXPECT_EQ(Graph.GetCompileResult().mCudaBatches.front(),
 		    (eastl::vector<FArdaGraphNodeHandle>{First.GetHandle(), Second.GetHandle()}));
-		const auto Result = Graph.Execute();
+		const auto Result = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Result.mStatus) << Result.mStatus.mMessage.c_str();
 		EXPECT_GT(Result.mSubmittedCommandListCount, 0u);
 		ExpectWords(*Bytes, 128, 18);
@@ -1304,27 +1540,28 @@ namespace arda::cuda_tests
 		ASSERT_TRUE(Output);
 		ASSERT_TRUE(DeadOutput);
 		ASSERT_TRUE(UploadNode(Edit, CudaGraphUpload(Input.GetHandle(), 128), "upload"));
-		TArdaDependencyCudaParameters<FArdaAddParameters> P;
-		P.mInput.mResource = Input.GetHandle();
-		P.mOutput.mResource = Scratch.GetHandle();
+		FArdaPersistentAddParameters P;
+		P.mOperation = Operand;
+		P.mInput = Input;
+		P.mOutput = Scratch;
 		P.mCount = 128;
 		P.mBias = 7;
-		auto First = PersistentCudaAdd(Edit, {Operand, P}, "first CUDA kernel");
+		auto First = PersistentCudaAdd(Edit, P, "first CUDA kernel");
 		ASSERT_TRUE(First);
-		P.mInput.mResource = Scratch.GetHandle();
-		P.mOutput.mResource = Output.GetHandle();
+		P.mInput = Scratch;
+		P.mOutput = Output;
 		P.mBias = 11;
-		auto Second = PersistentCudaAdd(Edit, {Operand, P}, "second CUDA kernel");
+		auto Second = PersistentCudaAdd(Edit, P, "second CUDA kernel");
 		ASSERT_TRUE(Second);
 		P.mBias = 999; // Mutating the source must not change either stored node snapshot.
-		P.mInput.mResource = Input.GetHandle();
-		P.mOutput.mResource = DeadOutput.GetHandle();
-		auto Dead = PersistentCudaAdd(Edit, {Operand, P}, "unused CUDA work");
+		P.mInput = Input;
+		P.mOutput = DeadOutput;
+		auto Dead = PersistentCudaAdd(Edit, P, "unused CUDA work");
 		ASSERT_TRUE(Dead);
 		auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output.GetHandle(), Bytes}, "readback"));
+		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output, Bytes}, "readback"));
 		ASSERT_TRUE(Edit.Commit());
-		auto Compiled = Graph.Compile();
+		auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		ASSERT_EQ(Graph.GetCompileResult().mCudaBatches.size(), 1u);
 		EXPECT_EQ(Graph.GetCompileResult().mCudaBatches.front(),
@@ -1336,7 +1573,7 @@ namespace arda::cuda_tests
 		Operand.reset();
 		for (uint32_t Frame = 0; Frame < 2; ++Frame)
 		{
-			const auto Result = Graph.Execute();
+			const auto Result = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Result.mStatus) << Result.mStatus.mMessage.c_str();
 			ExpectWords(*Bytes, 128, 18);
 		}
@@ -1411,17 +1648,18 @@ namespace arda::cuda_tests
 		    {Texture.GetHandle(), Crop, Intermediate.GetHandle(), TransferLayout},
 		    "download crop");
 		ASSERT_TRUE(Download) << Edit.GetStatus().mMessage.c_str();
-		TArdaDependencyCudaParameters<FArdaAddParameters> P;
-		P.mInput.mResource = Intermediate.GetHandle();
-		P.mOutput.mResource = FirstOutput.GetHandle();
+		FArdaPersistentAddParameters P;
+		P.mOperation = Operand;
+		P.mInput = Intermediate;
+		P.mOutput = FirstOutput;
 		P.mCount = TransferWords;
 		P.mBias = 17;
-		auto First = PersistentCudaAdd(Edit, {Operand, P}, "add seventeen");
+		auto First = PersistentCudaAdd(Edit, P, "add seventeen");
 		ASSERT_TRUE(First);
-		P.mInput.mResource = FirstOutput.GetHandle();
-		P.mOutput.mResource = SecondOutput.GetHandle();
+		P.mInput = FirstOutput;
+		P.mOutput = SecondOutput;
 		P.mBias = 23;
-		auto Second = PersistentCudaAdd(Edit, {Operand, P}, "add twenty-three");
+		auto Second = PersistentCudaAdd(Edit, P, "add twenty-three");
 		ASSERT_TRUE(Second);
 		auto Upload = BufferToTexture(Edit,
 		    {UpdatedTexture.GetHandle(), Crop, SecondOutput.GetHandle(), TransferLayout},
@@ -1432,9 +1670,9 @@ namespace arda::cuda_tests
 		    "copy for readback");
 		ASSERT_TRUE(CopyForReadback) << Edit.GetStatus().mMessage.c_str();
 		auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output.GetHandle(), Bytes}, "readback"));
+		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output, Bytes}, "readback"));
 		ASSERT_TRUE(Edit.Commit());
-		auto Compiled = Graph.Compile();
+		auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		ASSERT_EQ(Graph.GetCompileResult().mCudaBatches.size(), 1u);
 		EXPECT_EQ(Graph.GetCompileResult().mCudaBatches.front(),
@@ -1445,7 +1683,7 @@ namespace arda::cuda_tests
 		Readback.mValue.mBuffer.Reset();
 		for (uint32_t Frame = 0; Frame < 2; ++Frame)
 		{
-			const auto Result = Graph.Execute();
+			const auto Result = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Result.mStatus) << Result.mStatus.mMessage.c_str();
 			ASSERT_EQ(Bytes->size(), ReadbackWords * 4u);
 			for (uint32_t Y = 0; Y < Desc.mHeight; ++Y)
@@ -1476,15 +1714,16 @@ namespace arda::cuda_tests
 			FArdaGraphEdit OtherEdit(Other);
 			const auto Foreign = AllocateBuffer(OtherEdit, BufferDesc(128 * 4), "foreign");
 			ASSERT_TRUE(Foreign);
-			TArdaDependencyCudaParameters<FArdaAddParameters> P;
+			FArdaPersistentAddParameters P;
+			P.mOperation = Operand;
 			P.mCount = 128;
 			P.mBias = 7;
 			{
 				FArdaGraphEdit Rejected(Graph);
 				const auto Destination = AllocateBuffer(Rejected, BufferDesc(128 * 4), "destination");
-				P.mInput.mResource = Foreign;
-				P.mOutput.mResource = Destination;
-				EXPECT_FALSE(PersistentCudaAdd(Rejected, {Operand, P}, "foreign resource"));
+				P.mInput = Foreign;
+				P.mOutput = Destination;
+				EXPECT_FALSE(PersistentCudaAdd(Rejected, P, "foreign resource"));
 				EXPECT_FALSE(Rejected.Commit());
 				ASSERT_TRUE(Rejected.Cancel());
 			}
@@ -1498,21 +1737,21 @@ namespace arda::cuda_tests
 			ASSERT_TRUE(Input);
 			ASSERT_TRUE(Middle);
 			ASSERT_TRUE(Output);
-			P.mOutput.mResource = Middle;
-			P.mInput.mResource = Input.GetHandle();
-			ASSERT_TRUE(PersistentCudaAdd(Edit, {Operand, P}, "first CUDA node"));
-			P.mInput.mResource = Middle.GetHandle();
-			P.mOutput.mResource = Output.GetHandle();
+			P.mOutput = Middle;
+			P.mInput = Input;
+			ASSERT_TRUE(PersistentCudaAdd(Edit, P, "first CUDA node"));
+			P.mInput = Middle;
+			P.mOutput = Output;
 			P.mCount = Shared
 			    ? 127
 			    : 128; // Selection fails after the first plan prepares, or the first input is not shareable.
-			ASSERT_TRUE(PersistentCudaAdd(Edit, {Operand, P}, "invalid CUDA node"));
+			ASSERT_TRUE(PersistentCudaAdd(Edit, P, "invalid CUDA node"));
 			auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-			ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output.GetHandle(), Bytes}, "readback"));
+			ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output, Bytes}, "readback"));
 			ASSERT_TRUE(Edit.Commit());
-			auto Compiled = Graph.Compile();
+			auto Compiled = Graph.CompileAndWait();
 			ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
-			const auto Result = Graph.Execute();
+			const auto Result = Graph.ExecuteAndWait();
 			EXPECT_FALSE(Result.mStatus);
 			EXPECT_EQ(Result.mSubmittedCommandListCount, 0u);
 			EXPECT_TRUE(Bytes->empty());
@@ -1557,18 +1796,19 @@ namespace arda::cuda_tests
 		ASSERT_TRUE(Middle);
 		ASSERT_TRUE(Output);
 		auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output.GetHandle(), Bytes}, "readback"));
-		TArdaDependencyCudaParameters<FArdaAddParameters> P;
-		P.mInput.mResource = Middle.GetHandle();
-		P.mOutput.mResource = Output.GetHandle();
+		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output, Bytes}, "readback"));
+		FArdaPersistentAddParameters P;
+		P.mOperation = Operand;
+		P.mInput = Middle;
+		P.mOutput = Output;
 		P.mCount = Count;
 		P.mBias = 11;
-		auto Last = PersistentCudaAdd(Edit, {Operand, P}, "add eleven");
+		auto Last = PersistentCudaAdd(Edit, P, "add eleven");
 		ASSERT_TRUE(Last);
-		P.mInput.mResource = Input.GetHandle();
-		P.mOutput.mResource = Middle.GetHandle();
+		P.mInput = Input;
+		P.mOutput = Middle;
 		P.mBias = 7;
-		auto First = PersistentCudaAdd(Edit, {Operand, P}, "add seven");
+		auto First = PersistentCudaAdd(Edit, P, "add seven");
 		ASSERT_TRUE(First);
 		const auto Sync = SyncNode(Edit, FArdaGraphSyncParameters{}, "CUDA dependency join");
 		ASSERT_TRUE(Sync);
@@ -1584,7 +1824,7 @@ namespace arda::cuda_tests
 		}
 		ASSERT_TRUE(UploadNode(Edit, Upload, "upload"));
 		ASSERT_TRUE(Edit.Commit());
-		auto Compiled = Graph.Compile();
+		auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		EXPECT_LE(Graph.GetCompileResult().mAllocatedBytes, Options.mMaxVramBytes);
 		EXPECT_GT(Graph.GetCompileResult().mAliasedBytes, 0u);
@@ -1594,7 +1834,7 @@ namespace arda::cuda_tests
 		const auto Revision = Graph.GetCompileResult().mRevision;
 		for (uint32_t Frame = 0; Frame < 5; ++Frame)
 		{
-			auto Result = Graph.Execute();
+			auto Result = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Result.mStatus) << Result.mStatus.mMessage.c_str();
 			ASSERT_TRUE(mDevice->WaitForIdle());
 			ExpectWords(*Bytes, Count, 18);
@@ -1650,23 +1890,23 @@ namespace arda::cuda_tests
 		const auto BudgetMiddle = AllocateBuffer(BudgetEdit, Desc, "middle");
 		const auto BudgetOutput = AllocateBuffer(BudgetEdit, Desc, "output");
 		ASSERT_TRUE(ReadbackNode(BudgetEdit, FArdaGraphReadbackParameters{BudgetOutput, Bytes}, "readback"));
-		P.mInput.mResource = BudgetMiddle;
-		P.mOutput.mResource = BudgetOutput;
+		P.mInput = BudgetMiddle;
+		P.mOutput = BudgetOutput;
 		P.mBias = 11;
-		const auto BudgetLast = PersistentCudaAdd(BudgetEdit, {Operand, P}, "add eleven");
-		P.mInput.mResource = BudgetInput;
-		P.mOutput.mResource = BudgetMiddle;
+		const auto BudgetLast = PersistentCudaAdd(BudgetEdit, P, "add eleven");
+		P.mInput = BudgetInput;
+		P.mOutput = BudgetMiddle;
 		P.mBias = 7;
-		const auto BudgetFirst = PersistentCudaAdd(BudgetEdit, {Operand, P}, "add seven");
+		const auto BudgetFirst = PersistentCudaAdd(BudgetEdit, P, "add seven");
 		const auto BudgetSync = SyncNode(BudgetEdit, FArdaGraphSyncParameters{}, "CUDA dependency join");
 		ASSERT_TRUE(BudgetEdit.Order(BudgetFirst, BudgetSync));
 		ASSERT_TRUE(BudgetEdit.Order(BudgetSync, BudgetLast));
 		Upload.mDestination = BudgetInput;
 		ASSERT_TRUE(UploadNode(BudgetEdit, Upload, "upload"));
 		ASSERT_TRUE(BudgetEdit.Commit());
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 		ASSERT_TRUE(Graph.DiscardPendingEdits());
-		auto Result = Graph.Execute();
+		auto Result = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Result.mStatus) << Result.mStatus.mMessage.c_str();
 		ASSERT_TRUE(mDevice->WaitForIdle());
 		ExpectWords(*Bytes, Count, 18);

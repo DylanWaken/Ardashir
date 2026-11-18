@@ -70,6 +70,8 @@ namespace arda
 		eastl::unordered_map<const void*, FArdaInductorAccelerationStructure*> mImportedAccelStructs;
 		FArdaInductorCommandPlan mPlan;
 		FArdaGraphExecutionResult mExecutionResult;
+		/** Native tokens indexed by pass for queue waits and per-frame readback completion. */
+		eastl::vector<uint64_t> mPassSubmissions;
 
 		struct FArdaReusableAliasActivation
 		{

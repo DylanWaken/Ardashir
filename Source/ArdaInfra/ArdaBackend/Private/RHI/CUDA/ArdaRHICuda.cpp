@@ -1,8 +1,60 @@
 #include "RHI/CUDA/ArdaRHICuda.h"
+#include "RHI/CUDA/ArdaCudaModule.h"
 #include <exception>
 
 namespace arda
 {
+	FArdaCudaTensorTypeSupport GetArdaCudaTensorTypeSupport(const FArdaCudaCapabilities& Capabilities,
+	    EArdaRHIDataType DataType) noexcept
+	{
+		FArdaCudaTensorTypeSupport Result;
+		if (!Capabilities || !Capabilities.mComputeCapability || !GetArdaRHIDataTypeInfo(DataType).mByteSize)
+		{
+			return Result;
+		}
+		Result.mbStorage = true;
+		Result.mbInstructionProfileKnown = true;
+		const auto Architecture = Capabilities.mComputeCapability;
+		// NVIDIA PTX ISA: half-precision add/mul/fma, cvt, dp4a, wmma.mma and mma.
+		// https://docs.nvidia.com/cuda/parallel-thread-execution/
+		// BF16 fma/conversion precede dedicated BF16 add/mul; integer WMMA precedes integer MMA.
+		switch (DataType)
+		{
+		case EArdaRHIDataType::Float32:
+			Result.mbFloat32Conversion = true;
+			Result.mbScalarAddMultiply = true;
+			Result.mbScalarFma = Architecture >= 20;
+			break;
+		case EArdaRHIDataType::Float16:
+			Result.mbFloat32Conversion = true;
+			Result.mbScalarAddMultiply = Architecture >= 53;
+			Result.mbScalarFma = Architecture >= 53;
+			Result.mbTensorCore = Architecture >= 70;
+			break;
+		case EArdaRHIDataType::BFloat16:
+			Result.mbFloat32Conversion = Architecture >= 80;
+			Result.mbScalarAddMultiply = Architecture >= 90;
+			Result.mbScalarFma = Architecture >= 80;
+			Result.mbTensorCore = Architecture >= 80;
+			break;
+		case EArdaRHIDataType::Float8E4M3FN:
+		case EArdaRHIDataType::Float8E5M2:
+			Result.mbFloat32Conversion = Architecture >= 89;
+			Result.mbTensorCore = Architecture >= 89;
+			break;
+		case EArdaRHIDataType::Int8:
+		case EArdaRHIDataType::UInt8:
+			Result.mbFloat32Conversion = true;
+			Result.mbPackedInt8DotProduct = Architecture >= 61;
+			Result.mbTensorCore = Architecture >= 72;
+			break;
+		default:
+			Result.mbInstructionProfileKnown = false;
+			break;
+		}
+		return Result;
+	}
+
 	bool FArdaCudaArchitecture::Supports(uint32_t DeviceCapability) const noexcept
 	{
 		if (!mComputeCapability)
@@ -182,10 +234,26 @@ namespace arda
 		}
 		else
 		{
+			const auto* Module = K.mEntry->GetModule();
+			const auto* ModuleKernel = K.mEntry->GetModuleKernel();
+			if (bool(Module) != bool(ModuleKernel))
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+				    "CUDA module entry has an incomplete artifact descriptor.");
+			}
+			if (ModuleKernel)
+			{
+				if (auto Status = ValidateArdaCudaModuleParameters(*ModuleKernel, K); !Status)
+				{
+					return Status;
+				}
+			}
 			bool Supported = false;
 			for (const auto& A : K.mEntry->GetBuildInfo().mArchitectures)
 			{
-				if (A.Supports(C.mComputeCapability))
+				const bool bVirtualTarget =
+				    Module && Module->GetDesc().mFormat == EArdaCudaModuleFormat::Ptx && !A.mbExact;
+				if (bVirtualTarget ? A.mComputeCapability <= C.mComputeCapability : A.Supports(C.mComputeCapability))
 				{
 					Supported = true;
 					break;
@@ -194,7 +262,7 @@ namespace arda
 			if (!Supported)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
-				    "No precompiled native kernel image supports this CUDA architecture.");
+				    "No compiled kernel artifact supports this CUDA architecture.");
 			}
 			if (K.mSharedMemoryBytes > C.mMaxSharedMemoryBytes)
 			{

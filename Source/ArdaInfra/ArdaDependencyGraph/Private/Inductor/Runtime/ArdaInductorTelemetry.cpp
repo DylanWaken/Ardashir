@@ -36,9 +36,9 @@ namespace arda
 		auto OrderedStates(FArdaDependencyGraph::FArdaImpl& Graph)
 		{
 			eastl::vector<eastl::shared_ptr<FArdaDependencyFrameTicket::FArdaState>> States;
-			if (Graph.mRuntime)
+			if (Graph.mCompile.mExecution->mRuntime)
 			{
-				for (const auto& Frame : Graph.mRuntime->mFrames)
+				for (const auto& Frame : Graph.mCompile.mExecution->mRuntime->mFrames)
 				{
 					if (Frame->mActive)
 					{

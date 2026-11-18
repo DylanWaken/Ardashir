@@ -2,15 +2,37 @@
 #include "RHI/Config/ArdaBackendCorePch.h"
 
 #include "RHI/Config/ArdaLog.h"
-#include "RHI/Context/ArdaLogContext.h"
 #include "RHI/Config/ArdaStringFormat.h"
 
 #include <cstdarg>
+#include <cstdio>
 
 namespace arda
 {
 	namespace
 	{
+		void DefaultLogOutput(const FArdaLogRecord& Record, void*) noexcept
+		{
+			std::fprintf(stderr,
+			    "[%s][%s] %s\n",
+			    Record.mCategory ? Record.mCategory : "",
+			    ToString(Record.mVerbosity),
+			    Record.mMessage ? Record.mMessage : "");
+		}
+
+		struct FArdaLogContext
+		{
+			std::mutex mMutex;
+			FArdaLogOutput mOutput = &DefaultLogOutput;
+			void* mUserData = nullptr;
+		};
+
+		FArdaLogContext& GetLogState()
+		{
+			static FArdaLogContext State;
+			return State;
+		}
+
 		void DispatchLogRecord(const FArdaLogRecord& Record) noexcept
 		{
 			FArdaLogOutput output = nullptr;

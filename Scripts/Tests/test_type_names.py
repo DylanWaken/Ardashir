@@ -44,6 +44,9 @@ class FArdaTypeNameTests(unittest.TestCase):
     def test_external_forward_exception_does_not_hide_owned_definitions(self):
         self.assertEqual(self.names("struct GLFWwindow { int Wrong; };"), ["GLFWwindow"])
 
+    def test_checks_standard_alias_names_in_project_code(self):
+        self.assertEqual(self.names("using value_type = Element;"), ["value_type"])
+
     def test_finds_permutation_macro_types(self):
         source = '''ARDA_SHADER_PERMUTATION_BOOL(FUseFeature, "FEATURE");
         ARDA_SHADER_PERMUTATION_INT(FQuality, "QUALITY", 3);

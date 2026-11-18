@@ -51,7 +51,7 @@ namespace arda
 			{
 				return {{}, Error("Adaptive timing costs must be finite and nonnegative.")};
 			}
-			for (const auto& Access : Record->mPayload.mDesc.mAccesses)
+			for (const auto& Access : G.GetNodeDescription(Record->mPayload).mAccesses)
 			{
 				if (!G.HasResource(Access.mResource))
 				{
@@ -167,7 +167,7 @@ namespace arda
 				Ready = eastl::max(Ready, Finish[P]);
 			}
 			const auto& Node = G.mTopology.TryGetNode(Order[I])->mPayload;
-			if (IsDeclaration(Node))
+			if (IsDeclaration(G, Node))
 			{
 				Finish[I] = Ready;
 				continue;
@@ -209,6 +209,15 @@ namespace arda
 			return {{}, Error("Adaptive schedule cost overflowed.")};
 		}
 		auto View = FArdaInductorGraphAccess::View(const_cast<FArdaDependencyGraph::FArdaImpl&>(G));
+		BuildCudaBatches(G, Candidate);
+		if (auto S = FArdaBatchPipelinesRule{}.Apply(View, Candidate); !S)
+		{
+			return {{}, S};
+		}
+		if (auto S = FArdaMergeDrawInstancesRule{}.Apply(View, Candidate); !S)
+		{
+			return {{}, S};
+		}
 		if (auto S = FArdaFlattenDispatchesRule{}.Apply(View, Candidate); !S)
 		{
 			return {{}, S};

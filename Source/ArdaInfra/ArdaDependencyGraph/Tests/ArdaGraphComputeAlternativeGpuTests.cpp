@@ -2,7 +2,6 @@
 #include "ArdaTestBackend.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
 #include "Graph/Node/ArdaNodeDefinition.h"
-#include "Inductor/Runtime/ArdaDependencyGraphCuda.h"
 #include <gtest/gtest.h>
 #include <cstring>
 
@@ -132,81 +131,6 @@ namespace arda
 			}
 		};
 
-		class FArdaLegacyGraphAlternativeOperand final
-		    : public TArdaComputeOperand<FArdaGraphAlternativeCudaParameters, uint32_t>
-		{
-		public:
-			using TArdaComputeOperand::TArdaComputeOperand;
-			mutable uint32_t mComputePreparations = 0, mNativeSelections = 0;
-			bool mbFailPreparation = false;
-
-			const char* GetName() const noexcept override
-			{
-				return "test.legacy.graph-alternative";
-			}
-
-			void BindKernelVariants(FArdaRegistry&) const override
-			{
-			}
-
-			bool HasComputeAlternative() const noexcept override
-			{
-				return true;
-			}
-
-			FArdaRHIStatus CheckComputeAlternativeSupport() const override
-			{
-				return {};
-			}
-
-			TArdaRHIResult<FArdaCudaKernelSelection> SelectKernel(const FArdaParameters&,
-			    const FArdaCudaSelectionContext&,
-			    const FArdaVariants&) const override
-			{
-				++mNativeSelections;
-				return {{}, FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, "Native selection must not run.")};
-			}
-
-			TArdaRHIResult<FArdaComputeAlternativePlan> PrepareComputeAlternative(const FArdaParameters& Parameters,
-			    EArdaRHIQueueType) const override
-			{
-				++mComputePreparations;
-				if (!Parameters.mOutput.mBuffer || Parameters.mOutput.mBuffer->GetDesc().mbCudaInterop ||
-				    Parameters.mOutput.mBuffer->GetDesc().mByteSize != 64 || Parameters.mOutput.mRange.mByteSize != 64)
-				{
-					return {{},
-					    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-					        "Logical arguments did not resolve to the declared non-CUDA buffer and range.")};
-				}
-				if (mbFailPreparation)
-				{
-					return {{},
-					    FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, "Intentional alternative failure.")};
-				}
-				FArdaComputeAlternativePlan Plan;
-				Plan.mbNoWork = true;
-				return {Plan, {}};
-			}
-		};
-
-		struct FArdaLegacyGraphAlternativeNode
-		    : TArdaCudaOperandNode<FArdaLegacyGraphAlternativeNode, FArdaLegacyGraphAlternativeOperand>
-		{
-			using FArdaBase = TArdaCudaOperandNode<FArdaLegacyGraphAlternativeNode, FArdaLegacyGraphAlternativeOperand>;
-
-			static FArdaDependencyNodeMetadata GetMetadata()
-			{
-				return {"test.graph.legacy-compute-alternative", 1};
-			}
-
-			static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State)
-			{
-				auto Description = FArdaBase::Describe(Parameters, State);
-				Description.mbSideEffect = true;
-				return Description;
-			}
-		};
-
 		class FArdaGraphComputeAlternativeGpu : public testing::TestWithParam<const char*>
 		{
 		protected:
@@ -241,46 +165,12 @@ namespace arda
 					EXPECT_TRUE(Device->WaitForIdle());
 				}
 				(void)FArdaNodeRegistry::Get().Unregister(FArdaGraphAlternativeNode::GetMetadata().mName);
-				(void)FArdaNodeRegistry::Get().Unregister(FArdaLegacyGraphAlternativeNode::GetMetadata().mName);
 				ShutdownBackend();
 				EXPECT_TRUE(ConfigureBackend(MakeArdaTestBackendConfiguration()));
 				ConfigureShaderCompiler(mPreviousCompiler);
 				EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
 			}
 		};
-
-		TEST_P(FArdaGraphComputeAlternativeGpu,
-		    LegacyOperandAlternativeResolvesArgumentsAndPropagatesPreparationFailure)
-		{
-			auto Operand = eastl::make_shared<FArdaLegacyGraphAlternativeOperand>(GetDevice());
-			FArdaDependencyGraph Graph(GetDevice());
-			FArdaGraphEdit Edit(Graph);
-			FArdaRHIBufferDesc Description;
-			Description.mByteSize = 64;
-			Description.mStructureStride = sizeof(uint32_t);
-			Description.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess;
-			const auto Output = AllocateBuffer(Edit, Description, "output");
-			ASSERT_TRUE(Output);
-			FArdaLegacyGraphAlternativeNode::FArdaParameters Parameters;
-			Parameters.mOperation = Operand;
-			Parameters.mArguments.mOutput = {Output.GetHandle(), {0, 64}};
-			ASSERT_TRUE(FArdaLegacyGraphAlternativeNode::CheckRequiredFeatures(GetDevice().Get(), Parameters));
-			ASSERT_TRUE(FArdaLegacyGraphAlternativeNode{}(Edit, Parameters, "legacy alternative"));
-			ASSERT_TRUE(Edit.Commit());
-			const auto Compiled = Graph.Compile();
-			ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
-			EXPECT_TRUE(Graph.GetCompileResult().mCudaBatches.empty());
-			const auto Executed = Graph.Execute();
-			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
-			EXPECT_EQ(Operand->mComputePreparations, 1u);
-			EXPECT_EQ(Operand->mNativeSelections, 0u);
-			Operand->mbFailPreparation = true;
-			const auto Failed = Graph.Execute();
-			EXPECT_EQ(Failed.mStatus.mCode, EArdaRHIResult::BackendFailure);
-			EXPECT_NE(Failed.mStatus.mMessage.find("Intentional alternative failure"), eastl::string::npos);
-			EXPECT_EQ(Operand->mComputePreparations, 2u);
-			EXPECT_EQ(Operand->mNativeSelections, 0u);
-		}
 
 		TEST_P(FArdaGraphComputeAlternativeGpu, NodeOwnedOutputUsesComputeAndReadbackWithoutCudaStorage)
 		{
@@ -299,10 +189,10 @@ namespace arda
 				const auto Read = Readback(Edit, Output);
 				ASSERT_TRUE(Read);
 				ASSERT_TRUE(Edit.Commit());
-				const auto Compiled = Graph.Compile();
+				const auto Compiled = Graph.CompileAndWait();
 				ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 				EXPECT_TRUE(Graph.GetCompileResult().mCudaBatches.empty());
-				const auto Executed = Graph.Execute();
+				const auto Executed = Graph.ExecuteAndWait();
 				ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 				ASSERT_EQ(Read->size(), 257u * sizeof(uint32_t));
 				for (uint32_t Index = 0; Index < 257; ++Index)

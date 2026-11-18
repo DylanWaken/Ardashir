@@ -1,14 +1,15 @@
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include "ArdaDependencyGraph.h"
 #include <gtest/gtest.h>
 
 namespace arda::graphics_facade_tests
 {
-	struct FArdaFacadeVertexParameters
-	{
-		uint32_t mMarker = 7;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaFacadeVertexParameters)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mMarker, 7)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	class FArdaFacadeVertexNode final : public TArdaVertexStageNode<FArdaFacadeVertexNode, FArdaFacadeVertexParameters>
+	class FArdaFacadeVertexNode final
+	    : public TArdaNodeDefinition<FArdaFacadeVertexNode, FArdaFacadeVertexParameters, EArdaNodeType::Vertex>
 	{
 	public:
 		inline static uint32_t mLastCaptureMarker = 0;
@@ -43,12 +44,12 @@ namespace arda::graphics_facade_tests
 	ARDA_DECLARE_GRAPH_NODE(FArdaFacadeVertexNode, FacadeVertices);
 	ARDA_DEFINE_GRAPH_NODE(FArdaFacadeVertexNode, FacadeVertices);
 
-	struct FArdaFacadeNoCaptureParameters
-	{
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaFacadeNoCaptureParameters)
+
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	class FArdaFacadeNoCaptureNode final
-	    : public TArdaVertexStageNode<FArdaFacadeNoCaptureNode, FArdaFacadeNoCaptureParameters>
+	    : public TArdaNodeDefinition<FArdaFacadeNoCaptureNode, FArdaFacadeNoCaptureParameters, EArdaNodeType::Vertex>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata()
@@ -74,14 +75,14 @@ namespace arda::graphics_facade_tests
 		ARDA_SHADER_BUFFER_UAV(mOutput, 0, 0, EArdaRHIShaderStage::Pixel)
 	ARDA_END_SHADER_PARAMETER_STRUCT()
 
-	struct FArdaFacadeOutputParameters
-	{
-		FArdaGraphFragments mInput;
-		FArdaDependencyResourceHandle mOutput;
-		bool mbReadOnly = false;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaFacadeOutputParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphFragments, mInput)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mOutput)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbReadOnly, false)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	class FArdaFacadeOutputNode final : public TArdaPixelStageNode<FArdaFacadeOutputNode, FArdaFacadeOutputParameters>
+	class FArdaFacadeOutputNode final
+	    : public TArdaNodeDefinition<FArdaFacadeOutputNode, FArdaFacadeOutputParameters, EArdaNodeType::Pixel>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata()
@@ -164,8 +165,9 @@ namespace arda::graphics_facade_tests
 		ASSERT_TRUE(Changed);
 		// Recording another operation can reallocate topology storage: reacquire both nodes.
 		const auto& Frozen = Graph.GetTopology().TryGetNode(Structured.GetProducer())->mPayload;
-		EXPECT_TRUE(
-		    Frozen.mDesc.mPipelineStages.front().mConfiguration->mGraphics.mDesc.mDepthStencilState.mbDepthWrite);
+		EXPECT_TRUE(Graph.GetNodeDescription(Frozen.mHandle)
+		        .mPipelineStages.front()
+		        .mConfiguration->mGraphics.mDesc.mDepthStencilState.mbDepthWrite);
 		EXPECT_NE(Frozen.mCanonicalKey, Graph.GetTopology().TryGetNode(Changed.GetProducer())->mPayload.mCanonicalKey);
 		const auto Short = Rasterize(Edit, Vertices, Config.mViewport);
 		const auto Defaults = Rasterize(Edit, Vertices, FArdaRasterConfig{Config.mViewport});

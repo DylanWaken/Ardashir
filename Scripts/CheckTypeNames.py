@@ -170,8 +170,7 @@ def declarations(source):
 
 
 def violations(source):
-    return [declaration for declaration in declarations(source)
-            if not PREFIX.fullmatch(declaration.name)]
+    return [item for item in declarations(source) if not PREFIX.fullmatch(item.name)]
 
 
 def main(argv=None):

@@ -1,16 +1,16 @@
 #pragma once
-#include "Graph/Node/ArdaDependencyNode.h"
+#include "Graph/Node/ArdaNodeDefinition.h"
 
 namespace arda
 {
-	struct FArdaMeshTriangleParameters
-	{
-		FArdaDependencyResourceHandle mColor;
-		uint32_t mWidth = 64, mHeight = 64;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaMeshTriangleParameters)
+		ARDA_NODE_COLOR_TARGET(mColor)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mWidth, 64)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mHeight, 64)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	class FArdaMeshTriangleNode final
-	    : public TArdaGraphicsDependencyNode<FArdaMeshTriangleNode, FArdaMeshTriangleParameters>
+	    : public TArdaNodeDefinition<FArdaMeshTriangleNode, FArdaMeshTriangleParameters, EArdaNodeType::Meshlet>
 	{
 	public:
 		struct FArdaState;
@@ -18,7 +18,6 @@ namespace arda
 		/** Hardware admission is checked before output declaration or device preparation. */
 		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters& Parameters);
 		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P);
-		static eastl::string GetCanonicalKey(const FArdaParameters& P);
 		static FArdaRHIStatus Validate(const FArdaParameters& P);
 		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device);
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters& P, const FArdaState& State);

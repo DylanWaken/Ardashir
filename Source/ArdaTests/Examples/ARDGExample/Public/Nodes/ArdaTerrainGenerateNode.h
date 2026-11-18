@@ -1,23 +1,32 @@
 #pragma once
+#include "RHI/Shaders/ArdaShaderType.h"
 #include "ArdaTerrainNodeParameters.h"
 
 namespace arda
 {
-	struct FArdaTerrainGenerateParameters
+	class FArdaGenerateTerrainShader final : public arda::FArdaGlobalShader
 	{
-		FArdaDependencyResourceHandle mSettings;
-		FArdaDependencyResourceHandle mHeightmap;
+	public:
+		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
+			ARDA_SHADER_BUFFER_SRV(mSettings, 0, 0, arda::EArdaRHIShaderStage::Compute)
+			ARDA_SHADER_TEXTURE_UAV(mHeightmap, 0, 0, arda::EArdaRHIShaderStage::Compute)
+		ARDA_END_SHADER_PARAMETER_STRUCT()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaGenerateTerrainShader);
 	};
 
-	/** Self-contained operation; attachment registers and prepares only this node's implementation. */
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaTerrainGenerateParameters)
+		ARDA_NODE_SHADER_BUFFER(mSettings, FArdaGenerateTerrainShader::FArdaParameters, mSettings)
+		ARDA_NODE_SHADER_TEXTURE(mHeightmap, FArdaGenerateTerrainShader::FArdaParameters, mHeightmap)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	/** Self-contained operation; invocation registers and prepares this node's implementation. */
 	class FArdaTerrainGenerateNode final
-	    : public TArdaComputeDependencyNode<FArdaTerrainGenerateNode, FArdaTerrainGenerateParameters>
+	    : public TArdaNodeDefinition<FArdaTerrainGenerateNode, FArdaTerrainGenerateParameters, EArdaNodeType::Compute>
 	{
 	public:
 		struct FArdaState;
 		static FArdaDependencyNodeMetadata GetMetadata();
 		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P);
-		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
 		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device);
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State);
 		static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context,

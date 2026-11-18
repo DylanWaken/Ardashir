@@ -23,20 +23,57 @@ namespace arda
 	    const FArdaRHIBufferDesc& Description,
 	    eastl::string Name = {},
 	    EArdaGraphResourceLifetime Lifetime = EArdaGraphResourceLifetime::Transient);
+	/** Declares a persistent GPU buffer initialized from an owned, nonempty byte prefix.
+	 * Attachment and logical compilation perform no GPU work. Cold physical preparation uploads
+	 * and waits for this data once per new allocation, before any graph execution. Subsequent
+	 * frames and compatible revisions preserve the allocation and its contents without reuploading.
+	 * Bytes after the prefix remain uninitialized; a producer must write them before reading.
+	 */
+	FArdaGraphBuffer AllocateInitializedBuffer(FArdaGraphEdit& Edit,
+	    const FArdaRHIBufferDesc& Description,
+	    eastl::vector<uint8_t> Bytes,
+	    eastl::string Name = {});
 	/** Declare texture storage without native allocation; name and storage lifetime are optional. */
 	FArdaGraphTexture AllocateTexture(FArdaGraphEdit& Edit,
 	    const FArdaRHITextureDesc& Description,
 	    eastl::string Name = {},
 	    EArdaGraphResourceLifetime Lifetime = EArdaGraphResourceLifetime::Transient);
 
-	/** Retain an existing native buffer as a graph variable. */
-	FArdaGraphBuffer BindBuffer(FArdaGraphEdit& Edit, FArdaRHIBufferRef Buffer, eastl::string Name = {});
-	/** Retain an existing native texture as a graph variable. */
-	FArdaGraphTexture BindTexture(FArdaGraphEdit& Edit, FArdaRHITextureRef Texture, eastl::string Name = {});
-	/** Retain an existing native BLAS or TLAS as a graph variable. */
+	/** Declare an external buffer slot with a required stable, nonempty user-supplied name. */
+	FArdaGraphBuffer DeclareExternalBuffer(FArdaGraphEdit& Edit,
+	    const FArdaRHIBufferDesc& Expected,
+	    eastl::string Name);
+	/** Declare an unbound texture slot; supply native storage through Graph.BindExternalResource. */
+	FArdaGraphTexture DeclareExternalTexture(FArdaGraphEdit& Edit,
+	    const FArdaRHITextureDesc& Expected,
+	    eastl::string Name);
+	/** Declare an unbound BLAS/TLAS slot from its portable expected shape. */
+	FArdaGraphAccelerationStructure DeclareExternalAccelerationStructure(FArdaGraphEdit& Edit,
+	    const FArdaRHIAccelStructDesc& Expected,
+	    eastl::string Name);
+	/** Declare and bind an external buffer slot with an explicit stable name. */
+	FArdaGraphBuffer BindBuffer(FArdaGraphEdit& Edit, FArdaRHIBufferRef Buffer, eastl::string Name);
+	/** Declare an external texture slot with a required stable, nonempty user-supplied name. */
+	FArdaGraphTexture BindTexture(FArdaGraphEdit& Edit, FArdaRHITextureRef Texture, eastl::string Name);
+	/** Declare an external BLAS or TLAS slot with a required stable, nonempty user-supplied name. */
 	FArdaGraphAccelerationStructure BindAccelerationStructure(FArdaGraphEdit& Edit,
 	    FArdaRHIAccelStructRef AccelerationStructure,
-	    eastl::string Name = {});
+	    eastl::string Name);
+	/** Import versioned buffer storage, reusing its physical identity across concurrent edits.
+	 * Name is required; the first import supplies the canonical slot name. Revision orders this edit's
+	 * accesses, not allocations. Smaller revisions precede larger ones; ties retain commit order.
+	 */
+	FArdaGraphBuffer BindBuffer(FArdaGraphEdit& Edit, FArdaRHIBufferRef Buffer, eastl::string Name, uint64_t Revision);
+	/** Import versioned texture storage with the same physical-identity and edit-order contract as buffers. */
+	FArdaGraphTexture BindTexture(FArdaGraphEdit& Edit,
+	    FArdaRHITextureRef Texture,
+	    eastl::string Name,
+	    uint64_t Revision);
+	/** Import versioned acceleration-structure storage with explicit edit ordering. */
+	FArdaGraphAccelerationStructure BindAccelerationStructure(FArdaGraphEdit& Edit,
+	    FArdaRHIAccelStructRef AccelerationStructure,
+	    eastl::string Name,
+	    uint64_t Revision);
 
 	/** Record an upload of owned bytes and return the destination for further operations. */
 	FArdaGraphBuffer Upload(FArdaGraphEdit& Edit,

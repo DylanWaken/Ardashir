@@ -3,6 +3,7 @@
  * Shared D3D12/Vulkan imports, compiled entries and streams follow graphics-fence lifetime.
  */
 #include "RHI/Providers/ArdaCudaContextProvider.h"
+#include "RHI/CUDA/ArdaCudaModule.h"
 #include <exception>
 
 #if defined(ARDA_ENABLE_CUDA)
@@ -152,6 +153,18 @@ namespace arda
 			ARDA_CUDA_FUNCTION(cuMipmappedArrayDestroy, "cuMipmappedArrayDestroy");
 			ARDA_CUDA_FUNCTION(cuDestroyExternalMemory, "cuDestroyExternalMemory");
 			ARDA_CUDA_FUNCTION(cuGetErrorName, "cuGetErrorName");
+			ARDA_CUDA_FUNCTION(cuModuleLoadDataEx, "cuModuleLoadDataEx");
+			ARDA_CUDA_FUNCTION(cuModuleUnload, "cuModuleUnload");
+			ARDA_CUDA_FUNCTION(cuModuleGetFunction, "cuModuleGetFunction");
+			ARDA_CUDA_FUNCTION(cuFuncGetAttribute, "cuFuncGetAttribute");
+			ARDA_CUDA_FUNCTION(cuLaunchKernel, "cuLaunchKernel");
+			using FArdaCudaLoadFunction = CUresult(CUDAAPI*)(CUfunction);
+			FArdaCudaLoadFunction mLoadFunction =
+			    mLibrary ? reinterpret_cast<FArdaCudaLoadFunction>(GetSymbol("cuFuncLoad")) : nullptr;
+			// This query is optional on older drivers; imported entries fail closed without ABI verification.
+			using FArdaCudaGetParameterInfo = CUresult(CUDAAPI*)(CUfunction, size_t, size_t*, size_t*);
+			FArdaCudaGetParameterInfo mGetParameterInfo =
+			    mLibrary ? reinterpret_cast<FArdaCudaGetParameterInfo>(GetSymbol("cuFuncGetParamInfo")) : nullptr;
 #undef ARDA_CUDA_FUNCTION
 
 			~FArdaCudaDriver()
@@ -237,6 +250,102 @@ namespace arda
 		struct FArdaCudaStream;
 		struct FArdaCudaTimingEvents;
 		struct FArdaCudaTimingLease;
+
+		struct FArdaCudaLoadedModule
+		{
+			eastl::shared_ptr<FArdaCudaDriver> mDriver;
+			eastl::shared_ptr<const IArdaCudaKernelEntry> mOwner;
+			CUcontext mContext = nullptr;
+			CUmodule mModule = nullptr;
+
+			~FArdaCudaLoadedModule()
+			{
+				if (mModule)
+				{
+					FArdaCudaScope Scope(*mDriver, mContext);
+					if (Scope.mResult == CUDA_SUCCESS)
+					{
+						mDriver->cuModuleUnload(mModule);
+					}
+				}
+			}
+		};
+
+		class FArdaCudaLoadedEntry final : public IArdaCudaKernelEntry
+		{
+		public:
+			eastl::shared_ptr<FArdaCudaLoadedModule> mModule;
+			eastl::shared_ptr<const IArdaCudaKernelEntry> mSource;
+			CUfunction mFunction = nullptr;
+
+			FArdaCudaKernelSignature GetSignature() const noexcept override
+			{
+				return mSource->GetSignature();
+			}
+
+			const FArdaCudaBuildInfo& GetBuildInfo() const noexcept override
+			{
+				return mSource->GetBuildInfo();
+			}
+
+			TArdaRHIResult<FArdaCudaKernelLimits> GetLimits() const override
+			{
+				FArdaCudaKernelLimits Limits;
+				auto& Driver = *mModule->mDriver;
+				const CUfunction_attribute Attributes[] = {CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK,
+				    CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES,
+				    CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES};
+				uint32_t* Values[] = {&Limits.mMaxThreadsPerBlock,
+				    &Limits.mStaticSharedMemoryBytes,
+				    &Limits.mMaxDynamicSharedMemoryBytes};
+				for (size_t Index = 0; Index < 3; ++Index)
+				{
+					int Value = 0;
+					if (auto Status = Driver.Check(Driver.cuFuncGetAttribute(&Value, Attributes[Index], mFunction),
+					        "Query CUDA module function limits");
+					    !Status)
+					{
+						return {{}, Status};
+					}
+					*Values[Index] = static_cast<uint32_t>(Value);
+				}
+				return {Limits, {}};
+			}
+
+			FArdaRHIStatus Launch(void* Stream,
+			    const FArdaCudaLaunchConfig& Config,
+			    const void* Parameters,
+			    size_t ParameterSize) const override
+			{
+				if (!Stream || !Parameters || ParameterSize != GetSignature().mSize)
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Invalid CUDA module invocation.");
+				}
+				// The owned storage may include trailing alignment padding. The driver takes each
+				// parameter's native size from the verified ABI rather than interpreting that padding
+				// as part of CUDA's packed launch buffer, whose length must match the native layout.
+				eastl::vector<void*> Arguments;
+				Arguments.reserve(mSource->GetModuleKernel()->mArguments.size());
+				for (const auto& Argument : mSource->GetModuleKernel()->mArguments)
+				{
+					Arguments.push_back(
+					    const_cast<uint8_t*>(static_cast<const uint8_t*>(Parameters)) + Argument.mOffset);
+				}
+				auto& Driver = *mModule->mDriver;
+				return Driver.Check(Driver.cuLaunchKernel(mFunction,
+				                        Config.mGridSize[0],
+				                        Config.mGridSize[1],
+				                        Config.mGridSize[2],
+				                        Config.mBlockSize[0],
+				                        Config.mBlockSize[1],
+				                        Config.mBlockSize[2],
+				                        Config.mSharedMemoryBytes,
+				                        static_cast<CUstream>(Stream),
+				                        Arguments.data(),
+				                        nullptr),
+				    "Launch CUDA module kernel");
+			}
+		};
 
 		// The mapping retains its context; the native resource owns the mapping and outlives it.
 		struct FArdaCudaMapping final : IArdaCudaMapping
@@ -351,6 +460,136 @@ namespace arda
 			std::unordered_map<const IArdaCudaKernelEntry*,
 			    eastl::pair<eastl::shared_ptr<const IArdaCudaKernelEntry>, FArdaCudaKernelLimits>>
 			    mKernelCache;
+			std::unordered_map<const FArdaCudaModule*, eastl::weak_ptr<FArdaCudaLoadedModule>> mModules;
+			// Captured graphs can retain an entry after the bounded limits cache evicts it.
+			// Recover that same identity so an eviction does not force otherwise identical recapture.
+			std::unordered_map<const IArdaCudaKernelEntry*, eastl::weak_ptr<const IArdaCudaKernelEntry>> mLoadedEntries;
+
+			TArdaRHIResult<eastl::shared_ptr<const IArdaCudaKernelEntry>> ResolveEntry(
+			    eastl::shared_ptr<const IArdaCudaKernelEntry> Source)
+			{
+				const auto* Artifact = Source->GetModule();
+				if (!Artifact)
+				{
+					return {eastl::move(Source), {}};
+				}
+				const auto Existing = mLoadedEntries.find(Source.get());
+				if (Existing != mLoadedEntries.end())
+				{
+					if (auto Retained = Existing->second.lock())
+					{
+						return {eastl::move(Retained), {}};
+					}
+				}
+				if (mLoadedEntries.size() % 256 == 0)
+				{
+					for (auto It = mLoadedEntries.begin(); It != mLoadedEntries.end();)
+					{
+						if (It->second.expired())
+						{
+							It = mLoadedEntries.erase(It);
+						}
+						else
+						{
+							++It;
+						}
+					}
+					for (auto It = mModules.begin(); It != mModules.end();)
+					{
+						if (It->second.expired())
+						{
+							It = mModules.erase(It);
+						}
+						else
+						{
+							++It;
+						}
+					}
+				}
+				auto& Driver = *mDriver;
+				if (!Driver.cuModuleLoadDataEx || !Driver.cuModuleUnload || !Driver.cuModuleGetFunction ||
+				    !Driver.cuFuncGetAttribute || !Driver.cuLaunchKernel || !Driver.mGetParameterInfo)
+				{
+					return {{},
+					    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+					        "CUDA driver does not support verified module kernel loading.")};
+				}
+				auto Module = mModules[Artifact].lock();
+				if (!Module)
+				{
+					Module = eastl::make_shared<FArdaCudaLoadedModule>();
+					Module->mDriver = mDriver;
+					Module->mOwner = Source;
+					Module->mContext = mContext;
+					char ErrorLog[2048] = {};
+					CUjit_option Options[] = {CU_JIT_ERROR_LOG_BUFFER, CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES};
+					void* Values[] = {ErrorLog, reinterpret_cast<void*>(sizeof(ErrorLog))};
+					if (auto Status = Driver.Check(Driver.cuModuleLoadDataEx(&Module->mModule,
+					                                   Artifact->GetDesc().mImage.data(),
+					                                   2,
+					                                   Options,
+					                                   Values),
+					        "Load CUDA module");
+					    !Status)
+					{
+						ErrorLog[sizeof(ErrorLog) - 1] = 0;
+						Status.mMessage += ": ";
+						Status.mMessage += ErrorLog;
+						return {{}, Status};
+					}
+					mModules[Artifact] = Module;
+				}
+				auto Entry = eastl::make_shared<FArdaCudaLoadedEntry>();
+				Entry->mModule = eastl::move(Module);
+				Entry->mSource = eastl::move(Source);
+				const auto& Desc = *Entry->mSource->GetModuleKernel();
+				if (auto Status = Driver.Check(Driver.cuModuleGetFunction(&Entry->mFunction,
+				                                   Entry->mModule->mModule,
+				                                   Desc.mEntryPoint.c_str()),
+				        "Find CUDA module function");
+				    !Status)
+				{
+					return {{}, Status};
+				}
+				if (Driver.mLoadFunction)
+				{
+					if (auto Status =
+					        Driver.Check(Driver.mLoadFunction(Entry->mFunction), "Load CUDA function before capture");
+					    !Status)
+					{
+						return {{}, Status};
+					}
+				}
+				for (size_t Index = 0; Index < Desc.mArguments.size(); ++Index)
+				{
+					size_t Offset = 0;
+					size_t Size = 0;
+					if (auto Status = Driver.Check(Driver.mGetParameterInfo(Entry->mFunction, Index, &Offset, &Size),
+					        "Inspect CUDA kernel ABI");
+					    !Status)
+					{
+						return {{}, Status};
+					}
+					if (Offset != Desc.mArguments[Index].mOffset || Size != Desc.mArguments[Index].mSize)
+					{
+						return {{},
+						    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+						        "CUDA module manifest does not match the compiled function parameter ABI.")};
+					}
+				}
+				size_t ExtraOffset = 0;
+				size_t ExtraSize = 0;
+				const auto ExtraResult =
+				    Driver.mGetParameterInfo(Entry->mFunction, Desc.mArguments.size(), &ExtraOffset, &ExtraSize);
+				if (ExtraResult != CUDA_ERROR_INVALID_VALUE)
+				{
+					return {{},
+					    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+					        "CUDA module parameter count does not match the compiled function.")};
+				}
+				mLoadedEntries[Entry->mSource.get()] = Entry;
+				return {eastl::move(Entry), {}};
+			}
 
 			struct FArdaExternalState
 			{
@@ -1044,12 +1283,18 @@ namespace arda
 			Prepared.reserve(Kernels.size());
 			for (const auto& K : Kernels)
 			{
+				auto Entry = K.mEntry;
 				if (K.mEntry)
 				{
 					auto Found = mContext->mKernelCache.find(K.mEntry.get());
 					if (Found == mContext->mKernelCache.end())
 					{
-						auto Limits = K.mEntry->GetLimits();
+						auto Resolved = mContext->ResolveEntry(K.mEntry);
+						if (!Resolved)
+						{
+							return Resolved.mStatus;
+						}
+						auto Limits = Resolved.mValue->GetLimits();
 						if (!Limits)
 						{
 							return Limits.mStatus;
@@ -1058,10 +1303,11 @@ namespace arda
 						{
 							mContext->mKernelCache.clear();
 						}
-						Found =
-						    mContext->mKernelCache.emplace(K.mEntry.get(), eastl::make_pair(K.mEntry, Limits.mValue))
-						        .first;
+						Found = mContext->mKernelCache
+						            .emplace(K.mEntry.get(), eastl::make_pair(Resolved.mValue, Limits.mValue))
+						            .first;
 					}
+					Entry = Found->second.first;
 					const auto& Limits = Found->second.second;
 					if (uint64_t(K.mBlockSize[0]) * K.mBlockSize[1] * K.mBlockSize[2] > Limits.mMaxThreadsPerBlock ||
 					    K.mSharedMemoryBytes > Limits.mMaxDynamicSharedMemoryBytes ||
@@ -1072,7 +1318,7 @@ namespace arda
 						    "Compiled CUDA kernel exceeds its thread/shared-memory limit.");
 					}
 				}
-				FArdaCudaLaunch Launch{K.mEntry,
+				FArdaCudaLaunch Launch{eastl::move(Entry),
 				    K,
 				    K.mParameters,
 				    K.mExternalCall,

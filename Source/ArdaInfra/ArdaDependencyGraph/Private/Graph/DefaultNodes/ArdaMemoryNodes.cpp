@@ -20,7 +20,8 @@ namespace arda
 		    FArdaDependencyResourceHandle Resource)
 		{
 			const auto* Description = Context.Find(Resource);
-			return Description && !Description->mbTexture && !Description->mExternalAccelerationStructure
+			return Description && !Description->mbTexture &&
+			        Description->mExternalKind != EArdaGraphExternalResourceKind::AccelerationStructure
 			    ? &Description->mBuffer
 			    : nullptr;
 		}
@@ -271,15 +272,6 @@ namespace arda
 	eastl::string FArdaMemoryClearBufferNode::GetCanonicalKey(const FArdaParameters& Parameters)
 	{
 		return FArdaDependencyKeyBuilder().Resource(Parameters.mDestination).Value(Parameters.mValue).Build();
-	}
-
-	FArdaDependencyNodeDesc FArdaMemoryClearBufferNode::Describe(const FArdaParameters& Parameters, const FArdaState&)
-	{
-		FArdaDependencyNodeDesc Description;
-		Description.mAccesses = {BufferAccess(Parameters.mDestination,
-		    EArdaDependencyAccess::Write,
-		    EArdaRHIResourceState::UnorderedAccess)};
-		return Description;
 	}
 
 	FArdaRHIStatus FArdaMemoryClearBufferNode::Record(FArdaDependencyExecutionContext& Context,

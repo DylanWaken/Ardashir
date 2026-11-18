@@ -49,13 +49,13 @@ namespace arda
 		uint32_t mGpuTimingSampleInterval = 1;
 		/** Maximum raw node samples retained by this graph; zero retains only EMA statistics. */
 		uint32_t mGpuTimingHistoryCapacity = 4096;
-		/** Enables background schedule search using measured EMA costs; requires GPU timing. */
+		/** Enables schedule search on the calling thread using measured EMA costs; requires GPU timing. */
 		bool mbEnableAdaptiveScheduling = false;
-		/** Minimum submitted frames between background search iterations. */
+		/** Minimum submitted frames between search iterations. */
 		uint32_t mAdaptiveSchedulingInterval = 30;
 		/** Positive samples required for each measured node before automatic tuning starts. */
 		uint32_t mAdaptiveSchedulingMinSamples = 8;
-		/** Maximum schedule candidates examined by one background iteration. */
+		/** Maximum schedule candidates examined by one iteration. */
 		uint32_t mAdaptiveSchedulingSearchBudget = 128;
 		/** Required modeled relative improvement before adopting a schedule, in [0, 1). */
 		double mAdaptiveSchedulingMinImprovement = 0.02;

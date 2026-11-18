@@ -1,3 +1,4 @@
+#include "ArdaExampleNodeState.h"
 #include "ArdaARDGExamplePch.h"
 #include "Nodes/ArdaTerrainOverlayNode.h"
 #include "ArdaTerrainNodeInternal.h"
@@ -10,15 +11,6 @@ namespace arda
 	{
 	public:
 		ARDA_DECLARE_GLOBAL_SHADER(FArdaTerrainOverlayVertexShader);
-	};
-
-	class FArdaTerrainOverlayPixelShader final : public arda::FArdaGlobalShader
-	{
-	public:
-		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
-			ARDA_SHADER_TEXTURE_SRV(mSource, 0, 0, arda::EArdaRHIShaderStage::Pixel)
-		ARDA_END_SHADER_PARAMETER_STRUCT()
-		ARDA_DECLARE_GLOBAL_SHADER(FArdaTerrainOverlayPixelShader);
 	};
 
 	struct FArdaTerrainOverlayNode::FArdaState
@@ -77,48 +69,17 @@ namespace arda
 		return {"example.terrain.overlay", 1};
 	}
 
-	eastl::string FArdaTerrainOverlayNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		FArdaDependencyKeyBuilder Key;
-
-		Key.Resource(P.mSource);
-		Key.Resource(P.mColor);
-		Key.Value(P.mWidth);
-		Key.Value(P.mHeight);
-
-		return Key.Build();
-	}
-
 	TArdaRHIResult<eastl::shared_ptr<const FArdaTerrainOverlayNode::FArdaState>> FArdaTerrainOverlayNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
-		if (!Device)
-		{
-			return {{},
-			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This node requires an initialized device.")};
-		}
-
-		auto State = eastl::make_shared<FArdaState>();
-		State->mDevice = eastl::move(Device);
-
-		// Publish prepared state only after all node-owned setup succeeds.
-		auto Status = State->Initialize();
-		if (!Status)
-		{
-			return {{}, eastl::move(Status)};
-		}
-
-		return {eastl::move(State), {}};
+		return PrepareExampleNodeState<FArdaState>(eastl::move(Device));
 	}
 
 	FArdaDependencyNodeDesc FArdaTerrainOverlayNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
-		D.BindShader<FArdaTerrainOverlayPixelShader::FArdaParameters>({{"mSource", P.mSource}});
-		D.mAccesses = {{P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
 		D.mPipelines = {{"default", 0, EArdaPipelineStateKind::Graphics, {}, Prepared.mConfiguration}};
 		D.mEstimatedCost = 8;
-		D.mColorTargets = {P.mColor};
 		return D;
 	}
 

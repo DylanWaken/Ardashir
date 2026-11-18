@@ -1,3 +1,4 @@
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
 #include "Graph/DefaultNodes/ArdaMemoryNodes.h"
 #include "Inductor/Compiler/ArdaInductorCompilerInternal.h"
@@ -49,7 +50,7 @@ namespace arda::inferred_revision_tests
 				EXPECT_EQ(DestinationDesc->mName, FirstDestinationName);
 			}
 			ASSERT_TRUE(Edit.Commit());
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			ASSERT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), 2u);
 			const auto Stats = Graph.GetRevisionStats();
 			if (!Frame)
@@ -66,20 +67,20 @@ namespace arda::inferred_revision_tests
 				EXPECT_EQ(Stats.mCachedRevisionCount, 1u);
 			}
 			// Semantic graphs can compile without a device; the execution attempt releases their edit lock.
-			EXPECT_FALSE(Graph.Execute().mStatus);
+			EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 			EXPECT_FALSE(Graph.GetRevisionStats().mbEditQueueLocked);
 		}
 	}
 
-	struct FArdaPersistentRevisionProbeParameters
-	{
-		FArdaDependencyResourceHandle mBuffer;
-		uint32_t mValue = 0;
-		eastl::shared_ptr<eastl::vector<FArdaRHIBufferRef>> mRecordedStorage;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPersistentRevisionProbeParameters)
+		ARDA_NODE_BUFFER(mBuffer, EArdaDependencyAccess::Write, EArdaRHIResourceState::UnorderedAccess)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mValue, 0)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<eastl::vector<FArdaRHIBufferRef>>, mRecordedStorage)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	class FArdaPersistentRevisionProbeNode final
-	    : public TArdaComputeDependencyNode<FArdaPersistentRevisionProbeNode, FArdaPersistentRevisionProbeParameters>
+	class FArdaPersistentRevisionProbeNode final : public TArdaNodeDefinition<FArdaPersistentRevisionProbeNode,
+	                                                   FArdaPersistentRevisionProbeParameters,
+	                                                   EArdaNodeType::Compute>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata()
@@ -100,8 +101,6 @@ namespace arda::inferred_revision_tests
 		{
 			FArdaDependencyNodeDesc Desc;
 			Desc.mbSideEffect = true;
-			Desc.mAccesses = {
-			    {Parameters.mBuffer, EArdaDependencyAccess::Write, EArdaRHIResourceState::UnorderedAccess}};
 			return Desc;
 		}
 
@@ -140,9 +139,9 @@ namespace arda::inferred_revision_tests
 			Previous = Buffer.GetHandle();
 			ASSERT_TRUE(ProbeRevisionStorage(Edit, {Buffer, 17, RecordedStorage}, "writer"));
 			ASSERT_TRUE(Edit.Commit());
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			EXPECT_NE(Graph.FindResource(Previous), nullptr);
-			EXPECT_FALSE(Graph.Execute().mStatus);
+			EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		}
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 1u);
 		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 2u);
@@ -158,7 +157,7 @@ namespace arda::inferred_revision_tests
 			{
 				Stale.mGeneration += 1000;
 			}
-			EXPECT_FALSE(ProbeRevisionStorage(Edit, {Stale, 17, RecordedStorage}));
+			EXPECT_FALSE(ProbeRevisionStorage(Edit, {Edit.UseBuffer(Stale), 17, RecordedStorage}));
 			EXPECT_FALSE(Edit.Commit());
 			ASSERT_TRUE(Edit.Cancel());
 		}
@@ -179,9 +178,9 @@ namespace arda::inferred_revision_tests
 			ASSERT_TRUE(UploadBuffer(Edit, {Buffer, eastl::vector<uint8_t>(16, Value)}, "writer"));
 			Edit.Keep(Buffer);
 			ASSERT_TRUE(Edit.Commit());
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			EXPECT_NE(Graph.FindResource(Buffer), nullptr);
-			EXPECT_FALSE(Graph.Execute().mStatus);
+			EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		}
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 2u);
 		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 4u);
@@ -207,45 +206,14 @@ namespace arda::inferred_revision_tests
 		}
 	};
 
-	class FArdaInferredRevisionGpu : public testing::TestWithParam<const char*>
+	class FArdaInferredRevisionGpu : public FArdaTestBackendFixture
 	{
 	protected:
-		void SetUp() override
-		{
-			ShutdownBackend();
-			if (!FindBackendModule(GetParam()))
-			{
-				GTEST_SKIP() << "Backend not built";
-			}
-			auto Configuration = MakeArdaTestBackendConfiguration();
-			Configuration.mBackendName = GetParam();
-			Configuration.mMessageCallback = &mDiagnostics;
-			ASSERT_TRUE(ConfigureBackend(Configuration)) << GetBackendError().c_str();
-			ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
-			mDevice = GetDevice();
-			ASSERT_TRUE(mDevice);
-		}
-
 		void TearDown() override
 		{
 			FArdaRevisionCompletionFaultRule::mGraph = nullptr;
-			const bool bMissingValidation = testing::Test::IsSkipped() && ArdaTestValidationEnabled &&
-			    GetBackendInitializeResult() == EArdaInitializeResult::ValidationUnavailable;
-			if (mDevice)
-			{
-				EXPECT_TRUE(mDevice->WaitForIdle());
-				mDevice->RunGarbageCollection();
-				mDevice.Reset();
-			}
-			ShutdownBackend();
-			if (!bMissingValidation)
-			{
-				EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
-			}
+			FArdaTestBackendFixture::TearDown();
 		}
-
-		FArdaTestDiagnosticCallback mDiagnostics;
-		FArdaRHIDeviceRef mDevice;
 	};
 
 	TEST_P(FArdaInferredRevisionGpu, ReplayingAConstructionRestoresItsPersistentStorage)
@@ -263,8 +231,8 @@ namespace arda::inferred_revision_tests
 			ASSERT_TRUE(Buffer);
 			ASSERT_TRUE(ProbeRevisionStorage(Edit, {Buffer, Value, RecordedStorage}, "writer"));
 			ASSERT_TRUE(Edit.Commit());
-			ASSERT_TRUE(Graph.Compile());
-			const auto Execution = Graph.Execute();
+			ASSERT_TRUE(Graph.CompileAndWait());
+			const auto Execution = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Execution.mStatus) << Execution.mStatus.mMessage.c_str();
 		}
 		ASSERT_EQ(RecordedStorage->size(), 3u);
@@ -272,6 +240,27 @@ namespace arda::inferred_revision_tests
 		EXPECT_EQ((*RecordedStorage)[2], (*RecordedStorage)[0]);
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 2u);
 		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 1u);
+	}
+
+	TEST_P(FArdaInferredRevisionGpu, ForcedRecompilationRetainsPersistentAllocation)
+	{
+		FArdaDependencyGraph Graph(mDevice);
+		auto RecordedStorage = eastl::make_shared<eastl::vector<FArdaRHIBufferRef>>();
+		FArdaGraphEdit Edit(Graph);
+		FArdaRHIBufferDesc Desc;
+		Desc.mByteSize = 16;
+		Desc.mUsage = EArdaRHIBufferUsage::UnorderedAccess;
+		const auto Buffer = AllocateBuffer(Edit, Desc, "retained history", EArdaGraphResourceLifetime::Persistent);
+		ASSERT_TRUE(Buffer);
+		ASSERT_TRUE(ProbeRevisionStorage(Edit, {Buffer, 17u, RecordedStorage}, "writer"));
+		ASSERT_TRUE(Edit.Commit());
+		ASSERT_TRUE(Graph.CompileAndWait());
+		ASSERT_TRUE(Graph.ExecuteAndWait().mStatus);
+		ASSERT_TRUE(Graph.CompileAndWait(true));
+		ASSERT_TRUE(Graph.ExecuteAndWait().mStatus);
+		ASSERT_EQ(RecordedStorage->size(), 2u);
+		EXPECT_EQ((*RecordedStorage)[0], (*RecordedStorage)[1]);
+		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 2u);
 	}
 
 	TEST_P(FArdaInferredRevisionGpu, RecompileRecoversAnOlderFailedSlotAfterTheLatestFrameSucceeded)
@@ -289,25 +278,25 @@ namespace arda::inferred_revision_tests
 			Edit.Keep(UploadOperation.GetBuffer());
 			ASSERT_TRUE(Edit.Commit());
 		}
-		ASSERT_TRUE(Graph.Compile());
-		const auto First = Graph.Submit();
+		ASSERT_TRUE(Graph.CompileAndWait());
+		const auto First = Graph.SubmitAndWait();
 		ASSERT_TRUE(First) << First.mStatus.mMessage.c_str();
-		const auto Second = Graph.Submit();
+		const auto Second = Graph.SubmitAndWait();
 		ASSERT_TRUE(Second) << Second.mStatus.mMessage.c_str();
 		auto* Revision = FArdaRevisionCompletionFaultRule::mGraph;
 		ASSERT_NE(Revision, nullptr);
-		ASSERT_TRUE(Revision->mRuntime);
-		ASSERT_EQ(Revision->mRuntime->mFrames.size(), 2u);
-		auto& OlderCompletion = Revision->mRuntime->mFrames[0]->mActive->mReadbackCompletions;
+		ASSERT_TRUE(Revision->mCompile.mExecution->mRuntime);
+		ASSERT_EQ(Revision->mCompile.mExecution->mRuntime->mFrames.size(), 2u);
+		auto& OlderCompletion = Revision->mCompile.mExecution->mRuntime->mFrames[0]->mActive->mReadbackCompletions;
 		auto FailedReadback = OlderCompletion.Register(eastl::make_shared<eastl::vector<uint8_t>>(), 0);
 		FailedReadback({{}, FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, "Injected late readback failure.")});
 		EXPECT_FALSE(Graph.Wait(First.mValue).mStatus);
 		ASSERT_TRUE(Graph.Wait(Second.mValue).mStatus);
-		EXPECT_FALSE(Graph.Submit());
-		ASSERT_TRUE(Graph.Compile());
+		EXPECT_FALSE(Graph.SubmitAndWait());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 2u);
 		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 0u);
-		const auto Recovered = Graph.Execute();
+		const auto Recovered = Graph.ExecuteAndWait();
 		EXPECT_TRUE(Recovered.mStatus) << Recovered.mStatus.mMessage.c_str();
 	}
 
@@ -325,10 +314,12 @@ namespace arda::inferred_revision_tests
 			const auto Buffer = AllocateBuffer(Edit, Desc, "buffer");
 			ASSERT_TRUE(Buffer);
 			Current = Buffer.GetHandle();
-			ASSERT_TRUE(ProbeRevisionStorage(Edit, {Current, Frame < 2 ? 17u : 29u, RecordedStorage}, "writer"));
+			ASSERT_TRUE(ProbeRevisionStorage(Edit,
+			    {Edit.UseBuffer(Current), Frame < 2 ? 17u : 29u, RecordedStorage},
+			    "writer"));
 			ASSERT_TRUE(Edit.Commit());
-			ASSERT_TRUE(Graph.Compile());
-			const auto Execution = Graph.Execute();
+			ASSERT_TRUE(Graph.CompileAndWait());
+			const auto Execution = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Execution.mStatus) << Execution.mStatus.mMessage.c_str();
 		}
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 2u);

@@ -1,51 +1,114 @@
 #include "Graph/Node/ArdaDependencyGraphImpl.h"
+#include "Graph/Node/ArdaGraphClone.h"
 #include "Inductor/Runtime/ArdaInductorFrame.h"
 #include "Inductor/Runtime/ArdaInductorFrameTicketState.h"
 #include "Inductor/Runtime/ArdaInductorTelemetry.h"
 #include "Inductor/Rules/ArdaInductorAdaptiveSchedule.h"
 #include <EASTL/algorithm.h>
 #include <EASTL/sort.h>
-#include <EASTL/atomic.h>
 #include <cmath>
-#include <condition_variable>
-#include <thread>
 
 namespace arda
 {
 	eastl::shared_ptr<FArdaDependencyGraph::FArdaImpl> CloneArdaInductorTimingInputs(
 	    const FArdaDependencyGraph::FArdaImpl& G)
 	{
-		auto S = eastl::make_shared<FArdaDependencyGraph::FArdaImpl>();
-		S->mDevice = G.mDevice;
-		S->mIdentity = G.mIdentity;
-		S->mOptions = G.mOptions;
-		S->mTopology = G.mTopology.CloneSnapshot();
-		S->mResources = G.mResources;
-		S->mResourceGenerations = G.mResourceGenerations;
-		S->mResourceAliases = G.mResourceAliases;
-		S->mCompiledResourceAliases = G.mCompiledResourceAliases;
-		S->mNames = G.mNames;
-		S->mResourceNames = G.mResourceNames;
-		S->mManualEdges = G.mManualEdges;
+		auto S = CloneArdaGraphConstruction(G);
+		const auto Execution = S->mCompile.mExecution;
 		S->mCompile = G.mCompile;
-		S->mCostOverrides = G.mCostOverrides;
-		S->mCostOverrideKeys = G.mCostOverrideKeys;
-		S->mCostOverrideDefinitions = G.mCostOverrideDefinitions;
-		S->mTiming = G.mTiming;
+		S->mbUsingCompiledDescriptions = true;
+		// Evaluate the candidate against isolated runtime state and the current timing profile.
+		S->mCompile.mExecution = Execution;
+		S->mCompile.mExecution->mCostOverrides = G.mCompile.mExecution->mCostOverrides;
+		S->mCompile.mExecution->mTiming = G.mCompile.mExecution->mTiming;
 		return S;
 	}
 
-	struct FArdaInductorAdaptiveJob
+	struct FArdaInductorScheduleCandidate
 	{
-		eastl::atomic<bool> mbDone{false}, mbCanceled{false};
-		std::mutex mMutex;
-		std::condition_variable mCompleted;
 		uint64_t mRevision = 0, mEpoch = 0;
 		FArdaRHIStatus mStatus;
 		FArdaInductorAdaptiveScheduleState mSearch;
 		FArdaInductorAdaptiveScheduleResult mResult;
 		eastl::shared_ptr<FArdaDependencyGraph::FArdaImpl> mSnapshot;
 	};
+
+	bool ApplyArdaInductorTimingCosts(FArdaDependencyGraph::FArdaImpl& Graph,
+	    const eastl::vector<FArdaInductorTimingSample>& Samples,
+	    uint32_t MinimumSamples)
+	{
+		struct FArdaAttribution
+		{
+			FArdaGraphNodeHandle mNode;
+			double mSeconds = 0;
+			uint64_t mSequence = 0;
+			bool mbIndividual = false;
+		};
+
+		eastl::unordered_map<uint32_t, FArdaAttribution> Attributed;
+		for (const auto& Sample : Samples)
+		{
+			if (Sample.mNodes.empty() || Sample.mSampleCount < MinimumSamples || !std::isfinite(Sample.mGpuSeconds) ||
+			    Sample.mGpuSeconds <= 0)
+			{
+				continue;
+			}
+			double TotalWeight = 0;
+			eastl::vector<double> Weights;
+			eastl::unordered_set<uint32_t> Seen;
+			for (auto Handle : Sample.mNodes)
+			{
+				const auto* Node = Graph.mTopology.TryGetNode(Handle);
+				const double Weight = Node ? GetArdaInductorScheduleNodeCost(Graph, Node->mPayload) : 0;
+				if (!Node || !Seen.insert(Handle.GetIndex()).second || !std::isfinite(Weight) || Weight <= 0)
+				{
+					Weights.clear();
+					break;
+				}
+				Weights.push_back(Weight);
+				TotalWeight += Weight;
+			}
+			if (Weights.size() != Sample.mNodes.size() || !std::isfinite(TotalWeight) || TotalWeight <= 0)
+			{
+				continue;
+			}
+			for (size_t Index = 0; Index < Sample.mNodes.size(); ++Index)
+			{
+				const auto Handle = Sample.mNodes[Index];
+				const bool Individual = Sample.mNodes.size() == 1;
+				const auto Previous = Attributed.find(Handle.GetIndex());
+				// Old grouping variants may overlap; do not double-count a node's estimated duration.
+				if (Previous != Attributed.end() &&
+				    (Previous->second.mSequence > Sample.mLastFrameSequence ||
+				        (Previous->second.mSequence == Sample.mLastFrameSequence && Previous->second.mbIndividual)))
+				{
+					continue;
+				}
+				Attributed[Handle.GetIndex()] = {Handle,
+				    Sample.mGpuSeconds * (Weights[Index] / TotalWeight),
+				    Sample.mLastFrameSequence,
+				    Individual};
+			}
+		}
+		double Hints = 0, Seconds = 0;
+		for (const auto& Entry : Attributed)
+		{
+			Hints += Graph.mCompile.mNodes.at(Entry.second.mNode).mDesc.mEstimatedCost;
+			Seconds += Entry.second.mSeconds;
+		}
+		if (!std::isfinite(Seconds) || Seconds <= 0 || !std::isfinite(Hints) || Hints <= 0)
+		{
+			return false;
+		}
+		for (const auto& Entry : Attributed)
+		{
+			const auto& Node = Graph.mTopology.TryGetNode(Entry.second.mNode)->mPayload;
+			Graph.mCompile.mExecution->mCostOverrides[Node.mName] = {(Entry.second.mSeconds / Seconds) * Hints,
+			    Node.mCanonicalKey,
+			    Node.mDefinition};
+		}
+		return true;
+	}
 
 	FArdaRHIStatus RequestArdaInductorTimingOptimization(FArdaDependencyGraph::FArdaImpl& G, bool Automatic)
 	{
@@ -54,137 +117,70 @@ namespace arda
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 			    "Timing optimization requires every selected graph rule to permit timing-based reordering.");
 		}
-		if (G.mbEditing || G.mbExecuting || !G.mRuntime || !G.mRuntime->mAdaptiveSeed)
+		if (G.mbEditing || G.mbExecuting || !G.mCompile.mExecution->mRuntime ||
+		    !G.mCompile.mExecution->mRuntime->mAdaptiveSeed)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 			    "Timing optimization requires a compiled graph with telemetry enabled.");
 		}
-		if (G.mAdaptiveJob)
+		if (G.mCompile.mExecution->mPendingSchedule)
 		{
 			return {};
 		}
-		const auto Profile = G.mTiming->Snapshot();
+		const auto Profile = G.mCompile.mExecution->mTiming->Snapshot();
 		const auto Required = Automatic ? G.mOptions.mAdaptiveSchedulingMinSamples : 1u;
 		bool HasSamples = false;
 		for (const auto& P : Profile)
 		{
 			HasSamples |=
-			    P.mNodes.size() == 1 && P.mSampleCount >= Required && std::isfinite(P.mGpuSeconds) && P.mGpuSeconds > 0;
+			    !P.mNodes.empty() && P.mSampleCount >= Required && std::isfinite(P.mGpuSeconds) && P.mGpuSeconds > 0;
 		}
 		if (!HasSamples)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
-			    "No eligible positive per-node GPU samples are available.");
+			    "No eligible positive node or pipeline-batch GPU samples are available.");
 		}
-		auto Job = eastl::make_shared<FArdaInductorAdaptiveJob>();
-		Job->mRevision = G.mCompile.mRevision;
-		Job->mEpoch = G.mTiming->GetEpoch();
-		Job->mSearch = G.mAdaptiveSearch;
-		const auto Seed = G.mRuntime->mAdaptiveSeed;
-		const auto Reuse = G.mRuntime->mReuseFrames;
-		const auto Plan = G.mRuntime->mAdaptivePlan;
-		G.mAdaptiveJob = Job;
-		G.mAdaptiveStats.mbPending = true;
-		G.mLastAdaptiveSequence = G.mNextFrameSequence;
-		// Only immutable inputs and retained native objects cross this boundary. Submission never joins workers.
+		auto& Execution = *G.mCompile.mExecution;
+		auto Candidate = eastl::make_shared<FArdaInductorScheduleCandidate>();
+		Candidate->mRevision = G.mCompile.mRevision;
+		Candidate->mEpoch = Execution.mTiming->GetEpoch();
+		Candidate->mSearch = Execution.mAdaptiveSearch;
 		try
 		{
-			std::thread(
-			    [Job, Source = Seed, Pools = Reuse, Fixed = Plan, Profile, Required]() mutable
-			    {
-				    try
-				    {
-					    Job->mSnapshot = CloneArdaInductorTimingInputs(*Source);
-					    auto& S = *Job->mSnapshot;
-					    double Hints = 0, Seconds = 0;
-					    for (const auto& P : Profile)
-					    {
-						    if (P.mNodes.size() != 1 || P.mSampleCount < Required || !std::isfinite(P.mGpuSeconds) ||
-						        P.mGpuSeconds <= 0)
-						    {
-							    continue;
-						    }
-						    const auto* N = S.mTopology.TryGetNode(P.mNodes.front());
-						    if (!N)
-						    {
-							    continue;
-						    }
-						    Hints += N->mPayload.mDesc.mEstimatedCost;
-						    Seconds += P.mGpuSeconds;
-					    }
-					    if (Seconds > 0)
-					    {
-						    for (const auto& P : Profile)
-						    {
-							    if (P.mNodes.size() != 1 || P.mSampleCount < Required ||
-							        !std::isfinite(P.mGpuSeconds) || P.mGpuSeconds <= 0)
-							    {
-								    continue;
-							    }
-							    const auto* N = S.mTopology.TryGetNode(P.mNodes.front());
-							    if (!N)
-							    {
-								    continue;
-							    }
-							    const auto& Node = N->mPayload;
-							    S.mCostOverrides[Node.mName] = P.mGpuSeconds * Hints / Seconds;
-							    S.mCostOverrideKeys[Node.mName] = Node.mCanonicalKey;
-							    S.mCostOverrideDefinitions[Node.mName] = Node.mDefinition;
-						    }
-					    }
-					    if (!Job->mbCanceled.load())
-					    {
-						    auto Proposal = TuneArdaInductorSchedule(S,
-						        *Fixed,
-						        Job->mSearch,
-						        S.mOptions.mAdaptiveSchedulingSearchBudget,
-						        S.mOptions.mAdaptiveSchedulingMinImprovement);
-						    Job->mStatus = Proposal.mStatus;
-						    if (Proposal)
-						    {
-							    Job->mResult = eastl::move(Proposal.mValue);
-							    if (Job->mResult.mbImproved && !Job->mbCanceled.load())
-							    {
-								    S.mCompile = Job->mResult.mCompile;
-								    ++S.mCompile.mRevision;
-								    Job->mStatus =
-								        FArdaInductorRuntime::Prepare(S, Job->mResult.mMemoryPlan, Pools.get());
-							    }
-						    }
-					    }
-				    }
-				    catch (const std::exception& E)
-				    {
-					    Job->mStatus = FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, E.what());
-				    }
-				    catch (...)
-				    {
-					    Job->mStatus = FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
-					        "Background schedule preparation failed.");
-				    }
-				    // Release captured GPU ownership before publishing completion. Edits may start
-				    // allocating a new pool immediately after cancellation observes this flag.
-				    Source.reset();
-				    Pools.reset();
-				    Fixed.reset();
-				    if (Job->mbCanceled.load())
-				    {
-					    Job->mSnapshot.reset();
-				    }
-				    {
-					    std::lock_guard<std::mutex> Lock(Job->mMutex);
-					    Job->mbDone.store(true, eastl::memory_order_release);
-				    }
-				    Job->mCompleted.notify_all();
-			    })
-			    .detach();
+			Candidate->mSnapshot = CloneArdaInductorTimingInputs(*Execution.mRuntime->mAdaptiveSeed);
+			auto& Snapshot = *Candidate->mSnapshot;
+			ApplyArdaInductorTimingCosts(Snapshot, Profile, Required);
+			auto Proposal = TuneArdaInductorSchedule(Snapshot,
+			    *Execution.mRuntime->mAdaptivePlan,
+			    Candidate->mSearch,
+			    G.mOptions.mAdaptiveSchedulingSearchBudget,
+			    G.mOptions.mAdaptiveSchedulingMinImprovement);
+			Candidate->mStatus = Proposal.mStatus;
+			if (Proposal)
+			{
+				Candidate->mResult = eastl::move(Proposal.mValue);
+				if (Candidate->mResult.mbImproved)
+				{
+					const auto CandidateExecution = Snapshot.mCompile.mExecution;
+					Snapshot.mCompile = Candidate->mResult.mCompile;
+					Snapshot.mCompile.mExecution = CandidateExecution;
+					++Snapshot.mCompile.mRevision;
+					Candidate->mStatus = FArdaInductorRuntime::Prepare(Snapshot,
+					    Candidate->mResult.mMemoryPlan,
+					    Execution.mRuntime->mReuseFrames.get());
+				}
+			}
 		}
-		catch (const std::exception& E)
+		catch (const std::exception& Error)
 		{
-			G.mAdaptiveJob.reset();
-			G.mAdaptiveStats.mbPending = false;
-			return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, E.what());
+			Candidate->mStatus = FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what());
 		}
+		catch (...)
+		{
+			Candidate->mStatus = FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, "Schedule preparation failed.");
+		}
+		Execution.mPendingSchedule = eastl::move(Candidate);
+		Execution.mLastAdaptiveSequence = Execution.mNextFrameSequence;
 		return {};
 	}
 
@@ -195,39 +191,42 @@ namespace arda
 			return;
 		}
 		FArdaInductorRuntime::CollectTelemetry(G);
-		if (G.mAdaptiveJob && G.mAdaptiveJob->mbDone.load(eastl::memory_order_acquire))
+		if (G.mCompile.mExecution->mPendingSchedule)
 		{
-			const auto Job = G.mAdaptiveJob;
-			const bool Valid = Job->mRevision == G.mCompile.mRevision && Job->mEpoch == G.mTiming->GetEpoch();
-			if (Valid && Job->mStatus && Job->mResult.mbImproved && !FArdaInductorRuntime::TryRetireAll(G))
+			const auto Candidate = G.mCompile.mExecution->mPendingSchedule;
+			const bool Valid = Candidate->mRevision == G.mCompile.mRevision &&
+			    Candidate->mEpoch == G.mCompile.mExecution->mTiming->GetEpoch();
+			if (Valid && Candidate->mStatus && Candidate->mResult.mbImproved && !FArdaInductorRuntime::TryRetireAll(G))
 			{
 				return;
 			}
-			++G.mAdaptiveStats.mIterations;
-			G.mAdaptiveStats.mCandidatesExamined += Job->mResult.mCandidatesExamined;
-			G.mAdaptiveStats.mLastBaselineCost = Job->mResult.mIncumbentCost;
-			G.mAdaptiveStats.mLastCandidateCost = Job->mResult.mCandidateCost;
-			G.mAdaptiveStats.mLastStatus = Job->mStatus;
-			if (Valid && Job->mStatus)
+			++G.mCompile.mExecution->mAdaptiveStats.mIterations;
+			G.mCompile.mExecution->mAdaptiveStats.mCandidatesExamined += Candidate->mResult.mCandidatesExamined;
+			G.mCompile.mExecution->mAdaptiveStats.mLastBaselineCost = Candidate->mResult.mIncumbentCost;
+			G.mCompile.mExecution->mAdaptiveStats.mLastCandidateCost = Candidate->mResult.mCandidateCost;
+			G.mCompile.mExecution->mAdaptiveStats.mLastStatus = Candidate->mStatus;
+			if (Valid && Candidate->mStatus)
 			{
-				G.mAdaptiveSearch = Job->mSearch;
-				if (Job->mResult.mbImproved && Job->mSnapshot->mRuntime)
+				G.mCompile.mExecution->mAdaptiveSearch = Candidate->mSearch;
+				if (Candidate->mResult.mbImproved && Candidate->mSnapshot->mCompile.mExecution->mRuntime)
 				{
-					auto& S = *Job->mSnapshot;
-					S.mRuntime->mBinding->mGraph = &G;
-					G.mRuntime = eastl::move(S.mRuntime);
+					auto& S = *Candidate->mSnapshot;
+					const auto CurrentExecution = G.mCompile.mExecution;
+					const auto ProposedExecution = S.mCompile.mExecution;
+					S.mCompile.mExecution->mRuntime->mBinding->mGraph = &G;
+					G.mCompile.mExecution->mRuntime = eastl::move(S.mCompile.mExecution->mRuntime);
 					G.mCompile = eastl::move(S.mCompile);
-					G.mCostOverrides = eastl::move(S.mCostOverrides);
-					G.mCostOverrideKeys = eastl::move(S.mCostOverrideKeys);
-					G.mCostOverrideDefinitions = eastl::move(S.mCostOverrideDefinitions);
-					++G.mAdaptiveStats.mAcceptedSchedules;
+					G.mCompile.mExecution = CurrentExecution;
+					CurrentExecution->mCostOverrides = eastl::move(ProposedExecution->mCostOverrides);
+					++G.mCompile.mExecution->mAdaptiveStats.mAcceptedSchedules;
 				}
 			}
-			G.mAdaptiveJob.reset();
-			G.mAdaptiveStats.mbPending = false;
+			G.mCompile.mExecution->mPendingSchedule.reset();
 		}
 		if (G.mOptions.mbEnableAdaptiveScheduling && AllowsArdaInductorTimingOptimization(G.mOptions) &&
-		    !G.mAdaptiveJob && G.mNextFrameSequence - G.mLastAdaptiveSequence >= G.mOptions.mAdaptiveSchedulingInterval)
+		    !G.mCompile.mExecution->mPendingSchedule &&
+		    G.mCompile.mExecution->mNextFrameSequence - G.mCompile.mExecution->mLastAdaptiveSequence >=
+		        G.mOptions.mAdaptiveSchedulingInterval)
 		{
 			(void)RequestArdaInductorTimingOptimization(G, true);
 		}
@@ -235,23 +234,7 @@ namespace arda
 
 	void CancelArdaInductorTimingOptimization(FArdaDependencyGraph::FArdaImpl& G)
 	{
-		if (!G.mAdaptiveJob)
-		{
-			return;
-		}
-		auto Job = eastl::move(G.mAdaptiveJob);
-		Job->mbCanceled.store(true);
-		// Explicit edits/destruction already retire graph work. Join CPU preparation here only,
-		// so replacement allocations cannot overlap a worker's retained old VRAM pool.
-		std::unique_lock<std::mutex> Lock(Job->mMutex);
-		Job->mCompleted.wait(Lock,
-		    [&]
-		    {
-			    return Job->mbDone.load(eastl::memory_order_acquire);
-		    });
-		Job->mSnapshot.reset();
-		Job->mResult.mMemoryPlan = {};
-		G.mAdaptiveStats.mbPending = false;
+		G.mCompile.mExecution->mPendingSchedule.reset();
 	}
 
 	FArdaRHIStatus FArdaDependencyGraph::OptimizeFromTimingProfile()

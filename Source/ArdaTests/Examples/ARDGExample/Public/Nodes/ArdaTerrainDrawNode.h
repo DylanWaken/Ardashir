@@ -1,30 +1,47 @@
 #pragma once
+#include "RHI/Shaders/ArdaShaderType.h"
 #include "ArdaTerrainNodeParameters.h"
 
 namespace arda
 {
-	struct FArdaTerrainDrawParameters
+	class FArdaTerrainVertexShader final : public arda::FArdaGlobalShader
 	{
-		FArdaDependencyResourceHandle mHeightmap;
-		FArdaDependencyResourceHandle mVertices;
-		FArdaDependencyResourceHandle mIndices;
-		FArdaDependencyResourceHandle mCamera;
-		FArdaDependencyResourceHandle mColor;
-		FArdaDependencyResourceHandle mDepth;
-		uint32_t mWidth = 0;
-		uint32_t mHeight = 0;
-		EArdaRHIFormat mColorFormat = EArdaRHIFormat::RGBA8UNorm;
+	public:
+		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
+			ARDA_SHADER_CONSTANT_BUFFER(mCamera, 0, 0, arda::EArdaRHIShaderStage::Vertex)
+		ARDA_END_SHADER_PARAMETER_STRUCT()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaTerrainVertexShader);
 	};
 
-	/** Self-contained operation; attachment registers and prepares only this node's implementation. */
+	class FArdaTerrainPixelShader final : public arda::FArdaGlobalShader
+	{
+	public:
+		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
+			ARDA_SHADER_TEXTURE_SRV(mHeightmap, 0, 0, arda::EArdaRHIShaderStage::Pixel)
+		ARDA_END_SHADER_PARAMETER_STRUCT()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaTerrainPixelShader);
+	};
+
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaTerrainDrawParameters)
+		ARDA_NODE_SHADER_TEXTURE(mHeightmap, FArdaTerrainPixelShader::FArdaParameters, mHeightmap)
+		ARDA_NODE_BUFFER(mVertices, EArdaDependencyAccess::Read, EArdaRHIResourceState::VertexBuffer)
+		ARDA_NODE_BUFFER(mIndices, EArdaDependencyAccess::Read, EArdaRHIResourceState::IndexBuffer)
+		ARDA_NODE_SHADER_BUFFER(mCamera, FArdaTerrainVertexShader::FArdaParameters, mCamera)
+		ARDA_NODE_COLOR_TARGET(mColor)
+		ARDA_NODE_DEPTH_TARGET(mDepth, EArdaDependencyAccess::Write)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mWidth, 0)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mHeight, 0)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(EArdaRHIFormat, mColorFormat, EArdaRHIFormat::RGBA8UNorm)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	/** Self-contained operation; invocation registers and prepares this node's implementation. */
 	class FArdaTerrainDrawNode final
-	    : public TArdaGraphicsDependencyNode<FArdaTerrainDrawNode, FArdaTerrainDrawParameters>
+	    : public TArdaNodeDefinition<FArdaTerrainDrawNode, FArdaTerrainDrawParameters, EArdaNodeType::Graphics>
 	{
 	public:
 		struct FArdaState;
 		static FArdaDependencyNodeMetadata GetMetadata();
 		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P);
-		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
 		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device);
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State);
 		static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context,

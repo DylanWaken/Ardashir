@@ -1,6 +1,7 @@
 #include "Graph/Node/ArdaDependencyGraphImpl.h"
+#include "Graph/Node/ArdaNodeDeclarationOrigins.h"
 #include "Graph/Node/ArdaDependencyGraphStatus.h"
-#include "Graph/Node/ArdaDependencyKey.h"
+#include "Graph/Node/ArdaGraphConstructionKey.h"
 #include "Inductor/Rules/ArdaInductorBindingRules.h"
 #include "Inductor/Rules/ArdaInductorRequirements.h"
 #include <EASTL/algorithm.h>
@@ -8,13 +9,63 @@
 
 namespace arda
 {
+	FArdaRHIStatus FArdaDependencyGraph::RevalidateCompilationParameters()
+	{
+		auto& G = *mImpl;
+		if (!G.mbCompiling)
+		{
+			return GraphInvalid("Compilation parameter validation requires a private compiler snapshot.");
+		}
+		for (const auto Handle : G.mTopology.GetNodes())
+		{
+			auto& Node = G.mTopology.TryGetNode(Handle)->mPayload;
+			if (!Node.mDesc.mbArchivedShaderAccesses &&
+			    !(Node.mStageDeclaration && Node.mStageDeclaration->mbArchivedShaderAccesses))
+			{
+				continue;
+			}
+			if (!Node.mDefinition || !Node.mSourceParameters || !Node.mDefinition->mResolveResources)
+			{
+				return GraphInvalid("Compilation requires a registered node resource declaration.");
+			}
+			FArdaDependencyResourceContext Context(*this, Node.mName, Node.mOutputs);
+			auto Resolved = Node.mDefinition->mResolveResources(Context, Node.mSourceParameters);
+			if (!Resolved || !Resolved.mValue)
+			{
+				return Resolved ? GraphInvalid("Resource declaration returned no frozen public parameters.")
+				                : Resolved.mStatus;
+			}
+			if (Context.mOutputs.size() != Node.mOutputs.size())
+			{
+				return GraphInvalid("Compiled node resource declarations differ from the preprocessed graph outputs.");
+			}
+			for (const auto& Output : Context.mOutputs)
+			{
+				const auto Found = eastl::find_if(Node.mOutputs.begin(),
+				    Node.mOutputs.end(),
+				    [&](const auto& Expected)
+				    {
+					    return Expected.mName == Output.mName &&
+					        G.ResolveResource(Expected.mResource) == G.ResolveResource(Output.mResource);
+				    });
+				if (Found == Node.mOutputs.end())
+				{
+					return GraphInvalid("Compilation cannot change a node's declared output identity.");
+				}
+			}
+			Node.mSourceParameters = eastl::move(Resolved.mValue);
+		}
+		return {};
+	}
+
 	TArdaRHIResult<FArdaGraphNodeHandle> FArdaDependencyGraph::AttachErased(eastl::string Name,
 	    const eastl::string& Definition,
 	    const void* Type,
-	    eastl::shared_ptr<const void> Parameters)
+	    eastl::shared_ptr<const void> Parameters,
+	    eastl::shared_ptr<const FArdaDependencyNodeExecutable> RetainedDefinition)
 	{
 		auto& G = *mImpl;
-		if (G.mbCompiling)
+		if (G.mbCompiling || (G.mbPreprocessing && !G.mbPreprocessEditing))
 		{
 			return {{}, GraphCompiling()};
 		}
@@ -22,8 +73,8 @@ namespace arda
 		{
 			return {{}, GraphNotEditing()};
 		}
-		auto D = FArdaNodeRegistry::Get().Find(Definition);
-		if (Name.empty() || !D || D->mParameterType != Type || !Parameters)
+		auto D = RetainedDefinition ? eastl::move(RetainedDefinition) : FArdaNodeRegistry::Get().Find(Definition);
+		if (Name.empty() || !D || D->mName != Definition || D->mParameterType != Type || !Parameters)
 		{
 			return {{}, GraphInvalid("Attach requires a known definition and matching typed parameters.")};
 		}
@@ -33,7 +84,8 @@ namespace arda
 			return TArdaRHIResult<FArdaGraphNodeHandle>{{}, eastl::move(Status)};
 		};
 		// Lower an optional CUDA alternative before resource declarations, state caching and scheduling.
-		if (D->mKind == EArdaDependencyNodeKind::Cuda && G.mDevice && !G.mDevice->GetCudaCapabilities())
+		if (D->mKind == EArdaDependencyNodeKind::Cuda && G.mCompile.mExecution->mDevice &&
+		    !G.mCompile.mExecution->mDevice->GetCudaCapabilities())
 		{
 			if (!D->mComputeAlternative)
 			{
@@ -44,12 +96,14 @@ namespace arda
 		}
 		// Admit explicit requirements before invoking any resource or device setup hook.
 		auto Requirements = D->mGetRequirements(Parameters.get());
-		// Device-less graphs support semantic analysis, but explicit requirements never assume support.
-		if (G.mDevice)
+		// Offline authoring retains capability requirements for compilation against a destination device.
+		if (G.mCompile.mExecution->mDevice)
 		{
 			D->mAddIntrinsicRequirements(Requirements);
 		}
-		if (auto S = Requirements.Check(G.mDevice.Get()); !S)
+		if (auto S = G.mCompile.mExecution->mDevice ? Requirements.Check(G.mCompile.mExecution->mDevice.Get())
+		                                            : Requirements.Validate();
+		    !S)
 		{
 			return AdmissionError(eastl::move(S));
 		}
@@ -97,36 +151,7 @@ namespace arda
 		auto Key = D->mCanonicalKey(Parameters.get());
 		eastl::string ConstructionKey;
 		{
-			using FArdaKeyContext = FArdaDependencyKeyBuilder::FArdaConstructionResourceContext;
-			const FArdaKeyContext Context{G.mIdentity,
-			    &G,
-			    [](const void* Graph, FArdaDependencyResourceHandle Handle)
-			    {
-				    return static_cast<const FArdaImpl*>(Graph)->HasResource(Handle);
-			    },
-			    [](const void* Graph, FArdaGraphNodeHandle Handle)
-			    {
-				    return static_cast<const FArdaImpl*>(Graph)->mTopology.ContainsNode(Handle);
-			    }};
-
-			struct FArdaConstructionKeyScope
-			{
-				const FArdaKeyContext*& mContext;
-				const FArdaKeyContext* mPrevious;
-
-				FArdaConstructionKeyScope(const FArdaKeyContext*& Active, const FArdaKeyContext& Current)
-				    : mContext(Active),
-				      mPrevious(Active)
-				{
-					mContext = &Current;
-				}
-
-				~FArdaConstructionKeyScope()
-				{
-					mContext = mPrevious;
-				}
-			} Scope(FArdaDependencyKeyBuilder::GetConstructionContext(), Context);
-
+			FArdaConstructionKeyScope Scope(G);
 			ConstructionKey = D->mCanonicalKey(Parameters.get());
 		}
 		if (auto Existing = FindNode(Name))
@@ -136,7 +161,7 @@ namespace arda
 			{
 				return {{},
 				    GraphInvalid(
-				        "AttachOrFind found a different node under that name; remove it before replacing its semantics.")};
+				        "An operation name identifies different parameters; use a fresh operation name in this construction.")};
 			}
 			if (Resources.mOutputs.size() != N.mOutputs.size())
 			{
@@ -153,9 +178,9 @@ namespace arda
 					return {{}, GraphInvalid("Node output declaration changed under an existing name.")};
 				}
 			}
-			if (G.mDevice)
+			if (G.mCompile.mExecution->mDevice)
 			{
-				if (auto S = N.mDesc.mRequirements.Check(G.mDevice.Get()); !S)
+				if (auto S = G.GetNodeDescription(N).mRequirements.Check(G.mCompile.mExecution->mDevice.Get()); !S)
 				{
 					return AdmissionError(eastl::move(S));
 				}
@@ -165,9 +190,9 @@ namespace arda
 
 		const auto SourceParameters = Parameters;
 
-		// Prepare a new instance only after identity checks; retain its state for every replay.
+		// Describe with immutable declaration state; mutable instances belong to compiled results.
 		{
-			auto Prepared = D->mPrepare(G.mDevice, Parameters);
+			auto Prepared = D->mPrepareDeclaration(G.mCompile.mExecution->mDevice, Parameters);
 			if (!Prepared)
 			{
 				return {{}, eastl::move(Prepared.mStatus)};
@@ -186,18 +211,19 @@ namespace arda
 			return AdmissionError(eastl::move(Description.mStatus));
 		}
 		auto Desc = eastl::move(Description.mValue);
+		G.NormalizeDescription(Desc);
 		Desc.mRequirements = eastl::move(Requirements);
 		InferArdaNodeRequirements(G, D->mKind, Desc);
-		if (G.mDevice)
+		if (G.mCompile.mExecution->mDevice)
 		{
-			if (auto S = Desc.mRequirements.Check(G.mDevice.Get()); !S)
+			if (auto S = Desc.mRequirements.Check(G.mCompile.mExecution->mDevice.Get()); !S)
 			{
 				return AdmissionError(eastl::move(S));
 			}
 		}
 		// Stage schemas are composed onto a draw by the preprocess assembler before native layouts are made.
 		if (auto S = Desc.mGraphicsStage == EArdaGraphicsStage::None && Desc.mRayStage == EArdaRHIShaderStage::None
-		        ? DescribeArdaShaderBindings(G, Desc)
+		        ? DescribeArdaShaderAccesses(G, Desc)
 		        : FArdaRHIStatus{};
 		    !S)
 		{
@@ -264,16 +290,18 @@ namespace arda
 		auto H = G.mTopology.AddNode({Name,
 		    eastl::move(Key),
 		    eastl::move(D),
-		    eastl::move(Parameters),
-		    eastl::move(Desc),
 		    eastl::move(Resources.mOutputs),
+		    SourceParameters,
 		    G.mNextAttachmentOrder,
 		    eastl::move(ConstructionKey)});
 		if (!H)
 		{
 			return {{}, GraphInvalid("Cannot allocate another graph node.")};
 		}
-		G.mTopology.TryGetNode(H)->mPayload.mSourceParameters = SourceParameters;
+		G.mTopology.TryGetNode(H)->mPayload.mHandle = H;
+		StampArdaNodeDeclarationOrigins(Desc, H);
+		G.mTopology.TryGetNode(H)->mPayload.mDesc = eastl::move(Desc);
+		G.mNodePreparations[H] = eastl::move(Parameters);
 		++G.mNextAttachmentOrder;
 		G.mNames.emplace(eastl::move(Name), H);
 		Rollback.mbCommitted = true;

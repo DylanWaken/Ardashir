@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Device-wide GPU allocator — Ardashir engineering documentation.">
+  <title>Device-wide GPU allocator | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick guide</a>
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="gpu-allocator.html">GPU allocator</a>
+        <a href="cuda-interop.html">CUDA operands</a>
+        <a href="cuda-sequences.html">CUDA sequences</a>
+        <a href="cuda-external-calls.html">External CUDA calls</a>
+        <a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+        <a href="validation.html">GPU validation</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaBackend</a>
+      </nav>
+      <article>
+<h1 id="device-wide-gpu-allocator">Device-wide GPU allocator</h1>
+<nav class="toc" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ul>
+        <li><a href="#scope">Scope</a></li>
+        <li><a href="#ownership-and-behavior">Ownership and behavior</a></li>
+        <li><a href="#integration-and-controls">Integration and controls</a></li>
+        <li><a href="#validation">Validation</a></li>
+        <li><a href="#source-reference">Source reference</a></li>
+      </ul>
+    </nav>
+<section id="objectives"><h2>How to use this guide</h2><p>Predict when GPU allocations can be reused, configure retention, and interpret allocator statistics without confusing live resources with cached storage.</p><p>Start with the <a href="index.html">module overview</a> and follow exact declarations in the <a href="api-reference.html">canonical API reference</a>.</p></section>
+
+<h2 id="scope">Scope</h2>
+<p>ArdaBackend&#39;s <code>RHI/Memory</code> section owns reusable memory planning and shares
+native heap/resource caches between all graphs and ordinary RHI resource callers
+on the same device. It adapts Unreal&#39;s persistent heap cache, placed-resource
+cache, and delayed reclamation patterns to Arda&#39;s provider and submission
+ownership contracts. It is enabled automatically for concrete backend devices.</p>
+<h2 id="ownership-and-behavior">Ownership and behavior</h2>
+<ul>
+<li>One allocator belongs to each concrete RHI device. No global singleton spans
+devices or backend implementations.</li>
+<li>Graphs acquire frame-slot leases when first submission materializes their
+compiled logical plan, then retain those leases while the runtime is live. Their heaps become
+available to other graphs when those leases and GPU references are released;
+the cache does not move or alias storage that another graph still owns.</li>
+<li>Public resources and provider commands retain allocation leases. Submitted
+work keeps those leases until its existing queue completion mechanism retires.
+The last lease returns an object to its device cache. Cache callbacks use weak
+references so resources do not create device/cache cycles.</li>
+<li>Explicit heaps preserve the requested capacity and memory type contract.
+Graph allocation budgets remain exact; retained unused global cache bytes are
+reported separately by the device. The backend memory planner suballocates
+these heaps with lifetime-aware aliasing.</li>
+<li>Resource caches match the complete storage descriptor, excluding debug names;
+placed resources additionally match native heap identity and offset. Active
+resources are never lent to a second independent caller.</li>
+<li>Cached native objects are reused only if the provider verifies their actual
+state and queue ownership satisfy the requested initial state. Reuse never
+silently resets GPU state. An incompatible object is replaced.</li>
+<li>The cache retains empty heaps for 16 collection cycles, and considers aged
+resource entries for eviction after 32 cycles when their per-kind, per-heap
+cache exceeds 64 entries. Committed resources have a separate pool per kind.
+A 512 MiB idle-byte limit and explicit trimming reclaim unused storage.</li>
+<li>Graphs use atomic placed-resource acquisition, avoiding creation of disposable
+native virtual objects before discovering a placed-resource cache hit.</li>
+</ul>
+<h2 id="integration-and-controls">Integration and controls</h2>
+<p>Include <code>RHI/Memory/ArdaMemoryPlanner.h</code> for the backend-neutral planner and
+<code>RHI/Memory/ArdaGpuAllocator.h</code> for cache policy and statistics. Existing RHI
+<code>CreateBuffer</code>, <code>CreateTexture</code>, <code>CreateHeap</code>, and virtual-resource binding calls
+use the device allocator. Graph materialization uses <code>CreatePlacedBuffer</code> and
+<code>CreatePlacedTexture</code> to acquire a cached placed object in one operation.</p>
+<p><code>IArdaRHIDevice::RunGarbageCollection()</code> first retires completed provider work,
+then advances the allocator collection cycle. Graph execution already calls it;
+direct RHI clients should call it during their normal frame maintenance.
+<code>GetGpuAllocatorStats()</code> reports cache hits, native creation counts, active plus
+cached backing bytes, and idle bytes. Graph <code>mAllocatedBytes</code> accounts for the
+selected plan&#39;s footprint, including cache hits, even before submission acquires
+its leases; it is not a native allocation counter.</p>
+<p><code>SetGpuAllocatorOptions()</code> changes retention ages, soft object capacities and the
+idle-byte limit. Setting the byte limit to zero disables retention and releases
+idle entries immediately. Setting an object capacity to zero still honors its
+retention age. <code>TrimGpuAllocator()</code> releases idle objects and heaps without
+waiting for or invalidating active GPU work.</p>
+<p>Native upload/readback and temporary ray-tracing scratch/instance/indirect
+buffers use the same allocator. Internal buffer pools distinguish the requested
+Graphics, Compute and Copy queues; Vulkan verifies the actual owning queue
+family before reuse. The cached path records actual synchronization state and
+restores the initial state with barriers where necessary.</p>
+<p>External imports, CUDA interop, sparse resources and versioned buffers remain
+outside reuse. Specialized native storage (such as acceleration-structure
+results, shader tables, workgraph backing, staging textures and timestamp
+readback) retains its existing allocation path. Allocator statistics cover only
+managed storage, not total device VRAM or residency. Explicit heaps retain exact
+requested sizes; ordinary committed resources are cached whole rather than
+suballocated into fixed-size slabs.</p>
+<h2 id="validation">Validation</h2>
+<p>Use the existing Ninja Debug build with MSVC and both native providers:</p>
+<pre><code class="language-bat">call &quot;D:\VisualStudio\Common7\Tools\VsDevCmd.bat&quot; -no_logo -arch=x64 -host_arch=x64
+&quot;C:\Program Files\CMake\bin\cmake.exe&quot; --build build --config Debug --target ArdaBackendTests ArdaGraphTests ArdaBackendPublicHeaders --parallel 4
+build\Source\ArdaInfra\ArdaBackend\ArdaBackendTests.exe --gtest_filter=FArdaGpuAllocatorTest.*:ArdaMemoryPlanner.*:NativeProviders/FArdaGpuAllocatorGpuTest.*
+build\Source\ArdaInfra\ArdaDependencyGraph\ArdaGraphTests.exe
+</code></pre>
+<p>The graph test binary is under <code>build/Source/ArdaInfra/ArdaDependencyGraph</code> (the
+module retains its existing <code>ArdaGraphTests</code> executable name). Run targeted
+native allocator, memory, submission and resource-state checks first, then the
+backend and graph suites. Allocator tests cover concurrent leases and trimming,
+failed creation/binding, descriptor and placement validation, GPU submission
+retention, native state compatibility, and eviction. The graph regression
+recompiles and recreates graphs with two frame slots and verifies that native
+heap and buffer creation counts stay flat after warm-up.</p>
+<p>Verified on 2026-09-14 with the configured D3D12 and Vulkan Debug build:</p>
+<ul>
+<li>Full project build, including public-header checks and configured examples: passed.</li>
+<li>Backend suite: 415 passed, 145 unavailable-feature skips, zero failures.</li>
+<li>Graph suite: 167 passed, one unavailable Work Graph feature skip, zero failures.</li>
+<li>RHI suite: 17 passed.</li>
+<li>RHITest, ARDGExample and CornellBox smoke/validation checks: 17 passed.</li>
+<li>The 35 allocator-specific CPU/GPU tests all passed (included in the backend
+totals), including creation plateaus for upload/readback on all supported queues.</li>
+<li>Project formatter checks and generated API inventory synchronization: passed.</li>
+</ul>
+<h2 id="source-reference">Source reference</h2>
+<p>The local Unreal 5.8.1 checkout provides the architectural reference:</p>
+<ul>
+<li><code>Engine/Source/Runtime/RHICore/Private/RHICoreTransientResourceAllocator.cpp</code>
+and its public header: persistent heap and placed-object caches.</li>
+<li><code>Engine/Source/Runtime/RenderCore/Private/RenderGraphResourcePool.cpp</code>:
+reusable RDG resource pools.</li>
+<li><code>Engine/Source/Runtime/D3D12RHI/Private/D3D12TransientResourceAllocator.cpp</code>:
+native heap and resource creation.</li>
+</ul>
+<p>This implementation uses Arda provider objects, portable descriptors and
+existing completion retention; it has no Unreal build or runtime dependency.</p>
+<section id="summary"><h2>Review and next steps</h2><p>Submission leases delay recycling until GPU completion. Retention policies govern idle allocations; resource state and exact compatibility still constrain reuse.</p><p>Continue with the <a href="index.html">module guides</a> and <a href="api-reference.html">API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend · Ardashir engineering documentation</p></footer>
+</body>
+</html>

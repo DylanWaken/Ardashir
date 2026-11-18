@@ -1,4 +1,4 @@
-#include "Graph/Node/ArdaDependencyNode.h"
+#include "Graph/Node/ArdaNodeDefinition.h"
 
 #include <gtest/gtest.h>
 #include <EASTL/unique_ptr.h>
@@ -8,14 +8,14 @@ namespace arda::callable_tests
 {
 	using namespace arda;
 
-	struct FArdaCallableValueParameters
-	{
-		uint32_t mValue = 7;
-		uint16_t mScale = 3;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaCallableValueParameters)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mValue, 7)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint16_t, mScale, 3)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	class FArdaCallableValueNode final
-	    : public TArdaSynchronizationDependencyNode<FArdaCallableValueNode, FArdaCallableValueParameters>
+	class FArdaCallableValueNode final : public TArdaNodeDefinition<FArdaCallableValueNode,
+	                                         FArdaCallableValueParameters,
+	                                         EArdaNodeType::Synchronization>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata()
@@ -45,12 +45,13 @@ namespace arda::callable_tests
 	ARDA_DECLARE_GRAPH_NODE(FArdaCallableValueNode, CallableValue);
 	ARDA_DEFINE_GRAPH_NODE(FArdaCallableValueNode, CallableValue);
 
-	struct FArdaCallableEmptyParameters
-	{
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaCallableEmptyParameters)
 
-	class FArdaCallableEmptyNode final
-	    : public TArdaSynchronizationDependencyNode<FArdaCallableEmptyNode, FArdaCallableEmptyParameters>
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	class FArdaCallableEmptyNode final : public TArdaNodeDefinition<FArdaCallableEmptyNode,
+	                                         FArdaCallableEmptyParameters,
+	                                         EArdaNodeType::Synchronization>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata()
@@ -85,14 +86,14 @@ namespace arda::callable_tests
 		}
 	};
 
-	struct FArdaCallableOwnedParameters
-	{
-		eastl::shared_ptr<FArdaCallableOwnedValue> mValue;
-		uint32_t mTag = 11;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaCallableOwnedParameters)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<FArdaCallableOwnedValue>, mValue)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mTag, 11)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	class FArdaCallableOwnedNode final
-	    : public TArdaSynchronizationDependencyNode<FArdaCallableOwnedNode, FArdaCallableOwnedParameters>
+	class FArdaCallableOwnedNode final : public TArdaNodeDefinition<FArdaCallableOwnedNode,
+	                                         FArdaCallableOwnedParameters,
+	                                         EArdaNodeType::Synchronization>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata()
@@ -156,7 +157,7 @@ namespace arda::callable_tests
 		    FArdaCallableValueNode::GetCanonicalKey({17, 3}));
 		ASSERT_EQ(Graph.GetTopology().GetNodes().size(), 4u);
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), 4u);
 	}
 
@@ -171,7 +172,7 @@ namespace arda::callable_tests
 		EXPECT_EQ(Graph.GetTopology().TryGetNode(Default.GetHandle())->mPayload.mCanonicalKey,
 		    FArdaCallableValueNode::GetCanonicalKey({7, 3}));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), 2u);
 	}
 
@@ -189,7 +190,7 @@ namespace arda::callable_tests
 			EXPECT_EQ(Graph.GetTopology().TryGetNode(Operation.GetHandle())->mPayload.mCanonicalKey,
 			    FArdaDependencyKeyBuilder{}.Value(uint32_t{47}).Value(uint32_t{11}).Build());
 			ASSERT_TRUE(Edit.Commit());
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			EXPECT_EQ(*Destructions, 0u);
 		}
 		EXPECT_EQ(*Destructions, 1u);

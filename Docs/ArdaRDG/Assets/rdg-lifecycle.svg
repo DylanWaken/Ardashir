@@ -32,4 +32,4 @@
 <text x="930" y="280" fill="#c4d3e5" font-size="15">Materialize on first Submit</text>
 <text x="930" y="312" fill="#c4d3e5" font-size="15">Submit / Wait or Execute</text>
 <text x="930" y="344" fill="#c4d3e5" font-size="15">Unlock the next construction</text>
-<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">Compilation failure retains queued edits for correction. DiscardPendingEdits abandons that construction.</text><text x="62" y="518" fill="#abc4dc" font-size="16">Compile(true) forces compilation. InvalidatePersistentCache invalidates revision reuse.</text></g></svg>
+<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">Compilation failure retains queued edits for correction. DiscardPendingEdits abandons that construction.</text><text x="62" y="518" fill="#abc4dc" font-size="16">CompileAndWait(true) forces compilation. InvalidatePersistentCache invalidates revision reuse.</text></g></svg>

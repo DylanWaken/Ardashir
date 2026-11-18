@@ -4,6 +4,7 @@
 #include "Inductor/Compiler/ArdaInductorCommandProgramInternal.h"
 #include "Inductor/Runtime/ArdaInductorRuntimeStatus.h"
 #include "Inductor/Runtime/ArdaInductorCudaContract.h"
+#include "Inductor/Runtime/ArdaInductorInstancing.h"
 #include "Inductor/Rules/ArdaInductorResourceStates.h"
 
 #include <EASTL/algorithm.h>
@@ -51,7 +52,7 @@ namespace arda
 			Context.mPass = &PassContext;
 			if (bCuda)
 			{
-				FArdaCudaSequence Sequence(GraphPtr->mDevice,
+				FArdaCudaSequence Sequence(GraphPtr->mCompile.mExecution->mDevice,
 				    PassContext.mUnsafeRawCommandList.GetQueueType(),
 				    CudaCache);
 				for (auto Handle : Nodes)
@@ -67,7 +68,9 @@ namespace arda
 						return;
 					}
 					const size_t FirstOperation = Sequence.GetOperationCount();
-					PassContext.ReportStatus(Node.mDefinition->mPrepareCuda(Context, Node.mParameters.get(), Sequence));
+					PassContext.ReportStatus(Node.mDefinition->mPrepareCuda(Context,
+					    GraphPtr->mCompile.mNodes.at(Handle).mParameters.get(),
+					    Sequence));
 					PassContext.ReportStatus(Sequence.GetStatus());
 					if (PassContext.GetStatus() && Sequence.GetOperationCount() < FirstOperation)
 					{
@@ -77,7 +80,7 @@ namespace arda
 					if (PassContext.GetStatus() && Sequence.GetOperationCount() > FirstOperation)
 					{
 						eastl::vector<FArdaInductorCudaResourceAccess> Declared;
-						for (const auto& Access : Node.mDesc.mAccesses)
+						for (const auto& Access : GraphPtr->GetNodeDescription(Node).mAccesses)
 						{
 							const auto& Resource = GraphPtr->mResources[Access.mResource.mIndex];
 							FArdaRHIResourceRef Native = Resource.mbTexture
@@ -85,12 +88,12 @@ namespace arda
 							    : FArdaRHIResourceRef(Context.GetBuffer(Access.mResource));
 							Declared.push_back({eastl::move(Native), Access});
 						}
-						if (Node.mDesc.mTransientWorkspaceBytes)
+						if (GraphPtr->GetNodeDescription(Node).mTransientWorkspaceBytes)
 						{
 							FArdaDependencyAccess Workspace;
 							Workspace.mAccess = EArdaDependencyAccess::ReadWrite;
 							Workspace.mState = EArdaRHIResourceState::UnorderedAccess;
-							Workspace.mBufferRange = {0, Node.mDesc.mTransientWorkspaceBytes};
+							Workspace.mBufferRange = {0, GraphPtr->GetNodeDescription(Node).mTransientWorkspaceBytes};
 							Declared.push_back({Context.GetWorkspaceBuffer(), Workspace});
 						}
 						for (size_t Operation = FirstOperation;
@@ -114,50 +117,119 @@ namespace arda
 			}
 			else
 			{
-				Context.mNode = Nodes.front();
-				const auto& Node = GraphPtr->mTopology.TryGetNode(Context.mNode)->mPayload;
-				if (!Node.mGraphicsStages.empty())
+				FArdaGraphicsWork Pending;
+				FArdaGraphNodeHandle PendingNode;
+				uint32_t PendingGroup = UINT32_MAX;
+				const auto Flush = [&]()
 				{
-					FArdaGraphicsWork Work;
-					for (size_t StageIndex = 0; StageIndex < Node.mGraphicsStages.size(); ++StageIndex)
+					if (!PendingNode)
 					{
-						const auto StageHandle = Node.mGraphicsStages[StageIndex];
-						const auto& Stage = GraphPtr->mTopology.TryGetNode(StageHandle)->mPayload;
-						PassContext.ReportStatus(Stage.mDefinition->mConfigureGraphics(Context,
-						    Node.mGraphicsStageParameters[StageIndex].get(),
-						    Work));
-						if (!PassContext.GetStatus())
-						{
-							return;
-						}
+						return;
 					}
-					const bool Meshlet = Node.mDesc.mPipelines.front().mKind == EArdaPipelineStateKind::Meshlet;
-					PassContext.ReportStatus(Meshlet ? Context.SetMeshletState(eastl::move(Work.mMeshletState))
-					                                 : Context.SetGraphicsState(eastl::move(Work.mState)));
+					Context.mNode = PendingNode;
+					PassContext.ReportStatus(Context.SetGraphicsState(eastl::move(Pending.mState)));
+					if (PassContext.GetStatus())
+					{
+						if (Pending.mbIndexed)
+						{
+							Context.GetCommands().DrawIndexed(Pending.mDraw);
+						}
+						else
+						{
+							Context.GetCommands().Draw(Pending.mDraw);
+						}
+						FramePtr->mRecordedGraphicsDrawCount.fetch_add(1, std::memory_order_relaxed);
+					}
+					PendingNode = {};
+				};
+				for (auto Handle : Nodes)
+				{
+					const auto Candidate = FramePtr->mInstancingGroups.find(Handle.GetIndex());
+					const auto Group = Candidate == FramePtr->mInstancingGroups.end() ? UINT32_MAX : Candidate->second;
+					if (Group == UINT32_MAX || Group != PendingGroup)
+					{
+						Flush();
+					}
 					if (!PassContext.GetStatus())
 					{
 						return;
 					}
-					if (Meshlet)
+					Context.mNode = Handle;
+					const auto& Node = GraphPtr->mTopology.TryGetNode(Handle)->mPayload;
+					if (!Node.mGraphicsStages.empty())
 					{
-						PassContext.ReportStatus(Context.GetCommands().DispatchMesh(Work.mMeshGroupCountX,
-						    Work.mMeshGroupCountY,
-						    Work.mMeshGroupCountZ));
+						FArdaGraphicsWork Work;
+						for (size_t StageIndex = 0; StageIndex < Node.mGraphicsStages.size(); ++StageIndex)
+						{
+							const auto& Stage =
+							    GraphPtr->mTopology.TryGetNode(Node.mGraphicsStages[StageIndex])->mPayload;
+							PassContext.ReportStatus(Stage.mDefinition->mConfigureGraphics(Context,
+							    GraphPtr->mCompile.mNodes.at(Handle).mGraphicsStageParameters[StageIndex].get(),
+							    Work));
+							if (!PassContext.GetStatus())
+							{
+								return;
+							}
+						}
+						const bool Meshlet = GraphPtr->GetNodeDescription(Node).mPipelines.front().mKind ==
+						    EArdaPipelineStateKind::Meshlet;
+						if (Meshlet)
+						{
+							PassContext.ReportStatus(Context.SetMeshletState(eastl::move(Work.mMeshletState)));
+							if (PassContext.GetStatus())
+							{
+								PassContext.ReportStatus(Context.GetCommands().DispatchMesh(Work.mMeshGroupCountX,
+								    Work.mMeshGroupCountY,
+								    Work.mMeshGroupCountZ));
+							}
+						}
+						else
+						{
+							const auto* Pipeline = Context.GetPipeline();
+							if (!Pipeline || !Pipeline->mGraphics)
+							{
+								PassContext.ReportStatus(
+								    MakeArdaInductorRuntimeError("Missing compiled graphics pipeline slot."));
+								return;
+							}
+							// Compare the actual compiler-owned state used by SetGraphicsState.
+							Work.mState.mPipeline = Pipeline->mGraphics;
+							Work.mState.mFramebuffer = Context.GetFramebuffer();
+							Work.mState.mBindings = Context.GetBindings();
+							if (PendingNode && TryMergeArdaGraphicsInstances(Pending, Work))
+							{
+								FramePtr->mMergedGraphicsDrawCount.fetch_add(1, std::memory_order_relaxed);
+							}
+							else
+							{
+								Flush();
+								if (!PassContext.GetStatus())
+								{
+									return;
+								}
+								Pending = eastl::move(Work);
+								PendingNode = Handle;
+								PendingGroup = Group;
+							}
+						}
 					}
-					else if (Work.mbIndexed)
+					else if (Node.mDefinition->mRecord)
 					{
-						Context.GetCommands().DrawIndexed(Work.mDraw);
+						PassContext.ReportStatus(
+						    Node.mDefinition->mRecord(Context, GraphPtr->mCompile.mNodes.at(Handle).mParameters.get()));
 					}
-					else
+					if (!PassContext.GetStatus())
 					{
-						Context.GetCommands().Draw(Work.mDraw);
+						return;
 					}
 				}
-				else if (Node.mDefinition->mRecord)
+				Flush();
+				if (!PassContext.GetStatus())
 				{
-					PassContext.ReportStatus(Node.mDefinition->mRecord(Context, Node.mParameters.get()));
+					return;
 				}
 			}
+
 			if (RecordTimer)
 			{
 				if (auto Status = PassContext.mUnsafeRawCommandList.EndTimerQuery(*Timer); !Status)

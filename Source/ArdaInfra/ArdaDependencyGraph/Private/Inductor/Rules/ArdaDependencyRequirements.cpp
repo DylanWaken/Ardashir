@@ -28,7 +28,7 @@ namespace arda
 		Features.mbRequirePersistentShaderTables |= RayStage == EArdaRHIShaderStage::RayGeneration;
 	}
 
-	FArdaRHIStatus FArdaDependencyNodeRequirements::Check(const IArdaRHIDevice* Device) const
+	FArdaRHIStatus FArdaDependencyNodeRequirements::Validate() const
 	{
 		for (const auto Mode : mAllowedCudaLaunchModes)
 		{
@@ -45,6 +45,15 @@ namespace arda
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 				    "Environment requirements need a nonempty diagnostic name and a predicate.");
 			}
+		}
+		return {};
+	}
+
+	FArdaRHIStatus FArdaDependencyNodeRequirements::Check(const IArdaRHIDevice* Device) const
+	{
+		if (auto Status = Validate(); !Status)
+		{
+			return Status;
 		}
 		FArdaRHICapabilities Unavailable;
 		Unavailable.mQueues.mbGraphics = false;

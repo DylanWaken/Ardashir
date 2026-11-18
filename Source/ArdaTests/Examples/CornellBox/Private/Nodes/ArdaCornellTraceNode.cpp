@@ -1,3 +1,4 @@
+#include "ArdaExampleNodeState.h"
 #include "ArdaCornellBoxPch.h"
 #include "Nodes/ArdaCornellTraceNode.h"
 #include "ArdaCornellNodeInternal.h"
@@ -5,39 +6,6 @@
 namespace arda
 {
 	ARDA_DEFINE_GRAPH_NODE(FArdaCornellTraceNode, CornellTrace);
-
-#define ARDA_CORNELL_RAY_PARAMETERS()                                                                                  \
-	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)                                                                \
-		ARDA_SHADER_ACCELERATION_STRUCTURE(mScene, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                     \
-		ARDA_SHADER_BUFFER_SRV(mVertices, 1, 0, arda::EArdaRHIShaderStage::AllRayTracing)                              \
-		ARDA_SHADER_BUFFER_SRV(mIndices, 2, 0, arda::EArdaRHIShaderStage::AllRayTracing)                               \
-		ARDA_SHADER_BUFFER_SRV(mMaterials, 3, 0, arda::EArdaRHIShaderStage::AllRayTracing)                             \
-		ARDA_SHADER_BUFFER_UAV(mSampleRadiance, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                        \
-		ARDA_SHADER_UNIFORM_BUFFER(mFrame, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                             \
-	ARDA_END_SHADER_PARAMETER_STRUCT()
-
-	class FArdaCornellRayGenerationShader final : public arda::FArdaGlobalShader
-	{
-	public:
-		ARDA_CORNELL_RAY_PARAMETERS()
-		ARDA_DECLARE_GLOBAL_SHADER(FArdaCornellRayGenerationShader);
-	};
-
-	class FArdaCornellMissShader final : public arda::FArdaGlobalShader
-	{
-	public:
-		ARDA_CORNELL_RAY_PARAMETERS()
-		ARDA_DECLARE_GLOBAL_SHADER(FArdaCornellMissShader);
-	};
-
-	class FArdaCornellClosestHitShader final : public arda::FArdaGlobalShader
-	{
-	public:
-		ARDA_CORNELL_RAY_PARAMETERS()
-		ARDA_DECLARE_GLOBAL_SHADER(FArdaCornellClosestHitShader);
-	};
-
-#undef ARDA_CORNELL_RAY_PARAMETERS
 
 	struct FArdaCornellTraceNode::FArdaState
 	{
@@ -100,7 +68,7 @@ namespace arda
 
 	FArdaRHIStatus FArdaCornellTraceNode::DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P)
 	{
-		if (!P.mWidth || !P.mHeight || !P.mSamples || uint64_t(P.mWidth) * P.mHeight > UINT64_MAX / 16 / P.mSamples)
+		if (!P.mWidth || !P.mHeight || !P.mSamples || uint64_t(P.mWidth) * P.mHeight > UINT64_MAX / 32 / P.mSamples)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Invalid ray output extent.");
 		}
@@ -110,7 +78,13 @@ namespace arda
 		D.mStructureStride = 16;
 		D.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource |
 		    EArdaRHIBufferUsage::UnorderedAccess;
-		return C.Buffer(P.mRadiance, "Radiance", D);
+		if (auto Status = C.Buffer(P.mRadiance, "Radiance", D); !Status)
+		{
+			return Status;
+		}
+		// Keep the shader layout stable when guide generation is disabled.
+		D.mByteSize = P.mbWriteGuides ? D.mByteSize * 2 : 32;
+		return C.Buffer(P.mGuides, "Guides", D);
 	}
 
 	FArdaDependencyNodeRequirements FArdaCornellTraceNode::GetRequirements(const FArdaParameters&)
@@ -124,59 +98,19 @@ namespace arda
 
 	FArdaDependencyNodeMetadata FArdaCornellTraceNode::GetMetadata()
 	{
-		return {"cornell.trace", 1};
-	}
-
-	eastl::string FArdaCornellTraceNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		FArdaDependencyKeyBuilder Key;
-		Key.Resource(P.mTlas);
-		Key.Resource(P.mVertices);
-		Key.Resource(P.mIndices);
-		Key.Resource(P.mMaterials);
-		Key.Resource(P.mRadiance);
-		Key.Resource(P.mConstants);
-		Key.Resource(P.mBlas);
-		Key.Value(P.mWidth);
-		Key.Value(P.mHeight);
-		Key.Value(P.mSamples);
-		Key.Value(P.mWorkspaceBytes);
-		return Key.Build();
+		return {"cornell.trace", 2};
 	}
 
 	TArdaRHIResult<eastl::shared_ptr<const FArdaCornellTraceNode::FArdaState>> FArdaCornellTraceNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
-		if (!Device)
-		{
-			return {{},
-			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This node requires an initialized device.")};
-		}
-
-		auto State = eastl::make_shared<FArdaState>();
-		State->mDevice = eastl::move(Device);
-
-		// Publish prepared state only after all node-owned setup succeeds.
-		auto Status = State->Initialize();
-		if (!Status)
-		{
-			return {{}, eastl::move(Status)};
-		}
-
-		return {eastl::move(State), {}};
+		return PrepareExampleNodeState<FArdaState>(eastl::move(Device));
 	}
 
 	FArdaDependencyNodeDesc FArdaCornellTraceNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
 		D.mWorkspaceBytes = P.mWorkspaceBytes;
-		D.BindShader<FArdaCornellRayGenerationShader::FArdaParameters>({{"mScene", P.mTlas},
-		    {"mVertices", P.mVertices},
-		    {"mIndices", P.mIndices},
-		    {"mMaterials", P.mMaterials},
-		    {"mSampleRadiance", P.mRadiance},
-		    {"mFrame", P.mConstants}});
-		D.mAccesses = {{P.mBlas, EArdaDependencyAccess::Read, EArdaRHIResourceState::AccelStructRead}};
 
 		D.mPipelineStages = Prepared.mStages;
 		D.mPipelines = {{"default", 0, EArdaPipelineStateKind::RayTracing, {}, Prepared.mConfiguration}};

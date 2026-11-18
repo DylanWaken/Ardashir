@@ -3,43 +3,25 @@
 #include "Graph/Node/ArdaDependencyNode.h"
 #include "Graph/Resources/ArdaRayTracingState.h"
 
-namespace arda
+namespace arda::node_detail
 {
-	/** Providers return logical shader values; a ray-generation terminal consumes mShaders.
+	/** Providers return logical shader values; a ray-generation terminal declares ARDA_NODE_STAGE_INPUTS.
 	 * Describe contributes this stage's shader and bindings. Exports and hit groups retain their names.
-	 * Override GetRayInputs for another parameter layout. Only ray generation authors Record.
+	 * Only ray generation authors Record.
 	 */
 	template <class Derived, class Parameters, EArdaRHIShaderStage Stage>
-	class TArdaRayTracingStageNode : public TArdaComputeDependencyNode<Derived, Parameters>
+	class TArdaRayStageDefinition : public TArdaExecutionNode<Derived, Parameters, EArdaDependencyNodeKind::Compute>
 	{
 		static_assert(Stage == EArdaRHIShaderStage::RayGeneration || Stage == EArdaRHIShaderStage::Miss ||
 		        Stage == EArdaRHIShaderStage::ClosestHit || Stage == EArdaRHIShaderStage::AnyHit ||
 		        Stage == EArdaRHIShaderStage::Intersection || Stage == EArdaRHIShaderStage::Callable,
 		    "A ray-tracing stage template requires a single ray shader stage.");
-		using FArdaBase = TArdaComputeDependencyNode<Derived, Parameters>;
+		using FArdaBase = TArdaExecutionNode<Derived, Parameters, EArdaDependencyNodeKind::Compute>;
 
 	public:
 		static constexpr EArdaRHIShaderStage mRayStage = Stage;
 		using FArdaStageResult =
 		    eastl::conditional_t<Stage == EArdaRHIShaderStage::RayGeneration, FArdaGraphOperation, FArdaGraphRayShader>;
-
-		static eastl::vector<FArdaGraphStageValue> GetRayInputs(const Parameters& P)
-		{
-			eastl::vector<FArdaGraphStageValue> Result;
-			if constexpr (TArdaNodeParameterTraits<Parameters>::value)
-			{
-				return Parameters::GetNodeParameterMetadata().GetStageInputs(P);
-			}
-			else if constexpr (Stage == EArdaRHIShaderStage::RayGeneration)
-			{
-				Result.reserve(P.mShaders.size());
-				for (const auto& Shader : P.mShaders)
-				{
-					Result.push_back(Shader);
-				}
-			}
-			return Result;
-		}
 
 		template <class Node = Derived,
 		    eastl::enable_if_t<Node::mRayStage != EArdaRHIShaderStage::RayGeneration, int> = 0>
@@ -70,6 +52,20 @@ namespace arda
 			return Result(FArdaBase::Invoke(Edit, eastl::forward<Arguments>(Values)...));
 		}
 
+		/** Typed stage arrays feed the next stage directly, preserving each lane's producer identity. */
+		template <class... Arguments, eastl::enable_if_t<ArdaHasNodeArray<Arguments...>, int> = 0>
+		static auto Invoke(FArdaGraphEdit& Edit, Arguments&&... Values)
+		    -> decltype(FArdaBase::Invoke(Edit, eastl::forward<Arguments>(Values)...),
+		        TArdaNodeArray<FArdaStageResult>{})
+		{
+			return FArdaBase::Invoke(Edit, eastl::forward<Arguments>(Values)...)
+			    .Map(
+			        [](const FArdaGraphOperation& Operation)
+			        {
+				        return Result(Operation);
+			        });
+		}
+
 		FArdaStageResult operator()(FArdaGraphEdit& Edit, Parameters P, eastl::string Name = {}) const
 		{
 			return Invoke(Edit, eastl::move(P), eastl::move(Name));
@@ -96,16 +92,4 @@ namespace arda
 		}
 	};
 
-	template <class Node, class Parameters>
-	using TArdaRayGenerationStageNode = TArdaRayTracingStageNode<Node, Parameters, EArdaRHIShaderStage::RayGeneration>;
-	template <class Node, class Parameters>
-	using TArdaRayMissStageNode = TArdaRayTracingStageNode<Node, Parameters, EArdaRHIShaderStage::Miss>;
-	template <class Node, class Parameters>
-	using TArdaRayClosestHitStageNode = TArdaRayTracingStageNode<Node, Parameters, EArdaRHIShaderStage::ClosestHit>;
-	template <class Node, class Parameters>
-	using TArdaRayAnyHitStageNode = TArdaRayTracingStageNode<Node, Parameters, EArdaRHIShaderStage::AnyHit>;
-	template <class Node, class Parameters>
-	using TArdaRayIntersectionStageNode = TArdaRayTracingStageNode<Node, Parameters, EArdaRHIShaderStage::Intersection>;
-	template <class Node, class Parameters>
-	using TArdaRayCallableStageNode = TArdaRayTracingStageNode<Node, Parameters, EArdaRHIShaderStage::Callable>;
 }

@@ -3,14 +3,13 @@
 
 namespace arda
 {
-	struct FArdaPixelSortReadbackParameters
-	{
-		FArdaDependencyResourceHandle mSource;
-		eastl::shared_ptr<FArdaPixelSortReadback> mDestination;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPixelSortReadbackParameters)
+		ARDA_NODE_TEXTURE(mSource, EArdaDependencyAccess::Read, EArdaRHIResourceState::CopySource)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<FArdaPixelSortReadback>, mDestination)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	class FArdaPixelSortReadbackNode final
-	    : public TArdaCopyDependencyNode<FArdaPixelSortReadbackNode, FArdaPixelSortReadbackParameters>
+	    : public TArdaNodeDefinition<FArdaPixelSortReadbackNode, FArdaPixelSortReadbackParameters, EArdaNodeType::Copy>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata();

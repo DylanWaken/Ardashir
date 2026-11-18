@@ -64,7 +64,8 @@ namespace arda
 	FArdaRHIStatus FArdaGraphCopyNode::DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P)
 	{
 		const auto* Source = C.Find(P.mSource);
-		if (!Source || Source->mbTexture || Source->mExternalAccelerationStructure)
+		if (!Source || Source->mbTexture ||
+		    Source->mExternalKind == EArdaGraphExternalResourceKind::AccelerationStructure)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Copy needs a valid source buffer.");
 		}
@@ -79,7 +80,8 @@ namespace arda
 		if (P.mDestination)
 		{
 			const auto* Destination = C.Find(P.mDestination);
-			if (!Destination || Destination->mbTexture || Destination->mExternalAccelerationStructure)
+			if (!Destination || Destination->mbTexture ||
+			    Destination->mExternalKind == EArdaGraphExternalResourceKind::AccelerationStructure)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Copy needs a valid destination buffer.");
 			}
@@ -136,14 +138,6 @@ namespace arda
 		return K.Build();
 	}
 
-	FArdaDependencyNodeDesc FArdaGraphClearNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
-	{
-		FArdaDependencyNodeDesc D;
-		D.mAccesses.push_back(
-		    Access(P.mDestination, EArdaDependencyAccess::Write, EArdaRHIResourceState::UnorderedAccess));
-		return D;
-	}
-
 	FArdaRHIStatus FArdaGraphClearNode::Record(FArdaDependencyExecutionContext& C,
 	    const FArdaParameters& P,
 	    const FArdaState& Prepared,
@@ -169,7 +163,6 @@ namespace arda
 	{
 		FArdaDependencyNodeDesc D;
 		D.mbSideEffect = true;
-		D.mAccesses.push_back(Access(P.mSource, EArdaDependencyAccess::Read, EArdaRHIResourceState::CopySource));
 		return D;
 	}
 

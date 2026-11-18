@@ -4,7 +4,7 @@
 namespace arda
 {
 	class FArdaPixelSortSortNode final
-	    : public TArdaCudaDependencyNode<FArdaPixelSortSortNode, FArdaPixelSortSortParameters>
+	    : public TArdaNodeDefinition<FArdaPixelSortSortNode, FArdaPixelSortSortParameters, EArdaNodeType::Cuda>
 	{
 	public:
 		struct FArdaState;
@@ -15,7 +15,6 @@ namespace arda
 		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
 		static FArdaRHIStatus Validate(const FArdaParameters& Parameters);
 		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device);
-		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State);
 		static FArdaRHIStatus PrepareCuda(FArdaDependencyExecutionContext& Context,
 		    const FArdaParameters& Parameters,
 		    const FArdaState& State,

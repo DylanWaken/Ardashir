@@ -25,6 +25,7 @@
 #include "RHI/Scheduling/ArdaCudaSubmission.h"
 #include "RHI/Resources/ArdaCudaTextureBuffer.h"
 #include "RHI/Resources/ArdaRHISubresources.h"
+#include "RHI/Resources/ArdaRHITensor.h"
 #include "RHI/Memory/ArdaMemoryPlanner.h"
 #include "FileOperations/ArdaFileOperations.h"
 #include "RHI/Providers/ArdaExternalDeviceProvider.h"

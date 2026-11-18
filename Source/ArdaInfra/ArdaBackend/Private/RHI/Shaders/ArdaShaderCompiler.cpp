@@ -29,7 +29,9 @@
 #if defined(_WIN32)
 #include <Windows.h>
 #else
+#include <cerrno>
 #include <fcntl.h>
+#include <sys/file.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #endif
@@ -773,6 +775,72 @@ namespace arda
 			return true;
 		}
 
+		// All publications in a cache directory share one OS lock. The lock file stays in
+		// place so another process cannot open a different inode while a writer holds it.
+		class FArdaShaderPublicationLock final
+		{
+		public:
+			explicit FArdaShaderPublicationLock(const std::filesystem::path& Directory)
+			{
+				const auto Path = Directory / ".arda-publication.lock";
+#if defined(_WIN32)
+				mFile = CreateFileW(Path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+				    nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+				OVERLAPPED Range{};
+				mbLocked = mFile != INVALID_HANDLE_VALUE &&
+				    LockFileEx(mFile, LOCKFILE_EXCLUSIVE_LOCK, 0, 1, 0, &Range);
+#else
+				mFile = open(Path.c_str(), O_CREAT | O_RDWR | O_CLOEXEC, 0666);
+				if (mFile == -1 && (errno == EACCES || errno == EROFS))
+				{
+					mFile = open(Path.c_str(), O_RDONLY | O_CLOEXEC);
+				}
+				if (mFile != -1)
+				{
+					int Result;
+					do
+					{
+						Result = flock(mFile, LOCK_EX);
+					} while (Result == -1 && errno == EINTR);
+					mbLocked = Result == 0;
+				}
+#endif
+			}
+
+			~FArdaShaderPublicationLock()
+			{
+#if defined(_WIN32)
+				if (mFile != INVALID_HANDLE_VALUE)
+				{
+					if (mbLocked)
+					{
+						OVERLAPPED Range{};
+						UnlockFileEx(mFile, 0, 1, 0, &Range);
+					}
+					CloseHandle(mFile);
+				}
+#else
+				if (mFile != -1)
+				{
+					close(mFile);
+				}
+#endif
+			}
+
+			FArdaShaderPublicationLock(const FArdaShaderPublicationLock&) = delete;
+			FArdaShaderPublicationLock& operator=(const FArdaShaderPublicationLock&) = delete;
+
+			explicit operator bool() const noexcept { return mbLocked; }
+
+		private:
+			bool mbLocked = false;
+#if defined(_WIN32)
+			HANDLE mFile = INVALID_HANDLE_VALUE;
+#else
+			int mFile = -1;
+#endif
+		};
+
 		bool CompileJob(const FArdaShaderCompileJob& Job,
 		    const std::filesystem::path& Compiler,
 		    FArdaShaderCompileDiagnostic& Diagnostic,
@@ -793,11 +861,17 @@ namespace arda
 			}
 			const auto Mutex = GetOutputMutex(Job.mOutputPath);
 			std::lock_guard<std::mutex> Lock(*Mutex);
-			if (SkipIfCurrent)
+			const auto CacheCurrent = [&]()
 			{
 				uint64_t StoredKey = 0;
-				if (ReadKey(Job.mOutputPath.string() + ".arda-key", StoredKey) && StoredKey == Job.mInputKey &&
-				    fileops::IsRegularNonEmpty(Job.mOutputPath))
+				return ReadKey(Job.mOutputPath.string() + ".arda-key", StoredKey) && StoredKey == Job.mInputKey &&
+				    fileops::IsRegularNonEmpty(Job.mOutputPath);
+			};
+			if (SkipIfCurrent)
+			{
+				FArdaShaderPublicationLock CacheLock(Job.mOutputPath.parent_path());
+				// A previously populated read-only cache may predate the lock file.
+				if (CacheCurrent())
 				{
 					if (OutCacheHit != nullptr)
 					{
@@ -862,6 +936,16 @@ namespace arda
 				return Fail(EArdaShaderCompileError::CompilationFailed,
 				    "Shader compilation failed with exit code " + eastl::to_string(ExitCode) +
 				        (CompilerOutput.empty() ? "." : ":\n" + CompilerOutput));
+			}
+			FArdaShaderPublicationLock CacheLock(Job.mOutputPath.parent_path());
+			if (!CacheLock)
+			{
+				return Fail(EArdaShaderCompileError::CacheWriteFailed, "Unable to lock the shader cache directory.");
+			}
+			// A second process may have finished compiling this input while our compiler was running.
+			if (SkipIfCurrent && CacheCurrent())
+			{
+				return true;
 			}
 			const std::filesystem::path Sidecar = Job.mOutputPath.string() + ".arda-key";
 			if (!fileops::PublishFilesTransaction({{TemporaryOutput, Job.mOutputPath}, {TemporarySidecar, Sidecar}}))
@@ -1150,7 +1234,8 @@ namespace arda
 			Files.emplace_back(StagedArtifact.string() + ".arda-key", Job.mOutputPath.string() + ".arda-key");
 		}
 		Files.emplace_back(StagedManifest, OutputDirectory / "ArdaShaderManifest.json");
-		if (Error || !fileops::PublishFilesTransaction(Files))
+		FArdaShaderPublicationLock CacheLock(OutputDirectory);
+		if (Error || !CacheLock || !fileops::PublishFilesTransaction(Files))
 		{
 			std::filesystem::remove_all(StagingDirectory, Error);
 			Result.mDiagnostics.push_back(MakeDiagnostic(EArdaShaderCompileError::CacheWriteFailed,

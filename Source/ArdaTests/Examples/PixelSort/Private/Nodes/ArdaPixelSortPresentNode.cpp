@@ -1,15 +1,10 @@
+#include "ArdaExampleNodeState.h"
 #include "Nodes/ArdaPixelSortPresentNode.h"
 #include "ArdaPixelSortNodeInternal.h"
 
 namespace arda
 {
 	ARDA_DEFINE_GRAPH_NODE(FArdaPixelSortPresentNode, PixelSortPresent);
-
-	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPixelSortPresentShaderParameters)
-		ARDA_SHADER_CONSTANT_BUFFER(mConstants, 0, 0, EArdaRHIShaderStage::Pixel)
-		ARDA_SHADER_TEXTURE_SRV(mSorted, 0, 0, EArdaRHIShaderStage::Pixel)
-		ARDA_SHADER_TEXTURE_SRV(mNoise, 1, 0, EArdaRHIShaderStage::Pixel)
-	ARDA_END_SHADER_PARAMETER_STRUCT()
 
 	class FArdaPixelSortVertexShader final : public FArdaGlobalShader
 	{
@@ -78,18 +73,6 @@ namespace arda
 		return {"example.pixel-sort.present", 1};
 	}
 
-	eastl::string FArdaPixelSortPresentNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		return FArdaDependencyKeyBuilder()
-		    .Resource(P.mConstants)
-		    .Resource(P.mNoise)
-		    .Resource(P.mSorted)
-		    .Resource(P.mColor)
-		    .Value(P.mWidth)
-		    .Value(P.mHeight)
-		    .Build();
-	}
-
 	FArdaRHIStatus FArdaPixelSortPresentNode::Validate(const FArdaParameters& P)
 	{
 		return ValidatePixelSortExtent(P.mWidth, P.mHeight);
@@ -98,32 +81,12 @@ namespace arda
 	TArdaRHIResult<eastl::shared_ptr<const FArdaPixelSortPresentNode::FArdaState>> FArdaPixelSortPresentNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
-		if (!Device)
-		{
-			return {{},
-			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This node requires an initialized device.")};
-		}
-
-		auto State = eastl::make_shared<FArdaState>();
-		State->mDevice = eastl::move(Device);
-
-		// Publish prepared state only after all node-owned setup succeeds.
-		auto Status = State->Initialize();
-		if (!Status)
-		{
-			return {{}, eastl::move(Status)};
-		}
-
-		return {eastl::move(State), {}};
+		return PrepareExampleNodeState<FArdaState>(eastl::move(Device));
 	}
 
 	FArdaDependencyNodeDesc FArdaPixelSortPresentNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
-		D.BindShader<FArdaPixelSortPresentShaderParameters>(
-		    {{"mConstants", P.mConstants}, {"mNoise", P.mNoise}, {"mSorted", P.mSorted}});
-		D.mAccesses = {{P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
-		D.mColorTargets = {P.mColor};
 		D.mPipelines = {{"default", 0, EArdaPipelineStateKind::Graphics, {}, Prepared.mPresent}};
 
 		return D;

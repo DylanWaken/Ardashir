@@ -1,12 +1,10 @@
-#include <EASTL/atomic.h>
-#include <EASTL/numeric_limits.h>
-#include "RHI/Context/ArdaBackendRegistryContext.h"
-
 #include "RHI/Providers/ArdaBackendRegistry.h"
 #include "RHI/Providers/ArdaLinkedBackends.h"
 
-#include <EASTL/algorithm.h>
+#include <EASTL/atomic.h>
+#include <EASTL/numeric_limits.h>
 #include <EASTL/sort.h>
+#include <EASTL/vector.h>
 
 #include <mutex>
 
@@ -14,6 +12,19 @@ namespace arda
 {
 	namespace
 	{
+		struct FArdaBackendModuleRegistry
+		{
+			std::mutex mMutex;
+			eastl::vector<IArdaBackendModule*> mModules;
+			eastl::atomic<const IArdaBackendModule*> mActiveModule{nullptr};
+		};
+
+		FArdaBackendModuleRegistry& GetBackendModuleRegistry()
+		{
+			static FArdaBackendModuleRegistry Registry;
+			return Registry;
+		}
+
 		bool IsDescriptorValid(const FArdaBackendModuleDescriptor& Descriptor)
 		{
 			return Descriptor.mInterfaceVersion == ArdaBackendProviderInterfaceVersion && !Descriptor.mName.empty() &&
@@ -31,25 +42,21 @@ namespace arda
 
 		auto& Registry = GetBackendModuleRegistry();
 		std::lock_guard<std::mutex> Lock(Registry.mMutex);
-		for (const FArdaBackendModuleEntry& Entry : Registry.mEntries)
+		for (const IArdaBackendModule* Existing : Registry.mModules)
 		{
-			if (Entry.mModule->GetDescriptor().mName != Descriptor.mName)
+			if (Existing->GetDescriptor().mName != Descriptor.mName)
 			{
 				continue;
 			}
-			if (Entry.mModule == &Module)
-			{
-				return true;
-			}
-			return false;
+			return Existing == &Module;
 		}
 
-		Registry.mEntries.push_back({&Module});
-		eastl::sort(Registry.mEntries.begin(),
-		    Registry.mEntries.end(),
-		    [](const FArdaBackendModuleEntry& Left, const FArdaBackendModuleEntry& Right)
+		Registry.mModules.push_back(&Module);
+		eastl::sort(Registry.mModules.begin(),
+		    Registry.mModules.end(),
+		    [](const IArdaBackendModule* Left, const IArdaBackendModule* Right)
 		    {
-			    return Left.mModule->GetDescriptor().mName < Right.mModule->GetDescriptor().mName;
+			    return Left->GetDescriptor().mName < Right->GetDescriptor().mName;
 		    });
 		return true;
 	}
@@ -62,11 +69,11 @@ namespace arda
 		{
 			return false;
 		}
-		for (auto It = Registry.mEntries.begin(); It != Registry.mEntries.end(); ++It)
+		for (auto It = Registry.mModules.begin(); It != Registry.mModules.end(); ++It)
 		{
-			if (It->mModule == &Module)
+			if (*It == &Module)
 			{
-				Registry.mEntries.erase(It);
+				Registry.mModules.erase(It);
 				return true;
 			}
 		}
@@ -82,11 +89,11 @@ namespace arda
 		}
 		auto& Registry = GetBackendModuleRegistry();
 		std::lock_guard<std::mutex> Lock(Registry.mMutex);
-		for (const FArdaBackendModuleEntry& Entry : Registry.mEntries)
+		for (IArdaBackendModule* Module : Registry.mModules)
 		{
-			if (Entry.mModule->GetDescriptor().mName == Name)
+			if (Module->GetDescriptor().mName == Name)
 			{
-				return Entry.mModule;
+				return Module;
 			}
 		}
 		return nullptr;
@@ -99,12 +106,12 @@ namespace arda
 		std::lock_guard<std::mutex> Lock(Registry.mMutex);
 		IArdaBackendModule* BestModule = nullptr;
 		int32_t BestPriority = eastl::numeric_limits<int32_t>::min();
-		for (const FArdaBackendModuleEntry& Entry : Registry.mEntries)
+		for (IArdaBackendModule* Module : Registry.mModules)
 		{
-			const FArdaBackendModuleDescriptor& Descriptor = Entry.mModule->GetDescriptor();
+			const FArdaBackendModuleDescriptor& Descriptor = Module->GetDescriptor();
 			if (Descriptor.mPriority > BestPriority)
 			{
-				BestModule = Entry.mModule;
+				BestModule = Module;
 				BestPriority = Descriptor.mPriority;
 			}
 		}
@@ -145,10 +152,10 @@ namespace arda
 		auto& Registry = GetBackendModuleRegistry();
 		std::lock_guard<std::mutex> Lock(Registry.mMutex);
 		eastl::vector<FArdaBackendModuleDescriptor> Result;
-		Result.reserve(Registry.mEntries.size());
-		for (const FArdaBackendModuleEntry& Entry : Registry.mEntries)
+		Result.reserve(Registry.mModules.size());
+		for (const IArdaBackendModule* Module : Registry.mModules)
 		{
-			Result.push_back(Entry.mModule->GetDescriptor());
+			Result.push_back(Module->GetDescriptor());
 		}
 		return Result;
 	}

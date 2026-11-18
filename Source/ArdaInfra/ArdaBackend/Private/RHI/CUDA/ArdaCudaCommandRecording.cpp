@@ -1,13 +1,13 @@
 #include "RHI/Scheduling/ArdaRHICommandListImpl.h"
 #include "RHI/Device/ArdaRHIDeviceImpl.h"
+#include "RHI/CUDA/ArdaCudaModule.h"
 
 namespace arda::detail
 {
 	FArdaRHIStatus FArdaCommandList::DispatchCuda(const FArdaCudaDispatch& Dispatch)
 	{
-		if (auto Status = ValidateArdaCudaKernels(Dispatch.mKernels,
-		        Dispatch.mBindings.size(),
-		        mDevice->GetCudaCapabilities());
+		if (auto Status =
+		        ValidateArdaCudaKernels(Dispatch.mKernels, Dispatch.mBindings.size(), mDevice->GetCudaCapabilities());
 		    !Status)
 		{
 			return Status;
@@ -147,6 +147,31 @@ namespace arda::detail
 				return Unsupported("CUDA accepts buffer or surface bindings only.");
 			}
 			Bindings.push_back(eastl::move(Native));
+		}
+
+		for (const auto& Kernel : Kernels)
+		{
+			const auto* Schema = Kernel.mEntry ? Kernel.mEntry->GetModuleKernel() : nullptr;
+			if (!Schema)
+			{
+				continue;
+			}
+			for (const auto& Patch : Kernel.mPatches)
+			{
+				for (const auto& Argument : Schema->mArguments)
+				{
+					if (Argument.mOffset == Patch.mOffset)
+					{
+						const auto Expected = Argument.mKind == EArdaCudaModuleArgumentKind::Buffer
+						    ? EArdaComputeBindingType::Buffer
+						    : EArdaComputeBindingType::Surface;
+						if (Bindings[Patch.mBindingIndex].mType != Expected)
+						{
+							return Invalid("CUDA module resource kind does not match its declared argument ABI.");
+						}
+					}
+				}
+			}
 		}
 
 		// Both launch modes participate in ordinary graphics state tracking. Native

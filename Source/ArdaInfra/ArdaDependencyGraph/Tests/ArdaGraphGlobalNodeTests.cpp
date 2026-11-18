@@ -22,11 +22,11 @@ namespace
 		EXPECT_EQ(&EmitTestValue, GetArdaGlobalNodeTestDefinitionAddress());
 	}
 
-	TEST(ArdaGraphGlobalNodes, GlobalCallableRegistersLazilyAndEachCallCreatesAnIndependentOperation)
+	TEST(ArdaGraphGlobalNodes, DeclarationRegistersAndEachCallCreatesAnIndependentOperation)
 	{
 		auto& Registry = FArdaNodeRegistry::Get();
 		const auto Metadata = FArdaGlobalNodeTestNode::GetMetadata();
-		EXPECT_FALSE(Registry.Find(Metadata.mName));
+		EXPECT_TRUE(Registry.Find(Metadata.mName));
 		EXPECT_EQ(GetArdaGlobalNodeTestStateCounts().mPreparedStates, 0u);
 		EXPECT_EQ(GetArdaGlobalNodeTestStateCounts().mOperationInstances, 0u);
 
@@ -42,7 +42,7 @@ namespace
 		ASSERT_TRUE(FArdaGlobalNodeTestNode::Register());
 		EXPECT_EQ(Registry.Find(Metadata.mName), Definition);
 		EXPECT_EQ(GetArdaGlobalNodeTestStateCounts().mPreparedStates, 1u);
-		EXPECT_EQ(GetArdaGlobalNodeTestStateCounts().mOperationInstances, 1u);
+		EXPECT_EQ(GetArdaGlobalNodeTestStateCounts().mOperationInstances, 0u);
 
 		const auto Second = EmitTestValue(Edit, uint32_t{23});
 		ASSERT_TRUE(Second.GetHandle()) << Edit.GetStatus().mMessage.c_str();
@@ -54,7 +54,7 @@ namespace
 		EXPECT_NE(FirstOutput.GetHandle(), SecondOutput.GetHandle());
 		EXPECT_FALSE(Parameters.mOutput);
 		EXPECT_EQ(GetArdaGlobalNodeTestStateCounts().mPreparedStates, 1u);
-		EXPECT_EQ(GetArdaGlobalNodeTestStateCounts().mOperationInstances, 2u);
+		EXPECT_EQ(GetArdaGlobalNodeTestStateCounts().mOperationInstances, 0u);
 		const auto* FirstNode = Graph.GetTopology().TryGetNode(First.GetHandle());
 		const auto* SecondNode = Graph.GetTopology().TryGetNode(Second.GetHandle());
 		ASSERT_NE(FirstNode, nullptr);
@@ -69,7 +69,8 @@ namespace
 		Edit.Keep(SecondOutput);
 		ASSERT_TRUE(Edit.Commit());
 		EXPECT_EQ(Graph.GetRevisionStats().mPendingEditCount, 1u);
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
+		EXPECT_EQ(GetArdaGlobalNodeTestStateCounts().mOperationInstances, 2u);
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), 2u);
 	}
 
@@ -96,7 +97,7 @@ namespace
 		EXPECT_EQ(Graph.GetTopology().GetNodes().size(), 3u);
 		Edit.Keep(Destination);
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), 3u);
 	}
 }

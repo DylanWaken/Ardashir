@@ -154,19 +154,21 @@ namespace arda::shader_contract_tests
 	ARDA_DECLARE_GRAPH_NODE(FArdaMissingVertexArgumentsNode, MissingContractVertices);
 	ARDA_DEFINE_GRAPH_NODE(FArdaMissingVertexArgumentsNode, MissingContractVertices);
 
-	struct FArdaLegacyContractPixelParameters
-	{
-		FArdaGraphFragments mInput;
-	};
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaEmptyContractPixelBindings)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
 
-	class FArdaLegacyContractPixelNode final : public TArdaNodeDefinition<FArdaLegacyContractPixelNode,
-	                                               FArdaLegacyContractPixelParameters,
-	                                               EArdaNodeType::Pixel>
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaEmptyContractPixelParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphFragments, mInput)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	class FArdaEmptyContractPixelNode final : public TArdaNodeDefinition<FArdaEmptyContractPixelNode,
+	                                              FArdaEmptyContractPixelParameters,
+	                                              EArdaNodeType::Pixel>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata()
 		{
-			return {"test.contract.legacy-pixel", 1};
+			return {"test.contract.empty-pixel", 1};
 		}
 
 		static eastl::string GetCanonicalKey(const FArdaParameters& P)
@@ -179,16 +181,17 @@ namespace arda::shader_contract_tests
 			FArdaDependencyNodeDesc D;
 			D.mbSideEffect = true;
 			FArdaInductorPipelineContribution Stage;
-			Stage.mShader = FArdaRHIShaderRef(new FArdaContractShader(EArdaRHIShaderStage::Pixel, nullptr));
+			Stage.mShader = FArdaRHIShaderRef(new FArdaContractShader(EArdaRHIShaderStage::Pixel,
+			    &FArdaEmptyContractPixelBindings::GetStaticMetadata()));
 			D.mPipelineStages.push_back(Stage);
 			return D;
 		}
 	};
 
-	ARDA_DECLARE_GRAPH_NODE(FArdaLegacyContractPixelNode, LegacyContractPixels);
-	ARDA_DEFINE_GRAPH_NODE(FArdaLegacyContractPixelNode, LegacyContractPixels);
+	ARDA_DECLARE_GRAPH_NODE(FArdaEmptyContractPixelNode, EmptyContractPixels);
+	ARDA_DEFINE_GRAPH_NODE(FArdaEmptyContractPixelNode, EmptyContractPixels);
 
-	TEST(ArdaShaderContract, DeclarativeVertexContractSurvivesLegacyPixelAssembly)
+	TEST(ArdaShaderContract, VertexContractSurvivesEmptyPixelAssembly)
 	{
 		FArdaDependencyGraph Graph;
 		FArdaGraphEdit Edit(Graph);
@@ -198,9 +201,9 @@ namespace arda::shader_contract_tests
 		Raster.mViewport = {0.f, 8.f, 0.f, 8.f, 0.f, 1.f};
 		const auto Fragments = Rasterize(Edit, Vertices, Raster);
 		ASSERT_TRUE(Fragments);
-		ASSERT_TRUE(LegacyContractPixels(Edit, Fragments));
+		ASSERT_TRUE(EmptyContractPixels(Edit, Fragments));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		EXPECT_FALSE(Status);
 		EXPECT_NE(Status.mMessage.find("no node argument schema"), eastl::string::npos) << Status.mMessage.c_str();
 	}
@@ -245,12 +248,12 @@ namespace arda::shader_contract_tests
 		EXPECT_FALSE(ValidateArdaPipelineShaderContract(C));
 	}
 
-	TEST(ArdaShaderContract, NativeRawShaderKeepsExplicitLayoutContract)
+	TEST(ArdaShaderContract, ShaderWithoutSourceSchemaIsRejected)
 	{
 		auto C = Compute();
 		C.mCompute.mDesc.mComputeShader =
 		    FArdaRHIShaderRef(new FArdaContractShader(EArdaRHIShaderStage::Compute, nullptr));
-		EXPECT_TRUE(ValidateArdaPipelineShaderContract(C));
+		EXPECT_FALSE(ValidateArdaPipelineShaderContract(C));
 	}
 
 	TEST(ArdaShaderContract, RegisteredParameterlessShaderRejectsResourceSchema)
@@ -282,7 +285,6 @@ namespace arda::shader_contract_tests
 	TEST(ArdaShaderContract, DeclarativeNodeCannotOmitAllShaderParameters)
 	{
 		FArdaDependencyNodeDesc D;
-		D.mbDeclarativeParameters = true;
 		EXPECT_FALSE(ValidateArdaNodeShaderContract(D, Compute(), "default"));
 		D.BindShader<FArdaComputeContract>({{"mData", {}}});
 		EXPECT_TRUE(ValidateArdaNodeShaderContract(D, Compute(), "default"));
@@ -293,7 +295,6 @@ namespace arda::shader_contract_tests
 	TEST(ArdaShaderContract, PreparedShaderAccessCannotBeNarrowedByLookalikeSchema)
 	{
 		FArdaDependencyNodeDesc D;
-		D.mbDeclarativeParameters = true;
 		D.BindShader<FArdaNarrowComputeContract>({{"mData", {}}});
 		EXPECT_FALSE(ValidateArdaNodeShaderContract(D, Compute(), "default"));
 		D.mShaderBindings.front().mResources.front().mAccess = EArdaDependencyAccess::ReadWrite;
@@ -319,7 +320,6 @@ namespace arda::shader_contract_tests
 		    Layout(FArdaRayLocalContract::GetStaticMetadata())});
 		EXPECT_TRUE(ValidateArdaPipelineShaderContract(C));
 		FArdaDependencyNodeDesc D;
-		D.mbDeclarativeParameters = true;
 		EXPECT_FALSE(ValidateArdaNodeShaderContract(D, C, "default"));
 		FArdaDependencyShaderTable Table;
 		FArdaDependencyShaderTableRecord Record;

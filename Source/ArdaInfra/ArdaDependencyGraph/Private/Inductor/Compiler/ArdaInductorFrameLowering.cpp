@@ -22,6 +22,13 @@ namespace arda
 	    const eastl::vector<FArdaInductorReuseFrame>* Reuse)
 	{
 		const auto FrameIndex = Frame->mIndex;
+		for (uint32_t Group = 0; Group < Graph.mCompile.mInstancedDraws.size(); ++Group)
+		{
+			for (auto Handle : Graph.mCompile.mInstancedDraws[Group])
+			{
+				Frame->mInstancingGroups.emplace(Handle.GetIndex(), Group);
+			}
+		}
 		eastl::unordered_map<uint32_t, FArdaInductorCommandHandle> Passes;
 		eastl::unordered_map<uint32_t, FArdaInductorCommandHandle> ImageActivations, ImageRetirements;
 		eastl::unordered_set<uint32_t> AliasedImages;
@@ -34,6 +41,20 @@ namespace arda
 		}
 		eastl::vector<uint32_t> OrderedAliasedImages(AliasedImages.begin(), AliasedImages.end());
 		eastl::sort(OrderedAliasedImages.begin(), OrderedAliasedImages.end());
+		eastl::unordered_map<size_t, eastl::vector<uint32_t>> ActivationsAt, RetirementsAt;
+		for (uint32_t Index = 0; Index < Plan.mAliasActivations.size(); ++Index)
+		{
+			const auto Resource = Plan.mAliasActivations[Index].mResource;
+			if (AliasedImages.count(Resource))
+			{
+				ActivationsAt[Plan.mRequests[Resource].mFirstUse].push_back(Index);
+			}
+		}
+		for (auto Resource : OrderedAliasedImages)
+		{
+			RetirementsAt[Plan.mRequests[Resource].mLastUse].push_back(Resource);
+		}
+		const eastl::vector<uint32_t> NoBoundaries;
 		const auto AddImageBoundary = [&](uint32_t Resource, bool Activate) -> FArdaInductorCommandHandle
 		{
 			FArdaInductorCommandAccesses Accesses;
@@ -42,7 +63,7 @@ namespace arda
 			const eastl::string Name =
 			    eastl::string(Activate ? "Activate image " : "Retire image ") + eastl::to_string(Resource);
 			const auto Pass =
-			    Frame->mLowered->AppendCommand(Name, EArdaRHIQueueType::Graphics, eastl::move(Accesses), {}, true);
+			    Frame->mLowered->AppendCommand(Name, EArdaRHIQueueType::Graphics, eastl::move(Accesses), {});
 
 			if (Activate)
 			{
@@ -60,13 +81,11 @@ namespace arda
 		for (size_t Position = 0; Position < Graph.mCompile.mExecutionOrder.size(); ++Position)
 		{
 			const auto Head = Graph.mCompile.mExecutionOrder[Position];
-			for (const auto& Activation : Plan.mAliasActivations)
+			const auto Active = ActivationsAt.find(Position);
+			for (auto Index : Active == ActivationsAt.end() ? NoBoundaries : Active->second)
 			{
+				const auto& Activation = Plan.mAliasActivations[Index];
 				const auto Resource = Activation.mResource;
-				if (!AliasedImages.count(Resource) || Plan.mRequests[Resource].mFirstUse != Position)
-				{
-					continue;
-				}
 				const auto Pass = AddImageBoundary(Resource, true);
 				ImageActivations.emplace(Resource, Pass);
 				for (const auto Previous : Activation.mPreviousResources)
@@ -80,182 +99,176 @@ namespace arda
 					Frame->mLowered->AddDependency(Retired->second, Pass);
 				}
 			}
-			if (Passes.count(Head.GetIndex()) || SkippedNodes.count(Head.GetIndex()))
+			if (!Passes.count(Head.GetIndex()) && !SkippedNodes.count(Head.GetIndex()))
 			{
-				continue;
-			}
-
-			const auto Selected = Dispatches.find(Head.GetIndex());
-			if (Selected == Dispatches.end())
-			{
-				return MakeArdaInductorRuntimeError("Executable node is missing a compiled dispatch.");
-			}
-			auto Nodes = Selected->second->mNodes;
-			const auto& HeadNode = Graph.mTopology.TryGetNode(Head)->mPayload;
-			const bool bCuda = HeadNode.mDefinition->mKind == EArdaDependencyNodeKind::Cuda;
-			const auto Queue = Graph.mCompile.mQueues[Position];
-			FArdaInductorCommandAccesses Accesses;
-			for (auto Handle : Nodes)
-			{
-				const auto* Record = Graph.mTopology.TryGetNode(Handle);
-				if (!Record)
+				const auto Selected = Dispatches.find(Head.GetIndex());
+				if (Selected == Dispatches.end())
 				{
-					return MakeArdaInductorRuntimeError("A compiled node handle is stale.");
+					return MakeArdaInductorRuntimeError("Executable node is missing a compiled dispatch.");
 				}
-				const auto& Node = Record->mPayload;
-				if (bCuda &&
-				    (!Node.mDefinition->mPrepareCuda || Node.mDefinition->mKind != EArdaDependencyNodeKind::Cuda))
+				auto Nodes = Selected->second->mNodes;
+				const auto& HeadNode = Graph.mTopology.TryGetNode(Head)->mPayload;
+				const bool bCuda = HeadNode.mDefinition->mKind == EArdaDependencyNodeKind::Cuda;
+				const auto Queue = Graph.mCompile.mQueues[Position];
+				FArdaInductorCommandAccesses Accesses;
+				for (auto Handle : Nodes)
 				{
-					return MakeArdaInductorRuntimeError("A CUDA batch contains an incompatible node definition.");
-				}
-				for (const auto& Access : Node.mDesc.mAccesses)
-				{
-					if (!Graph.HasResource(Access.mResource))
+					const auto* Record = Graph.mTopology.TryGetNode(Handle);
+					if (!Record)
 					{
-						return MakeArdaInductorRuntimeError("A compiled resource handle is stale.");
+						return MakeArdaInductorRuntimeError("A compiled node handle is stale.");
 					}
-					const auto Index = Access.mResource.mIndex;
-					const bool Write = Access.mAccess != EArdaDependencyAccess::Read;
-					if (Graph.mResources[Index].mExternalAccelerationStructure)
+					const auto& Node = Record->mPayload;
+					if (bCuda &&
+					    (!Node.mDefinition->mPrepareCuda || Node.mDefinition->mKind != EArdaDependencyNodeKind::Cuda))
 					{
-						if (!Frame->mAccelerationStructures[Index])
+						return MakeArdaInductorRuntimeError("A CUDA batch contains an incompatible node definition.");
+					}
+					for (const auto& Access : Graph.GetNodeDescription(Node).mAccesses)
+					{
+						if (!Graph.HasResource(Access.mResource))
 						{
-							return MakeArdaInductorRuntimeError("A live acceleration structure has no allocation.");
+							return MakeArdaInductorRuntimeError("A compiled resource handle is stale.");
 						}
-						Accesses.mAccelerationStructures.push_back(
-						    {Frame->mAccelerationStructures[Index]->GetHandle(), Access.mState, Write});
-					}
-					else if (Graph.mResources[Index].mbTexture)
-					{
-						if (!Frame->mTextures[Index])
+						const auto Index = Access.mResource.mIndex;
+						const bool Write = Access.mAccess != EArdaDependencyAccess::Read;
+						if (Graph.mResources[Index].mExternalAccelerationStructure)
 						{
-							return MakeArdaInductorRuntimeError("A live texture has no allocation.");
+							if (!Frame->mAccelerationStructures[Index])
+							{
+								return MakeArdaInductorRuntimeError("A live acceleration structure has no allocation.");
+							}
+							Accesses.mAccelerationStructures.push_back(
+							    {Frame->mAccelerationStructures[Index]->GetHandle(), Access.mState, Write});
 						}
-						Accesses.mTextures.push_back(
-						    {Frame->mTextures[Index]->GetHandle(), Access.mTextureRange, Access.mState, Write});
-					}
-					else
-					{
-						if (!Frame->mBuffers[Index])
+						else if (Graph.mResources[Index].mbTexture)
 						{
-							return MakeArdaInductorRuntimeError("A live buffer has no allocation.");
+							if (!Frame->mTextures[Index])
+							{
+								return MakeArdaInductorRuntimeError("A live texture has no allocation.");
+							}
+							Accesses.mTextures.push_back(
+							    {Frame->mTextures[Index]->GetHandle(), Access.mTextureRange, Access.mState, Write});
+						}
+						else
+						{
+							if (!Frame->mBuffers[Index])
+							{
+								return MakeArdaInductorRuntimeError("A live buffer has no allocation.");
+							}
+							Accesses.mBuffers.push_back(
+							    {Frame->mBuffers[Index]->GetHandle(), Access.mBufferRange, Access.mState, Write});
+						}
+					}
+					if (const auto Workspace = Graph.mCompile.mWorkspaceResourceIds.find(Handle.GetIndex());
+					    Workspace != Graph.mCompile.mWorkspaceResourceIds.end())
+					{
+						const auto Index = Workspace->second;
+						if (Index >= Frame->mBuffers.size() || !Frame->mBuffers[Index])
+						{
+							return MakeArdaInductorRuntimeError("A compiled workspace has no allocation.");
 						}
 						Accesses.mBuffers.push_back(
-						    {Frame->mBuffers[Index]->GetHandle(), Access.mBufferRange, Access.mState, Write});
+						    {Frame->mBuffers[Index]->GetHandle(), {}, EArdaRHIResourceState::UnorderedAccess, true});
 					}
 				}
-				if (const auto Workspace = Graph.mCompile.mWorkspaceResourceIds.find(Handle.GetIndex());
-				    Workspace != Graph.mCompile.mWorkspaceResourceIds.end())
-				{
-					const auto Index = Workspace->second;
-					if (Index >= Frame->mBuffers.size() || !Frame->mBuffers[Index])
-					{
-						return MakeArdaInductorRuntimeError("A compiled workspace has no allocation.");
-					}
-					Accesses.mBuffers.push_back(
-					    {Frame->mBuffers[Index]->GetHandle(), {}, EArdaRHIResourceState::UnorderedAccess, true});
-				}
-			}
-			eastl::shared_ptr<FArdaCudaGraphCache> CudaCache;
-			if (bCuda)
-			{
-				if (Reuse)
-				{
-					const auto Found = (*Reuse)[FrameIndex].mCudaCaches.find(Head.GetIndex());
-					if (Found != (*Reuse)[FrameIndex].mCudaCaches.end())
-					{
-						CudaCache = Found->second;
-					}
-				}
-				if (!CudaCache)
-				{
-					CudaCache = eastl::make_shared<FArdaCudaGraphCache>(Graph.mOptions.mCudaGraphMode);
-				}
-				Frame->mCudaCaches.emplace(Head.GetIndex(), CudaCache);
-			}
-			FArdaRHITimerQueryRef Timer;
-			eastl::shared_ptr<FArdaCudaTimingQuery> CudaTimer;
-			if (Graph.mOptions.mbEnableGpuTiming)
-			{
+				eastl::shared_ptr<FArdaCudaGraphCache> CudaCache;
 				if (bCuda)
 				{
 					if (Reuse)
 					{
-						for (const auto& Old : (*Reuse)[FrameIndex].mCudaTimers)
+						const auto Found = (*Reuse)[FrameIndex].mCudaCaches.find(Head.GetIndex());
+						if (Found != (*Reuse)[FrameIndex].mCudaCaches.end())
 						{
-							if (Old.mNodes == Nodes)
-							{
-								CudaTimer = Old.mQuery;
-							}
+							CudaCache = Found->second;
 						}
 					}
-					if (!CudaTimer)
+					if (!CudaCache)
 					{
-						CudaTimer = eastl::make_shared<FArdaCudaTimingQuery>();
+						CudaCache = eastl::make_shared<FArdaCudaGraphCache>(Graph.mOptions.mCudaGraphMode);
 					}
-					FArdaInductorCudaFrameTimer RegionTimer;
-					RegionTimer.mQuery = CudaTimer;
-					RegionTimer.mNodes = Nodes;
-					RegionTimer.mQueue = Queue;
-					for (auto Handle : Nodes)
-					{
-						RegionTimer.mNames.push_back(Graph.mTopology.TryGetNode(Handle)->mPayload.mName);
-					}
-					Frame->mCudaTimers.push_back(eastl::move(RegionTimer));
+					Frame->mCudaCaches.emplace(Head.GetIndex(), CudaCache);
 				}
-				else if (Graph.mDevice->GetCapabilities().mQueues.SupportsTimestamps(Queue))
+				FArdaRHITimerQueryRef Timer;
+				eastl::shared_ptr<FArdaCudaTimingQuery> CudaTimer;
+				if (Graph.mOptions.mbEnableGpuTiming)
 				{
-					if (Reuse)
+					if (bCuda)
 					{
-						for (const auto& Old : (*Reuse)[FrameIndex].mTimers)
+						if (Reuse)
 						{
-							if (Old.mNodes == Nodes)
+							for (const auto& Old : (*Reuse)[FrameIndex].mCudaTimers)
 							{
-								Timer = Old.mQuery;
+								if (Old.mNodes == Nodes)
+								{
+									CudaTimer = Old.mQuery;
+								}
 							}
 						}
-					}
-					if (!Reuse)
-					{
-						auto Created = Graph.mDevice->CreateTimerQuery();
-						if (Created)
+						if (!CudaTimer)
 						{
-							Timer = eastl::move(Created.mValue);
+							CudaTimer = eastl::make_shared<FArdaCudaTimingQuery>();
+						}
+						FArdaInductorCudaFrameTimer RegionTimer;
+						RegionTimer.mQuery = CudaTimer;
+						RegionTimer.mNodes = Nodes;
+						RegionTimer.mQueue = Queue;
+						for (auto Handle : Nodes)
+						{
+							RegionTimer.mNames.push_back(Graph.mTopology.TryGetNode(Handle)->mPayload.mName);
+						}
+						Frame->mCudaTimers.push_back(eastl::move(RegionTimer));
+					}
+					else if (Graph.mCompile.mExecution->mDevice->GetCapabilities().mQueues.SupportsTimestamps(Queue))
+					{
+						if (Reuse)
+						{
+							for (const auto& Old : (*Reuse)[FrameIndex].mTimers)
+							{
+								if (Old.mNodes == Nodes)
+								{
+									Timer = Old.mQuery;
+								}
+							}
+						}
+						if (!Reuse)
+						{
+							auto Created = Graph.mCompile.mExecution->mDevice->CreateTimerQuery();
+							if (Created)
+							{
+								Timer = eastl::move(Created.mValue);
+							}
+						}
+						if (Timer)
+						{
+							Frame->mTimers.push_back({HeadNode.mName, Timer, Nodes, Queue});
 						}
 					}
-					if (Timer)
+				}
+				// AS lifecycle state comes from accepted build/copy submissions, not a generic write declaration.
+				// Record after ordered producers submit so native and facade source validation observe that state.
+				const bool RecordAtSubmit = bCuda || !Accesses.mAccelerationStructures.empty();
+				const auto Pass = Frame->mLowered->AppendCommand(HeadNode.mName,
+				    Queue,
+				    eastl::move(Accesses),
+				    MakeNodeRecorder(Nodes, bCuda, CudaCache, Timer, CudaTimer, Runtime.mBinding, Frame),
+				    RecordAtSubmit);
+				for (auto Handle : Nodes)
+				{
+					Passes.emplace(Handle.GetIndex(), Pass);
+					for (const auto& Access : Graph.mCompile.mNodes.at(Handle).mDesc.mAccesses)
 					{
-						Frame->mTimers.push_back({HeadNode.mName, Timer, Nodes, Queue});
+						const auto Active = ImageActivations.find(Access.mResource.mIndex);
+						if (Active != ImageActivations.end())
+						{
+							Frame->mLowered->AddDependency(Active->second, Pass);
+						}
 					}
 				}
 			}
-			// AS lifecycle state comes from accepted build/copy submissions, not a generic write declaration.
-			// Record after ordered producers submit so native and facade source validation observe that state.
-			const bool RecordAtSubmit = bCuda || !Accesses.mAccelerationStructures.empty();
-			const auto Pass = Frame->mLowered->AppendCommand(HeadNode.mName,
-			    Queue,
-			    eastl::move(Accesses),
-			    MakeNodeRecorder(Nodes, bCuda, CudaCache, Timer, CudaTimer, Runtime.mBinding, Frame),
-			    bCuda,
-			    RecordAtSubmit);
-			for (auto Handle : Nodes)
+			const auto Retiring = RetirementsAt.find(Position);
+			for (const auto Resource : Retiring == RetirementsAt.end() ? NoBoundaries : Retiring->second)
 			{
-				Passes.emplace(Handle.GetIndex(), Pass);
-				for (const auto& Access : Graph.mTopology.TryGetNode(Handle)->mPayload.mDesc.mAccesses)
-				{
-					const auto Active = ImageActivations.find(Access.mResource.mIndex);
-					if (Active != ImageActivations.end())
-					{
-						Frame->mLowered->AddDependency(Active->second, Pass);
-					}
-				}
-			}
-			for (const auto Resource : OrderedAliasedImages)
-			{
-				if (Plan.mRequests[Resource].mLastUse != Position)
-				{
-					continue;
-				}
 				const auto Retire = AddImageBoundary(Resource, false);
 				ImageRetirements.emplace(Resource, Retire);
 				// Includes every real user, not merely the last node in linear order.

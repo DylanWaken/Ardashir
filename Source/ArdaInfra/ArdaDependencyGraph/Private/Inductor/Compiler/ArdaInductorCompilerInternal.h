@@ -1,5 +1,5 @@
 #pragma once
-#include "Graph/Node/ArdaDependencyGraphImpl.h"
+#include "Inductor/Rules/ArdaInductorGraphInternal.h"
 #include "Inductor/Compiler/ArdaInductorPipelineCompiler.h"
 #include "Inductor/Rules/ArdaInductorRules.h"
 #include <EASTL/unique_ptr.h>
@@ -9,30 +9,6 @@
 
 namespace arda::inductor_detail
 {
-	using FArdaHandle = FArdaGraphNodeHandle;
-
-	inline FArdaRHIStatus Error(const char* Text)
-	{
-		return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, Text);
-	}
-
-	inline bool IsDeclaration(const FArdaDependencyNode& Node)
-	{
-		return Node.mDesc.mbPipelineStageOnly ||
-		    (Node.mDefinition->mKind == EArdaDependencyNodeKind::Synchronization && !Node.mDefinition->mRecord &&
-		        Node.mDesc.mAccesses.empty());
-	}
-
-	inline bool AddBytes(uint64_t& A, uint64_t B)
-	{
-		if (B > UINT64_MAX - A)
-		{
-			return false;
-		}
-		A += B;
-		return true;
-	}
-
 	double NodeCost(const FArdaDependencyGraph::FArdaImpl&, const FArdaDependencyNode&);
 	FArdaRHIStatus AssignQueues(const FArdaDependencyGraph::FArdaImpl&, FArdaInductorCompileResult&);
 
@@ -83,24 +59,6 @@ namespace arda::inductor_detail
 	FArdaRHIStatus ValidateCompiledResult(const FArdaDependencyGraph::FArdaImpl&, const FArdaInductorCompileResult&);
 	FArdaRHIStatus PublishSchedule(FArdaScheduleSearch&, FArdaInductorCompileResult&);
 	FArdaRHIStatus ValidatePipelines(const FArdaDependencyGraph::FArdaImpl&, const eastl::vector<FArdaHandle>&);
-	FArdaRHIStatus ValidateResourceAccesses(const FArdaDependencyGraph::FArdaImpl&, bool AllowAutomaticUsage = false);
-	FArdaRHIStatus ValidateResourceUsage(const FArdaDependencyGraph::FArdaImpl&);
 	FArdaRHIStatus ValidateQueueAssignment(const FArdaInductorQueueContext&, const FArdaInductorCompileResult&);
 	void BuildCudaBatches(const FArdaDependencyGraph::FArdaImpl&, FArdaInductorCompileResult&);
-}
-
-namespace arda
-{
-	struct FArdaInductorGraphAccess
-	{
-		static FArdaDependencyGraph::FArdaImpl& State(const FArdaInductorGraph& Graph)
-		{
-			return *static_cast<FArdaDependencyGraph::FArdaImpl*>(Graph.mState);
-		}
-
-		static FArdaInductorGraph View(FArdaDependencyGraph::FArdaImpl& Graph)
-		{
-			return FArdaInductorGraph(&Graph);
-		}
-	};
 }

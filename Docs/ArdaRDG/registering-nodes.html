@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Registering a graph node â€” Ardashir engineering documentation.">
+  <title>Registering a graph node | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRDG pages">
+      <h2>ArdaRDG</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="registering-nodes.html">Registering nodes</a>
+        <a href="node-recipes.html">Node recipes</a>
+        <a href="resources.html">Resources</a>
+        <a href="inductor.html">Inductor developer guide</a>
+        <a href="inductor-pipelines.html">Pipeline assembly</a>
+        <a href="inductor-bindings.html">Binding preparation</a>
+        <a href="batching.html">Batching and parallel edits</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaRDG</a>
+      </nav>
+      <article>
+<h1 id="registering-a-graph-node">Registering a graph node</h1>
+<nav class="toc" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ul>
+        <li><a href="#declare-the-class-and-its-invocation-name">Declare the class and its invocation name</a></li>
+        <li><a href="#define-the-callable-and-implement-the-contract">Define the callable and implement the contract</a></li>
+        <li><a href="#describe-dependencies-in-parameter-declarations">Describe dependencies in parameter declarations</a></li>
+        <li><a href="#declare-individual-graphics-stages">Declare individual graphics stages</a></li>
+        <li><a href="#compose-ray-tracing-stages">Compose ray-tracing stages</a></li>
+        <li><a href="#materialize-stage-results-when-a-buffer-is-required">Materialize stage results when a buffer is required</a></li>
+        <li><a href="#link-and-invoke-the-node">Link and invoke the node</a></li>
+        <li><a href="#array-invocation">Invoke arrays of parameters</a></li>
+        <li><a href="#register-before-discovery-when-needed">Register before discovery when needed</a></li>
+        <li><a href="#portable-runtime-definitions">Portable runtime definitions and model packages</a></li>
+        <li><a href="#model-export-status">Implemented model export and remaining work</a></li>
+      </ul>
+    </nav>
+<section id="objectives"><h2>How to use this guide</h2><p>Declare a node parameter schema, select its execution or shader-stage contract, register its callable, and compose it in a graph edit.</p><p>Start with the <a href="index.html">module overview</a> and follow exact declarations in the <a href="api-reference.html">canonical API reference</a>.</p></section>
+
+<p>Publish a node as a named callable beside its class declaration. Applications
+include the header and write <code>FillDemoBuffer(Edit, Buffer, uint32_t{7})</code>; the call
+records a fresh operation. Declaration automatically registers its implementation
+for discovery and deserialization, without device preparation. The global object
+contains no graph, parameter, device or execution state.</p>
+<h2 id="declare-the-class-and-its-invocation-name">Declare the class and its invocation name</h2>
+<p>Declare parameter fields and their dependency requirements together using the
+node parameter macros. Select the execution contract with
+<code>TArdaNodeDefinition&lt;NodeClass, Parameters, EArdaNodeType::...&gt;</code>. Place <code>ARDA_DECLARE_GRAPH_NODE(NodeClass, InvocationName);</code> immediately
+after the complete class, in the same namespace. This declares an <code>extern const</code>
+callable, so every translation unit refers to the same object, and registers the
+named type without invoking its execution or subgraph build hooks.</p>
+<p>The example fills an existing GPU buffer and exposes it as <code>Destination</code>. Save
+this header as <code>ArdaDemoFillNode.h</code>:</p>
+<pre><code class="language-cpp">#pragma once
+#include &quot;Graph/Node/ArdaNodeDefinition.h&quot;
+
+namespace arda
+{
+    ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaDemoFillParameters)
+        ARDA_NODE_BUFFER(mDestination, EArdaDependencyAccess::Write,
+            EArdaRHIResourceState::UnorderedAccess)
+        ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mValue, 0)
+    ARDA_END_NODE_PARAMETER_STRUCT()
+
+    class FArdaDemoFillNode final
+        : public TArdaNodeDefinition&lt;FArdaDemoFillNode, FArdaDemoFillParameters, EArdaNodeType::Compute&gt;
+    {
+    public:
+        static FArdaDependencyNodeMetadata GetMetadata();
+        static FArdaRHIStatus DeclareResources(
+            FArdaDependencyResourceContext&amp; Context, FArdaParameters&amp; Parameters);
+        static FArdaRHIStatus Record(FArdaDependencyExecutionContext&amp; Context,
+            const FArdaParameters&amp; Parameters, const FArdaState&amp; State,
+            FArdaInstanceState&amp; Instance);
+    };
+    ARDA_DECLARE_GRAPH_NODE(FArdaDemoFillNode, FillDemoBuffer);
+}
+</code></pre>
+<p>The class name and invocation name are independent. Project node types keep the
+<code>FArda</code> prefix; callable names describe the operation. All project APIs use
+<code>arda</code>, so choose a callable name unique across that namespace. An exported
+callable is a C++ object and cannot share its name with another object or an
+overload set. Keep a name such as <code>CopyTo</code> for free-function overloads that
+dispatch different resource permutations to distinct named node callables.</p>
+<h2 id="define-the-callable-and-implement-the-contract">Define the callable and implement the contract</h2>
+<p>Place the matching <code>ARDA_DEFINE_GRAPH_NODE(NodeClass, InvocationName);</code> once in
+the owning <code>.cpp</code>, in the same namespace. Include the header rather than
+redeclaring the class. Save this implementation as <code>ArdaDemoFillNode.cpp</code>:</p>
+<pre><code class="language-cpp">#include &quot;ArdaDemoFillNode.h&quot;
+
+namespace arda
+{
+    ARDA_DEFINE_GRAPH_NODE(FArdaDemoFillNode, FillDemoBuffer);
+
+    FArdaDependencyNodeMetadata FArdaDemoFillNode::GetMetadata()
+    {
+        return {&quot;example.demo.fill-buffer&quot;, 1};
+    }
+
+    FArdaRHIStatus FArdaDemoFillNode::DeclareResources(
+        FArdaDependencyResourceContext&amp; Context, FArdaParameters&amp; Parameters)
+    {
+        const auto* Resource = Context.Find(Parameters.mDestination);
+        if (!Resource || Resource-&gt;mbTexture || Resource-&gt;mExternalAccelerationStructure ||
+            Resource-&gt;mBuffer.mCpuAccess != EArdaRHICpuAccess::None ||
+            !Resource-&gt;mBuffer.mByteSize || Resource-&gt;mBuffer.mByteSize % sizeof(uint32_t) ||
+            !HasAnyFlags(Resource-&gt;mBuffer.mUsage,
+                EArdaRHIBufferUsage::UnorderedAccess | EArdaRHIBufferUsage::AutoDeduction))
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+                &quot;FillDemoBuffer requires a GPU UAV buffer with a nonzero multiple-of-four size.&quot;);
+        }
+        return Context.Buffer(Parameters.mDestination, &quot;Destination&quot;, Resource-&gt;mBuffer);
+    }
+
+    FArdaRHIStatus FArdaDemoFillNode::Record(FArdaDependencyExecutionContext&amp; Context,
+        const FArdaParameters&amp; Parameters, const FArdaState&amp;, FArdaInstanceState&amp;)
+    {
+        return Context.GetCommands().ClearBufferUInt(
+            *Context.GetBuffer(Parameters.mDestination), Parameters.mValue);
+    }
+}
+</code></pre>
+<p><code>GetMetadata</code> supplies a nonempty process-wide registry name and a positive
+implementation version. This runtime identity is separate from the C++ callable
+symbol. Keep both stable; change the version when the implementation contract
+changes. Registering a conflicting class, schema or version under an existing
+name fails with <code>InvalidArgument</code>; it does not replace that definition.</p>
+<p><code>DeclareResources</code> validates and publishes logical outputs transactionally. An
+empty output passed to <code>Context.Buffer</code> or <code>Context.Texture</code> can instead infer a
+transient resource from a descriptor. Return a failure to reject invocation.
+The parameter macros generate dependency descriptions and a canonical key for
+supported parameter types, so this node needs neither <code>Describe</code> nor
+<code>GetCanonicalKey</code>. The destination declaration generates a whole-buffer write in
+<code>UnorderedAccess</code> state. <code>Record</code> resolves only declared resources and propagates
+native command failures. Each invocation owns an independent frozen parameter
+snapshot; the global callable itself retains none.</p>
+<p>For custom parameter types, provide <code>GetCanonicalKey</code> with
+<code>FArdaDependencyKeyBuilder</code> and include every behavior-affecting value, resource
+and retained semantic object. Do not hash raw struct bytes, which may contain
+padding. The builder&#39;s resource encoding allows equivalent fresh constructions
+to reuse persistent graph revisions.</p>
+<p>This operation uses the base&#39;s empty setup and instance states. Shader nodes can
+declare an opaque nested <code>FArdaState</code> and implement <code>Prepare(Device)</code> for immutable
+per-device setup, plus <code>FArdaInstanceState</code> / <code>CreateInstance</code> for private mutable
+state. Shader registration can stay in the implementation; shader parameter
+metadata referenced by node parameter macros must be visible at their declaration.
+CUDA nodes select <code>EArdaNodeType::Cuda</code> and implement <code>PrepareCuda</code> instead of <code>Record</code>. They may also supply <code>RecordComputeAlternative</code> for devices without CUDA. All nodes inherit <code>CheckRequiredFeatures(Device, Parameters)</code> for a read-only support query;
+synchronization nodes may omit execution. See the <a href="node-recipes.html">compiled node recipes</a>
+for compute, raster, mesh, work-graph, CUDA and ray-tracing examples, and
+<a href="feature-requirements.html">feature requirements</a> for <code>GetRequirements</code> admission.</p>
+<h2 id="describe-dependencies-in-parameter-declarations">Describe dependencies in parameter declarations</h2>
+<p>The macros are declared in <code>Graph/Node/ArdaNodeParameters.h</code>, also included by
+<code>Graph/Node/ArdaNodeDefinition.h</code>. They generate a parameter struct, static metadata, and a visitor used by the
+ordinary registration path. The struct is an aggregate by default. They do
+not register a node or allocate resources during static initialization.
+Declare every instance field between <code>BEGIN</code> and <code>END</code> through a node parameter
+macro, including ordinary scalar/configuration values. Plain C++ fields added
+there would not participate in generated metadata or canonical keys.</p>
+<p>This pixel-stage parameter declaration includes its logical input, sampled
+texture and framebuffer attachments:</p>
+<pre><code class="language-cpp">ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaMeshPSParameters)
+    ARDA_NODE_STAGE_INPUT(FArdaGraphFragments, mInput)
+    ARDA_NODE_SHADER_TEXTURE(mAlbedo, FArdaMeshPixelShader::FArdaParameters, mAlbedo)
+    ARDA_NODE_COLOR_TARGET(mColor)
+    ARDA_NODE_DEPTH_TARGET(mDepth, EArdaDependencyAccess::ReadWrite)
+ARDA_END_NODE_PARAMETER_STRUCT()
+</code></pre>
+<p><code>FArdaMeshPixelShader::FArdaParameters</code> is a shader parameter struct with an
+<code>ARDA_SHADER_TEXTURE_SRV(mAlbedo, ..., EArdaRHIShaderStage::Pixel)</code> member. The node
+declaration references that existing member, deriving its binding type, shader
+visibility and read access. It also adds the color attachment and render-target
+write, the depth attachment and depth read/write access, and the typed fragment
+input. There is no corresponding <code>BindShader</code>, <code>mAccesses</code>, <code>mColorTargets</code> or
+<code>mDepthTarget</code> code to maintain in <code>Describe</code>.</p>
+<p>Compute and vertex shaders use the same mechanism:</p>
+<pre><code class="language-cpp">ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaTransformParameters)
+    ARDA_NODE_SHADER_BUFFER(mInput, FArdaTransformShader::FArdaParameters, mInput)
+    ARDA_NODE_SHADER_BUFFER(mOutput, FArdaTransformShader::FArdaParameters, mOutput)
+    ARDA_NODE_PARAMETER(uint32_t, mElementCount)
+ARDA_END_NODE_PARAMETER_STRUCT()
+
+ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaMeshVSParameters)
+    ARDA_NODE_SHADER_BUFFER(mPositions, FArdaMeshVertexShader::FArdaParameters, mPositions)
+    ARDA_NODE_PARAMETER(uint32_t, mVertexCount)
+ARDA_END_NODE_PARAMETER_STRUCT()
+</code></pre>
+<p>Here the shader schemas declare <code>mInput</code> and <code>mPositions</code> as buffer SRVs and
+<code>mOutput</code> as a buffer UAV. Node resource members use typed graph handles while
+shader parameter members continue to describe native shader bindings. Shader
+member names need not match node member names: the final macro argument selects
+the shader member.</p>
+<table>
+<thead>
+<tr>
+<th>Declaration</th>
+<th>Generated requirement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ARDA_NODE_PARAMETER(Type, Member)</code></td>
+<td>Ordinary aggregate value and canonical-key entry.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_PARAMETER_WITH_DEFAULT(Type, Member, Default)</code></td>
+<td>Ordinary value with an explicit default.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_STAGE_INPUT(Type, Member)</code></td>
+<td>Logical graphics-stage dependency, without a physical allocation.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_STAGE_INPUTS(Type, Member)</code></td>
+<td>An ordered vector of logical ray-shader predecessors.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_BUFFER(Member, Access, State)</code></td>
+<td>Typed buffer and whole-buffer access.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_TEXTURE(Member, Access, State)</code></td>
+<td>Typed texture and whole-texture access.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_COLOR_TARGET(Member)</code></td>
+<td>Color attachment and render-target write; declaration order determines attachment order.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_COLOR_TARGET_ACCESS(Member, Access)</code></td>
+<td>Color attachment with explicit access; use <code>ReadWrite</code> when loading or blending with existing contents.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_DEPTH_TARGET(Member, Access)</code></td>
+<td>Depth attachment and <code>DepthRead</code> for read-only access, otherwise <code>DepthWrite</code>.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_SHADER_BUFFER(Member, ShaderParameters, ShaderMember)</code></td>
+<td>Typed buffer bound through the selected shader parameter metadata.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_SHADER_TEXTURE(Member, ShaderParameters, ShaderMember)</code></td>
+<td>Typed texture bound through the selected shader parameter metadata.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_ACCELERATION_STRUCTURE(Member, Access, State)</code></td>
+<td>Typed acceleration structure with an explicit non-shader access.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_SHADER_ACCELERATION_STRUCTURE(Member, ShaderParameters, ShaderMember)</code></td>
+<td>Acceleration structure bound through shader metadata.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_CUDA_BUFFER(Member, CudaParameters, CudaMember)</code></td>
+<td>Buffer access derived from the CUDA/compute parameter schema.</td>
+</tr>
+<tr>
+<td><code>ARDA_NODE_CUDA_TEXTURE(Member, CudaParameters, CudaMember)</code></td>
+<td>Texture access derived from the CUDA/compute parameter schema.</td>
+</tr>
+</tbody></table>
+<p>Shader SRVs and constant buffers default to <code>Read</code>; UAVs default to <code>Write</code>.
+For a shader that also reads its UAV&#39;s previous contents, declare <code>ReadWrite</code>
+once in the shader schema:</p>
+<pre><code class="language-cpp">ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaUpdateShaderParameters)
+    ARDA_SHADER_BUFFER_UAV_ACCESS(mParticles, 0, 0,
+        EArdaRHIShaderStage::Compute, EArdaShaderResourceAccess::ReadWrite)
+ARDA_END_SHADER_PARAMETER_STRUCT()
+
+ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaUpdateNodeParameters)
+    ARDA_NODE_SHADER_BUFFER(mParticles, FArdaUpdateShaderParameters, mParticles)
+ARDA_END_NODE_PARAMETER_STRUCT()
+</code></pre>
+<p>The node inherits <code>ReadWrite</code> from that member. <code>ARDA_SHADER_TEXTURE_UAV_ACCESS</code>
+is the texture equivalent. The shader schema is the source of binding type,
+array extent, visibility and required access. A node&#39;s optional
+<code>ARDA_NODE_SHADER_BUFFER_ACCESS</code> / <code>ARDA_NODE_SHADER_TEXTURE_ACCESS</code> can add a
+more conservative UAV dependency; it cannot discard a shader-required read or
+write. SRV and constant-buffer mappings remain read-only. All these declarations
+feed automatic resource-usage deduction, so callers can leave descriptors at
+<code>AutoDeduction</code>.</p>
+<p>A second mesh drawing into existing color/depth attachments should declare the
+contents it consumes. Use <code>ARDA_NODE_COLOR_TARGET_ACCESS(mColor, EArdaDependencyAccess::ReadWrite)</code> when the pass preserves or blends prior color,
+and <code>ARDA_NODE_DEPTH_TARGET(mDepth, EArdaDependencyAccess::ReadWrite)</code> when depth
+testing and writing. The default color macro describes a write-only attachment.</p>
+<p>The shader <code>*_BINDING</code> forms also take a pipeline slot, access, array element and
+immutable view. <code>ARDA_NODE_SHADER_BUFFER_ARRAY</code> and
+<code>ARDA_NODE_SHADER_TEXTURE_ARRAY</code> map fixed arrays, with their element count and
+access argument supplied explicitly; pass <code>EArdaDependencyAccess::AutoDeduction</code>
+to inherit the shader schema&#39;s access. Shader samplers and immediate values can remain
+in custom <code>Describe</code> binding declarations; macro resources join the binding
+declaration for the matching shader metadata and pipeline slot.</p>
+<p>The same rule applies to CUDA: declare resource kind and access in the schema
+used by the kernel or external compute operation, then refer to its members:</p>
+<pre><code class="language-cpp">#define ARDA_UPDATE_CUDA_FIELDS(VALUE, BUFFER, SURFACE) \
+    VALUE(uint32_t, mCount) \
+    BUFFER(float, mInput, EArdaComputeAccess::Read) \
+    BUFFER(float, mOutput, EArdaComputeAccess::Write)
+ARDA_CUDA_PARAMETER_STRUCT(FArdaUpdateCudaParameters, ARDA_UPDATE_CUDA_FIELDS)
+#undef ARDA_UPDATE_CUDA_FIELDS
+
+ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaUpdateCudaNodeParameters)
+    ARDA_NODE_CUDA_BUFFER(mSource, FArdaUpdateCudaParameters, mInput)
+    ARDA_NODE_CUDA_BUFFER(mDestination, FArdaUpdateCudaParameters, mOutput)
+    ARDA_NODE_PARAMETER(uint32_t, mCount)
+ARDA_END_NODE_PARAMETER_STRUCT()
+</code></pre>
+<p>These mappings derive dependency direction from the kernel schema and use the
+CUDA interop resource state. They do not duplicate <code>Read</code>/<code>Write</code> in the node
+declaration. <code>ARDA_NODE_CUDA_TEXTURE</code> maps a schema surface/texture member.
+Use <code>TArdaNodeDefinition&lt;Node, Parameters, EArdaNodeType::Cuda&gt;</code> for the node
+and implement <code>PrepareCuda</code> with its prepared operand.</p>
+<p>Inside <code>PrepareCuda</code>, initialize scalar host arguments, then resolve resources
+through the same member mappings:</p>
+<pre><code class="language-cpp">FArdaUpdateCudaParameters Host;
+Host.mCount = Parameters.mCount;
+if (auto Status = ResolveNodeCudaParameters(Context, Parameters, Host); !Status)
+{
+    return Status;
+}
+// Append the CUDA operation using Host.
+</code></pre>
+<p>Resolution requires the host storage type and a mapping for every resource in
+that exact schema; passing the device-side packed arguments is rejected.
+It leaves <code>Host</code> unchanged on failure. Before dispatch, the graph also checks the
+operations appended by <code>PrepareCuda</code>: their actual resource identities, accessed
+ranges and read/write directions must be covered by that node&#39;s declarations.
+This catches a custom hook that binds a different buffer or performs a write
+where it only declared a read.</p>
+<p>Node registration validates mappings before preparing device state: the named
+member must exist, its resource kind must match the typed graph field, and array
+elements must fit without duplicate mappings in the same pipeline slot. Invalid
+access overrides are rejected. Custom <code>Describe</code> declarations are subject to the
+same binding contract; they cannot bypass the canonical shader requirements.
+During graph compilation, pipeline layouts and supplied resource arguments are
+also checked against the metadata retained by the prepared shaders. Every shader
+used by a graph pipeline must retain its parameter metadata; registered shaders
+without parameters carry an explicit empty schema. Missing metadata or bindings, incompatible layouts or visibility, and access narrower than the
+shader contract reject compilation before execution.</p>
+<p>The contract describes declared shader/CUDA requirements. It does not inspect
+arbitrary shader instructions, native CUDA pointers, or external library internals
+to discover hidden accesses. Authors must declare those requirements correctly;
+the graph checks that its resource mappings and scheduled execution honor them.</p>
+<p>Keep <code>Describe</code> only for additional requirements such as prepared shader stages,
+pipeline requests, special ranges, dynamic resource collections, shader-table
+records or observable side effects. The generated declaration is appended to
+that custom description automatically; do not repeat the same binding or
+attachment in both places. Use <code>ARDA_NODE_PARAMETER(FArdaGraphBuffer, Member)</code>
+(or the texture equivalent) when a field&#39;s entire access declaration belongs in
+the custom hook, for example to describe a parameter-dependent subrange. A stage
+node typically only contributes its shader:</p>
+<pre><code class="language-cpp">static FArdaDependencyNodeDesc Describe(
+    const FArdaParameters&amp;, const FArdaState&amp; State)
+{
+    FArdaDependencyNodeDesc Description;
+    Description.mPipelineStages = {State.mStage};
+    return Description;
+}
+</code></pre>
+<p>With an empty <code>ARDA_END_NODE_PARAMETER_STRUCT()</code>, the structs remain aggregates.
+Both <code>WriteMeshPixels(Edit, Parameters)</code> and
+<code>WriteMeshPixels(Edit, Fragments, Albedo, Color, Depth)</code> use the same declarations;
+the positional form follows field declaration order. The macros work with every
+node execution contract, including compute, copy, CUDA, ray tracing and graphics
+stages. Registration requires this declarative schema for every node. For a field
+whose access depends on runtime parameter values, declare it with
+<code>ARDA_NODE_PARAMETER</code> and add the exact access through <code>Describe</code>. This keeps the
+field in the schema while allowing dynamic ranges and resource collections.</p>
+<p><code>ARDA_END_NODE_PARAMETER_STRUCT(...)</code> optionally accepts constructor or helper
+method definitions. Do not declare instance fields there: every field must still
+use a parameter macro. A user-provided constructor changes positional invocation
+from aggregate initialization to ordinary brace construction and defines which
+argument lists are accepted. The built-in
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/DefaultNodes/ArdaGraphicsOperations.h"><code>FArdaRasterizeParameters</code></a>
+uses this extension to accept both <code>(Vertices, Config)</code> and
+<code>(Vertices, ConfigFields...)</code>; its input and configuration remain declared by
+<code>ARDA_NODE_STAGE_INPUT</code> and <code>ARDA_NODE_PARAMETER</code>.</p>
+<p>Generated canonical keys support scalar/enumeration values, graph resources and
+stage values, strings, resource ranges/views, and arrays/vectors of supported
+elements. Extend the encoder for a reusable application value type, in <code>arda</code>:</p>
+<pre><code class="language-cpp">template &lt;&gt;
+struct TArdaNodeParameterKey&lt;FArdaDispatchShape&gt;
+{
+    static constexpr bool mSupported = true;
+
+    static void Append(FArdaDependencyKeyBuilder&amp; Key, const FArdaDispatchShape&amp; Value)
+    {
+        Key.Value(Value.mX).Value(Value.mY).Value(Value.mZ);
+    }
+};
+</code></pre>
+<p>Here <code>FArdaDispatchShape</code> is an application struct with three integer dimensions.
+Declare the specialization before using that type in a parameter macro. Encode
+semantic fields rather than raw memory or padding. Alternatively, implement the
+node&#39;s <code>GetCanonicalKey</code> to encode its complete parameter snapshot. Unsupported
+fields require one of these choices; they are not silently omitted from identity.</p>
+<h2 id="declare-individual-graphics-stages">Declare individual graphics stages</h2>
+<p><code>TArdaNodeDefinition&lt;Node, Parameters, Type&gt;</code> is the shared authoring entry for
+<code>Compute</code>, <code>Cuda</code>, <code>Copy</code>, <code>Synchronization</code>, complete <code>Graphics</code>, <code>Meshlet</code>,
+<code>RayTracing</code> and <code>WorkGraph</code> operations, and individual graphics/ray shader stages.
+All choices share the registry, parameter snapshots, global invocation macros and
+structured/positional calls. Select all execution domains and stages through this
+single template; separate domain and stage authoring aliases are not provided.</p>
+<p>Include <code>Graph/Node/ArdaNodeDefinition.h</code> and select the stage in the same definition template:</p>
+<table>
+<thead>
+<tr>
+<th><code>EArdaNodeType</code></th>
+<th>Input</th>
+<th>Invocation result</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Vertex</code></td>
+<td>Declared physical resources</td>
+<td><code>FArdaGraphVertices</code></td>
+</tr>
+<tr>
+<td><code>Raster</code></td>
+<td><code>FArdaGraphVertices</code></td>
+<td><code>FArdaGraphFragments</code></td>
+</tr>
+<tr>
+<td><code>Pixel</code></td>
+<td><code>FArdaGraphFragments</code></td>
+<td><code>FArdaGraphPixels</code></td>
+</tr>
+</tbody></table>
+<pre><code class="language-cpp">class FArdaMyVertexNode final
+    : public TArdaNodeDefinition&lt;FArdaMyVertexNode, FArdaMyVertexParameters,
+          EArdaNodeType::Vertex&gt;
+{
+    // GetMetadata, Prepare and the shader contribution in Describe.
+};
+ARDA_DECLARE_GRAPH_NODE(FArdaMyVertexNode, MyVertex);
+</code></pre>
+<p>The same selector provides <code>Hull</code>, <code>Domain</code>, <code>Geometry</code>, <code>Amplification</code> and
+<code>Mesh</code>. Their logical values describe the applicable graphics stage interfaces;
+preprocessing validates stage order and pipeline-family compatibility. Shader
+bindings are declared on their owner with that stage&#39;s visibility.</p>
+<p>The intermediate types belong to the dependency graph module. Declare a raster
+or pixel input with <code>ARDA_NODE_STAGE_INPUT(Type, Member)</code>; its member name is
+independent of the stage contract. Stage connections come exclusively from this
+metadata; field names and custom accessor hooks do not imply connections.
+The registration path includes the input in the construction key; generated
+parameter keys cover the other fields automatically.</p>
+<p>Keep the same metadata, preparation and global invocation macros as other nodes.
+<code>Describe</code> contributes the shader through <code>mPipelineStages</code>; parameter macros
+declare the stage&#39;s resources, bindings and attachments. A vertex stage can set
+<code>mGraphicsInputLayout</code>. The raster stage supplies a complete fixed-state
+configuration using a contribution with no shader. Do not add a manual pipeline
+request for an individual graphics stage. <code>Describe</code> must leave <code>mGraphicsStage</code>,
+<code>mRayStage</code>, <code>mGraphicsInput</code>, <code>mRayInputs</code> and <code>mbPipelineStageOnly</code> at their defaults.
+These are compiler-owned fields populated from <code>EArdaNodeType</code> and the declared
+stage input metadata; setting them manually rejects the node invocation.</p>
+<p>These nodes have no authored <code>Record</code> callback. To supply dynamic state, optionally
+implement:</p>
+<pre><code class="language-cpp">static FArdaRHIStatus ConfigureGraphics(FArdaDependencyExecutionContext&amp; Context,
+    const FArdaParameters&amp; Parameters, const FArdaState&amp; State,
+    FArdaInstanceState&amp; Instance, FArdaGraphicsWork&amp; Work);
+</code></pre>
+<p>For example, the vertex hook sets <code>Work.mState.mVertexBuffers</code>, an optional index
+buffer, <code>Work.mDraw</code>, and <code>Work.mbIndexed</code>. The raster hook sets viewports and
+scissors. The pixel hook may clear its declared target. The compiler collects
+the stages&#39; bindings and accesses; the executor applies graphics state and issues
+one draw after the hooks succeed.</p>
+<pre><code class="language-cpp">const auto Vertices = TriangleVS(Edit, UploadedVertices, UploadedIndices);
+const auto Fragments = TriangleRasterize(Edit, Vertices, Width, Height);
+TrianglePS(Edit, Fragments, Color);
+</code></pre>
+<p>The variables establish stage dependencies. Resource hazards and <code>Edit.Order</code> constraints never select shaders or add pipeline stages. Reusing a vertex
+value in a second raster operation creates another draw and executes the vertex
+shader again. See the <a href="Examples/Nodes/RasterTriangleNode.h">complete stage classes</a>
+and <a href="Examples/Nodes/RasterTriangleNode.cpp">their compiled implementation</a>.</p>
+<p>Every declared graphics stage must belong to a complete chain ending at a pixel
+operation, or to a chain explicitly consumed by a successful <code>FetchBuffer</code>
+materializer. A vertex operation by itself, or a vertex/raster chain without a
+pixel terminal, makes <code>Graph.CompileAndWait()</code> fail. This completeness check runs before
+culling, so leaving a stage&#39;s result unused does not hide an incomplete pipeline.
+Complete chains whose physical outputs are unused can still be culled normally.
+Wrong stage order, incompatible input kinds, missing inputs and foreign or stale
+stage values also fail validation. Explicit materialization is the exception for
+intentionally stopping at an intermediate stage; it does not relax those checks.</p>
+<p>For ordinary fixed-function rasterization, a library does not need its own raster
+class. Include <code>Graph/DefaultNodes/ArdaGraphicsOperations.h</code> and invoke the built-in
+<code>Rasterize</code> operation:</p>
+<pre><code class="language-cpp">const FArdaRHIViewport Viewport{0.f, float(Width), 0.f, float(Height), 0.f, 1.f};
+FArdaRHIRasterState RasterState;
+RasterState.mCullMode = EArdaRHICullMode::None;
+const FArdaRHIDepthStencilState DepthState{true, true, EArdaRHIComparisonFunc::GreaterOrEqual};
+
+// Reuse the same configuration with any vertex-stage output.
+const FArdaRasterConfig Config{Viewport, RasterState, DepthState};
+const auto Fragments = Rasterize(Edit, Vertices, Config);
+
+// Equivalent positional form, with trailing fields defaulted.
+const auto OtherFragments = Rasterize(Edit, OtherVertices, Viewport, RasterState, DepthState);
+</code></pre>
+<p>Both forms use the same registered node, validation, frozen parameters and cache
+identity. The variadic form follows <code>FArdaRasterConfig</code> field order: viewport,
+raster state, depth/stencil state, blend state, scissor, draw arguments, topology,
+patch control-point count. Omitted trailing fields retain their defaults; wrong
+argument types or ordering fail at C++ compilation. <code>FArdaRasterizeParameters</code>
+packages <code>mInput</code> and <code>mConfig</code> for callers using a complete parameter snapshot.
+Each returned fragment value must feed a pixel stage or explicit materialization.</p>
+<p>The configuration exposes topology, raster, depth/stencil and blend state. A zero draw
+count preserves the vertex stage&#39;s draw arguments. A custom raster class is useful
+when a shader library also supplies its own fragment-capture representation.</p>
+<h2 id="compose-ray-tracing-stages">Compose ray-tracing stages</h2>
+<p>Select <code>RayMiss</code>, <code>RayClosestHit</code>, <code>RayAnyHit</code>, <code>RayIntersection</code> or <code>RayCallable</code>
+to define a shader provider. Invocation returns <code>FArdaGraphRayShader</code>. The
+provider describes one shader contribution with its <code>mExportName</code> (miss/callable)
+or <code>mHitGroupName</code> (hit stages), plus that shader&#39;s bindings and resource accesses.
+Providers do not issue dispatches or own shader tables.</p>
+<p>Select <code>RayGeneration</code> for the executable terminal. Declare its provider list
+with <code>ARDA_NODE_STAGE_INPUTS(FArdaGraphRayShader, mShaders)</code>. The member name is
+arbitrary; its declaration metadata supplies the connection list. Those values
+select the miss, hit and callable providers; there
+are no manual stage-order edges. A shared provider can participate in multiple
+ray-generation pipelines.</p>
+<pre><code class="language-cpp">const auto Miss = EnvironmentMiss(Edit, EnvironmentParameters);
+const auto Hit = SurfaceClosestHit(Edit, MaterialParameters);
+TraceScene(Edit, FArdaTraceParameters{{Miss, Hit}, Scene, Output});
+</code></pre>
+<p>Here the operation names and parameter structs are library-defined. The terminal
+contributes its ray-generation shader, optional ray configuration and shader-table
+records, and implements <code>Record</code> to call <code>SetRayTracingState()</code> then
+<code>DispatchRays(...)</code>. Preprocessing merges each selected provider&#39;s shader bindings
+and accesses into that terminal and supplies its default ray-tracing pipeline
+request if omitted. Each node&#39;s shader schema must use its owning stage&#39;s
+visibility. Invalid input kinds, mismatched shader stages, conflicting exports,
+hit groups or layouts fail compilation. The <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorGpuTests.cpp">shader-table GPU example</a>
+uses a standalone miss node and ray-generation node through the unified template.</p>
+<h2 id="materialize-stage-results-when-a-buffer-is-required">Materialize stage results when a buffer is required</h2>
+<p><code>FetchBuffer(Edit, StageValue, Request)</code> asks the producer&#39;s registered node
+definition to materialize its logical results as a physical <code>FArdaGraphBuffer</code>.
+A stage class opts in with this static hook:</p>
+<pre><code class="language-cpp">static FArdaGraphBuffer FetchBuffer(FArdaGraphEdit&amp; Edit,
+    const FArdaParameters&amp; Parameters, const FArdaStageBufferRequest&amp; Request);
+</code></pre>
+<p>The hook receives the original frozen parameters and records ordinary operations
+through the facade. A vertex library can share one shader function between its
+vertex shader and a compute materializer. A raster library can create a dedicated
+raster/pixel capture branch that writes interpolated inputs to a storage buffer.
+Define the element schema, capacity behavior and required device features in that
+library. <code>Request.mElementCount</code> provides the requested capacity; a zero value
+lets the materializer choose its documented default.</p>
+<p>Fetching is explicit GPU work. It does not make normal stage variables allocate
+buffers or reuse captured data in subsequent draws. It also does not instrument
+an arbitrary opaque shader automatically. A node without a materializer reports
+<code>Unsupported</code> through the edit status. <code>Readback(Edit, FetchBuffer(...))</code> uses the
+normal buffer readback operation after materialization.</p>
+<p>A successful materializer consumes that stage and its upstream stage chain for
+the completeness check. This permits a vertex-only capture construction without
+adding a raster/pixel draw. Merely implementing the hook, retrieving the logical
+value, or making a failed <code>FetchBuffer</code> call does not complete the chain. Other
+unused branches must still end at a pixel operation or their own successful
+materialization.</p>
+<p>The <a href="Examples/Nodes/RasterTriangleNode.cpp">compiled raster recipe</a> implements
+vertex capture by sharing <code>RecipeVertexPosition</code> between its VS and compute
+materializer. <code>FetchBuffer(Edit, RecipeTriangleVS(Edit, uint32_t{3}))</code> returns
+three clip-space <code>float4</code> positions (16-byte records). An explicit nonzero count
+can capture a prefix and must not exceed the producer&#39;s count. The recipe&#39;s
+assembly reads the positions back and checks them after execution.</p>
+<p>The <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphicsStageGpuTests.cpp">GPU capture example</a>
+also shows fragment capture and its shared <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaGraphicsStageCapture.hlsl">shader functions</a>.
+Its fragment records contain interpolated position and color, with an explicit
+counter and overflow handling. Fragment storage/atomics support is required for
+that implementation. The raster recipe&#39;s raster/pixel nodes and RHITest&#39;s triangle
+nodes do not implement buffer capture.</p>
+<h2 id="link-and-invoke-the-node">Link and invoke the node</h2>
+<p>Resource usage defaults to <code>AutoDeduction</code>. Declare accesses, shader bindings and
+graphics attachments through the parameter macros; the compiler combines those
+requirements before allocation. Custom <code>Describe</code> can add requirements that need
+runtime parameter-dependent logic. In <code>DeclareResources</code>, accept automatic usage
+instead of requiring a usage bit that has not been deduced yet. Explicit usage
+requirements supplied to <code>Context.Buffer</code>/<code>Context.Texture</code> are retained even
+when the caller supplies an existing automatic resource. Keep shape, format,
+stride and CPU-access validation. See <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/README.md#automatic-resource-usage">automatic resource usage</a>.</p>
+<p>Compile <code>ArdaDemoFillNode.cpp</code> into the application or node library and link
+<code>Ardashir::ArdaDependencyGraph</code>. Include <code>ArdaDemoFillNode.h</code> where the callable
+is used. A missing definition produces an unresolved symbol; defining the same
+callable twice violates the one-definition rule and is a link error. The macros
+check that the class derives from the node base; registration or invocation
+checks the complete hook contract at compile time. The declaration registers the
+definition through its inline registration status; the definition creates the
+single callable object. Neither step prepares a device or launches GPU work.</p>
+<pre><code class="language-cpp">#include &quot;ArdaDependencyGraph.h&quot;
+#include &quot;ArdaDemoFillNode.h&quot;
+
+// Device was created by the application.
+FArdaDependencyGraph Graph(Device);
+FArdaGraphEdit Edit(Graph);
+FArdaRHIBufferDesc Desc;
+Desc.mByteSize = 16;
+// mUsage defaults to AutoDeduction; FillDemoBuffer declares the UAV requirement.
+auto Buffer = AllocateBuffer(Edit, Desc);
+
+FillDemoBuffer(Edit, Buffer, uint32_t{7});
+FArdaDemoFillParameters Parameters{Buffer, 9};
+const auto Filled = FillDemoBuffer(Edit, Parameters);
+const auto Output = Filled.GetBuffer(&quot;Destination&quot;);
+const auto Bytes = Readback(Edit, Output);
+
+if (auto Status = Edit.Commit(); !Status) { return Status; }
+if (auto Status = Graph.CompileAndWait(); !Status) { return Status; }
+return Graph.ExecuteAndWait().mStatus;
+</code></pre>
+<p>The two calls deliberately create two operations; the second write follows the
+first. Positional calls brace-initialize the parameter type. With the default
+aggregate schema, arguments follow field declaration order, omitted fields keep
+their defaults and narrowing is rejected at compile time. Schemas with explicit
+constructors use their declared argument lists instead.
+An initializer callback is also supported. For an explicit diagnostic name,
+use the parameter-struct or initializer form and append the name. Diagnostic
+names identify operations within one construction and are separate from both
+the global callable symbol and registry name.</p>
+<p>Calls automatically run the class&#39;s registration path. Failures from registration,
+feature admission, validation or preparation are retained by the edit; check
+<code>Edit.Commit()</code> before compiling. Construction errors do not produce a partially
+accepted edit. Resolve typed output slots while the edit is open. Execution
+failures are reported by <code>Execute</code>, <code>Submit</code> or ticket completion.</p>
+<h2 id="array-invocation">Invoke arrays of parameters</h2>
+<p>Wrap any positional slot in <code>TArdaNodeArray&lt;T&gt;</code> to record one logical invocation per element. Array slots zip by index, scalar slots broadcast, and all array lengths must match. A <code>TArdaNodeArray&lt;FArdaParameters&gt;</code> supplies complete parameter snapshots. The named callable, static <code>Invoke</code> and <code>Edit.Invoke&lt;Node&gt;</code> share this behavior across compute, CUDA, copy, complete pipelines and typed shader stages.</p>
+<pre><code class="language-cpp">TArdaNodeArray&lt;FArdaGraphBuffer&gt; Buffers{FirstBuffer, SecondBuffer};
+auto Operations = FillDemoBuffer(Edit, Buffers, TArdaNodeArray&lt;uint32_t&gt;{7, 11});</code></pre>
+<p>Stage results remain typed arrays and can feed <code>Rasterize</code> or another stage directly. Normal vectors and fixed shader arrays retain their scalar field meaning. The compiler resolves each logical lane and batches compatible executable work; automatic draw merging additionally requires stage instancing permission. See <a href="batching.html">array ownership, errors, pipeline batching, instancing and concurrent edit publication</a>.</p>
+<h2 id="register-before-discovery-when-needed">Register before discovery when needed</h2>
+<p>Declared named nodes register automatically. Tools can discover or deserialize
+them before their first invocation. Explicit registration remains idempotent and
+lets library initialization check registration errors:</p>
+<pre><code class="language-cpp">if (auto Status = FArdaDemoFillNode::Register(); !Status) { return Status; }
+// Safe to repeat for this same class and implementation version.
+const auto Names = FArdaNodeRegistry::Get().GetNames();
+
+FArdaGraphEdit Edit(Graph);
+const auto Filled = Edit.Invoke(&quot;example.demo.fill-buffer&quot;, Parameters);
+</code></pre>
+<p>Registry invocation validates the public parameter type; a missing definition
+or mismatched schema fails through the edit status. Registration is independent
+of any graph or device and performs no GPU work. Library initialization can call
+each class&#39;s <code>Register()</code> and propagate its status. Direct named calls, static
+<code>NodeClass::Invoke</code> and generic <code>Edit.Invoke&lt;NodeClass&gt;</code> all use the same
+registration and authoring path. Node authors do not expose raw graph attachment
+or implement a separate operation registry.</p>
+<h2 id="portable-runtime-definitions">Portable runtime definitions and model packages</h2>
+<p><code>FArdaRuntimeNodeDefinition</code> registers data-authored kernels in the same registry as class-authored nodes. Its descriptor contains embedded PTX or cubin, the target architecture, entry point and an explicit scalar/buffer ABI. Each invocation supplies owned scalar bytes, graph buffer ranges and launch dimensions. The common graph compiler resolves dependencies and records an ordinary CUDA sequence; no model-specific executor or operator class is required.</p>
+<p>Registering an entire library is atomic. Repeated registration is accepted only for identical definitions. Use artifact-specific names so independently compiled models can coexist. Pointer parameters must be declared graph resources; archives never contain native device addresses. Backend module preparation checks the declared ABI and, when the CUDA driver exposes parameter inspection, verifies it against the loaded entry before launch.</p>
+<pre><code class="language-cpp">const auto Descriptor = FArdaGraphPackage::Load("model.ardagpu");
+if (!Descriptor) { return Descriptor.mStatus; }
+const auto Package = Descriptor.mValue-&gt;LoadStateDict("model.ardastate");
+if (!Package) { return Package.mStatus; }
+FArdaGraphEdit Edit(Graph);
+// Input is an FArdaGraphTensor produced or bound by an earlier operation.
+const auto Model = Package.mValue-&gt;Invoke(Edit, {{"noisy_hdr", Input}});
+if (!Model) { return Model.mStatus; }
+const auto* Output = Model.mValue.Find("denoised_hdr");
+if (!Output) { return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Missing model output."); }
+Edit.Keep(Output-&gt;mBuffer);
+if (auto Status = Edit.Commit(); !Status) { return Status; }
+if (auto Status = Graph.CompileAndWait(); !Status) { return Status; }
+return Graph.ExecuteAndWait().mStatus;</code></pre>
+<p>Package invocation expands the compiler's dispatch, fill and copy schedule into this edit. Tensor ports use <code>FArdaRHITensorDesc</code> with dtype, dimensions, element strides and byte origin. Inspect <code>GetTensors()</code> before binding: <code>mStorageByteSize</code> is the required backing allocation and equal <code>mBuffer</code> indices identify shared storage. Preserve offsets and shared allocation identity when binding outputs, or let <code>Invoke</code> allocate them. Existing graphics nodes can pack and consume these ordinary buffers. The <a href="#model-export-status">CornellDenoising integration</a> demonstrates rendering, CUDA inference and presentation in one compile/dispatch flow.</p>
+<p>Model descriptors contain named typed state slots. <code>LoadStateDict</code> validates a separate checkpoint and returns a new immutable loaded instance; changing checkpoints preserves previous invocations. <code>GetStateSlots()</code> reflects the schema and <code>HasStateDict()</code> reports readiness. Model state is externalized before compiler optimization, so compatible checkpoints need no recompilation. <code>Invoke</code> joins the recipe into the parent edit and can also run inside a typed subgraph's <code>Build</code> body.</p>
+<p>Loaded weights and structural constants use <code>AllocateInitializedBuffer</code>, which also supports non-ML initial data. Bytes initialize a persistent buffer prefix once when new physical storage is prepared; repeated execution retains its contents. Attachment and compile do not submit uploads. Graph archive version 4 stores these bytes and portable definitions, restoring kernels without prior application registration; version 2 and 3 archives remain readable.</p>
+<p>The offline tools live in <code>Tools/ModelExport</code>; the <a href="../Essays/arda-graph-and-inductor.html#offline-model-compilation">offline compilation walkthrough</a> explains their role. Version 2 <code>.ardagpu</code> descriptors and version 1 <code>.ardastate</code> checkpoints use specialized static shapes and an ordered CUDA program. Legacy version 1 packages retain their embedded snapshots. Unsupported compiler operations or unresolved device-library calls fail export. The deployed model requires the CUDA driver; the offline PyTorch, ONNX and IREE toolchain is not part of graph execution. PTX and cubin portability remain constrained by their declared targets and the installed driver.</p>
+<h2 id="model-export-status">Implemented model export and remaining work</h2>
+<table><thead><tr><th>Area</th><th>Implemented</th><th>Remaining work</th></tr></thead><tbody>
+<tr><td>Runtime authoring</td><td>Data-defined CUDA kernels share the registry, edits and executor with class-defined operations.</td><td>Additional execution providers and broader offline compiler coverage.</td></tr>
+<tr><td>Tensors and checkpoints</td><td>Typed views of ordinary buffers; separate named checkpoints with immutable loaded instances; graph archive v4 restores portable definitions and reads v2 and v3 archives.</td><td>Large/streamed weight assets and a shared code-asset table in graph archives.</td></tr>
+<tr><td>Model compilation</td><td>Supported fixed-shape dense FP32, FP16, BF16, FP8, INT8 and INT32 models compile offline to CUDA dispatch/fill/copy packages, with architecture gates.</td><td>Dynamic shapes, data-dependent host control flow, arbitrary strided interfaces and universal operator coverage.</td></tr>
+<tr><td>Architecture variants</td><td>Offline artifacts retain declared CUDA targets; multi-target export publishes individual packages and a manifest.</td><td>Automatic runtime variant selection and deployment validation on additional hardware.</td></tr>
+<tr><td>Renderer demonstration</td><td>OIDN spatial and NPPD temporal inference run with Cornell graphics on D3D12 and Vulkan; output and temporal state match offline references.</td><td>Continuous moving-camera reprojection in Cornell; its current temporal path resets history on camera motion.</td></tr>
+</tbody></table>
+<p>The implemented route recompiles a supported model offline. It does not recover a complete portable program from every compiled PyTorch model or CUDA Graph capture, and it does not reproduce opaque cuDNN or cuBLAS implementations. Unsupported operations fail export. Tensor storage support is separate from arithmetic capabilities and compiler coverage. FP8 storage and casts are supported with compiler-generated bit arithmetic; Tensor Core selection and native FP8 acceleration are not promised. Export preserves explicit model precision and scales without automatic quantization.</p>
+<p>Package and graph archive readers cap input at 512 MiB. A package stores each module once and native CUDA modules are shared, but graph serialization still includes code in each expanded portable definition. Large saved graphs can exceed the compact package size. Compiled weights may be folded into code, so replacing a checkpoint requires re-export and recompilation.</p>
+<p>Use the <a href="../Essays/arda-graph-and-inductor.html#offline-model-compilation">offline model-compilation walkthrough</a> for the Python frontend, precision policy, architecture manifest semantics and numerical validation. Its ONNX-style <code>arda.export(model, args=(), f=None, *, kwargs=None, target_archs=("sm_80",), ...)</code> call infers static shapes and dtypes from actual tensor arguments. Nested tensor leaves become ports and scalar configuration is frozen. The default ONNX opset is 22. <code>f</code> names a bundle directory; omitted destinations use temporary storage that can be persisted with <code>result.save(directory)</code>. Load the selected <code>.ardagpu</code> through <code>FArdaGraphPackage</code>; applications select the variant explicitly.</p>
+<section id="summary"><h2>Review and next steps</h2><p>Use one schema for static dependencies and canonical identity. Shader and CUDA mappings derive GPU requirements from their authoritative parameter metadata.</p><p>Continue with the <a href="index.html">module guides</a> and <a href="api-reference.html">API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaRDG Â· Ardashir engineering documentation</p></footer>
+</body>
+</html>

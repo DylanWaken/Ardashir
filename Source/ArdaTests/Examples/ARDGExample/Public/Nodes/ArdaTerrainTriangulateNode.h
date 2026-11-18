@@ -1,24 +1,35 @@
 #pragma once
+#include "RHI/Shaders/ArdaShaderType.h"
 #include "ArdaTerrainNodeParameters.h"
 
 namespace arda
 {
-	struct FArdaTerrainTriangulateParameters
+	class FArdaTriangulateTerrainShader final : public arda::FArdaGlobalShader
 	{
-		FArdaDependencyResourceHandle mHeightmap;
-		FArdaDependencyResourceHandle mVertices;
-		FArdaDependencyResourceHandle mIndices;
+	public:
+		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
+			ARDA_SHADER_TEXTURE_SRV(mHeightmap, 0, 0, arda::EArdaRHIShaderStage::Compute)
+			ARDA_SHADER_BUFFER_UAV(mTerrainVertices, 0, 0, arda::EArdaRHIShaderStage::Compute)
+			ARDA_SHADER_BUFFER_UAV(mTerrainIndices, 1, 0, arda::EArdaRHIShaderStage::Compute)
+		ARDA_END_SHADER_PARAMETER_STRUCT()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaTriangulateTerrainShader);
 	};
 
-	/** Self-contained operation; attachment registers and prepares only this node's implementation. */
-	class FArdaTerrainTriangulateNode final
-	    : public TArdaComputeDependencyNode<FArdaTerrainTriangulateNode, FArdaTerrainTriangulateParameters>
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaTerrainTriangulateParameters)
+		ARDA_NODE_SHADER_TEXTURE(mHeightmap, FArdaTriangulateTerrainShader::FArdaParameters, mHeightmap)
+		ARDA_NODE_SHADER_BUFFER(mVertices, FArdaTriangulateTerrainShader::FArdaParameters, mTerrainVertices)
+		ARDA_NODE_SHADER_BUFFER(mIndices, FArdaTriangulateTerrainShader::FArdaParameters, mTerrainIndices)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	/** Self-contained operation; invocation registers and prepares this node's implementation. */
+	class FArdaTerrainTriangulateNode final : public TArdaNodeDefinition<FArdaTerrainTriangulateNode,
+	                                              FArdaTerrainTriangulateParameters,
+	                                              EArdaNodeType::Compute>
 	{
 	public:
 		struct FArdaState;
 		static FArdaDependencyNodeMetadata GetMetadata();
 		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P);
-		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
 		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device);
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State);
 		static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context,

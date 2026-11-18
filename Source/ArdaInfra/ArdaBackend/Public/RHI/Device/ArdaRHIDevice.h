@@ -938,19 +938,19 @@ namespace arda
 		}
 
 		/**
-         * Performs the wait for idle operation.
+         * Waits for device idle and delivers pending host-copy callbacks.
          * @return A status describing whether the operation succeeded.
          */
 		virtual FArdaRHIStatus WaitForIdle() = 0;
 
-		/** Waits for a token returned by this device's ExecuteCommandList. Does not wait for later submissions. */
+		/** Waits for a token returned by this device's ExecuteCommandList. Delivers pending host-copy callbacks for that token. */
 		virtual FArdaRHIStatus WaitForSubmission(uint64_t Submission)
 		{
 			(void)Submission;
 			return WaitForIdle();
 		}
 
-		/** Nonblocking completion check for a submission from this device. */
+		/** Checks a submission without blocking and delivers its ready host-copy callbacks. */
 		[[nodiscard]] virtual TArdaRHIResult<bool> PollSubmission(uint64_t Submission)
 		{
 			(void)Submission;
@@ -963,7 +963,7 @@ namespace arda
          */
 		virtual void FlushAndDisablePipelineCachePersistence() noexcept = 0;
 
-		/** Performs the run garbage collection operation. */
+		/** Collects retired resources and delivers ready host-copy callbacks on providers that support polling. */
 		virtual void RunGarbageCollection() = 0;
 	};
 }

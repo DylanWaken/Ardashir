@@ -53,11 +53,6 @@ namespace arda
 		return {"example.triangle.vertex", 1};
 	}
 
-	eastl::string FArdaTriangleVertexNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		return FArdaDependencyKeyBuilder().Resource(P.mVertices).Resource(P.mIndices).Build();
-	}
-
 	TArdaRHIResult<eastl::shared_ptr<const FArdaTriangleVertexNode::FArdaState>> FArdaTriangleVertexNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
@@ -100,8 +95,6 @@ namespace arda
 	FArdaDependencyNodeDesc FArdaTriangleVertexNode::Describe(const FArdaParameters& P, const FArdaState& State)
 	{
 		FArdaDependencyNodeDesc Desc;
-		Desc.mAccesses = {{P.mVertices, EArdaDependencyAccess::Read, EArdaRHIResourceState::VertexBuffer},
-		    {P.mIndices, EArdaDependencyAccess::Read, EArdaRHIResourceState::IndexBuffer}};
 		Desc.mPipelineStages = {State.mStage};
 		Desc.mGraphicsInputLayout = State.mInputLayout;
 		return Desc;
@@ -129,11 +122,6 @@ namespace arda
 	FArdaDependencyNodeMetadata FArdaTriangleRasterNode::GetMetadata()
 	{
 		return {"example.triangle.rasterize", 1};
-	}
-
-	eastl::string FArdaTriangleRasterNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		return FArdaDependencyKeyBuilder().Value(P.mWidth).Value(P.mHeight).Build();
 	}
 
 	TArdaRHIResult<eastl::shared_ptr<const FArdaTriangleRasterNode::FArdaState>> FArdaTriangleRasterNode::Prepare(
@@ -183,11 +171,6 @@ namespace arda
 		return {"example.triangle.pixel", 1};
 	}
 
-	eastl::string FArdaTrianglePixelNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		return FArdaDependencyKeyBuilder().Resource(P.mColor).Build();
-	}
-
 	TArdaRHIResult<eastl::shared_ptr<const FArdaTrianglePixelNode::FArdaState>> FArdaTrianglePixelNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
@@ -213,8 +196,6 @@ namespace arda
 	FArdaDependencyNodeDesc FArdaTrianglePixelNode::Describe(const FArdaParameters& P, const FArdaState& State)
 	{
 		FArdaDependencyNodeDesc Desc;
-		Desc.mAccesses = {{P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
-		Desc.mColorTargets = {P.mColor};
 		Desc.mPipelineStages = {State.mStage};
 		return Desc;
 	}

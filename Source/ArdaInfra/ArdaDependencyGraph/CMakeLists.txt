@@ -4,32 +4,33 @@ ardashir_add_module(ArdaDependencyGraph Private/Inductor/Compiler/ArdaInductorPc
 target_link_libraries(ArdaDependencyGraph
     PUBLIC Ardashir::ArdaBackend Ardashir::ArdaGraph
     PRIVATE Ardashir::ArdaTrace)
+# Declared node registries instantiate parameter codecs in consuming translation units.
+target_compile_options(ArdaDependencyGraph PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/bigobj>")
 
 # Verify both sides of the module boundary independently, without a PCH.
 foreach(ARDA_GRAPH_VISIBILITY Public Private)
     file(GLOB_RECURSE ARDA_GRAPH_HEADERS CONFIGURE_DEPENDS
         RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/${ARDA_GRAPH_VISIBILITY}"
         "${CMAKE_CURRENT_SOURCE_DIR}/${ARDA_GRAPH_VISIBILITY}/*.h")
-    set(ARDA_GRAPH_HEADER_TARGETS)
+    set(ARDA_GRAPH_HEADER_SOURCES)
     foreach(ARDA_GRAPH_HEADER IN LISTS ARDA_GRAPH_HEADERS)
         # Keep generated object/PDB paths below Windows path limits in nested build trees.
         string(SHA1 ARDA_GRAPH_HEADER_HASH "${ARDA_GRAPH_HEADER}")
         string(SUBSTRING "${ARDA_GRAPH_HEADER_HASH}" 0 12 ARDA_GRAPH_HEADER_ID)
         set(ARDA_GRAPH_HEADER_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/${ARDA_GRAPH_VISIBILITY}Header_${ARDA_GRAPH_HEADER_ID}.cpp")
         file(GENERATE OUTPUT "${ARDA_GRAPH_HEADER_SOURCE}" CONTENT "#include \"${ARDA_GRAPH_HEADER}\"\n")
-        set(ARDA_GRAPH_HEADER_TARGET "ArdaDependencyGraph${ARDA_GRAPH_VISIBILITY}Header_${ARDA_GRAPH_HEADER_ID}")
-        add_library(${ARDA_GRAPH_HEADER_TARGET} OBJECT "${ARDA_GRAPH_HEADER_SOURCE}")
-        target_compile_features(${ARDA_GRAPH_HEADER_TARGET} PRIVATE cxx_std_17)
-        target_include_directories(${ARDA_GRAPH_HEADER_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Public")
-        if(ARDA_GRAPH_VISIBILITY STREQUAL "Private")
-            target_include_directories(${ARDA_GRAPH_HEADER_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
-        endif()
-        target_link_libraries(${ARDA_GRAPH_HEADER_TARGET} PRIVATE Ardashir::ArdaBackend Ardashir::ArdaGraph)
-        set_target_properties(${ARDA_GRAPH_HEADER_TARGET} PROPERTIES FOLDER "Ardashir/Tests/${ARDA_GRAPH_VISIBILITY}Headers")
-        list(APPEND ARDA_GRAPH_HEADER_TARGETS ${ARDA_GRAPH_HEADER_TARGET})
+        list(APPEND ARDA_GRAPH_HEADER_SOURCES "${ARDA_GRAPH_HEADER_SOURCE}")
     endforeach()
-    add_custom_target(ArdaDependencyGraph${ARDA_GRAPH_VISIBILITY}Headers ALL DEPENDS ${ARDA_GRAPH_HEADER_TARGETS})
-    set_target_properties(ArdaDependencyGraph${ARDA_GRAPH_VISIBILITY}Headers PROPERTIES FOLDER "Ardashir/Tests")
+    # Keep isolated source files without a target/aggregation layer for every header.
+    set(ARDA_GRAPH_HEADER_TARGET "ArdaDependencyGraph${ARDA_GRAPH_VISIBILITY}Headers")
+    add_library(${ARDA_GRAPH_HEADER_TARGET} OBJECT ${ARDA_GRAPH_HEADER_SOURCES})
+    target_compile_features(${ARDA_GRAPH_HEADER_TARGET} PRIVATE cxx_std_17)
+    target_include_directories(${ARDA_GRAPH_HEADER_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Public")
+    if(ARDA_GRAPH_VISIBILITY STREQUAL "Private")
+        target_include_directories(${ARDA_GRAPH_HEADER_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
+    endif()
+    target_link_libraries(${ARDA_GRAPH_HEADER_TARGET} PRIVATE Ardashir::ArdaBackend Ardashir::ArdaGraph)
+    set_target_properties(${ARDA_GRAPH_HEADER_TARGET} PROPERTIES FOLDER "Ardashir/Tests" UNITY_BUILD OFF)
 endforeach()
 
 if(ARDASHIR_BUILD_TESTS)

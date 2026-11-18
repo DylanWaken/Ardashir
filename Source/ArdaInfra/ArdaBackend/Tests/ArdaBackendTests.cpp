@@ -9,10 +9,7 @@
 #include <gtest/gtest.h>
 
 #include <atomic>
-#include <chrono>
-#include <condition_variable>
 #include <fstream>
-#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -1362,8 +1359,6 @@ TEST(ArdaBackend, NativeHostDeviceCopiesSupportBlockingAndAsyncReadback)
 		{
 			Expected[Index] = static_cast<uint8_t>(Index * 29u + 3u);
 		}
-		std::mutex CallbackMutex;
-		std::condition_variable CallbackCondition;
 		uint32_t CallbackCount = 0;
 		FArdaRHIStatus UploadStatus;
 		FArdaRHIBufferReadbackResult AsyncReadback;
@@ -1379,38 +1374,30 @@ TEST(ArdaBackend, NativeHostDeviceCopiesSupportBlockingAndAsyncReadback)
 		    Expected.size(),
 		    [&](FArdaRHIStatus Status)
 		    {
-			    std::lock_guard<std::mutex> Lock(CallbackMutex);
 			    UploadStatus = eastl::move(Status);
 			    UploadThread = std::this_thread::get_id();
 			    ++CallbackCount;
-			    CallbackCondition.notify_all();
 		    }));
 		ASSERT_TRUE(AsyncCommands.mValue->CopyBufferDeviceToHostAsync(*Buffer.mValue,
 		    [&](FArdaRHIBufferReadbackResult Result)
 		    {
-			    std::lock_guard<std::mutex> Lock(CallbackMutex);
 			    AsyncReadback = eastl::move(Result);
 			    ReadbackThread = std::this_thread::get_id();
 			    ++CallbackCount;
-			    CallbackCondition.notify_all();
 		    }));
 		ASSERT_TRUE(AsyncCommands.mValue->Close());
-		ASSERT_TRUE(Device->ExecuteCommandList(AsyncCommands.mValue));
-		{
-			std::unique_lock<std::mutex> Lock(CallbackMutex);
-			ASSERT_TRUE(CallbackCondition.wait_for(Lock,
-			    std::chrono::seconds(10),
-			    [&]
-			    {
-				    return CallbackCount == 2;
-			    }))
-			    << Module.mName.c_str();
-		}
+		const auto Submitted = Device->ExecuteCommandList(AsyncCommands.mValue);
+		ASSERT_TRUE(Submitted);
+		EXPECT_EQ(CallbackCount, 0u);
+		ASSERT_TRUE(Device->WaitForSubmission(Submitted.mValue));
+		EXPECT_EQ(CallbackCount, 2u);
+		Device->RunGarbageCollection();
+		EXPECT_EQ(CallbackCount, 2u);
 		EXPECT_TRUE(UploadStatus) << UploadStatus.mMessage.c_str();
 		EXPECT_TRUE(AsyncReadback) << AsyncReadback.mStatus.mMessage.c_str();
 		EXPECT_EQ(AsyncReadback.mValue, Expected) << Module.mName.c_str();
-		EXPECT_NE(UploadThread, CallingThread);
-		EXPECT_NE(ReadbackThread, CallingThread);
+		EXPECT_EQ(UploadThread, CallingThread);
+		EXPECT_EQ(ReadbackThread, CallingThread);
 
 		BlockingCommands.mValue = nullptr;
 		AsyncCommands.mValue = nullptr;

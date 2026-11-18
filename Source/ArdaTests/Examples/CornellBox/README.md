@@ -10,11 +10,12 @@ sequence uses registered operations.
 The [node umbrella](Public/Nodes/ArdaCornellBoxNodes.h) includes independent node
 classes. Each header has a matching implementation under `Private/Nodes` that
 implements metadata, shader/layout preparation, pipeline requests and recording.
-Every class derives from a domain specialization of `TArdaDependencyNode`; that
-base owns registration, attachment and weak device-state caching. The trace node
-uses separate per-instance state for its mutable shader table.
-For example, [the trace node](Private/Nodes/ArdaCornellTraceNode.cpp) owns the ray
-exports, layouts and shader-table cache. HLSL sources live in `Private/Nodes/Shaders`.
+Every class derives from `TArdaNodeDefinition` and declares a macro-based parameter
+schema. The base owns registration, invocation, dependency metadata and weak
+device-state caching. The trace node uses `EArdaNodeType::RayTracing`; its shader
+parameter schema is shared by the ray-generation, miss and closest-hit exports.
+Its node fields reference that schema directly. The compiler and executor prepare
+the ray pipeline and shader table from the trace node's pipeline request. HLSL sources live in `Private/Nodes/Shaders`.
 The renderer binds resources through an `FArdaGraphEdit` scope and invokes
 `CornellTrace(Edit, Parameters, Name)`; it does not initialize a node library.
 The header declares the global callable with

@@ -1,3 +1,4 @@
+#include "ArdaGraphTestNodeTypes.h"
 #include "ArdaDependencyGraph.h"
 #include "Graph/Node/ArdaRayTracingStageNode.h"
 #include <EASTL/algorithm.h>
@@ -5,6 +6,9 @@
 
 namespace arda::ray_stage_tests
 {
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaEmptyTestShaderParameters)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+
 	class FArdaRayTestShader final : public IArdaRHIShader
 	{
 	public:
@@ -46,6 +50,11 @@ namespace arda::ray_stage_tests
 			return uint64_t(mStage) + 123;
 		}
 
+		const FArdaShaderParameterMetadata* GetParameterMetadata() const noexcept override
+		{
+			return &FArdaEmptyTestShaderParameters::GetStaticMetadata();
+		}
+
 	private:
 		EArdaRHIShaderStage mStage;
 		uint32_t mReferences = 0;
@@ -55,18 +64,17 @@ namespace arda::ray_stage_tests
 		ARDA_SHADER_BUFFER_SRV(mInput, 0, 0, EArdaRHIShaderStage::Compute)
 	ARDA_END_SHADER_PARAMETER_STRUCT()
 
-	struct FArdaRayTestParameters
-	{
-		eastl::vector<FArdaGraphStageValue> mShaders;
-		FArdaGraphBuffer mInput;
-		bool mbWrongShader = false;
-		bool mbWrongVisibility = false;
-		uint32_t mIdentity = 0;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRayTestParameters)
+		ARDA_NODE_STAGE_INPUTS(FArdaGraphStageValue, mShaders)
+		ARDA_NODE_PARAMETER(FArdaGraphBuffer, mInput)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbWrongShader, false)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbWrongVisibility, false)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mIdentity, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	template <EArdaRHIShaderStage Stage>
 	class TArdaRayTestNode final
-	    : public TArdaRayTracingStageNode<TArdaRayTestNode<Stage>, FArdaRayTestParameters, Stage>
+	    : public TArdaNodeDefinition<TArdaRayTestNode<Stage>, FArdaRayTestParameters, ArdaTestNodeType(Stage)>
 	{
 	public:
 		using FArdaParameters = FArdaRayTestParameters;
@@ -173,21 +181,21 @@ namespace arda::ray_stage_tests
 		const auto B = TestRayGenerate(Edit, {{Miss, Callable}});
 		ASSERT_TRUE(A && B);
 		ASSERT_TRUE(Edit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		const auto& First = Graph.GetTopology().TryGetNode(A.GetHandle())->mPayload;
 		const auto& Second = Graph.GetTopology().TryGetNode(B.GetHandle())->mPayload;
 		EXPECT_TRUE(First.mbRayTracingLowered);
-		EXPECT_EQ(First.mDesc.mPipelineStages.size(), 6u);
-		EXPECT_EQ(Second.mDesc.mPipelineStages.size(), 3u);
-		ASSERT_EQ(First.mDesc.mPipelines.size(), 1u);
-		EXPECT_EQ(First.mDesc.mPipelines.front().mKind, EArdaPipelineStateKind::RayTracing);
-		EXPECT_EQ(First.mDesc.mAccesses.size(), 1u);
-		EXPECT_EQ(Second.mDesc.mAccesses.size(), 1u);
+		EXPECT_EQ(Graph.GetNodeDescription(First.mHandle).mPipelineStages.size(), 6u);
+		EXPECT_EQ(Graph.GetNodeDescription(Second.mHandle).mPipelineStages.size(), 3u);
+		ASSERT_EQ(Graph.GetNodeDescription(First.mHandle).mPipelines.size(), 1u);
+		EXPECT_EQ(Graph.GetNodeDescription(First.mHandle).mPipelines.front().mKind, EArdaPipelineStateKind::RayTracing);
+		EXPECT_EQ(Graph.GetNodeDescription(First.mHandle).mAccesses.size(), 1u);
+		EXPECT_EQ(Graph.GetNodeDescription(Second.mHandle).mAccesses.size(), 1u);
 		EXPECT_TRUE(Graph.GetTopology().IsReachable(Miss.GetProducer(), A.GetHandle()));
 		EXPECT_TRUE(Graph.GetTopology().IsReachable(Miss.GetProducer(), B.GetHandle()));
-		EXPECT_TRUE(Graph.GetTopology().TryGetNode(Miss.GetProducer())->mPayload.mDesc.mbPipelineStageOnly);
-		EXPECT_TRUE(Graph.GetTopology().TryGetNode(Miss.GetProducer())->mPayload.mDesc.mAccesses.empty());
+		EXPECT_TRUE(Graph.GetNodeDescription(Miss.GetProducer()).mbPipelineStageOnly);
+		EXPECT_TRUE(Graph.GetNodeDescription(Miss.GetProducer()).mAccesses.empty());
 	}
 
 	TEST(ArdaRayStages, RejectsWrongShaderEvenOnUnconsumedProvider)
@@ -196,7 +204,7 @@ namespace arda::ray_stage_tests
 		FArdaGraphEdit Edit(Graph);
 		ASSERT_TRUE(TestRayMiss(Edit, {{}, {}, true}));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		EXPECT_FALSE(Status);
 		EXPECT_NE(Status.mMessage.find("different pipeline stage"), eastl::string::npos);
 	}
@@ -209,7 +217,7 @@ namespace arda::ray_stage_tests
 		ASSERT_TRUE(
 		    TestRayGenerate(Edit, {{FArdaGraphStageValue(Miss.GetProducer(), EArdaGraphStageValueKind::Fragments)}}));
 		ASSERT_TRUE(Edit.Commit());
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 	}
 
 	TEST(ArdaRayStages, RejectsWrongProviderBindingVisibility)
@@ -218,7 +226,7 @@ namespace arda::ray_stage_tests
 		FArdaGraphEdit Edit(Graph);
 		ASSERT_TRUE(TestRayMiss(Edit, {{}, {}, false, true}));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		EXPECT_FALSE(Status);
 		EXPECT_NE(Status.mMessage.find("visibility"), eastl::string::npos);
 	}
@@ -233,9 +241,9 @@ namespace arda::ray_stage_tests
 			const auto B = TestRayMiss(Edit, {{}, {}, false, false, 2});
 			EXPECT_TRUE(TestRayGenerate(Edit, {{Other ? B : A}}));
 			EXPECT_TRUE(Edit.Commit());
-			const auto Status = Graph.Compile();
+			const auto Status = Graph.CompileAndWait();
 			EXPECT_TRUE(Status) << Status.mMessage.c_str();
-			(void)Graph.Execute();
+			(void)Graph.ExecuteAndWait();
 		};
 		Construct(false);
 		const auto First = Graph.GetRevisionStats();
@@ -262,6 +270,6 @@ namespace arda::ray_stage_tests
 		ASSERT_TRUE(Edit.SetOptions(Options));
 		ASSERT_TRUE(TestRayMiss(Edit, FArdaRayTestParameters{}));
 		ASSERT_TRUE(Edit.Commit());
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 	}
 }

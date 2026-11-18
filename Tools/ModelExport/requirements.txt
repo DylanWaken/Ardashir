@@ -1,0 +1,3 @@
+iree-base-compiler[onnx]==3.11.0
+onnx==1.23.1
+numpy==2.5.3

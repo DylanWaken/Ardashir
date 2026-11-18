@@ -9,7 +9,10 @@
 
 namespace arda
 {
-	/** Measured node statistics. Every collected execution contributes once, including late frame receipts. */
+	/** Measured node or native pipeline-batch statistics. Every collected execution contributes once,
+	 * including late frame receipts. Multi-node durations are aggregate measurements, not per-node timings;
+	 * adaptive scheduling attributes estimated costs using the members' current relative cost hints.
+	 */
 	struct FArdaInductorTimingSample
 	{
 		eastl::string mNodeName;

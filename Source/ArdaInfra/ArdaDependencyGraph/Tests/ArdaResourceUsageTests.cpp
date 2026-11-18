@@ -6,13 +6,12 @@
 
 namespace arda::resource_usage_tests
 {
-	struct FArdaUsageAccessParameters
-	{
-		FArdaDependencyResourceHandle mResource;
-		EArdaDependencyAccess mAccess = EArdaDependencyAccess::Write;
-		EArdaRHIResourceState mState = EArdaRHIResourceState::UnorderedAccess;
-		bool mbAttachment = false;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaUsageAccessParameters)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mResource)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(EArdaDependencyAccess, mAccess, EArdaDependencyAccess::Write)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(EArdaRHIResourceState, mState, EArdaRHIResourceState::UnorderedAccess)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbAttachment, false)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	class FArdaUsageAccessNode final
 	    : public TArdaNodeDefinition<FArdaUsageAccessNode, FArdaUsageAccessParameters, EArdaNodeType::Graphics>
@@ -96,7 +95,7 @@ namespace arda::resource_usage_tests
 		ASSERT_TRUE(
 		    ResourceUsageAccess(Edit, {Buffer, EArdaDependencyAccess::Read, EArdaRHIResourceState::ShaderResource}));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		ASSERT_NE(Graph.FindResource(Buffer), nullptr);
 		EXPECT_EQ(Graph.FindResource(Buffer)->mBuffer.mUsage,
@@ -114,7 +113,7 @@ namespace arda::resource_usage_tests
 		ASSERT_TRUE(Buffer);
 		ASSERT_TRUE(ResourceUsageAccess(Edit, {Buffer}));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.FindResource(Buffer)->mBuffer.mUsage,
 		    EArdaRHIBufferUsage::Raw | EArdaRHIBufferUsage::UnorderedAccess);
 	}
@@ -129,7 +128,7 @@ namespace arda::resource_usage_tests
 		ASSERT_TRUE(Buffer);
 		ASSERT_TRUE(ResourceUsageAccess(Edit, {Buffer, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest}));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.FindResource(Buffer)->mBuffer.mUsage, EArdaRHIBufferUsage::Vertex);
 	}
 
@@ -144,7 +143,7 @@ namespace arda::resource_usage_tests
 		ASSERT_TRUE(
 		    ResourceUsageAccess(Edit, {Texture, EArdaDependencyAccess::Read, EArdaRHIResourceState::ShaderResource}));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		EXPECT_EQ(Graph.FindResource(Texture)->mTexture.mUsage,
 		    EArdaRHITextureUsage::RenderTarget | EArdaRHITextureUsage::ShaderResource);
@@ -162,7 +161,7 @@ namespace arda::resource_usage_tests
 		ASSERT_TRUE(
 		    ResourceUsageAccess(Edit, {Depth, EArdaDependencyAccess::Read, EArdaRHIResourceState::ShaderResource}));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		EXPECT_EQ(Graph.FindResource(Depth)->mTexture.mUsage,
 		    EArdaRHITextureUsage::DepthStencil | EArdaRHITextureUsage::ShaderResource);
@@ -180,7 +179,7 @@ namespace arda::resource_usage_tests
 		ASSERT_TRUE(CopyTo(Edit, Source, Destination));
 		Edit.Keep(Destination);
 		ASSERT_TRUE(Edit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		for (const auto Buffer : {Source, Destination, UnusedBuffer})
 		{
@@ -202,7 +201,7 @@ namespace arda::resource_usage_tests
 		const auto Buffer = AllocateBuffer(Edit, Description);
 		ASSERT_TRUE(ResourceUsageAccess(Edit, {Buffer}));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.FindResource(Buffer)->mBuffer.mUsage, Description.mUsage);
 	}
 
@@ -216,7 +215,7 @@ namespace arda::resource_usage_tests
 		ASSERT_TRUE(Buffer);
 		ASSERT_TRUE(ResourceUsageAccess(Edit, {Buffer}));
 		ASSERT_TRUE(Edit.Commit());
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 0u);
 	}
 
@@ -230,7 +229,7 @@ namespace arda::resource_usage_tests
 		ASSERT_TRUE(
 		    ResourceUsageAccess(Edit, {Texture, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}));
 		ASSERT_TRUE(Edit.Commit());
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 	}
 
 	TEST(ArdaResourceUsage, OmittingDeductionRuleCannotPublishAutomaticDescriptions)
@@ -251,7 +250,7 @@ namespace arda::resource_usage_tests
 		Rules.erase(Rule);
 		ASSERT_TRUE(Edit.SetOptions(Options));
 		ASSERT_TRUE(Edit.Commit());
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 	}
 
 	class FArdaRestoreAutomaticUsageRule final : public FArdaGraphPreprocessRule
@@ -287,7 +286,7 @@ namespace arda::resource_usage_tests
 		Options.mRules.mPreprocessRules.push_back(MakeArdaGraphRule<FArdaRestoreAutomaticUsageRule>(Buffer));
 		ASSERT_TRUE(Edit.SetOptions(Options));
 		ASSERT_TRUE(Edit.Commit());
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 	}
 
 	TEST(ArdaResourceUsage, RepeatedConstructionKeepsAutomaticRequestAndReusesResolvedRevision)
@@ -302,7 +301,7 @@ namespace arda::resource_usage_tests
 			EXPECT_EQ(Graph.FindResource(Buffer)->mBuffer.mUsage, EArdaRHIBufferUsage::AutoDeduction);
 			ASSERT_TRUE(ResourceUsageAccess(Edit, {Buffer}));
 			ASSERT_TRUE(Edit.Commit());
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			EXPECT_EQ(Graph.FindResource(Buffer)->mBuffer.mUsage, EArdaRHIBufferUsage::UnorderedAccess);
 			const auto Stats = Graph.GetRevisionStats();
 			if (!Frame)
@@ -315,15 +314,14 @@ namespace arda::resource_usage_tests
 				EXPECT_EQ(Stats.mCompileCount, 1u);
 				EXPECT_EQ(Stats.mCacheHitCount, 1u);
 			}
-			EXPECT_FALSE(Graph.Execute().mStatus); // A device-less execution releases the edit lock.
+			EXPECT_FALSE(Graph.ExecuteAndWait().mStatus); // A device-less execution releases the edit lock.
 		}
 	}
 
-	struct FArdaUsageOutputParameters
-	{
-		FArdaDependencyResourceHandle mOutput;
-		bool mbReject = false;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaUsageOutputParameters)
+		ARDA_NODE_BUFFER(mOutput, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbReject, false)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	class FArdaUsageOutputNode final
 	    : public TArdaNodeDefinition<FArdaUsageOutputNode, FArdaUsageOutputParameters, EArdaNodeType::Copy>
@@ -357,7 +355,6 @@ namespace arda::resource_usage_tests
 		{
 			FArdaDependencyNodeDesc D;
 			D.mbSideEffect = true;
-			D.mAccesses = {{P.mOutput, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest}};
 			return D;
 		}
 
@@ -381,7 +378,7 @@ namespace arda::resource_usage_tests
 		ASSERT_TRUE(ResourceUsageOutput(Edit, {Buffer}));
 		EXPECT_EQ(Graph.FindResource(Buffer)->mBuffer.mUsage, EArdaRHIBufferUsage::AutoDeduction);
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.FindResource(Buffer)->mBuffer.mUsage, EArdaRHIBufferUsage::ShaderResource);
 	}
 
@@ -395,7 +392,7 @@ namespace arda::resource_usage_tests
 		EXPECT_FALSE(ResourceUsageOutput(Edit, {Buffer, true}));
 		EXPECT_EQ(Graph.FindResource(Buffer)->mBuffer.mUsage, EArdaRHIBufferUsage::AutoDeduction);
 		ASSERT_TRUE(Edit.Cancel());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.FindResource(Buffer)->mBuffer.mUsage, EArdaRHIBufferUsage::None);
 	}
 
@@ -408,7 +405,7 @@ namespace arda::resource_usage_tests
 		FArdaGraphEdit Edit(Graph);
 		ASSERT_TRUE(ResourceUsageOutput(Edit, {Buffer}));
 		ASSERT_TRUE(Edit.Cancel());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.FindResource(Buffer)->mBuffer.mUsage, EArdaRHIBufferUsage::None);
 	}
 }

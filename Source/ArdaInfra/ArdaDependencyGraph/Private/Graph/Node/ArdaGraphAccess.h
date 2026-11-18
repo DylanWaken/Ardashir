@@ -1,53 +1,48 @@
-/** Internal authoring primitives for operation implementations and compiler fixtures.
+/** Internal authoring primitives for operation implementations .
  * This header is private to the graph module; applications record through FArdaGraphEdit.
  */
 #pragma once
 
 #include "Graph/Node/ArdaGraphEdit.h"
+#include "Graph/Node/ArdaDependencyGraphImpl.h"
+#include "Graph/Resources/ArdaGraphResourceIdentity.h"
 
 namespace arda
 {
 	class FArdaGraphAccess final
 	{
 	public:
+		static FArdaDependencyResourceHandle FindPhysicalResource(FArdaDependencyGraph& Graph,
+		    const void* Identity,
+		    EArdaGraphExternalResourceKind Kind)
+		{
+			if (Identity)
+			{
+				for (uint32_t Index = 0; Index < Graph.mImpl->mResources.size(); ++Index)
+				{
+					const auto& Resource = Graph.mImpl->mResources[Index];
+					if (Resource.mExternalKind == Kind && GetArdaGraphPhysicalIdentity(Resource) == Identity)
+					{
+						return {Graph.mImpl->mIdentity, Index, Graph.mImpl->mResourceGenerations[Index]};
+					}
+				}
+			}
+			return {};
+		}
+
+		static eastl::string ResolveResourceName(FArdaGraphEdit& Edit, const char* Prefix, eastl::string Name)
+		{
+			return Name.empty() ? Edit.MakeName(Prefix) : Edit.mNamePrefix + Name;
+		}
+
 		static FArdaDependencyGraph& GetGraph(FArdaGraphEdit& Edit)
 		{
-			return Edit.mGraph;
-		}
-
-		static FArdaRHIStatus BeginGraphEdit(FArdaDependencyGraph& Graph, bool Extend = false)
-		{
-			return Graph.BeginGraphEdit(Extend);
-		}
-
-		static FArdaRHIStatus EndGraphEdit(FArdaDependencyGraph& Graph)
-		{
-			return Graph.EndGraphEdit();
-		}
-
-		static FArdaRHIStatus CancelGraphEdit(FArdaDependencyGraph& Graph)
-		{
-			return Graph.CancelGraphEdit();
-		}
-
-		static FArdaRHIStatus SetOptions(FArdaDependencyGraph& Graph, const FArdaInductorOptions& Options)
-		{
-			return Graph.SetOptions(Options);
+			return Edit.GetRecordingGraph();
 		}
 
 		static auto CreateResource(FArdaDependencyGraph& Graph, FArdaDependencyResourceDesc Desc)
 		{
 			return Graph.CreateResource(eastl::move(Desc));
-		}
-
-		static auto CreateBuffer(FArdaDependencyGraph& Graph, eastl::string Name, FArdaRHIBufferDesc Desc)
-		{
-			return Graph.CreateBuffer(eastl::move(Name), eastl::move(Desc));
-		}
-
-		static auto CreateTexture(FArdaDependencyGraph& Graph, eastl::string Name, FArdaRHITextureDesc Desc)
-		{
-			return Graph.CreateTexture(eastl::move(Name), eastl::move(Desc));
 		}
 
 		static auto ImportBuffer(FArdaDependencyGraph& Graph, eastl::string Name, FArdaRHIBufferRef Buffer)
@@ -65,71 +60,6 @@ namespace arda
 		    FArdaRHIAccelStructRef Structure)
 		{
 			return Graph.ImportAccelerationStructure(eastl::move(Name), eastl::move(Structure));
-		}
-
-		static FArdaRHIStatus MarkOutput(FArdaDependencyGraph& Graph,
-		    FArdaDependencyResourceHandle Resource,
-		    bool Output = true)
-		{
-			return Graph.MarkOutput(Resource, Output);
-		}
-
-		static FArdaRHIStatus AddDependency(FArdaDependencyGraph& Graph,
-		    FArdaGraphNodeHandle Producer,
-		    FArdaGraphNodeHandle Consumer)
-		{
-			return Graph.AddDependency(Producer, Consumer);
-		}
-
-		static FArdaRHIStatus RemoveDependency(FArdaDependencyGraph& Graph,
-		    FArdaGraphNodeHandle Producer,
-		    FArdaGraphNodeHandle Consumer)
-		{
-			return Graph.RemoveDependency(Producer, Consumer);
-		}
-
-		static FArdaRHIStatus RemoveNode(FArdaDependencyGraph& Graph, FArdaGraphNodeHandle Node)
-		{
-			return Graph.RemoveNode(Node);
-		}
-
-		template <class Node>
-		static auto AttachOrFind(FArdaDependencyGraph& Graph,
-		    eastl::string Name,
-		    typename Node::FArdaParameters Parameters)
-		{
-			return Graph.AttachOrFind<Node>(eastl::move(Name), eastl::move(Parameters));
-		}
-
-		template <class Node,
-		    class Initializer,
-		    eastl::enable_if_t<eastl::is_invocable_v<Initializer, typename Node::FArdaParameters&>, int> = 0>
-		static auto AttachOrFind(FArdaDependencyGraph& Graph, eastl::string Name, Initializer&& Initialize)
-		{
-			return Graph.AttachOrFind<Node>(eastl::move(Name), eastl::forward<Initializer>(Initialize));
-		}
-
-		template <class Parameters>
-		static auto AttachOrFind(FArdaDependencyGraph& Graph,
-		    eastl::string Name,
-		    const eastl::string& Definition,
-		    Parameters Value)
-		{
-			return Graph.AttachOrFind(eastl::move(Name), Definition, eastl::move(Value));
-		}
-
-		template <class Node>
-		static auto Attach(FArdaDependencyGraph& Graph, eastl::string Name, typename Node::FArdaParameters Parameters)
-		{
-			return Node::FArdaNodeBase::Attach(Graph, eastl::move(Name), eastl::move(Parameters));
-		}
-
-		template <class Node,
-		    class Initializer,
-		    eastl::enable_if_t<eastl::is_invocable_v<Initializer, typename Node::FArdaParameters&>, int> = 0>
-		static auto Attach(FArdaDependencyGraph& Graph, eastl::string Name, Initializer&& Initialize)
-		{
-			return Node::FArdaNodeBase::Attach(Graph, eastl::move(Name), eastl::forward<Initializer>(Initialize));
 		}
 	};
 }

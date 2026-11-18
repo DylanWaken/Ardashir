@@ -32,7 +32,11 @@ Source/
 
 - **[ArdaBackend](Source/ArdaInfra/ArdaBackend)** — The graphics backend and RHI layer for
   devices, resources, shaders, pipelines, commands, and presentation. See the
-  [provider module contract](Docs/ArdaBackend/BackendModules.md).
+  [provider module contract](Docs/ArdaBackend/backend-modules.html).
+
+- **[ArdaBackendImpls](Source/ArdaInfra/ArdaBackendImpls)** — Native Vulkan and D3D12
+  providers implement the RHI device and command interfaces. The CUDA interop
+  code connects GPU work to those providers.
 
 - **[ArdaGraph](Source/ArdaInfra/ArdaGraph)** — Generic directed graph storage with indexed
   adjacency, generational handles, traversal, and graph algorithms.
@@ -40,20 +44,24 @@ Source/
 - **[ArdaDependencyGraph](Source/ArdaInfra/ArdaDependencyGraph)** — Persistent graphics and CUDA
   dependency graphs compiled by ArdaInductor. Typed registered nodes declare
   resources; compilation resolves dependencies, pipelines, CUDA batches, queue
-  scheduling, and memory budgets. See the [graph guide](Docs/ArdaRDG/ArdaInductor.md).
+  scheduling, and memory budgets. See the [graph guide](Docs/ArdaRDG/inductor.html).
   Its [node library](Source/ArdaInfra/ArdaDependencyGraph/README.md) provides buffer
   and texture uploads, copies, readbacks, and clears, plus native BLAS/TLAS
   cloning and compaction.
 
-- **[ArdaTrace](Docs/ArdaTrace/README.md)** — Low-overhead CPU scope, counter,
+  The application calls `Compile()` to select a revision and `Submit()` to record
+  and submit one frame on the calling thread. The returned ticket tracks GPU
+  work across queues. `Wait(ticket)` retires the frame and publishes readbacks.
+  `Execute()` combines submission and retirement.
+
+- **[ArdaTrace](Source/ArdaTrace)** — Low-overhead CPU scope, counter,
   and marker recording for offline performance analysis.
 
 - **[ArdaTests](Source/ArdaTests)** — Runnable infrastructure examples and
   shared [backend test support](Source/ArdaTests/TestSupport).
 
 Scene, global-illumination, physics, deep-learning and standalone interop module
-scaffolding has been removed. The [archived scene representation plan](Docs/ArdaScene/README.md)
-remains a design reference. Native device and resource
+scaffolding has been removed. Native device and resource
 interop is implemented within ArdaBackend.
 
 ## Quick user guides
@@ -81,12 +89,14 @@ Graph programs are authored exclusively through `FArdaGraphEdit` and typed resou
 operations or named global node callables: `MyOperation(Edit, Parameters)` also
 accepts positional parameter fields. Node headers publish their callable with
 `ARDA_DECLARE_GRAPH_NODE(FArdaMyNode, MyOperation)` and implementations define it
-once with `ARDA_DEFINE_GRAPH_NODE`. See the [node registration guide](Docs/ArdaRDG/Registering-Nodes.md).
+once with `ARDA_DEFINE_GRAPH_NODE`. See the [node registration guide](Docs/ArdaRDG/registering-nodes.html).
 Raw node attachment and graph mutation
 are private. `Commit()`
 queues each edit, and explicit `Compile()` selects a cached persistent revision
 or compiles a new one. `Execute()` or `Submit()` unlocks the next empty frame
 construction; matching ordered edits reuse prior compilation and runtime state.
+CPU compilation and command recording run on the calling thread. `Submit()` returns a GPU frame ticket.
+Retire it with `Wait(ticket)`, or call `Execute()` to submit and retire in one call.
 Repeated execution without new edits also reuses the selected revision. Public headers are compiled
 independently to keep execution internals private.
 
@@ -102,7 +112,8 @@ in the operand guide.
 ## Examples
 
 Application examples live under `Source/ArdaTests/Examples`, with launchers in
-`Scripts/Examples`: `RunARDGExample.py`, `RunCornellBox.py`, and `RunPixelSort.py`.
+`Scripts/Examples`: `RunARDGExample.py`, `RunCornellBox.py`,
+`RunCornellDenoising.py`, and `RunPixelSort.py`.
 On Windows these scripts work from ordinary PowerShell or Command Prompt: they
 prepare Visual Studio's x64 build environment and locate bundled CMake/Ninja
 automatically. Install the **Desktop development with C++** workload with MSVC
@@ -111,7 +122,7 @@ already on `PATH`. New Windows build directories default to Ninja; existing
 generators and an explicit `CMAKE_GENERATOR` are retained.
 
 **[Pixel Sort](Source/ArdaTests/Examples/PixelSort/README.md)** is a self-contained Windows CUDA
-example that links only ArdaBackend and its compiled kernels. An HLSL compute
+example that uses ArdaDependencyGraph, ArdaBackend and its compiled kernels. An HLSL compute
 shader generates animated noise, a CUDA radix kernel sorts its pixels, and a
 fullscreen graphics pass presents the result through D3D12 or Vulkan. Resizing
 switches between row and column kernel variants. See the
@@ -364,6 +375,10 @@ snapshots with `python Scripts/Docs/SyncGraphNodeRecipes.py` after source edits.
 Use blank lines between validation, setup, work and result handling where these are
 separate phases, and explain major blocks with comments describing their purpose.
 
-All graph operations derive from `TArdaDependencyNode` or a domain specialization.
-Built-ins and CUDA operand adapters use that same contract. There are no
-callback-definition registration or compatibility overloads.
+All graph operations derive from `TArdaNodeDefinition<Node, Parameters, EArdaNodeType::...>`
+and declare their parameter schema with `ARDA_BEGIN_NODE_PARAMETER_STRUCT`.
+`ARDA_NODE_SHADER_*` and `ARDA_NODE_CUDA_*` reference the canonical executable
+parameter schemas; attachment and non-shader resource macros describe the remaining
+accesses. Applications invoke globally declared operation callables inside
+`FArdaGraphEdit`. Node registration rejects plain parameter structs, and no legacy
+node-base aliases or CUDA graph-parameter adapter remain.

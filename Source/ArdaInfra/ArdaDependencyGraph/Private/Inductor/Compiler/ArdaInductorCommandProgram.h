@@ -287,12 +287,10 @@ namespace arda
 		    eastl::string Name,
 		    EArdaRHIQueueType Queue,
 		    FArdaInductorRecordFunction Record = {},
-		    bool Serial = false,
 		    bool AtSubmit = false)
 		    : mHandle(Handle),
 		      mName(eastl::move(Name)),
 		      mRecord(eastl::move(Record)),
-		      mbSerialRecord(Serial),
 		      mbRecordAtSubmit(AtSubmit)
 		{
 			mState.mQueue = Queue;
@@ -326,7 +324,6 @@ namespace arda
 			}
 		}
 
-		bool mbSerialRecord = false;
 		bool mbRecordAtSubmit = false;
 
 	private:
@@ -363,7 +360,6 @@ namespace arda
 		    EArdaRHIQueueType Queue,
 		    FArdaInductorCommandAccesses Accesses,
 		    FArdaInductorRecordFunction Record,
-		    bool Serial = false,
 		    bool AtSubmit = false);
 		void AddDependency(FArdaInductorCommandHandle Producer, FArdaInductorCommandHandle Consumer);
 		const FArdaInductorCommandPlan& Finalize();

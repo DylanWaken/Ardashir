@@ -4,6 +4,19 @@
 
 namespace arda
 {
+	/** Retain only the shape required to rebind an external acceleration structure. */
+	inline FArdaRHIAccelStructDesc ArdaGraphAccelerationStructureShape(FArdaRHIAccelStructDesc Description)
+	{
+		for (auto& Geometry : Description.mBottomLevelGeometries)
+		{
+			Geometry.mIndexBuffer = {};
+			Geometry.mVertexOrAABBBuffer = {};
+			Geometry.mOpacityMicromap = {};
+			Geometry.mOpacityMicromapIndexBuffer = {};
+		}
+		return Description;
+	}
+
 	template <class Usage>
 	constexpr Usage ArdaExplicitResourceUsage(Usage Value)
 	{
@@ -27,7 +40,15 @@ namespace arda
 
 	inline FArdaRHIStatus ValidateArdaGraphResourceDescription(const FArdaDependencyResourceDesc& Description)
 	{
-		if (Description.mExternalAccelerationStructure)
+		if (!Description.mBufferInitializer.IsEmpty() &&
+		    (Description.mbTexture || Description.IsExternal() || !Description.mbPersistent ||
+		        Description.mBuffer.mCpuAccess != EArdaRHICpuAccess::None ||
+		        Description.mBufferInitializer.GetSize() > Description.mBuffer.mByteSize))
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			    "Initial contents require a graph-owned persistent GPU buffer and a contained byte prefix.");
+		}
+		if (Description.mExternalKind == EArdaGraphExternalResourceKind::AccelerationStructure)
 		{
 			return {};
 		}
@@ -35,9 +56,9 @@ namespace arda
 		if (Description.mbTexture)
 		{
 			return Validate(
-			    Description.mExternalTexture ? Description.mTexture : ArdaGraphShapeDescription(Description.mTexture));
+			    Description.IsExternal() ? Description.mTexture : ArdaGraphShapeDescription(Description.mTexture));
 		}
 		return Validate(
-		    Description.mExternalBuffer ? Description.mBuffer : ArdaGraphShapeDescription(Description.mBuffer));
+		    Description.IsExternal() ? Description.mBuffer : ArdaGraphShapeDescription(Description.mBuffer));
 	}
 }

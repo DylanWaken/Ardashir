@@ -1,6 +1,6 @@
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include "ArdaMemoryFacadeTest.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
-#include "Graph/Node/ArdaDependencyNode.h"
 #include "ArdaDependencyGraph.h"
 #include <gtest/gtest.h>
 #include <EASTL/algorithm.h>
@@ -10,13 +10,12 @@ namespace arda::texturetransfer_tests
 	using namespace arda;
 	using namespace arda::memory_facade_tests;
 
-	struct FArdaTransferWriteParameters
-	{
-		FArdaDependencyResourceHandle mResource;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaTransferWriteParameters)
+		ARDA_NODE_TEXTURE(mResource, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	struct FArdaTransferWriteNode
-	    : TArdaDependencyNode<FArdaTransferWriteNode, FArdaTransferWriteParameters, EArdaDependencyNodeKind::Graphics>
+	    : TArdaNodeDefinition<FArdaTransferWriteNode, FArdaTransferWriteParameters, EArdaNodeType::Graphics>
 	{
 		using FArdaParameters = FArdaTransferWriteParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -37,7 +36,6 @@ namespace arda::texturetransfer_tests
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters& P, const FArdaState&)
 		{
 			FArdaDependencyNodeDesc N;
-			N.mAccesses.push_back({P.mResource, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest});
 			return N;
 		}
 
@@ -234,10 +232,10 @@ namespace arda::texturetransfer_tests
 
 				// A partial copy preserves existing texels; only imports provide them in this single-version graph.
 				const bool Whole = Region < 2;
-				const auto& Access = Graph.GetTopology().TryGetNode(Copy.GetHandle())->mPayload.mDesc.mAccesses.front();
+				const auto& Access = Graph.GetNodeDescription(Copy.GetHandle()).mAccesses.front();
 				EXPECT_EQ(Access.mAccess, Whole ? EArdaDependencyAccess::Write : EArdaDependencyAccess::ReadWrite);
 				ASSERT_TRUE(Edit.Commit());
-				const auto Status = Graph.Compile();
+				const auto Status = Graph.CompileAndWait();
 				EXPECT_EQ(bool(Status), Imported || Whole) << Status.mMessage.c_str();
 			}
 		}
@@ -257,7 +255,7 @@ namespace arda::texturetransfer_tests
 		T.mFormat = EArdaRHIFormat::R32UInt;
 		auto Source = AllocateTexture(Edit, T, "source");
 		ASSERT_TRUE(Source);
-		auto Producer = WriteTransferTexture(Edit, FArdaTransferWriteParameters{Source.GetHandle()}, "produce");
+		auto Producer = WriteTransferTexture(Edit, FArdaTransferWriteParameters{Edit.UseTexture(Source)}, "produce");
 		FArdaRHIBufferDesc B;
 		B.mByteSize = 2048;
 		auto Intermediate = AllocateBuffer(Edit, B, "pitched");
@@ -288,7 +286,7 @@ namespace arda::texturetransfer_tests
 		Edit.Keep(Output.GetHandle());
 		ASSERT_TRUE(Edit.GetStatus());
 		ASSERT_TRUE(Edit.Commit());
-		auto Status = G.Compile();
+		auto Status = G.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		const auto& C = G.GetCompileResult();
 		EXPECT_EQ(C.mExecutionOrder,
@@ -298,8 +296,8 @@ namespace arda::texturetransfer_tests
 		{
 			EXPECT_EQ(Q, EArdaRHIQueueType::Graphics);
 		}
-		const auto& A = G.GetTopology().TryGetNode(Download.GetHandle())->mPayload.mDesc.mAccesses;
-		const auto& U = G.GetTopology().TryGetNode(Upload.GetHandle())->mPayload.mDesc.mAccesses;
+		const auto& A = G.GetNodeDescription(Download.GetHandle()).mAccesses;
+		const auto& U = G.GetNodeDescription(Upload.GetHandle()).mAccesses;
 		ASSERT_EQ(A.size(), 4u);
 		ASSERT_EQ(U.size(), 4u);
 		EXPECT_EQ(A[0].mTextureRange, (FArdaRHITextureSubresourceRange{1, 1, 1, 1, 0, 1}));
@@ -387,7 +385,7 @@ namespace arda::texturetransfer_tests
 		T.mFormat = EArdaRHIFormat::R32UInt;
 		auto Source = AllocateTexture(Edit, T, "source").GetHandle();
 		auto Output = AllocateTexture(Edit, T, "output").GetHandle();
-		auto Producer = WriteTransferTexture(Edit, FArdaTransferWriteParameters{Source}, "produce");
+		auto Producer = WriteTransferTexture(Edit, FArdaTransferWriteParameters{Edit.UseTexture(Source)}, "produce");
 		constexpr uint64_t RowCount = 64 * 64;
 		FArdaRHIBufferDesc B;
 		B.mByteSize = 1024 * RowCount;
@@ -403,11 +401,11 @@ namespace arda::texturetransfer_tests
 		Edit.Keep(Output);
 		ASSERT_TRUE(Edit.GetStatus());
 		ASSERT_TRUE(Edit.Commit());
-		auto Status = G.Compile();
+		auto Status = G.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		EXPECT_EQ(G.GetCompileResult().mExecutionOrder,
 		    (eastl::vector<FArdaGraphNodeHandle>{Producer.GetHandle(), Download.GetHandle(), Upload.GetHandle()}));
-		const auto& A = G.GetTopology().TryGetNode(Download.GetHandle())->mPayload.mDesc.mAccesses;
+		const auto& A = G.GetNodeDescription(Download.GetHandle()).mAccesses;
 		ASSERT_EQ(A.size(), RowCount + 1);
 		EXPECT_EQ(A.back().mBufferRange, (FArdaRHIBufferRange{1024 * (RowCount - 1), 1020}));
 	}
@@ -422,7 +420,7 @@ namespace arda::texturetransfer_tests
 		T.mHeight = 4;
 		T.mFormat = EArdaRHIFormat::R32UInt;
 		auto Texture = AllocateTexture(Edit, T, "texture").GetHandle();
-		WriteTransferTexture(Edit, FArdaTransferWriteParameters{Texture}, "produce");
+		WriteTransferTexture(Edit, FArdaTransferWriteParameters{Edit.UseTexture(Texture)}, "produce");
 		FArdaRHIBufferDesc B;
 		B.mByteSize = 1024;
 		auto Buffer = AllocateBuffer(Edit, B, "buffer").GetHandle();
@@ -430,8 +428,8 @@ namespace arda::texturetransfer_tests
 		    FArdaGraphTextureToBufferNode::FArdaParameters{Texture, {}, Buffer, {0, 256}},
 		    "download"));
 		auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Buffer, Bytes}, "read padding"));
+		ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Edit.UseBuffer(Buffer), Bytes}, "read padding"));
 		ASSERT_TRUE(Edit.Commit());
-		EXPECT_FALSE(G.Compile());
+		EXPECT_FALSE(G.CompileAndWait());
 	}
 }

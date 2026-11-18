@@ -1,3 +1,4 @@
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include "ArdaDependencyGraph.h"
 #include <gtest/gtest.h>
 #include <EASTL/algorithm.h>
@@ -7,13 +8,12 @@ namespace arda::rule_tests
 {
 	using namespace arda;
 
-	struct FArdaRuleParameters
-	{
-		bool mbSideEffect = true;
-		uint64_t mWorkspaceBytes = 0;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRuleParameters)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbSideEffect, true)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint64_t, mWorkspaceBytes, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaRuleNode : TArdaDependencyNode<FArdaRuleNode, FArdaRuleParameters, EArdaDependencyNodeKind::Copy>
+	struct FArdaRuleNode : TArdaNodeDefinition<FArdaRuleNode, FArdaRuleParameters, EArdaNodeType::Copy>
 	{
 		using FArdaParameters = FArdaRuleParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -52,13 +52,24 @@ namespace arda::rule_tests
 	template <class Existing, class Rule>
 	void Replace(FArdaInductorOptions& Options, eastl::shared_ptr<const Rule> Value)
 	{
-		auto I = eastl::find_if(Options.mRules.mCompileRules.begin(),
-		    Options.mRules.mCompileRules.end(),
+		auto& Rules = [&]() -> auto&
+		{
+			if constexpr (eastl::is_base_of_v<FArdaGraphPreprocessRule, Existing>)
+			{
+				return Options.mRules.mPreprocessRules;
+			}
+			else
+			{
+				return Options.mRules.mCompileRules;
+			}
+		}();
+		auto I = eastl::find_if(Rules.begin(),
+		    Rules.end(),
 		    [](const auto& R)
 		    {
 			    return dynamic_cast<const Existing*>(R.get()) != nullptr;
 		    });
-		ASSERT_NE(I, Options.mRules.mCompileRules.end());
+		ASSERT_NE(I, Rules.end());
 		*I = eastl::move(Value);
 	}
 	enum class EArdaPolicyResult
@@ -205,6 +216,15 @@ namespace arda::rule_tests
 		bool mbThrow;
 	};
 
+	TEST(ArdaInductorRules, DefaultPreprocessingStartsWithSubgraphExpansion)
+	{
+		FArdaInductorRuleSet Rules;
+		ASSERT_FALSE(Rules.mPreprocessRules.empty());
+		EXPECT_NE(dynamic_cast<const FArdaExpandSubgraphsRule*>(Rules.mPreprocessRules.front().get()), nullptr);
+		EXPECT_STREQ(Rules.mPreprocessRules.front()->GetName(), "FArdaExpandSubgraphsRule");
+		EXPECT_TRUE(Rules.mPreprocessRules.front()->AllowsAdaptiveScheduling());
+	}
+
 	TEST(ArdaInductorRules, ConfiguredInstancesRunInListOrderAndMayRepeat)
 	{
 		FArdaDependencyGraph Graph;
@@ -218,7 +238,7 @@ namespace arda::rule_tests
 		O.mRules.mCompileRules.push_back(One);
 		ASSERT_TRUE(Edit.SetOptions(O));
 		ASSERT_TRUE(Edit.Commit());
-		const auto S = Graph.Compile();
+		const auto S = Graph.CompileAndWait();
 		ASSERT_TRUE(S) << S.mMessage.c_str();
 		EXPECT_EQ(Log.mValues, (eastl::vector<int>{1, 2, 1}));
 	}
@@ -235,7 +255,7 @@ namespace arda::rule_tests
 		    MakeArdaGraphRule<FArdaOrderPreprocessRule>(B, A));
 		ASSERT_TRUE(Edit.SetOptions(O));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_TRUE(Graph.GetTopology().IsReachable(B.GetHandle(), A.GetHandle()));
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder,
 		    (eastl::vector<FArdaGraphNodeHandle>{B.GetHandle(), A.GetHandle()}));
@@ -249,9 +269,9 @@ namespace arda::rule_tests
 		const auto A = RuleOperation(Initial, {}, "a");
 		const auto B = RuleOperation(Initial, {}, "b");
 		ASSERT_TRUE(Initial.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto Before = Graph.GetCompileResult();
-		(void)Graph.Execute();
+		(void)Graph.ExecuteAndWait();
 		FArdaGraphEdit Next(Graph);
 		const auto NextA = RuleOperation(Next, {}, "a");
 		const auto NextB = RuleOperation(Next, {}, "b");
@@ -259,7 +279,7 @@ namespace arda::rule_tests
 		O.mRules.mPreprocessRules.push_back(MakeArdaGraphRule<FArdaOrderPreprocessRule>(NextB, NextA, true));
 		ASSERT_TRUE(Next.SetOptions(O));
 		ASSERT_TRUE(Next.Commit());
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 		EXPECT_FALSE(Graph.GetTopology().IsReachable(NextB.GetHandle(), NextA.GetHandle()));
 		EXPECT_EQ(Graph.GetCompileResult().mRevision, Before.mRevision);
 		ASSERT_TRUE(Graph.DiscardPendingEdits());
@@ -275,7 +295,7 @@ namespace arda::rule_tests
 		const auto D = RuleOperation(Edit, {false}, "dead");
 		ASSERT_TRUE(Edit.Order(P, C));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder,
 		    (eastl::vector<FArdaGraphNodeHandle>{P.GetHandle(), C.GetHandle()}));
 		EXPECT_EQ(Graph.GetCompileResult().mCulledNodes, (eastl::vector<FArdaGraphNodeHandle>{D.GetHandle()}));
@@ -292,13 +312,20 @@ namespace arda::rule_tests
 		                Rules.end(),
 		                [](const auto& R)
 		                {
-			                return dynamic_cast<const FArdaCullUnreachableRule*>(R.get()) ||
-			                    dynamic_cast<const FArdaSearchOrderRule*>(R.get());
+			                return dynamic_cast<const FArdaSearchOrderRule*>(R.get()) != nullptr;
 		                }),
 		    Rules.end());
+		auto& Preprocess = O.mRules.mPreprocessRules;
+		Preprocess.erase(eastl::remove_if(Preprocess.begin(),
+		                     Preprocess.end(),
+		                     [](const auto& Rule)
+		                     {
+			                     return dynamic_cast<const FArdaCullUnreachableRule*>(Rule.get()) != nullptr;
+		                     }),
+		    Preprocess.end());
 		ASSERT_TRUE(Edit.SetOptions(O));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder, (eastl::vector<FArdaGraphNodeHandle>{A.GetHandle()}));
 		EXPECT_TRUE(Graph.GetCompileResult().mCulledNodes.empty());
 	}
@@ -311,9 +338,9 @@ namespace arda::rule_tests
 		const auto A = RuleOperation(Initial, {}, "a"), B = RuleOperation(Initial, {}, "b");
 		ASSERT_TRUE(Initial.Order(A, B));
 		ASSERT_TRUE(Initial.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto Before = Graph.GetCompileResult();
-		(void)Graph.Execute();
+		(void)Graph.ExecuteAndWait();
 		for (auto Result : {EArdaPolicyResult::Reverse,
 		         EArdaPolicyResult::Duplicate,
 		         EArdaPolicyResult::Foreign,
@@ -326,7 +353,7 @@ namespace arda::rule_tests
 			ASSERT_TRUE(Edit.Order(NextA, NextB));
 			ASSERT_TRUE(Edit.SetOptions(CustomOptions(Result)));
 			ASSERT_TRUE(Edit.Commit());
-			const auto S = Graph.Compile();
+			const auto S = Graph.CompileAndWait();
 			EXPECT_FALSE(S);
 			EXPECT_FALSE(S.mMessage.empty());
 			EXPECT_EQ(Graph.GetCompileResult().mRevision, Before.mRevision);
@@ -342,9 +369,9 @@ namespace arda::rule_tests
 		FArdaGraphEdit Initial(Graph);
 		ASSERT_TRUE(RuleOperation(Initial, {}, "node"));
 		ASSERT_TRUE(Initial.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto Before = Graph.GetCompileResult();
-		(void)Graph.Execute();
+		(void)Graph.ExecuteAndWait();
 		for (size_t I = 0; I <= FArdaInductorOptions{}.mRules.mCompileRules.size(); ++I)
 		{
 			for (bool Throw : {false, true})
@@ -356,7 +383,7 @@ namespace arda::rule_tests
 				    MakeArdaGraphRule<FArdaFailureRule>(Throw));
 				ASSERT_TRUE(Edit.SetOptions(O));
 				ASSERT_TRUE(Edit.Commit());
-				EXPECT_FALSE(Graph.Compile());
+				EXPECT_FALSE(Graph.CompileAndWait());
 				EXPECT_EQ(Graph.GetCompileResult().mRevision, Before.mRevision);
 				ASSERT_TRUE(Graph.DiscardPendingEdits());
 			}
@@ -372,7 +399,7 @@ namespace arda::rule_tests
 			const auto A = RuleOperation(Edit, {}, "a"), B = RuleOperation(Edit, {}, "b");
 			ASSERT_TRUE(Edit.SetOptions(CustomOptions(Policy)));
 			ASSERT_TRUE(Edit.Commit());
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder,
 			    Policy == EArdaPolicyResult::Forward
 			        ? (eastl::vector<FArdaGraphNodeHandle>{A.GetHandle(), B.GetHandle()})
@@ -393,7 +420,7 @@ namespace arda::rule_tests
 		Replace<FArdaAssignQueuesRule>(O, MakeArdaGraphRule<FArdaAssignQueuesRule>(false, false));
 		ASSERT_TRUE(Edit.SetOptions(O));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder,
 		    (eastl::vector<FArdaGraphNodeHandle>{M.GetHandle(), Z.GetHandle(), A.GetHandle()}));
 		EXPECT_TRUE(eastl::all_of(Graph.GetCompileResult().mQueues.begin(),
@@ -424,7 +451,7 @@ namespace arda::rule_tests
 			    Rules.end());
 			ASSERT_TRUE(Edit.SetOptions(O));
 			ASSERT_TRUE(Edit.Commit());
-			EXPECT_FALSE(Graph.Compile());
+			EXPECT_FALSE(Graph.CompileAndWait());
 			EXPECT_EQ(Graph.GetCompileResult().mRevision, 0u);
 		}
 	}
@@ -454,17 +481,17 @@ namespace arda::rule_tests
 		auto O = CustomOptions(EArdaPolicyResult::Forward);
 		ASSERT_TRUE(Edit.SetOptions(O));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mAllocatedBytes, 4096u);
 		EXPECT_NE(Graph.GetCompileResult().mWorkspaceResourceIds.find(N.GetHandle().GetIndex()),
 		    Graph.GetCompileResult().mWorkspaceResourceIds.end());
-		(void)Graph.Execute();
+		(void)Graph.ExecuteAndWait();
 		FArdaGraphEdit Rejected(Graph);
 		ASSERT_TRUE(RuleOperation(Rejected, {true, 4096}, "workspace"));
 		O.mMaxVramBytes = 1024;
 		ASSERT_TRUE(Rejected.SetOptions(O));
 		ASSERT_TRUE(Rejected.Commit());
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 		ASSERT_TRUE(Graph.DiscardPendingEdits());
 	}
 

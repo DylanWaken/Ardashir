@@ -40,13 +40,6 @@ namespace arda
 		return {};
 	}
 
-	FArdaDependencyNodeDesc FArdaTerrainUploadCameraNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
-	{
-		FArdaDependencyNodeDesc D;
-		D.mAccesses = {{P.mDestination, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest}};
-		return D;
-	}
-
 	FArdaRHIStatus FArdaTerrainUploadCameraNode::Record(FArdaDependencyExecutionContext& C,
 	    const FArdaParameters& P,
 	    const FArdaState& Prepared,

@@ -1,157 +1,184 @@
 #include "Inductor/Compiler/ArdaInductorCompilerInternal.h"
 #include "Inductor/Compiler/ArdaInductor.h"
-#include "Inductor/Rules/ArdaDependencyHazards.h"
+#include "Inductor/Compiler/ArdaInductorCompiledGraph.h"
+#include "Inductor/Compiler/ArdaInductorNodePreparation.h"
+#include "Graph/Node/ArdaGraphClone.h"
+#include "Graph/Node/ArdaGraphExternalValues.h"
+#include "Graph/Node/ArdaGraphRevisionState.h"
+#include "Graph/Node/ArdaGraphRecordingScope.h"
 #include <exception>
 
 namespace arda
 {
-	FArdaRHIStatus FArdaInductor::Compile(FArdaDependencyGraph& Graph)
+	TArdaRHIResult<FArdaInductorCompileResult> FArdaInductor::Compile(const FArdaDependencyGraph& Graph)
 	{
-		return Graph.Compile();
+		return CompileWithContext(Graph, nullptr);
 	}
 
-	FArdaRHIStatus FArdaInductor::CompilePending(FArdaDependencyGraph& Graph)
+	TArdaRHIResult<FArdaInductorCompileResult> FArdaInductor::Compile(const FArdaDependencyGraph& Graph,
+	    FArdaRHIDeviceRef Device)
+	{
+		return CompileWithContext(Graph, nullptr, eastl::move(Device));
+	}
+
+	TArdaRHIResult<FArdaInductorCompileResult> FArdaInductor::CompileWithContext(const FArdaDependencyGraph& Graph,
+	    const FArdaInductorExecutionState* Context,
+	    FArdaRHIDeviceRef Device)
 	{
 		using namespace inductor_detail;
-		auto& G = *Graph.mImpl;
-		if (G.mbCompiling || !G.mbEditing)
+		if (auto Status = CheckArdaGraphRecordingReentry(Graph.mRevisions.get()); !Status)
 		{
-			return Error("Compilation requires an isolated pending graph and cannot recurse.");
+			return {{}, Status};
 		}
-		if (auto S = ValidateArdaInductorRules(G.mOptions.mRules); !S)
+		std::lock_guard<std::recursive_mutex> Lock(Graph.mRevisions->mMutex);
+
+		const auto& Source = Graph.GetReadImpl();
+		if (Graph.IsEditing() || Source.mbCompiling || Source.mbPreprocessing || !Source.mbPreprocessed)
 		{
-			return S;
+			return {{}, Error("Compilation requires a closed preprocessed graph; call Preprocess first.")};
+		}
+		if (auto Status = ValidateArdaInductorRules(Source.mOptions.mRules); !Status)
+		{
+			return {{}, Status};
+		}
+		for (const auto& Resource : Source.mResources)
+		{
+			if (Resource.IsExternal() && !Resource.HasExternalBinding())
+			{
+				return {{},
+				    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				        (eastl::string("External resource slot '") + Resource.mName +
+				            "' requires a binding before compilation.")
+				            .c_str())};
+			}
+		}
+		auto Snapshot = CloneArdaGraphConstruction(Source);
+		auto& G = *Snapshot;
+		if (Device)
+		{
+			G.mCompile.mExecution->mDevice = eastl::move(Device);
+		}
+		if (Context)
+		{
+			auto& Execution = *G.mCompile.mExecution;
+			Execution.mPipelineCache = Context->mPipelineCache;
+			Execution.mAutomaticLayouts = Context->mAutomaticLayouts;
+			Execution.mPersistentBuffers = Context->mPersistentBuffers;
+			Execution.mPersistentTextures = Context->mPersistentTextures;
+		}
+		for (const auto& Entry : G.mExternalValues)
+		{
+			if (!Entry.second.mValue)
+			{
+				return {{},
+				    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				        (eastl::string("External value slot '") + Entry.first +
+				            "' requires a binding before compilation.")
+				            .c_str())};
+			}
 		}
 
 		struct FArdaCompileGuard
 		{
-			bool& mFlag;
+			bool& mCompiling;
 
-			explicit FArdaCompileGuard(bool& Flag)
-			    : mFlag(Flag)
+			explicit FArdaCompileGuard(bool& Value)
+			    : mCompiling(Value)
 			{
-				mFlag = true;
+				mCompiling = true;
 			}
 
 			~FArdaCompileGuard()
 			{
-				mFlag = false;
+				mCompiling = false;
 			}
-		} Guard(G.mbCompiling);
+		} Guard(Graph.mImpl->mbCompiling);
 
-		const char* Applying = "Compiler validation";
+		G.mbCompiling = true;
+		const char* Applying = "Compiler preparation";
 		try
 		{
-			Applying = "FArdaCheckRequiredFeaturesRule";
+			if (auto Status = RebindArdaGraphExternalParameters(G); !Status)
+			{
+				return {{}, Status};
+			}
 			if (auto Status = CheckArdaGraphRequiredFeatures(G); !Status)
 			{
-				Status.mMessage = eastl::string(Applying) + ": " + Status.mMessage;
-				return Status;
+				return {{}, Status};
 			}
+			{
+				FArdaDependencyGraph DeclarationContext;
+				DeclarationContext.mImpl = Snapshot;
+				if (auto Status = DeclarationContext.RevalidateCompilationParameters(); !Status)
+				{
+					return {{}, Status};
+				}
+			}
+			if (auto Status = InitializeArdaInductorNodes(G); !Status)
+			{
+				return {{}, Status};
+			}
+			G.mbUsingCompiledDescriptions = true;
 			auto Input = FArdaInductorGraphAccess::View(G);
-			for (const auto& Rule : G.mOptions.mRules.mPreprocessRules)
-			{
-				Applying = Rule->GetName();
-				if (auto S = Rule->Apply(Input); !S)
-				{
-					S.mMessage = eastl::string(Applying) + ": " + S.mMessage;
-					return S;
-				}
-			}
-			// Structural safety is independent of the chosen transformation list.
-			for (auto Handle : G.mTopology.GetNodes())
-			{
-				const auto& Node = G.mTopology.TryGetNode(Handle)->mPayload;
-				if (Node.mDesc.mGraphicsStage != EArdaGraphicsStage::None && !Node.mbGraphicsLowered)
-				{
-					return Error("Graphics stages require FArdaAssembleGraphicsStagesRule before compilation.");
-				}
-				if (Node.mDesc.mRayStage != EArdaRHIShaderStage::None && !Node.mbRayTracingLowered)
-				{
-					return Error("Ray stages require FArdaAssembleRayTracingStagesRule before compilation.");
-				}
-				if (Node.mDesc.mGraphicsStage == EArdaGraphicsStage::Pixel)
-				{
-					if (Node.mGraphicsStages.size() < 3 || Node.mGraphicsStages.back() != Handle ||
-					    Node.mGraphicsStageParameters.size() != Node.mGraphicsStages.size())
-					{
-						return Error("Preprocessing invalidated an assembled graphics chain.");
-					}
-					for (auto Stage : Node.mGraphicsStages)
-					{
-						if (!G.mTopology.ContainsNode(Stage) ||
-						    (Stage != Handle && !G.mTopology.IsReachable(Stage, Handle)))
-						{
-							return Error("Preprocessing removed a required graphics stage dependency.");
-						}
-					}
-				}
-			}
-			if (auto S = ValidateResourceAccesses(G); !S)
-			{
-				return S;
-			}
-			if (!G.mTopology.TopologicalSort().IsAcyclic())
-			{
-				return Error("Preprocessing left a dependency cycle.");
-			}
-			auto Required = G.mTopology.CloneSnapshot();
-			if (auto S = ResolveArdaDependencyResourceEdges(G, Required); !S)
-			{
-				return S;
-			}
-			for (auto E : Required.GetEdges())
-			{
-				const auto& Edge = *Required.TryGetEdge(E);
-				if ((Edge.mPayload.mbResource || Edge.mPayload.mbHazard) &&
-				    !G.mTopology.IsReachable(Edge.mFrom, Edge.mTo))
-				{
-					return Error("Preprocessing omitted a required resource dependency.");
-				}
-			}
-			G.mNames.clear();
-			for (auto N : G.mTopology.GetNodes())
-			{
-				if (!G.mNames.emplace(G.mTopology.TryGetNode(N)->mPayload.mName, N).second)
-				{
-					return Error("Preprocessing produced duplicate node names.");
-				}
-			}
 			FArdaInductorCompileResult Result;
+			Result.mNodes = G.mCompile.mNodes;
+			Result.mSubgraphAdmissions = G.mSubgraphAdmissions;
 			for (const auto& Rule : G.mOptions.mRules.mCompileRules)
 			{
 				Applying = Rule->GetName();
-				if (auto S = Rule->Apply(Input, Result); !S)
+				if (auto Status = Rule->Apply(Input, Result); !Status)
 				{
-					S.mMessage = eastl::string(Applying) + ": " + S.mMessage;
-					return S;
+					Status.mMessage = eastl::string(Applying) + ": " + Status.mMessage;
+					return {{}, Status};
 				}
 				if (!Result.mStatus)
 				{
-					return Result.mStatus;
+					return {{}, Result.mStatus};
 				}
 			}
 			Applying = "Compiler validation";
-			if (auto S = ValidateCompiledResult(G, Result); !S)
+			if (auto Status = ValidateCompiledResult(G, Result); !Status)
 			{
-				return S;
+				return {{}, Status};
 			}
-			auto Pending = eastl::make_unique<FArdaMemoryPlan>(*Result.mMemoryPlan);
-			Result.mRevision = G.mCompile.mRevision + 1;
-			G.mCompile = eastl::move(Result);
-			G.mPendingMemoryPlan = eastl::move(Pending);
-			G.mRuntime.reset();
-			return {};
+			Result.mRevision = Source.mCompile.mRevision + 1;
+			Result.mExecution = G.mCompile.mExecution;
+			Result.mExecution->mRuntime.reset();
+			G.mbCompiling = false;
+			G.mbUsingCompiledDescriptions = false;
+			G.mCompile = {};
+			G.mCompile.mExecution = eastl::make_shared<FArdaInductorExecutionState>();
+			G.mCompile.mExecution->mDevice = Result.mExecution->mDevice;
+			auto Retained = eastl::make_shared<FArdaInductorCompiledGraph>();
+			Retained->mGraph = eastl::move(Snapshot);
+			Result.mGraph = eastl::move(Retained);
+			return {eastl::move(Result), {}};
 		}
-		catch (const std::exception& E)
+		catch (const std::exception& Exception)
 		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
-			    (eastl::string(Applying) + ": " + E.what()).c_str());
+			return {{},
+			    FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+			        (eastl::string(Applying) + ": " + Exception.what()).c_str())};
 		}
 		catch (...)
 		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
-			    (eastl::string(Applying) + ": rule threw; pending revision discarded.").c_str());
+			return {{},
+			    FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+			        (eastl::string(Applying) + ": rule threw; compilation result discarded.").c_str())};
 		}
+	}
+
+	FArdaRHIStatus FArdaInductor::CompilePending(FArdaDependencyGraph& Graph,
+	    const FArdaInductorExecutionState* Context)
+	{
+		auto Compiled = CompileWithContext(Graph, Context);
+		if (!Compiled)
+		{
+			return Compiled.mStatus;
+		}
+		Graph.mImpl->mCompile = eastl::move(Compiled.mValue);
+		Graph.mImpl->mCompile.mExecution->mbExecutorClaimed = true;
+		Graph.mImpl->mbUsingCompiledDescriptions = true;
+		return {};
 	}
 }

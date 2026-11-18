@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Archived ArdaScene Representation Plan — Ardashir engineering documentation.">
+  <title>Archived ArdaScene Representation Plan | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaScene pages">
+      <h2>ArdaScene</h2>
+      <nav>
+        <a href="index.html">Archived scene proposal</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaScene</a>
+      </nav>
+      <article>
+<h1 id="archived-ardascene-representation-plan">Archived ArdaScene Representation Plan</h1>
+<h2 id="status-and-scope">Status and scope</h2>
+<p>Archived on September 18, 2026. The current source tree retains only
+<code>ArdaInfra</code>, <code>ArdaTests</code> and <code>ArdaTrace</code>; <code>Source/ArdaScene</code> and the other
+higher-level module scaffolds have been removed. This document and its diagrams
+preserve the earlier proposal as design references. References below to a
+&quot;current milestone&quot;, proposed source layout or future APIs describe that
+proposal, not implemented modules or an active delivery commitment.</p>
+<p>The proposal covers the engine-neutral representation of a renderable scene.</p>
+<p>The current milestone does not plan or implement:</p>
+<ul>
+<li>global illumination or ReSTIR algorithms;</li>
+<li>path tracing, ray dispatch, denoising, or presentation;</li>
+<li>BLAS or TLAS construction;</li>
+<li>GPU scene upload or bindless descriptor management;</li>
+<li>ArdaDependencyGraph ray-tracing extensions;</li>
+<li>shared-device, queue, fence, or resource-state integration;</li>
+<li>an Unreal plugin or renderer replacement;</li>
+<li>material shader compilation or translation.</li>
+</ul>
+<p>Those systems will eventually consume <code>ArdaScene</code>, but they are deliberately
+outside the current plan. The goal now is to define scene data that can be
+created by a standalone Ardashir application and, later, populated by an
+Unreal adapter without redesigning the core model.</p>
+<h2 id="architectural-decision">Architectural decision</h2>
+<p><code>ArdaScene</code> will be a renderer-facing scene database that publishes immutable,
+versioned snapshots of semantic records.</p>
+<p>It will not be:</p>
+<ul>
+<li>a gameplay ECS;</li>
+<li>a world simulation;</li>
+<li>an owner of backend or ArdaDependencyGraph objects;</li>
+<li>a container of Unreal types;</li>
+<li>a hard-coded GPU memory layout;</li>
+<li>a list of rendering callbacks.</li>
+</ul>
+<p><img src="Architecture-Overview.svg" alt="ArdaScene representation architecture" /></p>
+<p>Both standalone and hosted producers use the same update API:</p>
+<pre><code class="language-text">Standalone authoring ---------+
+                              +--&gt; FArdaSceneUpdateBatch
+Future Unreal extractor ------+             |
+                                            v
+                                  FArdaSceneDatabase
+                                            |
+                                            v
+                                  FArdaSceneSnapshot
+</code></pre>
+<p>The immutable snapshot is the complete output of this milestone.</p>
+<h2 id="required-properties">Required properties</h2>
+<h3 id="standalone-first">Standalone first</h3>
+<p>Ardashir must create and use a scene without Unreal, an external device, or a
+foreign resource registry.</p>
+<p>A standalone producer can provide:</p>
+<ul>
+<li>immutable CPU geometry blobs;</li>
+<li>application-owned resource declarations;</li>
+<li>procedural source tokens;</li>
+<li>transforms, materials, lights, environments, and views.</li>
+</ul>
+<p>The standalone path is not a fallback adapter. It is the reference producer
+used by the initial tests.</p>
+<h3 id="host-neutral">Host neutral</h3>
+<p>No public <code>ArdaScene</code> header may include:</p>
+<ul>
+<li>Unreal Engine headers;</li>
+<li>native graphics API headers;</li>
+<li>ArdaBackend headers;</li>
+<li>ArdaDependencyGraph headers;</li>
+<li>D3D12 or Vulkan headers.</li>
+</ul>
+<p>Future adapters communicate through project-owned IDs, descriptors, layouts,
+and update batches.</p>
+<h3 id="representation-not-realization">Representation, not realization</h3>
+<p>The scene describes:</p>
+<ul>
+<li>what objects exist;</li>
+<li>how records refer to one another;</li>
+<li>where source data can be found;</li>
+<li>how source data is laid out;</li>
+<li>what changed between snapshots.</li>
+</ul>
+<p>It does not decide:</p>
+<ul>
+<li>where GPU memory is allocated;</li>
+<li>whether data is copied or consumed directly;</li>
+<li>which acceleration structures are built;</li>
+<li>which shaders or passes execute;</li>
+<li>how resources are synchronized.</li>
+</ul>
+<h3 id="stable-identity">Stable identity</h3>
+<p>Handles remain stable while records move between dense storage locations.
+Stale handles must be detected after removal and slot reuse.</p>
+<h3 id="immutable-publication">Immutable publication</h3>
+<p>Producers mutate an update transaction. Consumers only read a published
+snapshot. The producer may build snapshot N+1 while consumers retain snapshot
+N.</p>
+<h3 id="extensible-source-layouts">Extensible source layouts</h3>
+<p>Ardashir-native data should use simple canonical layouts. Foreign data should
+be describable through semantic field layouts without forcing the scene module
+to understand Unreal's internal structs.</p>
+<p>This enables a future zero-copy consumer, but the scene representation itself
+does not perform importing or copying.</p>
+<h2 id="module-boundary">Module boundary</h2>
+<p>Only <code>ArdaScene</code> is in the current implementation scope.</p>
+<p>Planned public headers:</p>
+<pre><code class="language-text">Source/ArdaScene/Public/
+  ArdaScene.h
+  ArdaSceneHandles.h
+  ArdaSceneMath.h
+  ArdaSceneFormats.h
+  ArdaSceneSources.h
+  ArdaSceneLayouts.h
+  ArdaSceneGeometry.h
+  ArdaSceneMaterials.h
+  ArdaSceneLights.h
+  ArdaSceneView.h
+  ArdaSceneUpdates.h
+  ArdaSceneSnapshot.h
+  ArdaSceneDatabase.h
+</code></pre>
+<p>Planned private files:</p>
+<pre><code class="language-text">Source/ArdaScene/Private/
+  ArdaSceneDatabase.cpp
+  ArdaSceneRegistry.h
+  ArdaSceneSnapshot.cpp
+  ArdaSceneValidation.cpp
+</code></pre>
+<p><code>ArdaScene</code> should depend only on EASTL and project-owned, backend-neutral
+interfaces. It must not link a concrete native backend module directly.</p>
+<p>Future modules such as <code>ArdaSceneGPU</code>, <code>ArdaInterop</code>, <code>ArdaGI</code>, and
+<code>Integrations/Unreal/ArdaUnreal</code> are consumers or producers of this API. They
+are not deliverables in this plan.</p>
+<h2 id="type-conventions">Type conventions</h2>
+<p>All proposed types follow the project convention:</p>
+<ul>
+<li><code>FArda</code> for structs, classes, and aliases;</li>
+<li><code>IArda</code> for interfaces;</li>
+<li><code>EArda</code> for enums;</li>
+<li><code>TArda</code> for templates;</li>
+<li><code>m</code> prefix for data members;</li>
+<li><code>mb</code> prefix for boolean data members.</li>
+</ul>
+<p>Code fragments in this document are interface sketches, not implementation.</p>
+<h2 id="generational-handle-model">Generational handle model</h2>
+<p>Use one typed generational handle template:</p>
+<pre><code class="language-cpp">template &lt;typename TagType&gt;
+class TArdaSceneHandle
+{
+public:
+    [[nodiscard]] bool IsValid() const noexcept;
+    [[nodiscard]] uint32_t GetIndex() const noexcept;
+    [[nodiscard]] uint32_t GetGeneration() const noexcept;
+
+private:
+    uint32_t mIndex = InvalidIndex;
+    uint32_t mGeneration = 0;
+};
+</code></pre>
+<p>Public aliases:</p>
+<pre><code class="language-cpp">using FArdaSourceHandle = TArdaSceneHandle&lt;FArdaSourceTag&gt;;
+using FArdaDataHandle = TArdaSceneHandle&lt;FArdaDataTag&gt;;
+using FArdaLayoutHandle = TArdaSceneHandle&lt;FArdaLayoutTag&gt;;
+using FArdaGeometryHandle = TArdaSceneHandle&lt;FArdaGeometryTag&gt;;
+using FArdaMaterialHandle = TArdaSceneHandle&lt;FArdaMaterialTag&gt;;
+using FArdaInstanceHandle = TArdaSceneHandle&lt;FArdaInstanceTag&gt;;
+using FArdaLightHandle = TArdaSceneHandle&lt;FArdaLightTag&gt;;
+using FArdaEnvironmentHandle = TArdaSceneHandle&lt;FArdaEnvironmentTag&gt;;
+using FArdaViewHandle = TArdaSceneHandle&lt;FArdaViewTag&gt;;
+</code></pre>
+<p>Required behavior:</p>
+<ul>
+<li>handles are type incompatible;</li>
+<li>removal invalidates the old generation;</li>
+<li>slot reuse increments generation;</li>
+<li>snapshots can resolve a valid handle to a dense index;</li>
+<li>invalid and stale handles never alias live records;</li>
+<li>handle values do not expose pointers or storage addresses.</li>
+</ul>
+<p>The generational <code>FArdaGraphNodeHandle</code> is a type-safety precedent. Scene handles
+also need generations because the database is long-lived and supports removal.</p>
+<h2 id="source-identity">Source identity</h2>
+<p>Every data source is identified independently from a scene handle:</p>
+<pre><code class="language-cpp">struct FArdaSourceId
+{
+    uint64_t mHigh;
+    uint64_t mLow;
+};
+</code></pre>
+<p>Examples:</p>
+<ul>
+<li>the standalone application;</li>
+<li>an asset loader;</li>
+<li>a procedural generator;</li>
+<li>a future Unreal world or renderer instance.</li>
+</ul>
+<p>Every source-owned object has a stable source-local key:</p>
+<pre><code class="language-cpp">struct FArdaSourceObjectId
+{
+    FArdaSourceId mSource;
+    uint64_t mObject;
+};
+</code></pre>
+<p>The database maintains the optional mapping:</p>
+<pre><code class="language-text">FArdaSourceObjectId &lt;-&gt; typed FArdaSceneHandle
+</code></pre>
+<p>This lets a future Unreal extractor update or remove records by component or
+proxy identity without placing Unreal pointers in scene records.</p>
+<p>Source IDs are semantic identities. They are not native resource pointers,
+descriptor indices, or GPU addresses.</p>
+<h2 id="data-source-representation">Data-source representation</h2>
+<p>Scene records refer to source data through <code>FArdaDataHandle</code>. A data record
+describes where bytes originate without interpreting them as a GPU allocation.</p>
+<pre><code class="language-cpp">enum class EArdaDataSourceKind
+{
+    OwnedCpuBlob,
+    BorrowedCpuBlob,
+    ExternalResource,
+    Procedural
+};
+</code></pre>
+<h3 id="owned-cpu-blob">Owned CPU blob</h3>
+<p>Used by standalone asset loading and tests.</p>
+<p><code>FArdaOwnedCpuBlobDesc</code> contains:</p>
+<ul>
+<li>immutable shared byte storage;</li>
+<li>byte size and alignment;</li>
+<li>content hash;</li>
+<li>debug name;</li>
+<li>content revision.</li>
+</ul>
+<p>Snapshots share ownership of immutable blob storage. Producers replace a blob
+to change it; they do not mutate published bytes.</p>
+<h3 id="borrowed-cpu-blob">Borrowed CPU blob</h3>
+<p>Used when the application owns immutable CPU memory.</p>
+<p><code>FArdaBorrowedCpuBlobDesc</code> contains:</p>
+<ul>
+<li>a non-owning byte span;</li>
+<li>a reference-counted lifetime token;</li>
+<li>byte size and alignment;</li>
+<li>content revision.</li>
+</ul>
+<p>The lifetime token must outlive every snapshot that refers to the bytes.</p>
+<h3 id="external-resource">External resource</h3>
+<p>Used for future Unreal or application-managed GPU resources.</p>
+<pre><code class="language-cpp">struct FArdaExternalDataDesc
+{
+    FArdaSourceObjectId mIdentity;
+    EArdaExternalResourceKind mKind;
+    FArdaExternalResourceDesc mDescription;
+    uint64_t mAllocationRevision;
+    uint64_t mContentRevision;
+};
+</code></pre>
+<p><code>FArdaExternalResourceDesc</code> uses engine-neutral fields:</p>
+<ul>
+<li>buffer byte size or texture extent;</li>
+<li>format;</li>
+<li>usage capabilities;</li>
+<li>dimensions, mips, and array layers;</li>
+<li>optional stride;</li>
+<li>debug name.</li>
+</ul>
+<p>It does not contain backend-specific handles, <code>FRHI*</code>, native pointers, resource states,
+queues, or fences. Those belong to a future realization layer.</p>
+<h3 id="procedural-source">Procedural source</h3>
+<p>Used when geometry or attributes are generated later.</p>
+<p><code>FArdaProceduralDataDesc</code> contains:</p>
+<ul>
+<li>a stable producer token;</li>
+<li>declared output kind and dimensions;</li>
+<li>parameter data handle;</li>
+<li>generation revision;</li>
+<li>bounds when known.</li>
+</ul>
+<p>The scene does not execute the producer.</p>
+<h2 id="formats-and-layouts">Formats and layouts</h2>
+<h3 id="engine-neutral-format-enum">Engine-neutral format enum</h3>
+<p>Define <code>EArdaDataFormat</code> for representation-relevant values:</p>
+<ul>
+<li>scalar integer and floating-point widths;</li>
+<li>normalized integer formats;</li>
+<li>two-, three-, and four-component vectors;</li>
+<li>packed normal/tangent formats;</li>
+<li>index formats;</li>
+<li>matrix component formats;</li>
+<li>common texture formats required by materials and environments.</li>
+</ul>
+<p>The enum must not mirror all native API formats. It should describe scene data
+semantics. Future consumers map it to their own APIs.</p>
+<h3 id="data-views">Data views</h3>
+<pre><code class="language-cpp">struct FArdaDataView
+{
+    FArdaDataHandle mData;
+    uint64_t mByteOffset;
+    uint64_t mByteSize;
+    uint32_t mStride;
+    uint32_t mElementCount;
+    EArdaDataFormat mFormat;
+    FArdaLayoutHandle mLayout;
+};
+</code></pre>
+<p>Invariants:</p>
+<ul>
+<li>offset and size lie within the data record;</li>
+<li>structured views have non-zero stride;</li>
+<li>element count and stride fit within byte size;</li>
+<li>typed views use compatible formats;</li>
+<li>empty optional views are explicitly invalid.</li>
+</ul>
+<h3 id="semantic-structure-layouts">Semantic structure layouts</h3>
+<pre><code class="language-cpp">enum class EArdaDataSemantic
+{
+    Position,
+    Normal,
+    Tangent,
+    BitangentSign,
+    TexCoord0,
+    TexCoord1,
+    Color0,
+    CurrentTransform,
+    PreviousTransform,
+    MaterialIndex,
+    GeometryIndex,
+    InstanceMask,
+    Custom
+};
+</code></pre>
+<p><code>FArdaStructFieldDesc</code> contains:</p>
+<ul>
+<li>semantic;</li>
+<li>byte offset;</li>
+<li>format;</li>
+<li>array count;</li>
+<li>optional custom semantic name or ID.</li>
+</ul>
+<p><code>FArdaStructLayoutDesc</code> contains:</p>
+<ul>
+<li>stride;</li>
+<li>required alignment;</li>
+<li>matrix storage and multiplication convention;</li>
+<li>ordered field list;</li>
+<li>layout version;</li>
+<li>deterministic layout hash;</li>
+<li>debug name.</li>
+</ul>
+<p>The database interns layouts by full descriptor equality or hash. Published
+layouts are immutable.</p>
+<p>Canonical standalone layouts can be declared as constants. A future Unreal
+producer can register layouts that describe its source buffers.</p>
+<h2 id="math-and-coordinate-conventions">Math and coordinate conventions</h2>
+<p>Any future <code>ArdaSceneMath.h</code> should adopt the existing
+<a href="https://github.com/DylanWaken/Ardashir/blob/main/Source/ArdaInfra/ArdaMath/README.md">ArdaMath CPU types and conventions</a>.
+Scene-specific bounds such as <code>FArdaBox</code> and <code>FArdaSphere</code> can build on those
+Eigen-backed types:</p>
+<ul>
+<li><code>FArdaVector2f</code>, <code>FArdaVector3f</code>, <code>FArdaVector4f</code>;</li>
+<li><code>FArdaMatrix3x4f</code>, <code>FArdaMatrix4f</code>;</li>
+<li><code>FArdaModelMatrix</code>, <code>FArdaViewMatrix</code>, <code>FArdaProjectionMatrix</code>,
+<code>FArdaViewProjectionMatrix</code>, <code>FArdaNormalMatrix</code>;</li>
+<li><code>FArdaQuaternionf</code>, <code>FArdaAffineTransform3f</code>;</li>
+<li><code>FArdaCameraMatrices</code> for world-to-view and view-to-clip transforms.</li>
+</ul>
+<p>CPU matrices use row-major storage and multiply column vectors. Transform
+composition is <code>Clip = Projection * View * Model * Position</code>. The shared view
+helper uses positive Z forward, positive X right and positive Y up; producers
+must state their world-up axis and units when converting foreign coordinates.
+Projection helpers default to reversed device Z in <code>[0, 1]</code>: near maps to 1,
+far maps to 0, depth clears to 0, and depth tests use <code>Greater</code> or
+<code>GreaterOrEqual</code>.</p>
+<p>Explicit POD layouts belong at serialization, shader-upload and import/export
+boundaries. Eigen objects are CPU values, not serialized byte representations;
+use the shared shader packing helpers or copy semantic coefficients into the
+declared boundary layout. Foreign buffer layouts may retain their original
+representation, but their layout descriptor must state storage, multiplication
+and coordinate conventions explicitly.</p>
+<h2 id="geometry-representation">Geometry representation</h2>
+<pre><code class="language-cpp">enum class EArdaGeometryKind
+{
+    Triangles,
+    ProceduralAabbs,
+    Curves,
+    Spheres,
+    Extension
+};
+</code></pre>
+<p><code>FArdaGeometryRecord</code> contains:</p>
+<ul>
+<li>stable geometry handle;</li>
+<li>source object ID;</li>
+<li>geometry kind;</li>
+<li>position data view;</li>
+<li>optional index data view;</li>
+<li>optional normal, tangent, UV, color, and custom attribute views;</li>
+<li>primitive count;</li>
+<li>vertex count;</li>
+<li>index format;</li>
+<li>topology;</li>
+<li>winding;</li>
+<li>object-space bounds;</li>
+<li>ordered geometry segments;</li>
+<li>geometry flags;</li>
+<li>content and layout revisions;</li>
+<li>optional extension type and payload handle.</li>
+</ul>
+<p><code>FArdaGeometrySegment</code> contains:</p>
+<ul>
+<li>first primitive;</li>
+<li>primitive count;</li>
+<li>material slot;</li>
+<li>opacity classification;</li>
+<li>two-sided flag;</li>
+<li>segment-local flags;</li>
+<li>optional segment bounds.</li>
+</ul>
+<p>The record does not contain:</p>
+<ul>
+<li>BLAS handles;</li>
+<li>build flags;</li>
+<li>scratch requirements;</li>
+<li>shader binding table offsets;</li>
+<li>native API geometry descriptors.</li>
+</ul>
+<p>Those are derived by a future renderer from geometry semantics.</p>
+<h2 id="instance-representation">Instance representation</h2>
+<p><code>FArdaInstanceRecord</code> contains:</p>
+<ul>
+<li>stable instance handle;</li>
+<li>source object ID;</li>
+<li>geometry handle;</li>
+<li>current transform;</li>
+<li>previous transform;</li>
+<li>optional parent instance handle;</li>
+<li>ordered material overrides;</li>
+<li>visibility mask;</li>
+<li>layer mask;</li>
+<li>object category flags;</li>
+<li>world-space bounds;</li>
+<li>producer payload ID;</li>
+<li>transform, material, and visibility revisions.</li>
+</ul>
+<p>The core representation favors inline current and previous transforms because
+they are deterministic and standalone-friendly.</p>
+<p>To support a future externally managed transform array, the record may
+optionally contain:</p>
+<ul>
+<li>a transform data view;</li>
+<li>an element index;</li>
+<li>a transform layout handle.</li>
+</ul>
+<p>Inline and external transform sources are mutually exclusive and validated.</p>
+<p>The scene does not generate motion vectors or TLAS instance descriptors.</p>
+<h2 id="material-representation">Material representation</h2>
+<p>The current milestone represents material identity and source data, not shader
+execution.</p>
+<pre><code class="language-cpp">enum class EArdaMaterialModel
+{
+    CanonicalSurface,
+    Volume,
+    Emissive,
+    External,
+    Extension
+};
+</code></pre>
+<p><code>FArdaMaterialRecord</code> contains:</p>
+<ul>
+<li>stable material handle;</li>
+<li>source object ID;</li>
+<li>material model;</li>
+<li>opacity classification;</li>
+<li>two-sided flag;</li>
+<li>scalar/vector parameter block data view;</li>
+<li>texture parameter bindings;</li>
+<li>optional external material payload;</li>
+<li>emissive summary metadata;</li>
+<li>material revision;</li>
+<li>optional extension type.</li>
+</ul>
+<p><code>FArdaTextureParameterBinding</code> contains:</p>
+<ul>
+<li>semantic parameter ID;</li>
+<li>texture data handle;</li>
+<li>sampler declaration ID;</li>
+<li>texture-coordinate set;</li>
+<li>transform or scale metadata;</li>
+</ul>
+<p>For <code>CanonicalSurface</code>, define a representation-only parameter schema covering
+common closure inputs such as:</p>
+<ul>
+<li>base color;</li>
+<li>metallic;</li>
+<li>roughness;</li>
+<li>specular or IOR;</li>
+<li>transmission;</li>
+<li>normal mapping;</li>
+<li>opacity;</li>
+<li>emissive color and intensity.</li>
+</ul>
+<p>This schema does not prescribe the future GI algorithm or shader
+implementation.</p>
+<p>For <code>External</code>, preserve:</p>
+<ul>
+<li>external source object ID;</li>
+<li>parameter data views;</li>
+<li>texture bindings;</li>
+<li>opaque material type token;</li>
+<li>revision.</li>
+</ul>
+<p>A future Unreal adapter can populate this record even before material
+translation exists.</p>
+<h2 id="light-representation">Light representation</h2>
+<pre><code class="language-cpp">enum class EArdaLightKind
+{
+    Directional,
+    Point,
+    Spot,
+    Rectangle,
+    Disk,
+    Sphere,
+    Environment,
+    MeshEmissive,
+    Extension
+};
+</code></pre>
+<p><code>FArdaLightRecord</code> contains:</p>
+<ul>
+<li>stable light handle;</li>
+<li>source object ID;</li>
+<li>light kind;</li>
+<li>transform or position/direction;</li>
+<li>radiometric color and intensity;</li>
+<li>geometric dimensions;</li>
+<li>attenuation/range metadata;</li>
+<li>visibility or layer mask;</li>
+<li>optional texture data handle;</li>
+<li>optional instance and geometry segment for mesh emissives;</li>
+<li>light revision;</li>
+<li>optional extension payload.</li>
+</ul>
+<p>The scene does not build light trees, CDFs, alias tables, reservoirs, or any
+other sampling structure.</p>
+<h2 id="environment-representation">Environment representation</h2>
+<p><code>FArdaEnvironmentRecord</code> contains:</p>
+<ul>
+<li>stable environment handle;</li>
+<li>environment texture or procedural source;</li>
+<li>orientation;</li>
+<li>intensity and tint;</li>
+<li>atmosphere or background extension payload;</li>
+<li>environment revision.</li>
+</ul>
+<p>Only one active environment may be selected per view in the initial model.
+The representation can later support blending through an ordered list.</p>
+<h2 id="view-representation">View representation</h2>
+<p><code>FArdaViewRecord</code> contains:</p>
+<ul>
+<li>stable view handle;</li>
+<li>source object ID;</li>
+<li>current and previous camera transforms;</li>
+<li>projection description;</li>
+<li>view and projection matrices when explicitly supplied;</li>
+<li>viewport and target extent;</li>
+<li>jitter;</li>
+<li>aperture and focus metadata;</li>
+<li>exposure metadata;</li>
+<li>active environment handle;</li>
+<li>layer and visibility masks;</li>
+<li>frame sequence number;</li>
+<li>camera-cut and history-valid flags;</li>
+<li>view revision.</li>
+</ul>
+<p>This is camera and output metadata only. The scene does not allocate history
+buffers or define temporal rendering behavior.</p>
+<h2 id="optional-hierarchy">Optional hierarchy</h2>
+<p><code>ArdaScene</code> is not a scene-graph transform engine, but instances may optionally
+refer to a parent instance.</p>
+<p>Rules:</p>
+<ul>
+<li>published records contain resolved world transforms;</li>
+<li>parent handles preserve authoring relationships and change propagation hints;</li>
+<li>cycles are invalid;</li>
+<li>consumers never need to traverse the hierarchy to render a snapshot;</li>
+<li>removing a parent does not implicitly remove children unless the producer
+requests those removals.</li>
+</ul>
+<p>Hierarchy resolution occurs while building an update batch or publishing a
+snapshot, not while reading the snapshot.</p>
+<h2 id="scene-update-model">Scene update model</h2>
+<p><img src="Frame-Flow.svg" alt="Scene update and publication flow" /></p>
+<p>Use a transaction-oriented API:</p>
+<pre><code class="language-cpp">class FArdaSceneDatabase
+{
+public:
+    [[nodiscard]] FArdaSceneUpdateWriter BeginUpdate();
+    [[nodiscard]] FArdaScenePublishResult Publish(
+        FArdaSceneUpdateWriter&amp;&amp; Update);
+};
+</code></pre>
+<p>The writer exposes typed commands:</p>
+<pre><code class="language-cpp">FArdaGeometryHandle AddGeometry(const FArdaGeometryDesc&amp; Desc);
+void UpdateGeometry(FArdaGeometryHandle Handle, const FArdaGeometryPatch&amp; Patch);
+void RemoveGeometry(FArdaGeometryHandle Handle);
+
+FArdaInstanceHandle AddInstance(const FArdaInstanceDesc&amp; Desc);
+void UpdateInstance(FArdaInstanceHandle Handle, const FArdaInstancePatch&amp; Patch);
+void RemoveInstance(FArdaInstanceHandle Handle);
+</code></pre>
+<p>Equivalent operations exist for data, layouts, materials, lights,
+environments, and views.</p>
+<p>Patch types make changed fields explicit. They prevent callers from replacing
+an entire record merely to update a transform.</p>
+<p><code>Publish</code> is atomic from a consumer perspective:</p>
+<ol>
+<li>validate all commands;</li>
+<li>resolve source-object mappings;</li>
+<li>apply commands to mutable registries;</li>
+<li>resolve hierarchy and bounds requirements;</li>
+<li>build dense immutable arrays;</li>
+<li>generate a deterministic change set;</li>
+<li>advance the scene epoch;</li>
+<li>publish the new snapshot.</li>
+</ol>
+<p>If validation fails, no partial snapshot is published.</p>
+<h2 id="change-set-representation">Change-set representation</h2>
+<pre><code class="language-cpp">enum class EArdaSceneChangeFlags : uint32_t
+{
+    None = 0,
+    Data = 1u &lt;&lt; 0u,
+    Layout = 1u &lt;&lt; 1u,
+    Geometry = 1u &lt;&lt; 2u,
+    Transform = 1u &lt;&lt; 3u,
+    Material = 1u &lt;&lt; 4u,
+    Visibility = 1u &lt;&lt; 5u,
+    Light = 1u &lt;&lt; 6u,
+    Environment = 1u &lt;&lt; 7u,
+    View = 1u &lt;&lt; 8u,
+    Residency = 1u &lt;&lt; 9u
+};
+</code></pre>
+<p><code>FArdaSceneChangeSet</code> contains typed added, modified, and removed handle lists.
+Modified entries include field-level flags and old/new revisions.</p>
+<p>The change set is an optimization hint and audit record. The complete snapshot
+remains the source of truth.</p>
+<p>Ordering must be deterministic:</p>
+<ul>
+<li>type order is fixed;</li>
+<li>handles are ordered by stable index;</li>
+<li>duplicate patches are coalesced;</li>
+<li>add-then-remove in one transaction produces no published record;</li>
+<li>remove-then-add produces a new generation.</li>
+</ul>
+<h2 id="immutable-snapshot">Immutable snapshot</h2>
+<p><code>FArdaSceneSnapshot</code> contains:</p>
+<ul>
+<li>scene epoch;</li>
+<li>source registry;</li>
+<li>immutable data records;</li>
+<li>immutable layout records;</li>
+<li>dense geometry records;</li>
+<li>dense material records;</li>
+<li>dense instance records;</li>
+<li>dense light records;</li>
+<li>dense environment records;</li>
+<li>dense view records;</li>
+<li>typed handle-to-dense-index lookup tables;</li>
+<li>the change set from the preceding epoch;</li>
+<li>validation and diagnostic metadata.</li>
+</ul>
+<p>Read API:</p>
+<pre><code class="language-cpp">class FArdaSceneSnapshot
+{
+public:
+    [[nodiscard]] uint64_t GetEpoch() const noexcept;
+    [[nodiscard]] FArdaSpan&lt;const FArdaGeometryRecord&gt; GetGeometries() const;
+    [[nodiscard]] FArdaSpan&lt;const FArdaInstanceRecord&gt; GetInstances() const;
+    [[nodiscard]] const FArdaGeometryRecord* FindGeometry(
+        FArdaGeometryHandle Handle) const noexcept;
+};
+</code></pre>
+<p>The actual span type should be project-owned or an EASTL-compatible immutable
+view.</p>
+<p>Snapshot records are compact values and handles. They do not use one virtual
+object per primitive.</p>
+<h2 id="storage-organization">Storage organization</h2>
+<p>The mutable database uses one generational slot registry per record type.</p>
+<p>The published snapshot uses dense arrays:</p>
+<pre><code class="language-text">Handle registry:
+  slot -&gt; generation + dense index
+
+Dense arrays:
+  geometry[0..N)
+  instances[0..M)
+  materials[0..K)
+  lights[0..L)
+</code></pre>
+<p>Benefits:</p>
+<ul>
+<li>stale-handle detection;</li>
+<li>stable semantic identity;</li>
+<li>compact sequential consumer traversal;</li>
+<li>no pointer chasing through a polymorphic hierarchy;</li>
+<li>freedom to reorder dense arrays without invalidating handles.</li>
+</ul>
+<p>Dense ordering should remain stable when practical, but correctness must not
+depend on dense indices persisting across snapshots.</p>
+<h2 id="ownership-and-lifetime">Ownership and lifetime</h2>
+<p><code>FArdaSceneDatabase</code> owns mutable registry state.</p>
+<p><code>FArdaSceneSnapshotRef</code> owns immutable snapshot storage through reference
+counting.</p>
+<p>Data records use:</p>
+<ul>
+<li>shared ownership for immutable owned CPU blobs;</li>
+<li>explicit lifetime tokens for borrowed CPU blobs;</li>
+<li>pure identity and metadata for external resources;</li>
+<li>no ownership for future GPU objects.</li>
+</ul>
+<p>Removing a scene record:</p>
+<ul>
+<li>invalidates its handle in the next snapshot;</li>
+<li>does not mutate earlier snapshots;</li>
+<li>releases source data only after all retaining snapshots are destroyed;</li>
+<li>does not destroy an external resource.</li>
+</ul>
+<h2 id="threading-model">Threading model</h2>
+<p>Initial policy:</p>
+<ul>
+<li>one writer transaction at a time;</li>
+<li>any number of immutable snapshot readers;</li>
+<li>publication under a short database lock;</li>
+<li>no locks during ordinary snapshot traversal;</li>
+<li>snapshots may cross threads through reference-counted handles.</li>
+</ul>
+<p>The first implementation does not need lock-free mutation.</p>
+<p>Required concurrency behavior:</p>
+<ul>
+<li>a producer can build update N+1 while a reader consumes snapshot N;</li>
+<li>publication never exposes partially applied records;</li>
+<li>borrowed data lifetime remains valid across reader threads;</li>
+<li>destruction waits only on snapshot references, not renderer-specific fences.</li>
+</ul>
+<p>GPU completion lifetime is a future realization-layer responsibility.</p>
+<h2 id="validation-rules">Validation rules</h2>
+<h3 id="handle-validation">Handle validation</h3>
+<ul>
+<li>referenced handles must be valid in the transaction's resulting state;</li>
+<li>stale generations are rejected;</li>
+<li>cross-type handles cannot compile;</li>
+<li>removal is rejected while required references remain unless those references
+are removed or patched in the same transaction.</li>
+</ul>
+<h3 id="data-view-validation">Data-view validation</h3>
+<ul>
+<li>byte ranges fit in the source record;</li>
+<li>stride and count are consistent;</li>
+<li>format and semantic are compatible;</li>
+<li>layout fields fit within stride;</li>
+<li>layout hash matches descriptor contents;</li>
+<li>borrowed data has a lifetime token.</li>
+</ul>
+<h3 id="geometry-validation">Geometry validation</h3>
+<ul>
+<li>required position data exists;</li>
+<li>index and vertex ranges are valid;</li>
+<li>segment ranges do not exceed primitive count;</li>
+<li>material slots are valid or explicitly unbound;</li>
+<li>bounds are finite;</li>
+<li>topology is supported by the geometry kind.</li>
+</ul>
+<h3 id="instance-validation">Instance validation</h3>
+<ul>
+<li>geometry exists;</li>
+<li>material overrides reference valid slots and materials;</li>
+<li>transforms and bounds are finite;</li>
+<li>hierarchy is acyclic;</li>
+<li>inline and external transform sources are not both active.</li>
+</ul>
+<h3 id="material-light-and-view-validation">Material, light, and view validation</h3>
+<ul>
+<li>required data for the selected kind exists;</li>
+<li>texture and data handles resolve;</li>
+<li>numeric values are finite;</li>
+<li>ranges and dimensions are non-negative;</li>
+<li>an active environment resolves;</li>
+<li>previous-state flags are internally consistent.</li>
+</ul>
+<h2 id="error-model">Error model</h2>
+<p>Scene update errors should return structured diagnostics:</p>
+<pre><code class="language-cpp">enum class EArdaSceneError
+{
+    InvalidHandle,
+    StaleGeneration,
+    MissingReference,
+    InvalidDataRange,
+    InvalidLayout,
+    InvalidGeometry,
+    InvalidHierarchy,
+    DuplicateSourceObject,
+    LifetimeUnavailable,
+    UnsupportedExtension
+};
+</code></pre>
+<p><code>FArdaSceneDiagnostic</code> contains:</p>
+<ul>
+<li>error code;</li>
+<li>record type and handle;</li>
+<li>source object ID;</li>
+<li>field path;</li>
+<li>human-readable message.</li>
+</ul>
+<p>Validation should collect independent errors when safe instead of stopping at
+the first malformed record.</p>
+<h2 id="extension-mechanism">Extension mechanism</h2>
+<p>Avoid subclassing every record type.</p>
+<p>Each extensible record may contain:</p>
+<ul>
+<li><code>FArdaExtensionTypeId</code>;</li>
+<li><code>FArdaDataHandle</code> for immutable payload data;</li>
+<li>extension revision.</li>
+</ul>
+<p>Extension IDs are globally stable project IDs. Unknown extensions remain
+preserved in snapshots but are not interpreted by core validation beyond data
+range and lifetime checks.</p>
+<p>This supports future specialized geometry or host metadata without adding
+Unreal-specific fields to core records.</p>
+<h2 id="future-unreal-producer-boundary">Future Unreal producer boundary</h2>
+<p><img src="Unreal-Interop.svg" alt="Future Unreal scene extraction boundary" /></p>
+<p>The future Unreal adapter will be only a producer of update batches at this
+layer.</p>
+<p>It will map:</p>
+<ul>
+<li>component or proxy identity to <code>FArdaSourceObjectId</code>;</li>
+<li>Unreal geometry to <code>FArdaGeometryRecord</code>;</li>
+<li>Unreal-owned buffers to <code>FArdaExternalDataDesc</code>;</li>
+<li>Unreal buffer fields to <code>FArdaStructLayoutDesc</code>;</li>
+<li>primitive instances to <code>FArdaInstanceRecord</code>;</li>
+<li>materials to canonical or external material records;</li>
+<li>lights and views to corresponding semantic records;</li>
+<li>removals and revisions to update commands.</li>
+</ul>
+<p>This plan does not define:</p>
+<ul>
+<li>how <code>FRHI*</code> resources are wrapped;</li>
+<li>how Unreal command lists synchronize with Arda;</li>
+<li>how Unreal materials become shaders;</li>
+<li>how Unreal GPU Scene data is read;</li>
+<li>where the adapter runs in Unreal's renderer.</li>
+</ul>
+<p>The representation is considered successful if a mock producer can create the
+same snapshot shape that a future Unreal extractor would create.</p>
+<h2 id="standalone-producer-boundary">Standalone producer boundary</h2>
+<p>The standalone reference producer will:</p>
+<ul>
+<li>register itself as a source;</li>
+<li>create immutable CPU geometry blobs;</li>
+<li>register canonical layouts;</li>
+<li>create materials, instances, lights, environments, and views;</li>
+<li>submit update batches;</li>
+<li>retain and inspect snapshots.</li>
+</ul>
+<p>No backend initialization is required for <code>ArdaScene</code> unit or integration
+tests.</p>
+<p>A future standalone renderer will consume these snapshots, but rendering is
+not part of the current acceptance criteria.</p>
+<h2 id="testing-plan">Testing plan</h2>
+<h3 id="handle-tests">Handle tests</h3>
+<ul>
+<li>default handles are invalid;</li>
+<li>type-specific handles are incompatible;</li>
+<li>removal invalidates the old generation;</li>
+<li>slot reuse creates a new generation;</li>
+<li>stale handles fail lookup;</li>
+<li>dense reordering does not change handle identity.</li>
+</ul>
+<h3 id="source-and-data-tests">Source and data tests</h3>
+<ul>
+<li>source object IDs map deterministically to handles;</li>
+<li>duplicate source IDs are rejected;</li>
+<li>immutable owned blobs survive snapshot retention;</li>
+<li>borrowed blobs require and retain lifetime tokens;</li>
+<li>external resources retain only identity and metadata;</li>
+<li>procedural source revisions are tracked.</li>
+</ul>
+<h3 id="layout-tests">Layout tests</h3>
+<ul>
+<li>layouts intern deterministically;</li>
+<li>field overlap policy is enforced;</li>
+<li>fields outside stride are rejected;</li>
+<li>equivalent layouts have equal hashes;</li>
+<li>custom semantics round-trip through snapshots;</li>
+<li>matrix conventions are preserved.</li>
+</ul>
+<h3 id="record-tests">Record tests</h3>
+<ul>
+<li>triangle geometry with canonical views validates;</li>
+<li>malformed ranges and segments fail;</li>
+<li>instances resolve geometry and material references;</li>
+<li>hierarchy cycles fail;</li>
+<li>current and previous transforms are preserved;</li>
+<li>each light and view kind validates required fields;</li>
+<li>external material records preserve opaque payload identity.</li>
+</ul>
+<h3 id="transaction-tests">Transaction tests</h3>
+<ul>
+<li>add, patch, and remove operations are atomic;</li>
+<li>failed publication leaves the previous snapshot active;</li>
+<li>duplicate patches coalesce deterministically;</li>
+<li>add-then-remove publishes no record;</li>
+<li>cross-record references may be added in one transaction;</li>
+<li>source-object mappings update with record lifetime.</li>
+</ul>
+<h3 id="snapshot-tests">Snapshot tests</h3>
+<ul>
+<li>snapshots are immutable;</li>
+<li>readers can retain N while N+1 is published;</li>
+<li>dense arrays and handle lookup agree;</li>
+<li>change sets match full snapshot differences;</li>
+<li>prior snapshots retain removed records and owned data;</li>
+<li>snapshot destruction releases data at the correct time.</li>
+</ul>
+<h3 id="standalone-representation-test">Standalone representation test</h3>
+<p>Construct a complete non-rendered scene containing:</p>
+<ul>
+<li>one indexed triangle geometry;</li>
+<li>one canonical material;</li>
+<li>one instance with current and previous transforms;</li>
+<li>one analytic light;</li>
+<li>one environment;</li>
+<li>one view.</li>
+</ul>
+<p>Publish a second snapshot changing only the transform and verify:</p>
+<ul>
+<li>semantic handles remain stable;</li>
+<li>geometry and material revisions do not change;</li>
+<li>only transform change flags are emitted;</li>
+<li>snapshot one remains readable;</li>
+<li>no native backend, RDG, or Unreal dependency is required.</li>
+</ul>
+<h3 id="mock-hosted-producer-test">Mock hosted-producer test</h3>
+<p>Use engine-neutral mock external resource IDs and a foreign vertex layout to
+produce the same semantic scene shape. Verify that:</p>
+<ul>
+<li>no native pointer is stored;</li>
+<li>layout offsets and revisions survive publication;</li>
+<li>allocation and content revisions are distinct;</li>
+<li>replacing an external allocation does not change geometry identity;</li>
+<li>the scene module performs no copy or realization.</li>
+</ul>
+<h2 id="current-delivery-sequence">Current delivery sequence</h2>
+<p>Only the following sequence belongs to this plan.</p>
+<h3 id="phase-1-foundational-types">Phase 1: foundational types</h3>
+<p>Define:</p>
+<ul>
+<li>typed generational handles;</li>
+<li>source and source-object IDs;</li>
+<li>math and coordinate conventions;</li>
+<li>engine-neutral formats;</li>
+<li>diagnostics and extension IDs.</li>
+</ul>
+<p>Exit criterion: foundational types compile without a native graphics API or Unreal.</p>
+<h3 id="phase-2-data-and-layout-records">Phase 2: data and layout records</h3>
+<p>Define:</p>
+<ul>
+<li>owned and borrowed CPU data records;</li>
+<li>external and procedural data declarations;</li>
+<li>data views;</li>
+<li>semantic field layouts;</li>
+<li>layout validation and hashing.</li>
+</ul>
+<p>Exit criterion: canonical and mock foreign layouts can be represented and
+validated.</p>
+<h3 id="phase-3-semantic-scene-records">Phase 3: semantic scene records</h3>
+<p>Define:</p>
+<ul>
+<li>geometry and segments;</li>
+<li>instances and optional hierarchy;</li>
+<li>materials and texture parameter bindings;</li>
+<li>lights and environments;</li>
+<li>views.</li>
+</ul>
+<p>Exit criterion: a complete standalone scene description can be expressed with
+no renderer.</p>
+<h3 id="phase-4-database-and-transactions">Phase 4: database and transactions</h3>
+<p>Define:</p>
+<ul>
+<li>typed mutable registries;</li>
+<li>update writer and patch operations;</li>
+<li>source-object mapping;</li>
+<li>atomic validation and publication;</li>
+<li>deterministic change-set generation.</li>
+</ul>
+<p>Exit criterion: all record types support atomic add, patch, and removal.</p>
+<h3 id="phase-5-immutable-snapshots">Phase 5: immutable snapshots</h3>
+<p>Define:</p>
+<ul>
+<li>dense immutable storage;</li>
+<li>typed lookup;</li>
+<li>reference-counted snapshot lifetime;</li>
+<li>epoch and change-set access;</li>
+<li>multi-reader publication behavior.</li>
+</ul>
+<p>Exit criterion: snapshot N remains valid while N+1 is built and published.</p>
+<h3 id="phase-6-representation-verification">Phase 6: representation verification</h3>
+<p>Add:</p>
+<ul>
+<li>focused unit tests;</li>
+<li>standalone complete-scene test;</li>
+<li>mock foreign-producer test;</li>
+<li>public API documentation.</li>
+</ul>
+<p>Exit criterion: the scene representation works independently of all rendering
+and host-integration modules.</p>
+<h2 id="deferred-plans">Deferred plans</h2>
+<p>Separate future plans will cover:</p>
+<ul>
+<li>GPU scene realization;</li>
+<li>ArdaBackend and ArdaDependencyGraph resource import;</li>
+<li>acceleration structures;</li>
+<li>bindless resource management;</li>
+<li>shared-device and synchronization contracts;</li>
+<li>Unreal renderer integration;</li>
+<li>material shader adaptation;</li>
+<li>path tracing and GI algorithms;</li>
+<li>ReSTIR reservoirs and temporal rendering;</li>
+<li>denoising and presentation;</li>
+<li>Vulkan host interop.</li>
+</ul>
+<p>None of these is a dependency for completing the current ArdaScene
+representation milestone.</p>
+<h2 id="acceptance-criteria">Acceptance criteria</h2>
+<p>The representation plan is complete when:</p>
+<ol>
+<li><code>ArdaScene</code> builds and tests without a native backend module, ArdaDependencyGraph, or
+Unreal.</li>
+<li>A standalone application can represent a complete scene using immutable CPU
+data and canonical layouts.</li>
+<li>A mock hosted producer can represent the same scene using external resource
+identities and foreign layouts.</li>
+<li>Typed generational handles detect stale references.</li>
+<li>Transactions publish atomically and produce deterministic change sets.</li>
+<li>Snapshots are immutable, dense, and safely retained across publications.</li>
+<li>Core records contain no GPU handles, graph references, native pointers,
+queues, fences, shader tables, or rendering callbacks.</li>
+<li>No GI, rendering, AS, or synchronization implementation is required to
+satisfy the milestone.</li>
+</ol>
+<h2 id="related-existing-foundations">Related existing foundations</h2>
+<ul>
+<li><code>Source/ArdaScene/Public/ArdaScene.h</code>: current placeholder API.</li>
+<li><code>Source/ArdaScene/CMakeLists.txt</code>: current module dependency declaration.</li>
+<li><code>Source/ArdaInfra/ArdaGraph/Public/ArdaDirectedGraph.h</code>: precedent for
+typed handles, but not a dependency of this module.</li>
+<li><code>Conventions/ArdaCodingConventions.md</code>: naming, ownership, and public-header
+conventions.</li>
+</ul>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaScene · Ardashir engineering documentation</p></footer>
+</body>
+</html>

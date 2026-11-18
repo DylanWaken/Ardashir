@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Viewer, Capture Format, and Practices — Ardashir engineering documentation.">
+  <title>Viewer, Capture Format, and Practices | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaTrace pages">
+      <h2>ArdaTrace</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="instrumentation.html">Instrumentation</a>
+        <a href="viewer-and-format.html">Viewer and capture format</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaTrace</a>
+      </nav>
+      <article>
+<h1 id="viewer-capture-format-and-practices">Viewer, Capture Format, and Practices</h1>
+<p>The ArdaTrace viewer is an offline local web application. Flask validates and
+normalizes a completed capture, then a dependency-free browser UI renders the
+timeline with HTML, CSS, JavaScript, and Canvas.</p>
+<h2 id="start-the-viewer">Start the viewer</h2>
+<p>From the repository root:</p>
+<pre><code class="language-powershell">python Scripts\RunTraceViewer.py frame.ardatrace
+</code></pre>
+<p>Direct invocation exposes additional options:</p>
+<pre><code class="language-powershell">python Tools\ArdaTraceViewer\app.py frame.ardatrace --port 5001
+</code></pre>
+<p>The default address is <code>http://127.0.0.1:5000</code>. Loopback binding keeps the
+viewer local. Supplying <code>--host</code> or <code>--debug</code> is an explicit relaxation and
+should only be done in a trusted environment.</p>
+<p>To open another capture, use <strong>Open capture</strong> in the page. HTTP uploads are
+limited to 256 MiB and held in memory. The server does not expose arbitrary
+filesystem browsing.</p>
+<h2 id="timeline-controls">Timeline controls</h2>
+<ul>
+<li>Scroll the mouse wheel over the timeline to zoom around the pointer.</li>
+<li>Drag horizontally to pan.</li>
+<li>Hover a scope rectangle to see its label, thread, duration, start time, and
+scope identifier.</li>
+<li>Select a thread to isolate one lane.</li>
+<li>Enter a name filter to limit scopes, counters, markers, and aggregate rows.</li>
+<li>Select <strong>Reset view</strong> to restore the complete time range.</li>
+</ul>
+<p>The counter panel shares the selected time range with the scope timeline.
+Markers appear as vertical dashed lines. Scope statistics are grouped by name
+and report count, total, average, minimum, and maximum duration.</p>
+<h2 id="binary-data-flow">Binary data flow</h2>
+<p><img src="assets/architecture.svg" alt="ArdaTrace binary and viewer data flow" /></p>
+<p>An <code>.ardatrace</code> file begins with:</p>
+<ol>
+<li>the eight-byte <code>ARDATRC1</code> magic;</li>
+<li>format version <code>1</code>;</li>
+<li>the <code>0x01020304</code> byte-order marker; and</li>
+<li>the capture's steady-clock origin in nanoseconds.</li>
+</ol>
+<p>The body contains typed records:</p>
+<table>
+<thead>
+<tr>
+<th>Record</th>
+<th>Main fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Name</td>
+<td>Name identifier and UTF-8 label</td>
+</tr>
+<tr>
+<td>Thread</td>
+<td>Thread identifier and UTF-8 display name</td>
+</tr>
+<tr>
+<td>Scope</td>
+<td>Thread/name IDs, scope/parent IDs, start/end nanoseconds</td>
+</tr>
+<tr>
+<td>Counter</td>
+<td>Thread/name IDs, timestamp, <code>double</code> value</td>
+</tr>
+<tr>
+<td>Marker</td>
+<td>Thread/name IDs and timestamp</td>
+</tr>
+<tr>
+<td>Capture end</td>
+<td>Declares successful completion</td>
+</tr>
+</tbody>
+</table>
+<p>All integer and floating-point fields are little-endian. The C++ writer streams
+full event chunks during capture and flushes partial per-thread chunks when
+<code>StopTraceCapture()</code> runs.</p>
+<p>The format is an internal, versioned contract. Consumers must reject unknown
+versions and record types rather than guessing their layout.</p>
+<h2 id="validation">Validation</h2>
+<p>The native and Python readers validate structure and references before exposing
+a session. The Python viewer additionally validates UTF-8 labels. Checks across
+the readers include:</p>
+<ul>
+<li>magic, version, byte order, and completion record;</li>
+<li>record truncation and unknown record types;</li>
+<li>duplicate or reserved identifiers;</li>
+<li>valid UTF-8 labels with bounded lengths;</li>
+<li>defined name and thread references;</li>
+<li>finite counter values;</li>
+<li>scope start/end order;</li>
+<li>existing, same-thread parent scopes;</li>
+<li>parent-cycle prevention and temporal containment; and</li>
+<li>absence of bytes after the completion record.</li>
+</ul>
+<p>This strictness distinguishes a complete capture from a crash-truncated or
+incompatible file.</p>
+<h2 id="threading-and-lifecycle-requirements">Threading and lifecycle requirements</h2>
+<p>The recorder supports events from multiple threads, but lifecycle operations
+have a stronger contract:</p>
+<ol>
+<li>Call <code>StartTraceCapture()</code> before instrumented workers begin.</li>
+<li>Start or release the workers.</li>
+<li>Record scopes, counters, markers, and thread names concurrently.</li>
+<li>Join or pause all instrumented workers.</li>
+<li>Call <code>StopTraceCapture()</code>.</li>
+</ol>
+<p><img src="assets/capture-workflow.svg" alt="Safe capture lifecycle" /></p>
+<p>Do not stop while another thread is appending an event. The current recorder
+expects lifecycle calls to occur at a process-level synchronization point.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="the-viewer-says-the-capture-is-incomplete">The viewer says the capture is incomplete</h3>
+<p>Ensure <code>StopTraceCapture()</code> executed successfully. Check <code>GetTraceError()</code> and
+avoid forced process termination during finalization.</p>
+<h3 id="no-scopes-appear">No scopes appear</h3>
+<ul>
+<li>Confirm <code>ARDASHIR_ENABLE_TRACE=ON</code> for the target.</li>
+<li>Confirm <code>StartTraceCapture()</code> succeeded before entering the scopes.</li>
+<li>Check that the target links <code>Ardashir::ArdaTrace</code>.</li>
+<li>Remove active name/thread filters in the viewer.</li>
+</ul>
+<h3 id="thread-names-remain-generic">Thread names remain generic</h3>
+<p>Call <code>SetCurrentTraceThreadName()</code> from each worker thread after capture starts
+or before its first recorded event.</p>
+<h3 id="the-capture-changes-program-performance">The capture changes program performance</h3>
+<p>Reduce instrumentation density and counter sampling frequency. Trace subsystem
+boundaries instead of tiny operations. The recorded duration excludes event
+serialization after the end timestamp, but instrumentation still consumes CPU
+time and can perturb scheduling.</p>
+<h3 id="the-upload-is-rejected">The upload is rejected</h3>
+<p>Captures larger than 256 MiB cannot be uploaded through the web endpoint.
+Reduce capture duration or channel density. The limit can be changed in the
+local viewer only after considering parsing memory requirements.</p>
+<h2 id="current-limitations">Current limitations</h2>
+<ul>
+<li>Captures are offline rather than live-streamed to the viewer.</li>
+<li>Only CPU scopes, counters, markers, names, and thread metadata are recorded.</li>
+<li>There is no GPU/CPU clock calibration or GPU timestamp-query integration.</li>
+<li>The browser loads the normalized session in memory.</li>
+<li>Labels are call-site-stable rather than dynamically changing per event.</li>
+</ul>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaTrace · Ardashir engineering documentation</p></footer>
+</body>
+</html>

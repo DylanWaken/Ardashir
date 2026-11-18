@@ -164,7 +164,7 @@
     "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorCommandExecutor.cpp",
     "line": 1,
     "end_line": 288,
-    "claim": "Independent recording uses bounded CPU jobs while deterministic submission honors queue tokens and retains accepted work after partial failure.",
+    "claim": "The caller records in compiled order. Submission honors queue tokens and retains accepted work after partial failure.",
     "sha256": "361cf54c7f76f60fe524571d01f74e331f363cb6f86dc4b62280341007d95df2"
   },
   {
@@ -244,7 +244,7 @@
     "path": "Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorAdaptiveRuntime.cpp",
     "line": 1,
     "end_line": 309,
-    "claim": "Measured-region attribution, immutable background snapshots, pool reuse, revision/epoch validity, retirement-gated adoption and explicit cancellation.",
+    "claim": "Measured-region attribution, immutable tuning snapshots, pool reuse, revision/epoch validity, retirement-gated adoption and explicit cancellation.",
     "sha256": "ee3c37239ac6de0a5cdb3917ac62cfbf2225a62635eb8f386515a8747e15bcf4"
   },
   {

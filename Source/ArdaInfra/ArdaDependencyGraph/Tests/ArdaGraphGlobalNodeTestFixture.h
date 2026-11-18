@@ -1,17 +1,16 @@
 #pragma once
 
-#include "Graph/Node/ArdaDependencyNode.h"
+#include "Graph/Node/ArdaNodeDefinition.h"
 
 namespace arda::global_node_tests
 {
-	struct FArdaGlobalNodeTestParameters
-	{
-		uint32_t mValue = 7;
-		FArdaDependencyResourceHandle mOutput;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaGlobalNodeTestParameters)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mValue, 7)
+		ARDA_NODE_BUFFER(mOutput, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	class FArdaGlobalNodeTestNode final
-	    : public TArdaCopyDependencyNode<FArdaGlobalNodeTestNode, FArdaGlobalNodeTestParameters>
+	    : public TArdaNodeDefinition<FArdaGlobalNodeTestNode, FArdaGlobalNodeTestParameters, EArdaNodeType::Copy>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata();

@@ -150,15 +150,17 @@ namespace arda
 	{
 		auto& R = D.mRequirements.mFeatures;
 		AddArdaNodeIntrinsicRequirements(D.mRequirements, Kind, D.mGraphicsStage, D.mRayStage);
-		const auto* Caps = G.mDevice ? &G.mDevice->GetCapabilities() : nullptr;
+		const auto* Caps =
+		    G.mCompile.mExecution->mDevice ? &G.mCompile.mExecution->mDevice->GetCapabilities() : nullptr;
 		const auto Resource = [&](FArdaDependencyResourceHandle H)
 		{
+			H = G.ResolveResource(H);
 			if (!G.HasResource(H))
 			{
 				return; // Ordinary attachment validation diagnoses stale handles.
 			}
 			const auto& V = G.mResources[H.mIndex];
-			if (V.mExternalAccelerationStructure)
+			if (V.mExternalKind == EArdaGraphExternalResourceKind::AccelerationStructure)
 			{
 				R.mbRequireAccelerationStructures = true;
 			}

@@ -15,11 +15,14 @@ repository's root CMake project.
 1. [CMakeLists.txt](CMakeLists.txt) builds the native CUDA profile and deploys node shader assets.
 2. [ArdaPixelSortNodes.h](Public/Nodes/ArdaPixelSortNodes.h) includes individual
    upload, noise, sort, present and readback classes. Each has a matching `.cpp`
-   under `Private/Nodes` implementing its hooks on `TArdaDependencyNode`. The base
-   owns registration, attachment and state lifetime; each node prepares only its own operation. The
+   under `Private/Nodes` implementing its hooks on `TArdaNodeDefinition`. Declarative
+   node parameter schemas map resources to their shader or CUDA parameter members.
+   The base owns registration, invocation and state lifetime; each node prepares its own operation. The
    [noise node](Private/Nodes/ArdaPixelSortNoiseNode.cpp) owns its HLSL entry,
    layout and pipeline settings; the [sort node](Private/Nodes/ArdaPixelSortSortNode.cpp)
-   owns its CUDA operand. Shared shader-file loading is only a private utility.
+   owns its CUDA operand. Its `ARDA_NODE_CUDA_TEXTURE` fields inherit the operand's
+   resource access and `ResolveNodeCudaParameters` resolves the same mappings before
+   dispatch. Shared shader-file loading is a private utility.
    Graph parameters retain prepared device state; the renderer needs no library
    initialization and invokes exported callables such as `PixelSortSort(Edit, Parameters)`.
    Each header declares its callable with `ARDA_DECLARE_GRAPH_NODE`; its `.cpp`

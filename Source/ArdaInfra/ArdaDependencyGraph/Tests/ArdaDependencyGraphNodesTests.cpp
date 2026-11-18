@@ -1,5 +1,5 @@
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
-#include "Graph/Node/ArdaDependencyNode.h"
 #include "Graph/DefaultNodes/ArdaDependencyGraphNodes.h"
 #include <gtest/gtest.h>
 
@@ -7,7 +7,8 @@ namespace arda::dependencygraphnodes_tests
 {
 	using namespace arda;
 
-	struct FArdaTypedClearNode : TArdaComputeDependencyNode<FArdaTypedClearNode, FArdaGraphClearParameters>
+	struct FArdaTypedClearNode
+	    : TArdaNodeDefinition<FArdaTypedClearNode, FArdaGraphClearParameters, EArdaNodeType::Compute>
 	{
 		inline static uint32_t mPreparations = 0;
 		inline static bool mbFailPreparation = false;
@@ -49,7 +50,7 @@ namespace arda::dependencygraphnodes_tests
 	ARDA_DECLARE_GRAPH_NODE(FArdaTypedClearNode, TypedClear);
 	ARDA_DEFINE_GRAPH_NODE(FArdaTypedClearNode, TypedClear);
 
-	struct FArdaTypedCopyNode : TArdaCopyDependencyNode<FArdaTypedCopyNode, FArdaGraphCopyParameters>
+	struct FArdaTypedCopyNode : TArdaNodeDefinition<FArdaTypedCopyNode, FArdaGraphCopyParameters, EArdaNodeType::Copy>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata()
 		{
@@ -79,7 +80,7 @@ namespace arda::dependencygraphnodes_tests
 	ARDA_DEFINE_GRAPH_NODE(FArdaTypedCopyNode, TypedCopy);
 
 	struct FArdaTypedFormatOutputNode
-	    : TArdaComputeDependencyNode<FArdaTypedFormatOutputNode, FArdaGraphClearParameters>
+	    : TArdaNodeDefinition<FArdaTypedFormatOutputNode, FArdaGraphClearParameters, EArdaNodeType::Compute>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata()
 		{
@@ -129,7 +130,7 @@ namespace arda::dependencygraphnodes_tests
 		const auto Mismatched = AllocateBuffer(Edit, Desc, "float output");
 		ASSERT_TRUE(Mismatched);
 		const auto Rejected =
-		    TypedFormatOutput(Edit, FArdaTypedFormatOutputNode::FArdaParameters{Mismatched.GetHandle(), 7}, "supplied");
+		    TypedFormatOutput(Edit, FArdaTypedFormatOutputNode::FArdaParameters{Mismatched, 7}, "supplied");
 		EXPECT_EQ(Edit.GetStatus().mCode, EArdaRHIResult::InvalidArgument);
 		EXPECT_FALSE(Graph.FindNode("supplied"));
 		EXPECT_TRUE(Graph.GetTopology().GetNodes().empty());
@@ -146,9 +147,8 @@ namespace arda::dependencygraphnodes_tests
 		Desc.mFormat = EArdaRHIFormat::R32UInt;
 		const auto Matching = AllocateBuffer(ValidEdit, Desc, "uint output");
 		ASSERT_TRUE(Matching);
-		const auto Supplied = TypedFormatOutput(ValidEdit,
-		    FArdaTypedFormatOutputNode::FArdaParameters{Matching.GetHandle(), 7},
-		    "supplied");
+		const auto Supplied =
+		    TypedFormatOutput(ValidEdit, FArdaTypedFormatOutputNode::FArdaParameters{Matching, 7}, "supplied");
 		ASSERT_TRUE(Supplied);
 		EXPECT_EQ(Graph.FindOutput(Supplied.GetHandle(), "Destination"), Matching.GetHandle());
 		ASSERT_TRUE(ValidEdit.Cancel());
@@ -234,13 +234,13 @@ namespace arda::dependencygraphnodes_tests
 		auto Copy = TypedCopy(Edit,
 		    FArdaTypedCopyNode::FArdaParameters{Source.GetHandle(), Destination.GetHandle(), 256},
 		    "copy");
-		auto Clear = TypedClear(Edit, FArdaTypedClearNode::FArdaParameters{Source.GetHandle(), 42}, "clear");
+		auto Clear = TypedClear(Edit, FArdaTypedClearNode::FArdaParameters{Source, 42}, "clear");
 		ASSERT_TRUE(Copy);
 		ASSERT_TRUE(Clear);
 		Edit.Keep(Destination.GetHandle());
 		ASSERT_TRUE(Edit.GetStatus());
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder,
 		    (eastl::vector<FArdaGraphNodeHandle>{Clear.GetHandle(), Copy.GetHandle()}));
 	}
@@ -256,7 +256,7 @@ namespace arda::dependencygraphnodes_tests
 		Desc.mUsage = EArdaRHIBufferUsage::UnorderedAccess;
 		const auto Buffer = AllocateBuffer(Edit, Desc, "output");
 		ASSERT_TRUE(Buffer);
-		const auto Consumer = ClearNode(Edit, FArdaGraphClearParameters{Buffer.GetHandle(), 7}, "consumer");
+		const auto Consumer = ClearNode(Edit, FArdaGraphClearParameters{Edit.UseBuffer(Buffer), 7}, "consumer");
 		const auto Join = SyncNode(Edit, FArdaGraphSyncParameters{}, "join");
 		const auto Producer = SyncNode(Edit, FArdaGraphSyncParameters{}, "producer");
 		ASSERT_TRUE(Consumer);
@@ -267,19 +267,17 @@ namespace arda::dependencygraphnodes_tests
 		Edit.Keep(Buffer.GetHandle());
 		ASSERT_TRUE(Edit.GetStatus());
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder,
 		    (eastl::vector<FArdaGraphNodeHandle>{Producer.GetHandle(), Join.GetHandle(), Consumer.GetHandle()}));
 	}
 
-	struct FArdaConfigurationParameters
-	{
-		eastl::shared_ptr<FArdaInductorPipelineConfiguration> mConfiguration;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaConfigurationParameters)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<FArdaInductorPipelineConfiguration>, mConfiguration)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaConfigurationTestNode : TArdaDependencyNode<FArdaConfigurationTestNode,
-	                                        FArdaConfigurationParameters,
-	                                        EArdaDependencyNodeKind::Compute>
+	struct FArdaConfigurationTestNode
+	    : TArdaNodeDefinition<FArdaConfigurationTestNode, FArdaConfigurationParameters, EArdaNodeType::Compute>
 	{
 		using FArdaParameters = FArdaConfigurationParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -300,7 +298,6 @@ namespace arda::dependencygraphnodes_tests
 		static FArdaDependencyNodeDesc Describe(const FArdaConfigurationParameters& P, const FArdaState&)
 		{
 			FArdaDependencyNodeDesc Desc;
-			Desc.mbPipelineStageOnly = true;
 			FArdaInductorPipelineContribution Stage;
 			Stage.mConfiguration = P.mConfiguration;
 			Desc.mPipelineStages.push_back(Stage);
@@ -333,7 +330,7 @@ namespace arda::dependencygraphnodes_tests
 		const auto Node = ConfigureTestPipeline(Edit, FArdaConfigurationParameters{Configuration}, "frozen");
 		ASSERT_TRUE(Node);
 		Configuration->mKind = EArdaPipelineStateKind::Graphics;
-		const auto& Frozen = Graph.GetTopology().TryGetNode(Node.GetHandle())->mPayload.mDesc;
+		const auto& Frozen = Graph.GetNodeDescription(Node.GetHandle());
 		ASSERT_EQ(Frozen.mPipelineStages.size(), 1u);
 		ASSERT_EQ(Frozen.mPipelines.size(), 1u);
 		EXPECT_EQ(Frozen.mPipelineStages[0].mConfiguration->mKind, EArdaPipelineStateKind::Compute);

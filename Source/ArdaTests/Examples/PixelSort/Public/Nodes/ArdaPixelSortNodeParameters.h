@@ -1,12 +1,24 @@
 #pragma once
+#include "ArdaPixelSortOperand.h"
 
-#include "Graph/Node/ArdaDependencyNode.h"
+#include "Graph/Node/ArdaNodeDefinition.h"
 
 #include <filesystem>
 #include <vector>
 
 namespace arda
 {
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPixelSortPresentShaderParameters)
+		ARDA_SHADER_CONSTANT_BUFFER(mConstants, 0, 0, EArdaRHIShaderStage::Pixel)
+		ARDA_SHADER_TEXTURE_SRV(mSorted, 0, 0, EArdaRHIShaderStage::Pixel)
+		ARDA_SHADER_TEXTURE_SRV(mNoise, 1, 0, EArdaRHIShaderStage::Pixel)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPixelSortNoiseShaderParameters)
+		ARDA_SHADER_CONSTANT_BUFFER(mConstants, 0, 0, EArdaRHIShaderStage::Compute)
+		ARDA_SHADER_TEXTURE_UAV(mNoise, 0, 0, EArdaRHIShaderStage::Compute)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+
 	/** Upload values sampled while recording; update before Submit on the render thread. */
 	struct FArdaPixelSortUploadFrameInput
 	{
@@ -26,62 +38,62 @@ namespace arda
 	};
 
 	/** Inputs retained only by the frame-constant upload node. */
-	struct FArdaPixelSortUploadFrameParameters
-	{
-		/** Constant buffer output; attachment creates it when unset. */
-		FArdaDependencyResourceHandle mConstants;
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPixelSortUploadFrameParameters)
+		/** Constant buffer output; invocation creates it when unset. */
+		ARDA_NODE_BUFFER(mConstants, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest)
 		/** Dynamic upload values owned by this node instance and its renderer. */
-		eastl::shared_ptr<FArdaPixelSortUploadFrameInput> mInput = eastl::make_shared<FArdaPixelSortUploadFrameInput>();
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(eastl::shared_ptr<FArdaPixelSortUploadFrameInput>,
+		    mInput,
+		    eastl::make_shared<FArdaPixelSortUploadFrameInput>())
 		/** Image width written to the constant buffer. */
-		uint32_t mWidth = 0;
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mWidth, 0)
 		/** Image height written to the constant buffer. */
-		uint32_t mHeight = 0;
-	};
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mHeight, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	/** Inputs retained only by the noise generation node. */
-	struct FArdaPixelSortNoiseParameters
-	{
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPixelSortNoiseParameters)
 		/** Frame constants read by the compute shader. */
-		FArdaDependencyResourceHandle mConstants;
-		/** Noise texture output; attachment creates it when unset. */
-		FArdaDependencyResourceHandle mNoise;
+		ARDA_NODE_SHADER_BUFFER(mConstants, FArdaPixelSortNoiseShaderParameters, mConstants)
+		/** Noise texture output; invocation creates it when unset. */
+		ARDA_NODE_SHADER_TEXTURE(mNoise, FArdaPixelSortNoiseShaderParameters, mNoise)
 		/** Width of the generated noise texture. */
-		uint32_t mWidth = 0;
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mWidth, 0)
 		/** Height of the generated noise texture. */
-		uint32_t mHeight = 0;
-	};
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mHeight, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	/** Inputs retained only by the CUDA sort node. */
-	struct FArdaPixelSortSortParameters
-	{
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPixelSortSortParameters)
 		/** Noise texture read by the sort operand. */
-		FArdaDependencyResourceHandle mNoise;
-		/** Sorted texture output; attachment creates it when unset. */
-		FArdaDependencyResourceHandle mSorted;
+		ARDA_NODE_CUDA_TEXTURE(mNoise, FArdaPixelSortParameters, mInput)
+		/** Sorted texture output; invocation creates it when unset. */
+		ARDA_NODE_CUDA_TEXTURE(mSorted, FArdaPixelSortParameters, mOutput)
 		/** Dynamic sorting values owned by this node instance and its renderer. */
-		eastl::shared_ptr<FArdaPixelSortSortInput> mInput = eastl::make_shared<FArdaPixelSortSortInput>();
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(eastl::shared_ptr<FArdaPixelSortSortInput>,
+		    mInput,
+		    eastl::make_shared<FArdaPixelSortSortInput>())
 		/** Width of the input and output textures. */
-		uint32_t mWidth = 0;
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mWidth, 0)
 		/** Height of the input and output textures. */
-		uint32_t mHeight = 0;
-	};
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mHeight, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	/** Inputs retained only by the presentation node. */
-	struct FArdaPixelSortPresentParameters
-	{
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPixelSortPresentParameters)
 		/** Frame constants read by the pixel shader. */
-		FArdaDependencyResourceHandle mConstants;
+		ARDA_NODE_SHADER_BUFFER(mConstants, FArdaPixelSortPresentShaderParameters, mConstants)
 		/** Original noise image available for display. */
-		FArdaDependencyResourceHandle mNoise;
+		ARDA_NODE_SHADER_TEXTURE(mNoise, FArdaPixelSortPresentShaderParameters, mNoise)
 		/** Sorted image available for display. */
-		FArdaDependencyResourceHandle mSorted;
+		ARDA_NODE_SHADER_TEXTURE(mSorted, FArdaPixelSortPresentShaderParameters, mSorted)
 		/** Acquired swap-chain color target. */
-		FArdaDependencyResourceHandle mColor;
+		ARDA_NODE_COLOR_TARGET(mColor)
 		/** Viewport and scissor width. */
-		uint32_t mWidth = 0;
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mWidth, 0)
 		/** Viewport and scissor height. */
-		uint32_t mHeight = 0;
-	};
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mHeight, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	/** Optional CPU readback storage. ReadPixels requires successful completion of its graph ticket. */
 	struct FArdaPixelSortReadback

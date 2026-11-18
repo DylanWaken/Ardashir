@@ -4,6 +4,7 @@ endif()
 
 if(ARDASHIR_BUILD_CORNELL_BOX)
     add_subdirectory(CornellBox)
+    add_subdirectory(CornellDenoising)
 endif()
 
 if(ARDASHIR_BUILD_PIXEL_SORT)

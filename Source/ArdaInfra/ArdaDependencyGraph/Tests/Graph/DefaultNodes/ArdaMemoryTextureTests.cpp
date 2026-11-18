@@ -1,3 +1,4 @@
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include "../../ArdaMemoryFacadeTest.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
 #include "Graph/DefaultNodes/ArdaMemoryNodes.h"
@@ -510,14 +511,14 @@ namespace arda::memorytexture_tests
 			    FArdaMemoryReadbackTextureNode::FArdaParameters{Destination, Bytes, Slice},
 			    "readback"));
 			ASSERT_TRUE(Edit.Commit());
-			const auto Compiled = Graph.Compile();
+			const auto Compiled = Graph.CompileAndWait();
 			ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 			EXPECT_EQ(Graph.GetCompileResult().mWorkspaceResourceIds.size(), 2u);
 			for (uint32_t Frame = 0; Frame < 3; ++Frame)
 			{
 				SCOPED_TRACE(Frame);
 				*Bytes = {254};
-				const auto Submitted = Graph.Submit();
+				const auto Submitted = Graph.SubmitAndWait();
 				ASSERT_TRUE(Submitted) << Submitted.mStatus.mMessage.c_str();
 				ASSERT_TRUE(mDevice->WaitForIdle());
 				EXPECT_EQ(*Bytes, (eastl::vector<uint8_t>{254}));
@@ -568,7 +569,7 @@ namespace arda::memorytexture_tests
 		    FArdaMemoryReadbackTextureNode::FArdaParameters{Destination, RegionBytes, DestinationSlice},
 		    "read copied region"));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		eastl::vector<uint8_t> Expected(7 * 5 * 4, 17);
 		eastl::vector<uint8_t> ExpectedRegion;
@@ -587,7 +588,7 @@ namespace arda::memorytexture_tests
 		}
 		for (uint32_t Frame = 0; Frame < 3; ++Frame)
 		{
-			const auto Executed = Graph.Execute();
+			const auto Executed = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 			EXPECT_EQ(*Bytes, Expected);
 			EXPECT_EQ(*RegionBytes, ExpectedRegion);
@@ -632,11 +633,11 @@ namespace arda::memorytexture_tests
 			}
 		}
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		for (uint32_t Frame = 0; Frame < 3; ++Frame)
 		{
-			const auto Executed = Graph.Execute();
+			const auto Executed = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 			for (size_t Index = 0; Index < Outputs.size(); ++Index)
 			{
@@ -676,9 +677,9 @@ namespace arda::memorytexture_tests
 		    FArdaMemoryReadbackTextureNode::FArdaParameters{Texture, Bytes, Layer},
 		    "read second layer"));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
-		const auto Executed = Graph.Execute();
+		const auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		EXPECT_EQ(*Bytes, Expected);
 	}
@@ -707,22 +708,22 @@ namespace arda::memorytexture_tests
 		    FArdaMemoryReadbackBufferNode::FArdaParameters{Destination.GetHandle(), Bytes},
 		    "read constants"));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		for (uint32_t Frame = 0; Frame < 3; ++Frame)
 		{
-			const auto Executed = Graph.Execute();
+			const auto Executed = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 			EXPECT_EQ(*Bytes, Expected);
 		}
 	}
 
-	struct FArdaMemoryFailureParameters
-	{
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaMemoryFailureParameters)
+
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	class FArdaMemoryFailureNode final
-	    : public TArdaGraphicsDependencyNode<FArdaMemoryFailureNode, FArdaMemoryFailureParameters>
+	    : public TArdaNodeDefinition<FArdaMemoryFailureNode, FArdaMemoryFailureParameters, EArdaNodeType::Graphics>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata()
@@ -787,13 +788,12 @@ namespace arda::memorytexture_tests
 		ASSERT_TRUE(Edit.Order(TextureReadback, Failing));
 		ASSERT_TRUE(Edit.Order(BufferReadback, Failing));
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		FArdaGraphExecuteOptions ExecuteOptions;
-		ExecuteOptions.mbParallelRecording = false;
 		*TextureBytes = {253};
 		*BufferBytes = {254};
-		const auto Failed = Graph.Execute(ExecuteOptions);
+		const auto Failed = Graph.ExecuteAndWait(ExecuteOptions);
 		EXPECT_FALSE(Failed.mStatus);
 		EXPECT_EQ(Failed.mSubmittedCommandListCount, 0u);
 		EXPECT_TRUE(TextureBytes->empty());
@@ -815,9 +815,9 @@ namespace arda::memorytexture_tests
 		    FArdaMemoryReadbackBufferParameters{RebuiltBuffer, BufferBytes},
 		    "read buffer"));
 		ASSERT_TRUE(RebuiltEdit.Commit());
-		const auto Recompiled = Graph.Compile();
+		const auto Recompiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Recompiled) << Recompiled.mMessage.c_str();
-		const auto Repaired = Graph.Execute(ExecuteOptions);
+		const auto Repaired = Graph.ExecuteAndWait(ExecuteOptions);
 		ASSERT_TRUE(Repaired.mStatus) << Repaired.mStatus.mMessage.c_str();
 		EXPECT_EQ(*TextureBytes, TextureExpected);
 		EXPECT_EQ(*BufferBytes, BufferExpected);

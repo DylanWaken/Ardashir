@@ -1,7 +1,7 @@
 /** Facade command recording state and provider delegation. */
 #pragma once
 
-#include "RHI/Scheduling/ArdaRHICommandList.h"
+#include "RHI/Scheduling/ArdaRHIBufferCopyCompletion.h"
 #include "RHI/Providers/ArdaRHIProviderCommandList.h"
 #include "RHI/Config/ArdaRHIValidation.h"
 #include "RHI/Resources/ArdaRHIResourceAccess.h"
@@ -17,16 +17,6 @@
 namespace arda::detail
 {
 	class FArdaRHIDeviceImpl;
-
-	struct FArdaPendingBufferCopyCompletion
-	{
-		bool mbBlocking = false;
-		FArdaProviderObjectRef mReadbackBuffer;
-		size_t mByteSize = 0;
-		eastl::vector<uint8_t>* mOutput = nullptr;
-		FArdaRHIHostToDeviceCopyCallback mUploadCallback;
-		FArdaRHIDeviceToHostCopyCallback mReadbackCallback;
-	};
 
 	class FArdaCommandList final : public FArdaResource, public IArdaRHICommandList
 	{

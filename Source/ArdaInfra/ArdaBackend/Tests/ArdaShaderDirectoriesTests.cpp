@@ -24,9 +24,12 @@ namespace
 		explicit FArdaTemporaryShaderTree(const char* Label)
 		{
 			static std::atomic<uint64_t> Counter{0};
-			mRoot = fs::temp_directory_path() /
-			    (std::string("ArdaShaderDirectories-") + Label + "-" + std::to_string(++Counter));
-			fs::create_directories(mRoot);
+			const auto Prefix = fs::temp_directory_path() / (std::string("ArdaShaderDirectories-") + Label + "-");
+			do
+			{
+				mRoot = Prefix;
+				mRoot += std::to_string(++Counter);
+			} while (!fs::create_directory(mRoot));
 		}
 
 		~FArdaTemporaryShaderTree()

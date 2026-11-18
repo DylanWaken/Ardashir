@@ -4,6 +4,7 @@
  */
 #pragma once
 #include "ArdaTestValidation.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
 #include <gtest/gtest.h>
 #include <atomic>
 #include <cstdio>
@@ -50,3 +51,48 @@ namespace arda
 		GTEST_SKIP() << ::arda::GetBackendError().c_str();                                                             \
 	else                                                                                                               \
 		ASSERT_TRUE(ArdaInitialized) << ::arda::GetBackendError().c_str()
+
+namespace arda
+{
+	/** Shared lifecycle for native backend fixtures that use the default compiler configuration. */
+	class FArdaTestBackendFixture : public testing::TestWithParam<const char*>
+	{
+	protected:
+		void SetUp() override
+		{
+			ShutdownBackend();
+			if (!FindBackendModule(GetParam()))
+			{
+				GTEST_SKIP() << "Backend not built";
+			}
+			auto Configuration = MakeArdaTestBackendConfiguration();
+			Configuration.mBackendName = GetParam();
+			Configuration.mMessageCallback = &mDiagnostics;
+			ASSERT_TRUE(ConfigureBackend(Configuration)) << GetBackendError().c_str();
+			ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
+			mDevice = GetDevice();
+			ASSERT_TRUE(mDevice);
+		}
+
+		void TearDown() override
+		{
+			const bool bMissingValidation = testing::Test::IsSkipped() && ArdaTestValidationEnabled &&
+			    GetBackendInitializeResult() == EArdaInitializeResult::ValidationUnavailable;
+			if (mDevice)
+			{
+				EXPECT_TRUE(mDevice->WaitForIdle());
+				mDevice->RunGarbageCollection();
+				mDevice.Reset();
+			}
+			// Keep the diagnostic callback alive through native device shutdown.
+			ShutdownBackend();
+			if (!bMissingValidation)
+			{
+				EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
+			}
+		}
+
+		FArdaTestDiagnosticCallback mDiagnostics;
+		FArdaRHIDeviceRef mDevice;
+	};
+}

@@ -1,6 +1,6 @@
 #pragma once
 #include "ArdaMath.h"
-#include "Graph/Node/ArdaDependencyNode.h"
+#include "Graph/Node/ArdaNodeDefinition.h"
 
 namespace arda
 {

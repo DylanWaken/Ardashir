@@ -14,24 +14,82 @@
 
 namespace arda
 {
-	FArdaRHIStatus FArdaInductorRuntime::MaterializePendingPlan(FArdaDependencyGraph::FArdaImpl& Graph)
+	namespace
 	{
-		if (Graph.mRuntime || !Graph.mDevice)
+		FArdaRHIStatus InitializeNewPersistentBuffers(FArdaDependencyGraph::FArdaImpl& Graph,
+		    const FArdaMemoryPlan& Plan,
+		    const FArdaInductorRuntime& Runtime)
 		{
-			return MakeArdaInductorRuntimeError("A pending plan requires a device and no previous physical pool.");
+			FArdaRHICommandListRef Commands;
+			auto& Device = *Graph.mCompile.mExecution->mDevice;
+			for (size_t Index = 0; Index < Graph.mResources.size(); ++Index)
+			{
+				const auto& Initializer = Graph.mResources[Index].mBufferInitializer;
+				const auto& Buffer = Runtime.mFrames.front()->mMemory.mBuffers[Index];
+				if (Initializer.IsEmpty() || !Buffer || Plan.mRequests[Index].mExternalBuffer)
+				{
+					continue;
+				}
+				if (!Commands)
+				{
+					auto Created = Device.CreateCommandList(EArdaRHIQueueType::Graphics);
+					if (!Created)
+					{
+						return Created.mStatus;
+					}
+					Commands = eastl::move(Created.mValue);
+					if (auto Status = Commands->Open(); !Status)
+					{
+						return Status;
+					}
+				}
+				if (auto Status = Commands->WriteBuffer(*Buffer, Initializer.GetData(), Initializer.GetSize()); !Status)
+				{
+					return Status;
+				}
+				if (auto Status = Commands->SetBufferState(*Buffer, EArdaRHIResourceState::Common); !Status)
+				{
+					return Status;
+				}
+			}
+			if (!Commands)
+			{
+				return {};
+			}
+			if (auto Status = Commands->Close(); !Status)
+			{
+				return Status;
+			}
+			const auto Submitted = Device.ExecuteCommandList(Commands);
+			if (!Submitted)
+			{
+				return Submitted.mStatus;
+			}
+			// Initialization is a cold allocation operation. Publish no pool until its contents
+			// are complete; failed preparation discards these allocations and can safely retry.
+			return Device.WaitForSubmission(Submitted.mValue);
+		}
+	}
+
+	FArdaRHIStatus FArdaInductorRuntime::MaterializePlan(FArdaDependencyGraph::FArdaImpl& Graph)
+	{
+		if (Graph.mCompile.mExecution->mRuntime || !Graph.mCompile.mExecution->mDevice || !Graph.mCompile.mMemoryPlan)
+		{
+			return MakeArdaInductorRuntimeError(
+			    "Materialization requires a compiled plan, a device and no previous physical pool.");
 		}
 
-		struct FPreparationGuard
+		struct FArdaPreparationGuard
 		{
 			bool& mExecuting;
 
-			explicit FPreparationGuard(bool& Executing)
+			explicit FArdaPreparationGuard(bool& Executing)
 			    : mExecuting(Executing)
 			{
 				mExecuting = true;
 			}
 
-			~FPreparationGuard()
+			~FArdaPreparationGuard()
 			{
 				mExecuting = false;
 			}
@@ -40,15 +98,15 @@ namespace arda
 		try
 		{
 			// Stage host storage before publishing the physical runtime. A failed preparation
-			// retains the pending logical plan and cannot expose partially committed pools.
-			auto PersistentBuffers = Graph.mPersistentBuffers;
-			auto PersistentTextures = Graph.mPersistentTextures;
+			// retains the compiled plan and cannot expose partially committed pools.
+			auto PersistentBuffers = Graph.mCompile.mExecution->mPersistentBuffers;
+			auto PersistentTextures = Graph.mCompile.mExecution->mPersistentTextures;
 			PersistentBuffers.resize(Graph.mResources.size());
 			PersistentTextures.resize(Graph.mResources.size());
 			// Compilation released the retired pool. Flush deferred native destruction before
 			// allocating its replacement, preserving the graph's peak-allocation boundary.
-			Graph.mDevice->RunGarbageCollection();
-			if (auto Status = Prepare(Graph, *Graph.mPendingMemoryPlan); !Status)
+			Graph.mCompile.mExecution->mDevice->RunGarbageCollection();
+			if (auto Status = Prepare(Graph, *Graph.mCompile.mMemoryPlan); !Status)
 			{
 				return Status;
 			}
@@ -56,37 +114,38 @@ namespace arda
 			{
 				if (Graph.mResources[Index].mbPersistent)
 				{
-					PersistentBuffers[Index] = Graph.mRuntime->mFrames.front()->mMemory.mBuffers[Index];
-					PersistentTextures[Index] = Graph.mRuntime->mFrames.front()->mMemory.mTextures[Index];
+					PersistentBuffers[Index] =
+					    Graph.mCompile.mExecution->mRuntime->mFrames.front()->mMemory.mBuffers[Index];
+					PersistentTextures[Index] =
+					    Graph.mCompile.mExecution->mRuntime->mFrames.front()->mMemory.mTextures[Index];
 				}
 			}
-			Graph.mPersistentBuffers = eastl::move(PersistentBuffers);
-			Graph.mPersistentTextures = eastl::move(PersistentTextures);
-			Graph.mPendingMemoryPlan.reset();
+			Graph.mCompile.mExecution->mPersistentBuffers = eastl::move(PersistentBuffers);
+			Graph.mCompile.mExecution->mPersistentTextures = eastl::move(PersistentTextures);
 			return {};
 		}
 		catch (const std::exception& Error)
 		{
-			Graph.mRuntime.reset();
+			Graph.mCompile.mExecution->mRuntime.reset();
 			return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what());
 		}
 		catch (...)
 		{
-			Graph.mRuntime.reset();
+			Graph.mCompile.mExecution->mRuntime.reset();
 			return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
 			    "Graph resource preparation threw an exception.");
 		}
 	}
 
 	FArdaRHIStatus FArdaInductorRuntime::Prepare(FArdaDependencyGraph::FArdaImpl& Graph,
-	    FArdaMemoryPlan Plan,
+	    const FArdaMemoryPlan& Plan,
 	    const eastl::vector<FArdaInductorReuseFrame>* Reuse)
 	{
-		if (!Graph.mDevice)
+		if (!Graph.mCompile.mExecution->mDevice)
 		{
 			return MakeArdaInductorRuntimeError("Device-bound graph preparation requires a device.");
 		}
-		if (Graph.mRuntime)
+		if (Graph.mCompile.mExecution->mRuntime)
 		{
 			return MakeArdaInductorRuntimeError(
 			    "Release the previous graph pool before materializing its replacement.");
@@ -108,23 +167,24 @@ namespace arda
 				return MakeArdaInductorRuntimeError("A compiled node handle is stale.");
 			}
 			const auto& Node = Record->mPayload;
-			if (Node.mDesc.mbPipelineStageOnly)
+			if (Graph.GetNodeDescription(Node).mbPipelineStageOnly)
 			{
-				if (!Node.mDesc.mAccesses.empty() || !Node.mDesc.mColorTargets.empty() || Node.mDesc.mDepthTarget)
+				if (!Graph.GetNodeDescription(Node).mAccesses.empty() ||
+				    !Graph.GetNodeDescription(Node).mColorTargets.empty() ||
+				    Graph.GetNodeDescription(Node).mDepthTarget)
 				{
 					return MakeArdaInductorRuntimeError("A pipeline-stage-only node cannot access physical resources.");
 				}
 				SkippedNodes.insert(Handle.GetIndex());
 			}
 			else if (Node.mDefinition->mKind == EArdaDependencyNodeKind::Synchronization &&
-			    !Node.mDefinition->mRecord && Node.mDesc.mAccesses.empty())
+			    !Node.mDefinition->mRecord && Graph.GetNodeDescription(Node).mAccesses.empty())
 			{
 				// Pure synchronization is represented by contracted dependency edges.
 				SkippedNodes.insert(Handle.GetIndex());
 			}
 		}
 		auto Runtime = eastl::make_unique<FArdaInductorRuntime>();
-		Runtime->mMemoryPlan = Plan;
 		Runtime->mBinding = eastl::make_shared<FArdaInductorGraphBinding>();
 		Runtime->mBinding->mGraph = &Graph;
 		if (Reuse && Reuse->size() != Graph.mOptions.mFramesInFlight)
@@ -192,7 +252,15 @@ namespace arda
 			Runtime->mReuseFrames = eastl::move(Reusable);
 			Runtime->mAdaptiveSeed = CloneArdaInductorTimingInputs(Graph);
 		}
-		Graph.mRuntime = eastl::move(Runtime);
+		// Adaptive schedule preparation reuses already initialized physical allocations.
+		if (!Reuse)
+		{
+			if (auto Status = InitializeNewPersistentBuffers(Graph, Plan, *Runtime); !Status)
+			{
+				return Status;
+			}
+		}
+		Graph.mCompile.mExecution->mRuntime = eastl::move(Runtime);
 		return {};
 	}
 }

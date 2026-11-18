@@ -12,6 +12,50 @@ namespace arda
 {
 	namespace
 	{
+		template <class ResourceType, class ImportType, class UseType>
+		auto BindVersionedResource(FArdaGraphEdit& Edit,
+		    const TArdaRHIRef<ResourceType>& Resource,
+		    eastl::string Name,
+		    uint64_t Revision,
+		    EArdaGraphExternalResourceKind Kind,
+		    ImportType&& Import,
+		    UseType&& Use)
+		{
+			using FArdaResult = decltype(Use(FArdaDependencyResourceHandle{}));
+			if (!Edit.CanRecord())
+			{
+				return FArdaResult{};
+			}
+			if (!Resource || Name.empty())
+			{
+				Edit.ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+				    "Versioned imports require non-null storage and a nonempty name."));
+				return FArdaResult{};
+			}
+			auto Handle = FArdaGraphAccess::FindPhysicalResource(FArdaGraphAccess::GetGraph(Edit),
+			    GetArdaGraphPhysicalIdentity(Resource),
+			    Kind);
+			const auto Named = Edit.GetGraph().FindResource(Name);
+			if (Named && Named != Handle)
+			{
+				Edit.ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+				    "A versioned import name already identifies different storage."));
+				return FArdaResult{};
+			}
+			if (!Handle)
+			{
+				auto Imported = Import(eastl::move(Name));
+				Edit.ReportError(Imported.mStatus);
+				if (!Imported)
+				{
+					return FArdaResult{};
+				}
+				Handle = Imported.mValue;
+			}
+			Edit.SetResourceRevision(Handle, Revision);
+			return Edit.GetStatus() ? Use(Handle) : FArdaResult{};
+		}
+
 		/** Texture has already been validated by the calling operation's UseTexture check. */
 		bool ResolveBufferLayout(FArdaGraphEdit& Edit,
 		    FArdaGraphTexture Texture,
@@ -51,7 +95,7 @@ namespace arda
 			return {};
 		}
 		FArdaDependencyResourceDesc Desc;
-		Desc.mName = Name.empty() ? Edit.MakeName("buffer") : eastl::move(Name);
+		Desc.mName = FArdaGraphAccess::ResolveResourceName(Edit, "buffer", eastl::move(Name));
 		Desc.mBuffer = Description;
 		Desc.mbPersistent = Lifetime == EArdaGraphResourceLifetime::Persistent;
 		auto Result = FArdaGraphAccess::CreateResource(FArdaGraphAccess::GetGraph(Edit), eastl::move(Desc));
@@ -75,7 +119,7 @@ namespace arda
 			return {};
 		}
 		FArdaDependencyResourceDesc Desc;
-		Desc.mName = Name.empty() ? Edit.MakeName("texture") : eastl::move(Name);
+		Desc.mName = FArdaGraphAccess::ResolveResourceName(Edit, "texture", eastl::move(Name));
 		Desc.mbTexture = true;
 		Desc.mTexture = Description;
 		Desc.mbPersistent = Lifetime == EArdaGraphResourceLifetime::Persistent;
@@ -84,17 +128,91 @@ namespace arda
 		return Result ? Edit.UseTexture(Result.mValue) : FArdaGraphTexture{};
 	}
 
+	FArdaGraphBuffer AllocateInitializedBuffer(FArdaGraphEdit& Edit,
+	    const FArdaRHIBufferDesc& Description,
+	    eastl::vector<uint8_t> Bytes,
+	    eastl::string Name)
+	{
+		if (!Edit.CanRecord())
+		{
+			return {};
+		}
+		if (Bytes.empty())
+		{
+			Edit.ReportError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			    "Initialized buffers require a nonempty byte prefix."));
+			return {};
+		}
+		FArdaDependencyResourceDesc Desc;
+		Desc.mName = FArdaGraphAccess::ResolveResourceName(Edit, "buffer", eastl::move(Name));
+		Desc.mBuffer = Description;
+		Desc.mbPersistent = true;
+		Desc.mBufferInitializer = FArdaGraphBufferInitializer(eastl::move(Bytes));
+		auto Result = FArdaGraphAccess::CreateResource(FArdaGraphAccess::GetGraph(Edit), eastl::move(Desc));
+		Edit.ReportError(Result.mStatus);
+		return Result ? Edit.UseBuffer(Result.mValue) : FArdaGraphBuffer{};
+	}
+
 	FArdaGraphBuffer BindBuffer(FArdaGraphEdit& Edit, FArdaRHIBufferRef Buffer, eastl::string Name)
 	{
 		if (!Edit.CanRecord())
 		{
 			return {};
 		}
-		auto Result = FArdaGraphAccess::ImportBuffer(FArdaGraphAccess::GetGraph(Edit),
-		    Name.empty() ? Edit.MakeName("external-buffer") : eastl::move(Name),
-		    eastl::move(Buffer));
+		auto Result =
+		    FArdaGraphAccess::ImportBuffer(FArdaGraphAccess::GetGraph(Edit), eastl::move(Name), eastl::move(Buffer));
 		Edit.ReportError(Result.mStatus);
 		return Result ? Edit.UseBuffer(Result.mValue) : FArdaGraphBuffer{};
+	}
+
+	FArdaGraphBuffer DeclareExternalBuffer(FArdaGraphEdit& Edit, const FArdaRHIBufferDesc& Expected, eastl::string Name)
+	{
+		if (!Edit.CanRecord())
+		{
+			return {};
+		}
+		FArdaDependencyResourceDesc Desc;
+		Desc.mName = eastl::move(Name);
+		Desc.mBuffer = Expected;
+		Desc.mExternalKind = EArdaGraphExternalResourceKind::Buffer;
+		auto Result = FArdaGraphAccess::CreateResource(FArdaGraphAccess::GetGraph(Edit), eastl::move(Desc));
+		Edit.ReportError(Result.mStatus);
+		return Result ? Edit.UseBuffer(Result.mValue) : FArdaGraphBuffer{};
+	}
+
+	FArdaGraphTexture DeclareExternalTexture(FArdaGraphEdit& Edit,
+	    const FArdaRHITextureDesc& Expected,
+	    eastl::string Name)
+	{
+		if (!Edit.CanRecord())
+		{
+			return {};
+		}
+		FArdaDependencyResourceDesc Desc;
+		Desc.mName = eastl::move(Name);
+		Desc.mTexture = Expected;
+		Desc.mbTexture = true;
+		Desc.mExternalKind = EArdaGraphExternalResourceKind::Texture;
+		auto Result = FArdaGraphAccess::CreateResource(FArdaGraphAccess::GetGraph(Edit), eastl::move(Desc));
+		Edit.ReportError(Result.mStatus);
+		return Result ? Edit.UseTexture(Result.mValue) : FArdaGraphTexture{};
+	}
+
+	FArdaGraphAccelerationStructure DeclareExternalAccelerationStructure(FArdaGraphEdit& Edit,
+	    const FArdaRHIAccelStructDesc& Expected,
+	    eastl::string Name)
+	{
+		if (!Edit.CanRecord())
+		{
+			return {};
+		}
+		FArdaDependencyResourceDesc Desc;
+		Desc.mName = eastl::move(Name);
+		Desc.mAccelerationStructure = ArdaGraphAccelerationStructureShape(Expected);
+		Desc.mExternalKind = EArdaGraphExternalResourceKind::AccelerationStructure;
+		auto Result = FArdaGraphAccess::CreateResource(FArdaGraphAccess::GetGraph(Edit), eastl::move(Desc));
+		Edit.ReportError(Result.mStatus);
+		return Result ? Edit.UseAccelerationStructure(Result.mValue) : FArdaGraphAccelerationStructure{};
 	}
 
 	FArdaGraphTexture BindTexture(FArdaGraphEdit& Edit, FArdaRHITextureRef Texture, eastl::string Name)
@@ -103,9 +221,8 @@ namespace arda
 		{
 			return {};
 		}
-		auto Result = FArdaGraphAccess::ImportTexture(FArdaGraphAccess::GetGraph(Edit),
-		    Name.empty() ? Edit.MakeName("external-texture") : eastl::move(Name),
-		    eastl::move(Texture));
+		auto Result =
+		    FArdaGraphAccess::ImportTexture(FArdaGraphAccess::GetGraph(Edit), eastl::move(Name), eastl::move(Texture));
 		Edit.ReportError(Result.mStatus);
 		return Result ? Edit.UseTexture(Result.mValue) : FArdaGraphTexture{};
 	}
@@ -119,10 +236,72 @@ namespace arda
 			return {};
 		}
 		auto Result = FArdaGraphAccess::ImportAccelerationStructure(FArdaGraphAccess::GetGraph(Edit),
-		    Name.empty() ? Edit.MakeName("external-acceleration-structure") : eastl::move(Name),
+		    eastl::move(Name),
 		    eastl::move(AccelerationStructure));
 		Edit.ReportError(Result.mStatus);
 		return Result ? Edit.UseAccelerationStructure(Result.mValue) : FArdaGraphAccelerationStructure{};
+	}
+
+	FArdaGraphBuffer BindBuffer(FArdaGraphEdit& Edit, FArdaRHIBufferRef Buffer, eastl::string Name, uint64_t Revision)
+	{
+		return BindVersionedResource(
+		    Edit,
+		    Buffer,
+		    eastl::move(Name),
+		    Revision,
+		    EArdaGraphExternalResourceKind::Buffer,
+		    [&](eastl::string Slot)
+		    {
+			    return FArdaGraphAccess::ImportBuffer(FArdaGraphAccess::GetGraph(Edit), eastl::move(Slot), Buffer);
+		    },
+		    [&](FArdaDependencyResourceHandle Handle)
+		    {
+			    return Edit.UseBuffer(Handle);
+		    });
+	}
+
+	FArdaGraphTexture BindTexture(FArdaGraphEdit& Edit,
+	    FArdaRHITextureRef Texture,
+	    eastl::string Name,
+	    uint64_t Revision)
+	{
+		return BindVersionedResource(
+		    Edit,
+		    Texture,
+		    eastl::move(Name),
+		    Revision,
+		    EArdaGraphExternalResourceKind::Texture,
+		    [&](eastl::string Slot)
+		    {
+			    return FArdaGraphAccess::ImportTexture(FArdaGraphAccess::GetGraph(Edit), eastl::move(Slot), Texture);
+		    },
+		    [&](FArdaDependencyResourceHandle Handle)
+		    {
+			    return Edit.UseTexture(Handle);
+		    });
+	}
+
+	FArdaGraphAccelerationStructure BindAccelerationStructure(FArdaGraphEdit& Edit,
+	    FArdaRHIAccelStructRef Structure,
+	    eastl::string Name,
+	    uint64_t Revision)
+	{
+		return BindVersionedResource(
+		    Edit,
+		    Structure,
+		    eastl::move(Name),
+		    Revision,
+		    EArdaGraphExternalResourceKind::AccelerationStructure,
+		    [&](eastl::string Slot)
+		    {
+			    return FArdaGraphAccess::ImportAccelerationStructure(FArdaGraphAccess::GetGraph(Edit),
+			        eastl::move(Slot),
+			        Structure);
+		    },
+		    [&](FArdaDependencyResourceHandle Handle)
+		    {
+			    return Edit.UseAccelerationStructure(Handle);
+		    });
 	}
 
 	FArdaGraphBuffer Upload(FArdaGraphEdit& Edit,
@@ -255,8 +434,8 @@ namespace arda
 			return {};
 		}
 		FArdaMemoryCopyAccelerationStructureParameters Parameters;
-		Parameters.mSource = Source.GetHandle();
-		Parameters.mDestination = Destination.GetHandle();
+		Parameters.mSource = Source;
+		Parameters.mDestination = Destination;
 		CopyAccelerationStructure(Edit, eastl::move(Parameters));
 		return Edit.GetStatus() ? Destination : FArdaGraphAccelerationStructure{};
 	}
@@ -268,7 +447,7 @@ namespace arda
 			return {};
 		}
 		FArdaMemoryClearBufferParameters Parameters;
-		Parameters.mDestination = Destination.GetHandle();
+		Parameters.mDestination = Destination;
 		Parameters.mValue = Value;
 		ClearBuffer(Edit, eastl::move(Parameters));
 		return Edit.GetStatus() ? Destination : FArdaGraphBuffer{};

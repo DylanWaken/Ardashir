@@ -1,4 +1,5 @@
 #include <cstring>
+#include <new>
 #include "RHI/Scheduling/ArdaRHICommandListImpl.h"
 #include "RHI/Device/ArdaRHIDeviceImpl.h"
 
@@ -35,8 +36,7 @@ namespace arda::detail
 		{
 			return Failure<FArdaRHIGpuFenceRef>(eastl::move(Native.mStatus));
 		}
-		return {
-		    FArdaRHIGpuFenceRef(new FArdaGpuFence("GpuFence", eastl::move(Native.mValue), this, mLifetimeTracker)),
+		return {FArdaRHIGpuFenceRef(new FArdaGpuFence("GpuFence", eastl::move(Native.mValue), this, mLifetimeTracker)),
 		    {}};
 	}
 
@@ -158,115 +158,192 @@ namespace arda::detail
 		{
 			return Failure<FArdaRHICommandListRef>(eastl::move(Native.mStatus));
 		}
-		return {
-		    FArdaRHICommandListRef(new FArdaCommandList(this, Queue, eastl::move(Native.mValue), mLifetimeTracker)),
+		return {FArdaRHICommandListRef(new FArdaCommandList(this, Queue, eastl::move(Native.mValue), mLifetimeTracker)),
 		    {}};
+	}
+
+	FArdaRHIStatus FArdaRHIDeviceImpl::CompleteBufferCopies(FArdaCopyBatch Pending, const FArdaRHIStatus& Status)
+	{
+		FArdaRHIStatus FirstError = Status;
+
+		for (auto& Completion : Pending)
+		{
+			FArdaRHIStatus CopyStatus = Status;
+			FArdaRHIBufferReadbackResult ReadbackResult;
+			if (CopyStatus && Completion.mReadbackBuffer)
+			{
+				try
+				{
+					ReadbackResult.mValue.resize(Completion.mByteSize);
+					auto Mapping = mDevice->MapBuffer(Completion.mReadbackBuffer, 0, Completion.mByteSize);
+					if (Mapping)
+					{
+						std::memcpy(ReadbackResult.mValue.data(), Mapping.mValue, Completion.mByteSize);
+						mDevice->UnmapBuffer(Completion.mReadbackBuffer);
+					}
+					else
+					{
+						CopyStatus = eastl::move(Mapping.mStatus);
+					}
+				}
+				catch (const std::bad_alloc&)
+				{
+					CopyStatus =
+					    FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, "Could not allocate readback bytes.");
+				}
+				if (!CopyStatus)
+				{
+					ReadbackResult.mValue.clear();
+				}
+			}
+			ReadbackResult.mStatus = CopyStatus;
+
+			if (Completion.mOutput)
+			{
+				if (CopyStatus)
+				{
+					*Completion.mOutput = eastl::move(ReadbackResult.mValue);
+				}
+				else
+				{
+					Completion.mOutput->clear();
+				}
+			}
+			try
+			{
+				if (Completion.mUploadCallback)
+				{
+					Completion.mUploadCallback(CopyStatus);
+				}
+				if (Completion.mReadbackCallback)
+				{
+					Completion.mReadbackCallback(eastl::move(ReadbackResult));
+				}
+			}
+			catch (...)
+			{
+				if (CopyStatus)
+				{
+					CopyStatus = FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+					    "A buffer-copy completion callback threw an exception.");
+				}
+			}
+			if (FirstError && !CopyStatus)
+			{
+				FirstError = CopyStatus;
+			}
+		}
+		return FirstError;
+	}
+
+	void FArdaRHIDeviceImpl::RetireBufferCopies(uint64_t Submission, const FArdaRHIStatus& Status)
+	{
+		FArdaCopyBatch Pending;
+		{
+			std::lock_guard<std::mutex> Lock(mCopyMutex);
+			const auto Found = mPendingCopies.find(Submission);
+			if (Found == mPendingCopies.end())
+			{
+				return;
+			}
+			Pending = eastl::move(Found->second);
+			mPendingCopies.erase(Found);
+		}
+		(void)CompleteBufferCopies(eastl::move(Pending), Status);
+	}
+
+	FArdaRHIStatus FArdaRHIDeviceImpl::WaitForSubmission(uint64_t Submission)
+	{
+		auto Status = mDevice->WaitForSubmission(Submission);
+		RetireBufferCopies(Submission, Status);
+		return Status;
+	}
+
+	TArdaRHIResult<bool> FArdaRHIDeviceImpl::PollSubmission(uint64_t Submission)
+	{
+		auto Ready = mDevice->PollSubmission(Submission);
+		if (Ready ? Ready.mValue : Ready.mStatus.mCode != EArdaRHIResult::Unsupported)
+		{
+			RetireBufferCopies(Submission, Ready.mStatus);
+		}
+		return Ready;
+	}
+
+	void FArdaRHIDeviceImpl::PollBufferCopies()
+	{
+		eastl::vector<uint64_t> Submissions;
+		{
+			std::lock_guard<std::mutex> Lock(mCopyMutex);
+			Submissions.reserve(mPendingCopies.size());
+			for (const auto& Entry : mPendingCopies)
+			{
+				Submissions.push_back(Entry.first);
+			}
+		}
+		for (uint64_t Submission : Submissions)
+		{
+			(void)PollSubmission(Submission);
+		}
+	}
+
+	FArdaRHIStatus FArdaRHIDeviceImpl::WaitForIdle()
+	{
+		decltype(mPendingCopies) Pending;
+		{
+			std::lock_guard<std::mutex> Lock(mCopyMutex);
+			Pending.swap(mPendingCopies);
+		}
+		const auto Status = mDevice->WaitForIdle();
+		for (auto& Entry : Pending)
+		{
+			(void)CompleteBufferCopies(eastl::move(Entry.second), Status);
+		}
+		return Status;
 	}
 
 	TArdaRHIResult<uint64_t> FArdaRHIDeviceImpl::FinishCommandListSubmission(FArdaCommandList& CommandList,
 	    TArdaRHIResult<uint64_t> Submitted)
 	{
-		auto Completions = CommandList.TakeCopyCompletions();
-		if (Completions.empty())
+		auto Pending = CommandList.TakeCopyCompletions();
+		if (Pending.empty())
 		{
 			return Submitted;
 		}
-
-		const bool bBlocking = eastl::any_of(Completions.begin(),
-		    Completions.end(),
-		    [](const FArdaPendingBufferCopyCompletion& Completion)
+		const bool Blocking = eastl::any_of(Pending.begin(),
+		    Pending.end(),
+		    [](const auto& Copy)
 		    {
-			    return Completion.mbBlocking;
+			    return Copy.mbBlocking;
 		    });
-		auto ProviderDevice = mDevice;
-		const uint64_t Submission = Submitted.mValue;
-		const FArdaRHIStatus SubmissionStatus = Submitted.mStatus;
-		const auto Complete = [ProviderDevice, Submission, SubmissionStatus](
-		                          eastl::vector<FArdaPendingBufferCopyCompletion> Pending)
+		if (Submitted && Submitted.mValue && !Blocking)
 		{
-			FArdaRHIStatus WaitStatus = SubmissionStatus;
-			if (WaitStatus && Submission != 0)
+			try
 			{
-				WaitStatus = ProviderDevice->WaitForSubmission(Submission);
+				std::lock_guard<std::mutex> Lock(mCopyMutex);
+				auto& Batch = mPendingCopies[Submitted.mValue];
+				if (Batch.empty())
+				{
+					Batch.swap(Pending);
+				}
+				else
+				{
+					Batch.reserve(Batch.size() + Pending.size());
+					for (auto& Copy : Pending)
+					{
+						Batch.push_back(eastl::move(Copy));
+					}
+				}
+				return Submitted;
 			}
-			FArdaRHIStatus FirstError = WaitStatus;
-
-			for (auto& Completion : Pending)
+			catch (const std::bad_alloc&)
 			{
-				FArdaRHIStatus CopyStatus = WaitStatus;
-				FArdaRHIBufferReadbackResult ReadbackResult;
-				ReadbackResult.mStatus = CopyStatus;
-				if (CopyStatus && Completion.mReadbackBuffer)
-				{
-					auto Mapping = ProviderDevice->MapBuffer(Completion.mReadbackBuffer, 0, Completion.mByteSize);
-					if (!Mapping)
-					{
-						CopyStatus = eastl::move(Mapping.mStatus);
-						ReadbackResult.mStatus = CopyStatus;
-					}
-					else
-					{
-						ReadbackResult.mValue.resize(Completion.mByteSize);
-						std::memcpy(ReadbackResult.mValue.data(), Mapping.mValue, Completion.mByteSize);
-						ProviderDevice->UnmapBuffer(Completion.mReadbackBuffer);
-					}
-				}
-
-				if (Completion.mOutput)
-				{
-					if (CopyStatus)
-					{
-						*Completion.mOutput = ReadbackResult.mValue;
-					}
-					else
-					{
-						Completion.mOutput->clear();
-					}
-				}
-				try
-				{
-					if (Completion.mUploadCallback)
-					{
-						Completion.mUploadCallback(CopyStatus);
-					}
-					if (Completion.mReadbackCallback)
-					{
-						Completion.mReadbackCallback(eastl::move(ReadbackResult));
-					}
-				}
-				catch (...)
-				{
-					if (CopyStatus)
-					{
-						CopyStatus = FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
-						    "A buffer-copy completion callback threw an exception.");
-					}
-				}
-				if (FirstError && !CopyStatus)
-				{
-					FirstError = CopyStatus;
-				}
+				// The provider accepted this work. Finish it inline if retaining the batch fails.
 			}
-			return FirstError;
-		};
-
-		if (bBlocking)
-		{
-			const FArdaRHIStatus CompletionStatus = Complete(eastl::move(Completions));
-			if (!CompletionStatus)
-			{
-				return Failure<uint64_t>(CompletionStatus);
-			}
-			return Submitted;
 		}
-
-		std::thread(
-		    [Complete, Pending = eastl::move(Completions)]() mutable
-		    {
-			    (void)Complete(eastl::move(Pending));
-		    })
-		    .detach();
-		return Submitted;
+		const auto Status =
+		    Submitted && Submitted.mValue ? mDevice->WaitForSubmission(Submitted.mValue) : Submitted.mStatus;
+		const auto Completed = CompleteBufferCopies(eastl::move(Pending), Status);
+		return Completed ? Submitted : Failure<uint64_t>(Completed);
 	}
 
 	TArdaRHIResult<uint64_t> FArdaRHIDeviceImpl::ExecuteCommandList(const FArdaRHICommandListRef& CommandList)

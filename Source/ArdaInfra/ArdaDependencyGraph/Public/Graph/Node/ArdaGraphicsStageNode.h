@@ -3,42 +3,27 @@
 
 #include "Graph/Node/ArdaDependencyNode.h"
 
-namespace arda
+namespace arda::node_detail
 {
 	/** A shader/fixed-function operation returning a typed logical value.
 	 * Describe declares this stage's shader, bindings and physical effects, without requesting a pipeline.
 	 * Vertex owns the input layout; Raster owns fixed-function configuration; Pixel owns the attachments.
-	 * Macro-authored parameters mark their logical input with ARDA_NODE_STAGE_INPUT; legacy schemas use mInput.
-	 * Mesh accepts an empty payload when amplification is absent. Override GetStageInput for a custom layout.
+	 * Parameters declare their logical input with ARDA_NODE_STAGE_INPUT.
+	 * Mesh accepts an empty payload when amplification is absent.
 	 * Optional ConfigureGraphics fills dynamic draw inputs; the compiler issues the single assembled draw.
 	 * Optional FetchBuffer(Edit, const Parameters&, const FArdaStageBufferRequest&) registers a materializer.
 	 */
 	template <class Derived, class Parameters, EArdaGraphicsStage Stage>
-	class TArdaGraphicsStageNode : public TArdaGraphicsDependencyNode<Derived, Parameters>
+	class TArdaGraphicsStageDefinition
+	    : public TArdaExecutionNode<Derived, Parameters, EArdaDependencyNodeKind::Graphics>
 	{
 		static_assert(Stage != EArdaGraphicsStage::None && Stage <= EArdaGraphicsStage::Mesh,
 		    "A graphics stage template requires a recognized stage.");
-		using FArdaBase = TArdaGraphicsDependencyNode<Derived, Parameters>;
+		using FArdaBase = TArdaExecutionNode<Derived, Parameters, EArdaDependencyNodeKind::Graphics>;
 
 	public:
 		static constexpr EArdaGraphicsStage mGraphicsStage = Stage;
 		using FArdaStageResult = TArdaGraphStageValue<GetArdaGraphicsStageOutput(Stage)>;
-
-		static FArdaGraphStageValue GetStageInput(const Parameters& P)
-		{
-			if constexpr (TArdaNodeParameterTraits<Parameters>::value)
-			{
-				return Parameters::GetNodeParameterMetadata().GetStageInput(P);
-			}
-			else if constexpr (Stage == EArdaGraphicsStage::Vertex || Stage == EArdaGraphicsStage::Amplification)
-			{
-				return {};
-			}
-			else
-			{
-				return P.mInput;
-			}
-		}
 
 		/** Shader-only stages need no recording hook. ConfigureGraphics is used by the assembled draw. */
 		template <class Node = Derived>
@@ -80,6 +65,20 @@ namespace arda
 			return Result(FArdaBase::Invoke(Edit, eastl::forward<Arguments>(Values)...));
 		}
 
+		/** Typed stage arrays feed the next stage directly, preserving each lane's producer identity. */
+		template <class... Arguments, eastl::enable_if_t<ArdaHasNodeArray<Arguments...>, int> = 0>
+		static auto Invoke(FArdaGraphEdit& Edit, Arguments&&... Values)
+		    -> decltype(FArdaBase::Invoke(Edit, eastl::forward<Arguments>(Values)...),
+		        TArdaNodeArray<FArdaStageResult>{})
+		{
+			return FArdaBase::Invoke(Edit, eastl::forward<Arguments>(Values)...)
+			    .Map(
+			        [](const FArdaGraphOperation& Operation)
+			        {
+				        return Result(Operation);
+			        });
+		}
+
 		FArdaStageResult operator()(FArdaGraphEdit& Edit, Parameters P, eastl::string Name = {}) const
 		{
 			return Invoke(Edit, eastl::move(P), eastl::move(Name));
@@ -118,20 +117,4 @@ namespace arda
 		}
 	};
 
-	template <class Node, class Parameters>
-	using TArdaVertexStageNode = TArdaGraphicsStageNode<Node, Parameters, EArdaGraphicsStage::Vertex>;
-	template <class Node, class Parameters>
-	using TArdaRasterStageNode = TArdaGraphicsStageNode<Node, Parameters, EArdaGraphicsStage::Raster>;
-	template <class Node, class Parameters>
-	using TArdaPixelStageNode = TArdaGraphicsStageNode<Node, Parameters, EArdaGraphicsStage::Pixel>;
-	template <class Node, class Parameters>
-	using TArdaHullStageNode = TArdaGraphicsStageNode<Node, Parameters, EArdaGraphicsStage::Hull>;
-	template <class Node, class Parameters>
-	using TArdaDomainStageNode = TArdaGraphicsStageNode<Node, Parameters, EArdaGraphicsStage::Domain>;
-	template <class Node, class Parameters>
-	using TArdaGeometryStageNode = TArdaGraphicsStageNode<Node, Parameters, EArdaGraphicsStage::Geometry>;
-	template <class Node, class Parameters>
-	using TArdaAmplificationStageNode = TArdaGraphicsStageNode<Node, Parameters, EArdaGraphicsStage::Amplification>;
-	template <class Node, class Parameters>
-	using TArdaMeshStageNode = TArdaGraphicsStageNode<Node, Parameters, EArdaGraphicsStage::Mesh>;
 }

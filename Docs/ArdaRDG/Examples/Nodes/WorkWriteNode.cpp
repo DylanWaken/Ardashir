@@ -5,14 +5,6 @@ namespace arda
 {
 	ARDA_DEFINE_GRAPH_NODE(FArdaWorkWriteNode, WorkWrite);
 
-	class FArdaRecipeWorkShader final : public FArdaGlobalShader
-	{
-	public:
-		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
-			ARDA_SHADER_BUFFER_UAV(mOutput, 0, 0, EArdaRHIShaderStage::WorkGraph)
-		ARDA_END_SHADER_PARAMETER_STRUCT()
-		ARDA_DECLARE_GLOBAL_SHADER(FArdaRecipeWorkShader);
-	};
 	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaRecipeWorkShader,
 	    ARDA_RDG_RECIPE_SHADER_DIR "/WorkWrite.hlsl",
 	    "RecipeWork",
@@ -44,14 +36,6 @@ namespace arda
 	FArdaDependencyNodeMetadata FArdaWorkWriteNode::GetMetadata()
 	{
 		return {"recipe.work-write", 1};
-	}
-
-	eastl::string FArdaWorkWriteNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		FArdaDependencyKeyBuilder Key;
-		Key.Resource(P.mOutput);
-		Key.Value(P.mValue); // CPU input record is frozen with this instance.
-		return Key.Build();
 	}
 
 	TArdaRHIResult<eastl::shared_ptr<const FArdaWorkWriteNode::FArdaState>> FArdaWorkWriteNode::Prepare(
@@ -87,7 +71,6 @@ namespace arda
 	FArdaDependencyNodeDesc FArdaWorkWriteNode::Describe(const FArdaParameters& P, const FArdaState& State)
 	{
 		FArdaDependencyNodeDesc D;
-		D.BindShader<FArdaRecipeWorkShader::FArdaParameters>({{"mOutput", P.mOutput}});
 		D.mPipelineStages = {State.mStage};
 		D.mPipelines = {{"default", 0, EArdaPipelineStateKind::WorkGraph, {}, State.mConfiguration}};
 		return D;

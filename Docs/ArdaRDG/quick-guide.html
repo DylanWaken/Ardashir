@@ -35,6 +35,7 @@
         <a href="architecture.html">Architecture</a>
         <a href="resources.html">Resources</a>
         <a href="passes.html">Typed nodes</a>
+        <a href="batching.html">Batching and parallel edits</a>
         <a href="compilation.html">Compilation</a>
         <a href="execution.html">Execution</a>
         <a href="debugging.html">Debugging</a>
@@ -49,7 +50,7 @@
       </nav>
       <article><header class="page-header"><h1>Renderer quick guide</h1><p>Invoke registered operations, wire logical outputs, compile once and execute repeatedly.</p></header>
 <section id="objectives"><h2>Learning objectives and prerequisites</h2><p>Learn the renderer-facing composition model. Start with <a href="getting-started.html#lifecycle">graph edit lifetime</a> and <a href="passes.html#freezing">frozen parameters</a>. For complete class definitions and all pipeline families, use <a href="node-recipes.html">the node recipes</a>.</p></section>
-<section id="persistent-setup"><h2>Library setup and ownership</h2><p>A node class contains its own shader registration, parameter schema, output declaration and execution hook. The common base handles type registration and shared immutable preparation. A node declares its hardware and environment needs through static <code>GetRequirements</code>; unsupported attachment fails before its output declaration or preparation. See <a href="feature-requirements.html">feature admission and failure handling</a>. The renderer does not create binding layouts or binding sets. Attachment derives layouts from shader metadata. Compilation infers pipeline patterns and plans storage; the first submission allocates declared outputs and prepares native PSOs, descriptor tables and shader tables for each frame slot.</p><p>Each node header publishes a named global callable with <code>ARDA_DECLARE_GRAPH_NODE(NodeClass, InvocationName)</code>, and its implementation defines it once with <code>ARDA_DEFINE_GRAPH_NODE</code>. Include the header, link the implementation and call <code>InvocationName(Edit, Parameters)</code> or pass the parameter fields directly. Invocation registers automatically; explicit <code>NodeClass::Register()</code> supports registry discovery before graph use. Read the <a href="Registering-Nodes.md">complete registration walkthrough</a> to add a node. Keep shader registration in its implementation.</p><figure><img src="Assets/rdg-resource-materialization.svg" alt="Logical resources are planned at compilation and materialized on first submission."><figcaption>Bindings are prepared when first submission materializes the compiler-selected resource plan.</figcaption></figure></section>
+<section id="persistent-setup"><h2>Library setup and ownership</h2><p>A node class contains its own shader registration, parameter schema, output declaration and execution hook. The common base handles type registration and shared immutable preparation. A node declares its hardware and environment needs through static <code>GetRequirements</code>; unsupported attachment fails before its output declaration or preparation. See <a href="feature-requirements.html">feature admission and failure handling</a>. The renderer does not create binding layouts or binding sets. Attachment records shader metadata and resource effects. Compilation creates native binding layouts, infers pipeline patterns and plans storage; the first submission allocates declared outputs and prepares native PSOs, descriptor tables and shader tables for each frame slot.</p><p>Each node header publishes a named global callable with <code>ARDA_DECLARE_GRAPH_NODE(NodeClass, InvocationName)</code>, and its implementation defines it once with <code>ARDA_DEFINE_GRAPH_NODE</code>. Include the header, link the implementation and call <code>InvocationName(Edit, Parameters)</code> or pass the parameter fields directly. The declaration macro registers the named type automatically; explicit <code>NodeClass::Register()</code> remains available for registry discovery. Read the <a href="registering-nodes.html">complete registration walkthrough</a> to add a node. Keep shader registration in its implementation.</p><figure><img src="Assets/rdg-resource-materialization.svg" alt="Logical resources are planned at compilation and materialized on first submission."><figcaption>Bindings are prepared when first submission materializes the compiler-selected resource plan.</figcaption></figure></section>
 <section id="integrated-frame"><h2>Compose operations</h2><p>This complete assembly uses the <a href="node-recipes.html#compute">compiled compute recipe</a>. The node header publishes <code>ComputeWrite</code> as its named global callable. Record an operation with <code>ComputeWrite(Edit, Parameters)</code>, or pass positional fields with <code>ComputeWrite(Edit, FArdaDependencyResourceHandle{}, uint32_t{123})</code>. The operation declares its output automatically. Readback is a separate consumer, so its resource edge determines order. Retain the graph as renderer state instead of reconstructing it for each frame.</p><pre><code>FArdaRHIStatus RunComputeRecipe(FArdaRHIDeviceRef Device)
 {
 
@@ -64,7 +65,7 @@
 	{
 		return S;
 	}
-	if (auto S = Graph.Compile(); !S)
+	if (auto S = Graph.CompileAndWait(); !S)
 	{
 		return S;
 	}
@@ -72,7 +73,7 @@
 	// Replay the same compiled graph across frames.
 	for (unsigned Frame = 0; Frame &lt; 3; ++Frame)
 	{
-		const auto Run = Graph.Execute();
+		const auto Run = Graph.ExecuteAndWait();
 		if (!Run.mStatus)
 		{
 			return Run.mStatus;

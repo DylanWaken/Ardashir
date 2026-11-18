@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Getting Started — Ardashir engineering documentation.">
+  <title>Getting Started | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaTrace pages">
+      <h2>ArdaTrace</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="instrumentation.html">Instrumentation</a>
+        <a href="viewer-and-format.html">Viewer and capture format</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaTrace</a>
+      </nav>
+      <article>
+<h1 id="getting-started">Getting Started</h1>
+<p>This guide creates a CPU trace capture and opens it in the local web viewer.</p>
+<p><img src="assets/capture-workflow.svg" alt="ArdaTrace capture workflow" /></p>
+<h2 id="build-the-runtime">1. Build the runtime</h2>
+<p>ArdaTrace is registered by the root CMake project and tracing is enabled by
+default:</p>
+<pre><code class="language-powershell">cmake -S . -B build -DARDASHIR_ENABLE_TRACE=ON
+cmake --build build --config Debug
+</code></pre>
+<p>If another CMake target uses ArdaTrace, link the module:</p>
+<pre><code class="language-cmake">target_link_libraries(MyApplication PRIVATE Ardashir::ArdaTrace)
+</code></pre>
+<p>Set <code>ARDASHIR_ENABLE_TRACE=OFF</code> when instrumentation must compile to no-ops.
+The disabled scope, counter, and marker macros do not record events.</p>
+<h2 id="include-the-public-api">2. Include the public API</h2>
+<pre><code class="language-cpp">#include &quot;ArdaScopeTimer.h&quot;
+#include &quot;ArdaTrace.h&quot;
+</code></pre>
+<p>The public API is in the <code>arda</code> namespace. Instrumentation macros are
+available globally.</p>
+<h2 id="record-a-capture">3. Record a capture</h2>
+<p>Start the process-wide capture before launching instrumented worker threads,
+then stop it after those threads are quiescent:</p>
+<pre><code class="language-cpp">#include &quot;ArdaScopeTimer.h&quot;
+#include &quot;ArdaTrace.h&quot;
+
+#include &lt;cstdio&gt;
+
+int main()
+{
+    using namespace arda;
+
+    if (!StartTraceCapture(&quot;frame.ardatrace&quot;))
+    {
+        std::fprintf(stderr, &quot;Trace start failed: %s\n&quot;, GetTraceError().c_str());
+        return 1;
+    }
+
+    SetCurrentTraceThreadName(&quot;Main Thread&quot;);
+    {
+        ARDA_NAMED_SCOPE_TIMER(&quot;Frame&quot;);
+        ARDA_TRACE_MARKER(&quot;Frame Begin&quot;);
+
+        {
+            ARDA_NAMED_SCOPE_TIMER(&quot;Rendering&quot;);
+            ARDA_TRACE_COUNTER(&quot;Visible Objects&quot;, 412);
+            // RenderFrame();
+        }
+    }
+
+    if (!StopTraceCapture())
+    {
+        std::fprintf(stderr, &quot;Trace stop failed: %s\n&quot;, GetTraceError().c_str());
+        return 1;
+    }
+}
+</code></pre>
+<p>Successful shutdown writes a completion record. A crash, forced termination, or
+missing <code>StopTraceCapture()</code> leaves an incomplete capture that the strict reader
+will reject.</p>
+<h2 id="install-the-viewer">4. Install the viewer</h2>
+<p>The viewer requires Python and Flask. From the repository root:</p>
+<pre><code class="language-powershell">python -m venv Tools\ArdaTraceViewer\.venv
+Tools\ArdaTraceViewer\.venv\Scripts\Activate.ps1
+python -m pip install -r Tools\ArdaTraceViewer\requirements.txt
+</code></pre>
+<p>Linux:</p>
+<pre><code class="language-sh">python3 -m venv Tools/ArdaTraceViewer/.venv
+. Tools/ArdaTraceViewer/.venv/bin/activate
+python3 -m pip install -r Tools/ArdaTraceViewer/requirements.txt
+</code></pre>
+<h2 id="open-the-capture">5. Open the capture</h2>
+<p>Windows:</p>
+<pre><code class="language-powershell">python Scripts\RunTraceViewer.py frame.ardatrace
+</code></pre>
+<p>Linux:</p>
+<pre><code class="language-sh">python3 Scripts/RunTraceViewer.py frame.ardatrace
+</code></pre>
+<p>Open <code>http://127.0.0.1:5000</code> in a browser. You can also launch the viewer
+without a path and upload a capture through <strong>Open capture</strong>.</p>
+<h2 id="verify-the-installation">6. Verify the installation</h2>
+<p>Run the native and viewer tests:</p>
+<pre><code class="language-powershell">python Scripts\RunAllTests.py
+cd Tools\ArdaTraceViewer
+python -m unittest discover -s tests
+</code></pre>
+<h2 id="next-step">Next step</h2>
+<p>Read <a href="instrumentation.html">Instrumentation</a> for nested scope behavior,
+thread naming, reusable registered names, and overhead guidance.</p>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaTrace · Ardashir engineering documentation</p></footer>
+</body>
+</html>

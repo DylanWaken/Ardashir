@@ -28,17 +28,17 @@ namespace arda
 		TArdaRHIResult<FArdaRHIBindingLayoutRef> InternLayout(FArdaDependencyGraph::FArdaImpl& G,
 		    const FArdaRHIBindingLayoutDesc& D)
 		{
-			for (const auto& L : G.mAutomaticLayouts)
+			for (const auto& L : G.mCompile.mExecution->mAutomaticLayouts)
 			{
 				if (!L->GetBindlessDesc() && L->GetDesc() == D)
 				{
 					return {L, {}};
 				}
 			}
-			auto R = G.mDevice->CreateBindingLayout(D);
+			auto R = G.mCompile.mExecution->mDevice->CreateBindingLayout(D);
 			if (R)
 			{
-				G.mAutomaticLayouts.push_back(R.mValue);
+				G.mCompile.mExecution->mAutomaticLayouts.push_back(R.mValue);
 			}
 			return R;
 		}
@@ -46,17 +46,17 @@ namespace arda
 		TArdaRHIResult<FArdaRHIBindingLayoutRef> InternLayout(FArdaDependencyGraph::FArdaImpl& G,
 		    const FArdaRHIBindlessLayoutDesc& D)
 		{
-			for (const auto& L : G.mAutomaticLayouts)
+			for (const auto& L : G.mCompile.mExecution->mAutomaticLayouts)
 			{
 				if (L->GetBindlessDesc() && *L->GetBindlessDesc() == D)
 				{
 					return {L, {}};
 				}
 			}
-			auto R = G.mDevice->CreateBindlessLayout(D);
+			auto R = G.mCompile.mExecution->mDevice->CreateBindlessLayout(D);
 			if (R)
 			{
-				G.mAutomaticLayouts.push_back(R.mValue);
+				G.mCompile.mExecution->mAutomaticLayouts.push_back(R.mValue);
 			}
 			return R;
 		}
@@ -202,26 +202,109 @@ namespace arda
 			return {};
 		}
 
+		FArdaRHIStatus DescribeBindlessAccesses(const FArdaDependencyGraph::FArdaImpl& G,
+		    FArdaDependencyNodeDesc& D,
+		    bool bAllowDeferredPipeline = false)
+		{
+			// Validate table identities and indexed views before interning their native layout semantics.
+			for (size_t I = 0; I < D.mBindlessTables.size(); ++I)
+			{
+				auto& B = D.mBindlessTables[I];
+				auto* P = FindRequest(D, B.mPipelineSlot);
+				const bool bDeferredPipeline = bAllowDeferredPipeline &&
+				    (D.mGraphicsStage != EArdaGraphicsStage::None || D.mRayStage != EArdaRHIShaderStage::None);
+				if ((!P && !bDeferredPipeline) || B.mName.empty() || B.mEntries.empty() || !B.mLayout.mMaxCapacity)
+				{
+					return BindingError(
+					    "A bindless table needs a name, pipeline slot, entries and bounded maximum capacity.");
+				}
+				for (size_t J = 0; J < I; ++J)
+				{
+					if (D.mBindlessTables[J].mName == B.mName ||
+					    (D.mBindlessTables[J].mPipelineSlot == B.mPipelineSlot &&
+					        D.mBindlessTables[J].mLayout.mRegisterSpace == B.mLayout.mRegisterSpace))
+					{
+						return BindingError("Duplicate bindless table name or register space.");
+					}
+				}
+				uint32_t Required = 0;
+				for (size_t E = 0; E < B.mEntries.size(); ++E)
+				{
+					const auto& R = B.mEntries[E];
+					if (R.mArrayElement >= B.mLayout.mMaxCapacity)
+					{
+						return BindingError("Bindless index exceeds maximum capacity.");
+					}
+					Required = eastl::max(Required, R.mArrayElement + 1);
+					if (!eastl::any_of(B.mLayout.mRegisterSpaces.begin(),
+					        B.mLayout.mRegisterSpaces.end(),
+					        [&](const auto& L)
+					        {
+						        return uint64_t(L.mSlot) + B.mLayout.mFirstSlot == R.mSlot && L.mType == R.mType;
+					        }))
+					{
+						return BindingError("Bindless entry does not match a declared register/type.");
+					}
+					for (size_t J = 0; J < E; ++J)
+					{
+						if (B.mEntries[J].mSlot == R.mSlot && B.mEntries[J].mType == R.mType &&
+						    B.mEntries[J].mArrayElement == R.mArrayElement)
+						{
+							return BindingError("Duplicate bindless entry index.");
+						}
+					}
+					const bool ReadOnly = R.mType == EArdaRHIBindingType::TextureSRV ||
+					    R.mType == EArdaRHIBindingType::TypedBufferSRV ||
+					    R.mType == EArdaRHIBindingType::StructuredBufferSRV ||
+					    R.mType == EArdaRHIBindingType::RawBufferSRV ||
+					    R.mType == EArdaRHIBindingType::ConstantBuffer ||
+					    R.mType == EArdaRHIBindingType::VolatileConstantBuffer ||
+					    R.mType == EArdaRHIBindingType::RayTracingAccelStruct ||
+					    R.mType == EArdaRHIBindingType::Sampler;
+					if (ReadOnly && R.mAccess != EArdaDependencyAccess::Read)
+					{
+						return BindingError("A read-only bindless descriptor cannot declare a write.");
+					}
+					if (D.mbArchivedShaderAccesses && R.mType == EArdaRHIBindingType::Sampler && !R.mSampler &&
+					    !R.mResource)
+					{
+						continue;
+					}
+					if (auto S = DescribeResource(G, D, R.mType, R.mResource, R.mView, R.mAccess, R.mSampler); !S)
+					{
+						return S;
+					}
+				}
+				if (!B.mCapacity)
+				{
+					B.mCapacity = Required;
+				}
+				if (B.mCapacity < Required || B.mCapacity > B.mLayout.mMaxCapacity)
+				{
+					return BindingError("Invalid bindless table capacity.");
+				}
+			}
+			return {};
+		}
+
 	}
 
 	FArdaRHIStatus DescribeArdaShaderAccesses(const FArdaDependencyGraph::FArdaImpl& G, FArdaDependencyNodeDesc& D)
 	{
 		for (const auto& B : D.mShaderBindings)
 		{
+			if (D.mbArchivedShaderAccesses && !B.mMetadata)
+			{
+				continue;
+			}
 			if (auto S = DescribeSchema(G, D, B); !S)
 			{
 				return S;
 			}
 		}
-		for (const auto& Table : D.mBindlessTables)
+		if (auto Status = DescribeBindlessAccesses(G, D, true); !Status)
 		{
-			for (const auto& R : Table.mEntries)
-			{
-				if (auto S = DescribeResource(G, D, R.mType, R.mResource, R.mView, R.mAccess, R.mSampler); !S)
-				{
-					return S;
-				}
-			}
+			return Status;
 		}
 		for (const auto& Table : D.mShaderTables)
 		{
@@ -232,6 +315,20 @@ namespace arda
 					if (auto S = DescribeSchema(G, D, R.mLocalBindings, true); !S)
 					{
 						return S;
+					}
+				}
+				if (R.mGeometry)
+				{
+					if (auto Status = DescribeResource(G,
+					        D,
+					        EArdaRHIBindingType::RayTracingAccelStruct,
+					        R.mGeometry,
+					        {},
+					        EArdaDependencyAccess::Read,
+					        {});
+					    !Status)
+					{
+						return Status;
 					}
 				}
 			}
@@ -265,7 +362,7 @@ namespace arda
 				return BindingError(
 				    "Work-graph scalar parameters must use entry records or declared constant buffers.");
 			}
-			if (!G.mDevice)
+			if (!G.mCompile.mExecution->mDevice)
 			{
 				return BindingError("Automatic shader layout preparation requires a device.");
 			}
@@ -285,75 +382,13 @@ namespace arda
 			}
 		}
 
-		// Validate table identities and indexed views before interning their native layout semantics.
-		for (size_t I = 0; I < D.mBindlessTables.size(); ++I)
+		if (auto Status = DescribeBindlessAccesses(G, D); !Status)
 		{
-			auto& B = D.mBindlessTables[I];
-			auto* P = FindRequest(D, B.mPipelineSlot);
-			if (!P || B.mName.empty() || B.mEntries.empty() || !B.mLayout.mMaxCapacity)
-			{
-				return BindingError(
-				    "A bindless table needs a name, pipeline slot, entries and bounded maximum capacity.");
-			}
-			for (size_t J = 0; J < I; ++J)
-			{
-				if (D.mBindlessTables[J].mName == B.mName ||
-				    (D.mBindlessTables[J].mPipelineSlot == B.mPipelineSlot &&
-				        D.mBindlessTables[J].mLayout.mRegisterSpace == B.mLayout.mRegisterSpace))
-				{
-					return BindingError("Duplicate bindless table name or register space.");
-				}
-			}
-			uint32_t Required = 0;
-			for (size_t E = 0; E < B.mEntries.size(); ++E)
-			{
-				const auto& R = B.mEntries[E];
-				if (R.mArrayElement >= B.mLayout.mMaxCapacity)
-				{
-					return BindingError("Bindless index exceeds maximum capacity.");
-				}
-				Required = eastl::max(Required, R.mArrayElement + 1);
-				if (!eastl::any_of(B.mLayout.mRegisterSpaces.begin(),
-				        B.mLayout.mRegisterSpaces.end(),
-				        [&](const auto& L)
-				        {
-					        return uint64_t(L.mSlot) + B.mLayout.mFirstSlot == R.mSlot && L.mType == R.mType;
-				        }))
-				{
-					return BindingError("Bindless entry does not match a declared register/type.");
-				}
-				for (size_t J = 0; J < E; ++J)
-				{
-					if (B.mEntries[J].mSlot == R.mSlot && B.mEntries[J].mType == R.mType &&
-					    B.mEntries[J].mArrayElement == R.mArrayElement)
-					{
-						return BindingError("Duplicate bindless entry index.");
-					}
-				}
-				const bool ReadOnly = R.mType == EArdaRHIBindingType::TextureSRV ||
-				    R.mType == EArdaRHIBindingType::TypedBufferSRV ||
-				    R.mType == EArdaRHIBindingType::StructuredBufferSRV ||
-				    R.mType == EArdaRHIBindingType::RawBufferSRV || R.mType == EArdaRHIBindingType::ConstantBuffer ||
-				    R.mType == EArdaRHIBindingType::VolatileConstantBuffer ||
-				    R.mType == EArdaRHIBindingType::RayTracingAccelStruct || R.mType == EArdaRHIBindingType::Sampler;
-				if (ReadOnly && R.mAccess != EArdaDependencyAccess::Read)
-				{
-					return BindingError("A read-only bindless descriptor cannot declare a write.");
-				}
-				if (auto S = DescribeResource(G, D, R.mType, R.mResource, R.mView, R.mAccess, R.mSampler); !S)
-				{
-					return S;
-				}
-			}
-			if (!B.mCapacity)
-			{
-				B.mCapacity = Required;
-			}
-			if (B.mCapacity < Required || B.mCapacity > B.mLayout.mMaxCapacity)
-			{
-				return BindingError("Invalid bindless table capacity.");
-			}
-			if (!G.mDevice)
+			return Status;
+		}
+		for (auto& B : D.mBindlessTables)
+		{
+			if (!G.mCompile.mExecution->mDevice)
 			{
 				return BindingError("Bindless layout preparation requires a device.");
 			}
@@ -362,9 +397,8 @@ namespace arda
 			{
 				return Created.mStatus;
 			}
-			P->mBindingLayouts.push_back(eastl::move(Created.mValue));
+			FindRequest(D, B.mPipelineSlot)->mBindingLayouts.push_back(eastl::move(Created.mValue));
 		}
-
 		// Ray records add local layouts and geometry dependencies to the same node description.
 		for (size_t I = 0; I < D.mShaderTables.size(); ++I)
 		{
@@ -389,7 +423,7 @@ namespace arda
 					{
 						return S;
 					}
-					if (!G.mDevice)
+					if (!G.mCompile.mExecution->mDevice)
 					{
 						return BindingError("Ray local parameter preparation requires a device.");
 					}

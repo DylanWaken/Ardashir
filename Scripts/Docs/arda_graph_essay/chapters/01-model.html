@@ -1,5 +1,6 @@
 <section class="chapter" id="model-overview">
 <h2>Start with the work the application wants done</h2>
+<p>The persistent graph runs <code>Compile()</code>, <code>Submit()</code> and <code>Execute()</code> on the caller. Compilation returns a status. Submission returns a ticket once the frame has been recorded and submitted to the GPU. Execution also retires the frame and returns its result. The <code>AndWait</code> aliases used below have the same semantics as their respective direct calls.</p>
 <p>Imagine an application that uploads an array <var>A</var>, transforms it into <var>B</var> on the GPU, and reads <var>B</var> back to the CPU. During development it can also compute a diagnostic image from <var>A</var>. This is already enough work to expose the central problems of a GPU graph: which operation produces each input, which intermediate values remain necessary, when storage can be reused, and which operations can overlap. A command buffer can express an answer to those questions. A graph preserves the information needed to derive an answer.</p>
 <p>We will keep this same small workload throughout the essay. The transform might be a compute shader, a CUDA kernel, or a reusable subgraph. Its mathematical meaning is simply <code>B[i] = 2 * A[i] + 1</code>. The exact arithmetic matters less than the boundary around it: read a declared region of <var>A</var>, write a declared region of <var>B</var>, and expose every other observable effect. Once that boundary is explicit, the graph compiler can reason about the operation without understanding the shader's implementation.</p>
 <!-- DIAGRAM: model-workload. Show CPU bytes -> Upload -> A -> Transform -> B -> Readback -> CPU result; a dotted optional branch A -> Debug -> D. Draw operation rectangles and resource circles with a legend. Distinguish a consumed debug output from an unobserved debug output. -->
@@ -66,16 +67,16 @@ arda::FArdaRHIStatus CopySixteenBytes(
 
     if (auto Status = Edit.Commit(); !Status)
         return Status;
-    if (auto Status = Graph.Compile(); !Status)
+    if (auto Status = Graph.CompileAndWait(); !Status)
         return Status;
-    auto Execution = Graph.Execute();
+    auto Execution = Graph.ExecuteAndWait();
     if (!Execution.mStatus)
         return Execution.mStatus;
 
     Result = *CpuBytes; // Completion has published sixteen bytes of value 7.
     return {};
 }</code></pre>
-<p>Before <code>Execute</code>, <code>CpuBytes</code> is a retained destination for future CPU output. It is not permission to inspect an in-flight readback. The API requires consuming that vector after successful <code>Execute</code> or <code>Wait</code>, and serializing executions that share it. Replacing <code>CopyTo</code> with a transform node changes the work declaration; the surrounding graph lifecycle stays the same. <a href="#source-model-readback">[model-readback]</a></p>
+<p>Before <code>ExecuteAndWait()</code>, <code>CpuBytes</code> is a retained destination for future CPU output. It is not permission to inspect an in-flight readback. Consume that vector only after successful frame completion, and serialize executions that share it. The <code>Execute()</code> result includes GPU completion. The <a href="#graph-submission-order">submission chapter</a> shows how to order a producer and consumer. Replacing <code>CopyTo</code> with a transform node changes the work declaration; the surrounding graph lifecycle stays the same. <a href="#source-model-readback">[model-readback]</a></p>
 </section>
 
 <section class="chapter" id="model-node-contract">
@@ -132,8 +133,8 @@ ARDA_END_NODE_PARAMETER_STRUCT()</code></pre>
 <div class="table-wrap"><table><caption>The lifecycle of one A-to-B construction</caption><thead><tr><th>Operation/state</th><th>What changes</th><th>What the caller can do next</th></tr></thead><tbody>
 <tr><td>Open <code>FArdaGraphEdit</code></td><td>Create a private recording snapshot. A new post-execution construction begins empty.</td><td>Declare resources and invoke operations.</td></tr>
 <tr><td><code>Edit.Commit()</code></td><td>Publish valid declarations into the ordered edit queue; no compilation or GPU submission.</td><td>Add another scope to the same pending construction, or compile once all scopes close.</td></tr>
-<tr><td>Successful <code>Graph.Compile()</code></td><td>Select a cached revision or compile a new one; clear the queue and lock further edits.</td><td>Attempt <code>Submit</code> or <code>Execute</code>.</td></tr>
-<tr><td>Failed <code>Graph.Compile()</code></td><td>Retain the pending construction and diagnostics.</td><td>Add a corrective edit, or call <code>DiscardPendingEdits</code>.</td></tr>
+<tr><td>Successful <code>Graph.CompileAndWait()</code></td><td>Select a cached revision or compile a new one; clear the queue and lock further edits.</td><td>Attempt <code>SubmitAndWait</code> or <code>ExecuteAndWait</code>.</td></tr>
+<tr><td>Failed <code>Graph.CompileAndWait()</code></td><td>Retain the pending construction and diagnostics.</td><td>Add a corrective edit, or call <code>DiscardPendingEdits</code>.</td></tr>
 <tr><td><code>Submit</code> / <code>Execute</code> attempt</td><td>Unlock authoring, including when submission fails; first submission materializes the pending runtime plan.</td><td>Submit a healthy revision again, or repair and recompile after runtime failure; authoring is unlocked.</td></tr>
 <tr><td>Repeated submission without new edits</td><td>Reuse the selected persistent runtime.</td><td>Execute again; asynchronous tickets govern completion and resource access.</td></tr>
 </tbody></table></div>
@@ -142,6 +143,7 @@ ARDA_END_NODE_PARAMETER_STRUCT()</code></pre>
 <p>Now enable the optional debug branch. That produces a different construction. Returning to the original construction can select its retained revision again. The default cache holds up to four reusable revisions; the capacity is configurable with a minimum of one. Explicit names, resource descriptors, compiler options, operation order, and edit order participate in construction identity. This is structural reuse under a defined semantic key, not a promise that any two programs computing equal mathematical results will share a revision. <a href="#source-model-revision-cache">[model-revision-cache]</a> <a href="#source-model-revision-identity-tests">[model-revision-identity-tests]</a></p>
 <p>Failure recovery follows the same separation. The tests construct a readback from an uninitialized buffer, observe compilation failure, then add an upload in a second edit. The unique producer can be resolved even though it was attached later, so compilation succeeds without discarding the earlier valid declaration. An authoring failure inside a scope is different: that scope has already retained its first error and must be canceled. This distinction tells application code whether to repair a closed construction or retry a private transaction. <a href="#source-model-revision-repair-test">[model-revision-repair-test]</a></p>
 <p>Concurrency is similarly specific. Different threads may record independent edit scopes simultaneously. Each scope sees the construction committed before it opened, not another thread's private work. Publication is serialized and commit order determines attachment order. Conflicting explicit names/imports or option changes fail atomically. A single scope belongs to one thread, and general graph inspection and execution still require external synchronization. Parallel recording therefore does not imply arbitrary concurrent mutation of one scope or concurrent submission while it is still being authored. <a href="#source-model-edit-contract">[model-edit-contract]</a> <a href="#source-model-concurrency-tests">[model-concurrency-tests]</a></p>
+<p>With the asynchronous entry points, accepted graph jobs freeze authoring until they finish. The execution attempt may release the logical staged lock before the job completes; that does not authorize a concurrent edit. Join pending receipts before editing or inspecting borrowed graph references, and prevent another caller from publishing changes during inspection. The <a href="../ArdaRDG/execution.html#entry">execution guide</a> shows compile-to-execution sequencing across Rendering and RHI jobs and explains why an RHI job cannot synchronously join later work on its own serial queue.</p>
 </section>
 
 <section class="chapter" id="model-composition">

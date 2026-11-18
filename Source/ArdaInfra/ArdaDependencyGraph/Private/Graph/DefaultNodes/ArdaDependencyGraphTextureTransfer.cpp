@@ -15,7 +15,7 @@ namespace arda
 			const auto* Texture = Context.Find(Parameters.mTexture);
 			const auto* Buffer = Context.Find(Parameters.mBuffer);
 			if (!Texture || !Buffer || !Texture->mbTexture || Buffer->mbTexture ||
-			    Buffer->mExternalAccelerationStructure)
+			    Buffer->mExternalKind == EArdaGraphExternalResourceKind::AccelerationStructure)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 				    "A texture-buffer transfer requires resources of matching kinds from this graph.");

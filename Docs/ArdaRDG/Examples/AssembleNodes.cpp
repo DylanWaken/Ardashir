@@ -55,7 +55,7 @@ namespace arda
 		{
 			return S;
 		}
-		if (auto S = Graph.Compile(); !S)
+		if (auto S = Graph.CompileAndWait(); !S)
 		{
 			return S;
 		}
@@ -65,7 +65,7 @@ namespace arda
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Compilation created a native mesh PSO.");
 		}
-		if (const auto FirstRun = Graph.Execute(); !FirstRun.mStatus)
+		if (const auto FirstRun = Graph.ExecuteAndWait(); !FirstRun.mStatus)
 		{
 			return FirstRun.mStatus;
 		}
@@ -79,7 +79,7 @@ namespace arda
 		// Later frames reuse the prepared objects without further cache requests.
 		for (unsigned Frame = 1; Frame < 3; ++Frame)
 		{
-			const auto Run = Graph.Execute();
+			const auto Run = Graph.ExecuteAndWait();
 			if (!Run.mStatus)
 			{
 				return Run.mStatus;
@@ -112,7 +112,7 @@ namespace arda
 		{
 			return S;
 		}
-		if (auto S = Graph.Compile(); !S)
+		if (auto S = Graph.CompileAndWait(); !S)
 		{
 			return S;
 		}
@@ -120,7 +120,7 @@ namespace arda
 		// Replay the same compiled graph across frames.
 		for (unsigned Frame = 0; Frame < 3; ++Frame)
 		{
-			const auto Run = Graph.Execute();
+			const auto Run = Graph.ExecuteAndWait();
 			if (!Run.mStatus)
 			{
 				return Run.mStatus;
@@ -171,7 +171,7 @@ namespace arda
 		{
 			return S;
 		}
-		if (auto S = Graph.Compile(); !S)
+		if (auto S = Graph.CompileAndWait(); !S)
 		{
 			return S;
 		}
@@ -182,7 +182,7 @@ namespace arda
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Compilation created a native raster PSO.");
 		}
-		if (const auto FirstRun = Graph.Execute(); !FirstRun.mStatus)
+		if (const auto FirstRun = Graph.ExecuteAndWait(); !FirstRun.mStatus)
 		{
 			return FirstRun.mStatus;
 		}
@@ -205,7 +205,7 @@ namespace arda
 		// Later frames reuse the prepared objects without further cache requests.
 		for (unsigned Frame = 1; Frame < 3; ++Frame)
 		{
-			const auto Run = Graph.Execute();
+			const auto Run = Graph.ExecuteAndWait();
 			if (!Run.mStatus)
 			{
 				return Run.mStatus;
@@ -239,7 +239,7 @@ namespace arda
 		{
 			return S;
 		}
-		if (auto S = Graph.Compile(); !S)
+		if (auto S = Graph.CompileAndWait(); !S)
 		{
 			return S;
 		}
@@ -247,7 +247,7 @@ namespace arda
 		// Replay the same compiled graph across frames.
 		for (unsigned Frame = 0; Frame < 3; ++Frame)
 		{
-			const auto Run = Graph.Execute();
+			const auto Run = Graph.ExecuteAndWait();
 			if (!Run.mStatus)
 			{
 				return Run.mStatus;

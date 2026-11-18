@@ -24,5 +24,5 @@
 <rect x="700" y="280" width="265" height="70" rx="7" fill="#ecece6" stroke="#829079" stroke-width="1.5"/>
 <text x="832.5" y="321.0" class="label" text-anchor="middle">Retained compile snapshot</text>
 <text x="352" y="322" class="small">private copies preserve the input</text>
-<text x="36" y="433" class="small muted">Graph.Compile() orchestrates preprocessing, compilation and persistent-revision selection.</text>
+<text x="36" y="433" class="small muted">Graph.CompileAndWait() orchestrates preprocessing, compilation and persistent-revision selection.</text>
 </svg>

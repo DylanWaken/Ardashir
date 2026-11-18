@@ -121,8 +121,8 @@ namespace arda
 			if (!mbGeometryUploaded)
 			{
 				// Record independent uploads after their consumer. ArdaInductor orders them before drawing.
-				auto Vertices = TriangleVertexUpload(Edit, {V.GetHandle()}, "Upload vertices");
-				auto Indices = TriangleIndexUpload(Edit, {I.GetHandle()}, "Upload indices");
+				auto Vertices = TriangleVertexUpload(Edit, {V}, "Upload vertices");
+				auto Indices = TriangleIndexUpload(Edit, {I}, "Upload indices");
 				if (!Vertices || !Indices)
 				{
 					mError = Edit.GetStatus().mMessage;
@@ -134,7 +134,7 @@ namespace arda
 			Status = Edit.Commit();
 			if (Status)
 			{
-				Status = Graph.Compile();
+				Status = Graph.CompileAndWait();
 			}
 			if (!Status)
 			{
@@ -147,7 +147,7 @@ namespace arda
 
 		// Execute compiled work before presenting and recording the next revision.
 		swapChain.PrepareSubmit();
-		const auto Result = Frame->mGraph.Execute();
+		const auto Result = Frame->mGraph.ExecuteAndWait();
 		if (!Result.mStatus)
 		{
 			mError = Result.mStatus.mMessage;
@@ -168,7 +168,7 @@ namespace arda
 			auto Status = Edit.Commit();
 			if (Status)
 			{
-				Status = Graph.Compile();
+				Status = Graph.CompileAndWait();
 			}
 			if (!Status)
 			{

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1130" viewBox="0 0 1200 1130" role="img" aria-labelledby="adaptive-title adaptive-desc">
-  <title id="adaptive-title">Optional background schedule optimization reuses the current GPU allocations</title>
-  <desc id="adaptive-desc">Submit keeps recording the accepted plan while a worker searches. Completed telemetry supplies a frozen graph and EMA cost snapshot. The worker explores a bounded set of legal candidates under the fixed memory plan and prepares an improved order using existing resources and pipelines. Rejected candidates execute no trial GPU work. A ready proposal is adopted only after polling confirms natural retirement of prior frames; otherwise the current plan continues. Adoption updates the schedule used by later submits.</desc>
+  <title id="adaptive-title">Optional adaptive schedule optimization reuses the current GPU allocations</title>
+  <desc id="adaptive-desc">The caller prepares a schedule candidate from completed telemetry. Completed telemetry supplies a frozen graph and EMA cost snapshot. The caller explores a bounded set of legal candidates under the fixed memory plan and prepares an improved order using existing resources and pipelines. Rejected candidates execute no trial GPU work. A ready proposal is adopted only after polling confirms natural retirement of prior frames; otherwise the current plan continues. Adoption updates the schedule used by later submits.</desc>
   <defs>
     <marker id="adaptive-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L11 6 L1 11 Z" fill="#7dd3fc"/></marker>
     <marker id="adaptive-green-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L11 6 L1 11 Z" fill="#6ee7b7"/></marker>
@@ -18,7 +18,7 @@
     </style>
   </defs>
   <rect width="1200" height="1130" rx="20" fill="#0b1424"/>
-  <text class="title" x="40" y="58">Tune in the background; submit the accepted plan</text>
+  <text class="title" x="40" y="58">Prepare and adopt a measured schedule</text>
   <text class="small muted" x="40" y="101">Optional telemetry and search · fixed graph allocations · no trial GPU execution</text>
 
   <rect class="panel" x="40" y="138" width="1120" height="209" rx="14"/>
@@ -31,11 +31,11 @@
   <path class="edge" d="M819 243 H872"/>
   <rect class="card" x="875" y="204" width="254" height="78" rx="10"/>
   <text class="heading" x="1002" y="253" text-anchor="middle">GPU submissions</text>
-  <text class="small muted" x="65" y="322">This path continues while the worker searches or a candidate waits for retirement.</text>
+  <text class="small muted" x="65" y="322">Submission uses the current plan until the candidate can be adopted.</text>
 
   <text class="small muted" x="410" y="398">Completed telemetry supplies a frozen snapshot</text>
   <rect class="panel" x="40" y="423" width="1120" height="249" rx="14"/>
-  <text class="small muted" x="65" y="455">OPTIONAL WORKER</text>
+  <text class="small muted" x="65" y="455">OPTIONAL SEARCH</text>
   <path class="edge" d="M375 349 V467 H230 V478" stroke-dasharray="7 5"/>
   <rect class="card" x="80" y="481" width="300" height="158" rx="12"/>
   <text class="heading" x="230" y="521" text-anchor="middle">Frozen snapshot</text>

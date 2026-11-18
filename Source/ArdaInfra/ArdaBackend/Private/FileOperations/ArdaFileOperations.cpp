@@ -69,7 +69,8 @@ namespace arda::fileops
 		    std::filesystem::file_size(Path, Error) > 0 && !Error;
 	}
 
-	EArdaFileReadResult ReadBinaryFile(const std::filesystem::path& Path, eastl::vector<uint8_t>& Contents)
+	template <class Buffer>
+	static EArdaFileReadResult ReadBinaryContents(const std::filesystem::path& Path, Buffer& Contents, size_t MaximumBytes)
 	{
 		Contents.clear();
 		std::ifstream Stream(Path, std::ios::binary | std::ios::ate);
@@ -78,7 +79,7 @@ namespace arda::fileops
 			return EArdaFileReadResult::OpenFailed;
 		}
 		const std::streamoff Size = Stream.tellg();
-		if (Size < 0 || static_cast<uintmax_t>(Size) > eastl::numeric_limits<size_t>::max() ||
+		if (Size < 0 || static_cast<uintmax_t>(Size) > MaximumBytes ||
 		    Size > eastl::numeric_limits<std::streamsize>::max())
 		{
 			return EArdaFileReadResult::ReadFailed;
@@ -96,6 +97,16 @@ namespace arda::fileops
 			return EArdaFileReadResult::ReadFailed;
 		}
 		return EArdaFileReadResult::Success;
+	}
+
+	EArdaFileReadResult ReadBinaryFile(const std::filesystem::path& Path, eastl::vector<uint8_t>& Contents)
+	{
+		return ReadBinaryContents(Path, Contents, eastl::vector<uint8_t>::kMaxSize);
+	}
+
+	EArdaFileReadResult ReadBinaryFile(const std::filesystem::path& Path, eastl::string& Contents, size_t MaximumBytes)
+	{
+		return ReadBinaryContents(Path, Contents, eastl::min<size_t>(MaximumBytes, Contents.max_size()));
 	}
 
 	eastl::string ReadText(const std::filesystem::path& Path)
@@ -161,49 +172,53 @@ namespace arda::fileops
 	bool PublishFilesTransaction(const eastl::vector<eastl::pair<std::filesystem::path, std::filesystem::path>>& Files)
 	{
 		std::error_code Error;
-		eastl::vector<eastl::pair<std::filesystem::path, std::filesystem::path>> Backups;
-		eastl::vector<std::filesystem::path> Published;
-		const auto Rollback = [&]
-		{
-			for (const auto& Destination : Published)
-			{
-				std::filesystem::remove(Destination, Error);
-			}
-			for (auto It = Backups.rbegin(); It != Backups.rend(); ++It)
-			{
-				// Keep any backup that cannot be restored for later recovery.
-				AtomicReplace(It->second, It->first);
-			}
-			return false;
-		};
+		// Snapshot existing files without removing them from paths used by active readers.
+		eastl::vector<std::filesystem::path> Backups;
+		Backups.reserve(Files.size());
+		FArdaTemporaryFiles Cleanup;
+		Cleanup.mPaths.reserve(Files.size());
 		for (const auto& File : Files)
 		{
+			std::filesystem::path Backup;
 			const bool Exists = std::filesystem::exists(File.second, Error);
 			if (Error || (Exists && !std::filesystem::is_regular_file(File.second, Error)))
 			{
-				return Rollback();
+				return false;
 			}
 			if (Exists)
 			{
-				const auto Backup = TemporaryPath(File.second, "backup");
-				if (!AtomicReplace(File.second, Backup))
+				Backup = TemporaryPath(File.second, "backup");
+				Cleanup.mPaths.push_back(Backup);
+				if (!std::filesystem::copy_file(File.second, Backup, Error))
 				{
-					return Rollback();
+					return false;
 				}
-				Backups.emplace_back(File.second, Backup);
 			}
+			Backups.push_back(Backup);
 		}
-		for (const auto& File : Files)
+		for (size_t Index = 0; Index < Files.size(); ++Index)
 		{
-			if (!AtomicReplace(File.first, File.second))
+			if (AtomicReplace(Files[Index].first, Files[Index].second))
 			{
-				return Rollback();
+				continue;
 			}
-			Published.push_back(File.second);
-		}
-		for (const auto& Backup : Backups)
-		{
-			std::filesystem::remove(Backup.second, Error);
+			while (Index > 0)
+			{
+				--Index;
+				const auto& Destination = Files[Index].second;
+				const auto& Backup = Backups[Index];
+				if (Backup.empty())
+				{
+					std::filesystem::remove(Destination, Error);
+				}
+				else if (!AtomicReplace(Backup, Destination))
+				{
+					// A reader may deny replacement. Preserve the backup for manual recovery.
+					auto Found = eastl::find(Cleanup.mPaths.begin(), Cleanup.mPaths.end(), Backup);
+					Cleanup.mPaths.erase(Found);
+				}
+			}
+			return false;
 		}
 		return true;
 	}

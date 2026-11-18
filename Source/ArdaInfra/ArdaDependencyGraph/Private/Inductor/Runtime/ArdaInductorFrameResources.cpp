@@ -21,9 +21,10 @@ namespace arda
 	    FArdaRHICommandListRef& ImportStateQuery,
 	    eastl::unique_ptr<FArdaInductorFrame>& Frame)
 	{
-		auto Storage = Reuse
-		    ? TArdaRHIResult<FArdaMemoryResources>{(*Reuse)[FrameIndex].mMemory, {}}
-		    : MaterializeArdaMemory(*Graph.mDevice, Plan, FrameIndex ? &Runtime.mFrames.front()->mMemory : nullptr);
+		auto Storage = Reuse ? TArdaRHIResult<FArdaMemoryResources>{(*Reuse)[FrameIndex].mMemory, {}}
+		                     : MaterializeArdaMemory(*Graph.mCompile.mExecution->mDevice,
+		                           Plan,
+		                           FrameIndex ? &Runtime.mFrames.front()->mMemory : nullptr);
 		if (!Storage)
 		{
 			return Storage.mStatus;
@@ -31,7 +32,7 @@ namespace arda
 		Frame = eastl::make_unique<FArdaInductorFrame>();
 		Frame->mIndex = FrameIndex;
 		Frame->mMemory = eastl::move(Storage.mValue);
-		Frame->mLowered = eastl::make_unique<FArdaInductorCommandProgram>(Graph.mDevice);
+		Frame->mLowered = eastl::make_unique<FArdaInductorCommandProgram>(Graph.mCompile.mExecution->mDevice);
 		Frame->mBuffers.resize(Plan.mRequests.size());
 		Frame->mTextures.resize(Plan.mRequests.size());
 		Frame->mAccelerationStructures.resize(Plan.mRequests.size());
@@ -74,7 +75,8 @@ namespace arda
 					// to this graph, not the original allocation hint.
 					if (!ImportStateQuery)
 					{
-						auto Created = Graph.mDevice->CreateCommandList(EArdaRHIQueueType::Graphics);
+						auto Created =
+						    Graph.mCompile.mExecution->mDevice->CreateCommandList(EArdaRHIQueueType::Graphics);
 						if (!Created)
 						{
 							return Created.mStatus;

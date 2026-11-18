@@ -119,8 +119,9 @@ namespace arda
 		    uint64_t DestinationOffset = 0) = 0;
 
 		/**
-         * Records a host-to-device copy whose completion callback is invoked
-         * asynchronously after the submitted copy reaches the GPU.
+         * Records a host-to-device copy with a callback. After submission, poll or wait for the token,
+         * run garbage collection, or wait for idle to deliver completion on the calling thread.
+         * A provider submission failure or a batch containing a blocking copy delivers callbacks inline.
          */
 		virtual FArdaRHIStatus CopyBufferHostToDeviceAsync(IArdaRHIBuffer& Destination,
 		    const void* SourceData,
@@ -138,8 +139,8 @@ namespace arda
 		    uint64_t Size = ArdaRHIWholeBuffer) = 0;
 
 		/**
-         * Records a device-to-host copy and invokes Completion asynchronously
-         * with owned readback bytes after the submitted copy completes.
+         * Records a device-to-host copy with owned readback bytes. Callback delivery follows
+         * CopyBufferHostToDeviceAsync and occurs after GPU completion or a submission error.
          */
 		virtual FArdaRHIStatus CopyBufferDeviceToHostAsync(IArdaRHIBuffer& Source,
 		    FArdaRHIDeviceToHostCopyCallback Completion,

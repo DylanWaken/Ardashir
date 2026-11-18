@@ -21,9 +21,9 @@ namespace arda
 		eastl::function<FArdaRHIStatus(const IArdaRHIDevice&)> mCheck;
 	};
 
-	/** Explicit node admission contract, evaluated against the current device on every attachment.
-	 * Empty requirements permit device-independent graph analysis. Nonempty requirements must be
-	 * satisfied even when no device is supplied; unavailable facts are never assumed supported.
+	/** Explicit node admission contract, evaluated against an authoring device when one is present.
+	 * Offline graphs retain valid requirements for target-device compilation; unavailable capabilities
+	 * are never treated as an execution admission verdict.
 	 * All fields are conjunctive. Requirement selection may depend on immutable public parameters.
 	 */
 	struct FArdaDependencyNodeRequirements
@@ -48,6 +48,9 @@ namespace arda
 		eastl::vector<EArdaCudaLaunchMode> mAllowedCudaLaunchModes;
 		/** Additional named constraints, all of which must succeed; evaluated on every attachment. */
 		eastl::vector<FArdaDependencyEnvironmentRequirement> mEnvironment;
+
+		/** Validate declaration shape without querying a device or invoking environment predicates. */
+		[[nodiscard]] FArdaRHIStatus Validate() const;
 
 		/** Read-only admission, without GPU work or waits.
 		 * Returns Unsupported with all missing portable/CUDA abilities and named environment failures.

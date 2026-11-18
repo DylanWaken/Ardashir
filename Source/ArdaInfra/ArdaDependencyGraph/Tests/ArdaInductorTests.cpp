@@ -1,4 +1,4 @@
-#include "Graph/Node/ArdaDependencyNode.h"
+#include "ArdaGraphTestNodeTypes.h"
 #include "ArdaDependencyGraph.h"
 #include "Graph/DefaultNodes/ArdaDependencyGraphNodes.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
@@ -9,17 +9,19 @@ namespace arda::inductor_tests
 {
 	using namespace arda;
 
-	struct FArdaTestNodeParameters
-	{
-		FArdaDependencyResourceHandle mInput, mOutput;
-		uint32_t mCost = 1, mValue = 0;
-		bool mbSideEffect = false;
-		uint64_t mWorkspaceBytes = 0;
-		uint64_t mTransientWorkspaceBytes = 0;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaTestNodeParameters)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mInput)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mOutput)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCost, 1)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mValue, 0)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbSideEffect, false)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint64_t, mWorkspaceBytes, 0)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint64_t, mTransientWorkspaceBytes, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	template <EArdaDependencyNodeKind Kind>
-	struct TArdaInductorTestNode : TArdaDependencyNode<TArdaInductorTestNode<Kind>, FArdaTestNodeParameters, Kind>
+	struct TArdaInductorTestNode
+	    : TArdaNodeDefinition<TArdaInductorTestNode<Kind>, FArdaTestNodeParameters, ArdaTestNodeType(Kind)>
 	{
 		using FArdaParameters = FArdaTestNodeParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -124,13 +126,13 @@ namespace arda::inductor_tests
 		const auto Middle = InductorCompute(GEdit, {A, B}, "middle").GetHandle();
 		GEdit.Keep(C);
 		ASSERT_TRUE(GEdit.Commit());
-		ASSERT_TRUE(G.Compile());
+		ASSERT_TRUE(G.CompileAndWait());
 		EXPECT_EQ(G.GetCompileResult().mExecutionOrder,
 		    (eastl::vector<FArdaGraphNodeHandle>{Producer, Middle, Consumer}));
 		EXPECT_TRUE(G.GetTopology().IsReachable(Producer, Consumer));
 		EXPECT_EQ(G.GetCompileResult().mRevision, 1u);
 		EXPECT_FALSE(AllocateBuffer(GEdit, {}));
-		EXPECT_FALSE(G.Execute().mStatus);
+		EXPECT_FALSE(G.ExecuteAndWait().mStatus);
 	}
 
 	TEST(ArdaInductor, EditCancellationDoesNotReviveAbandonedResourceOrNodeHandles)
@@ -174,7 +176,7 @@ namespace arda::inductor_tests
 			}
 			GraphEdit.Keep(B);
 			ASSERT_TRUE(GraphEdit.Commit());
-			EXPECT_EQ(bool(Graph.Compile()), Variant == 2);
+			EXPECT_EQ(bool(Graph.CompileAndWait()), Variant == 2);
 			EXPECT_FALSE(Graph.IsEditing());
 			if (Variant != 2)
 			{
@@ -201,10 +203,15 @@ namespace arda::inductor_tests
 				GraphEdit.Keep(B);
 			}
 			ASSERT_TRUE(GraphEdit.Commit());
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), IncludeBranch ? 3u : 1u);
 			EXPECT_EQ(Graph.GetCompileResult().mCulledNodes.size(), IncludeBranch ? 1u : 0u);
-			EXPECT_FALSE(Graph.Execute().mStatus);
+			for (const auto Handle : Graph.GetTopology().GetNodes())
+			{
+				const auto& Node = Graph.GetTopology().TryGetNode(Handle)->mPayload;
+				EXPECT_EQ(Node.mbCulled, Node.mName == "dead");
+			}
+			EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		}
 	}
 
@@ -223,7 +230,7 @@ namespace arda::inductor_tests
 		GEdit.Keep(D);
 		ASSERT_TRUE(GEdit.GetStatus());
 		ASSERT_TRUE(GEdit.Commit());
-		ASSERT_TRUE(G.Compile());
+		ASSERT_TRUE(G.CompileAndWait());
 		ASSERT_EQ(G.GetCompileResult().mCudaBatches.size(), 1u);
 		EXPECT_EQ(G.GetCompileResult().mCudaBatches[0], (eastl::vector<FArdaGraphNodeHandle>{First, Second}));
 	}
@@ -241,7 +248,7 @@ namespace arda::inductor_tests
 		InductorCuda(GraphEdit, {{}, {}, 1, 0, true}, "c-cuda").GetHandle();
 		InductorGraphics(GraphEdit, {{}, {}, 3, 0, true}, "d-graphics").GetHandle();
 		ASSERT_TRUE(GraphEdit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto& Result = Graph.GetCompileResult();
 		EXPECT_TRUE(Result.mbSearchComplete);
 		EXPECT_FALSE(Result.mbSearchExhausted);
@@ -262,7 +269,7 @@ namespace arda::inductor_tests
 		InductorCompute(GraphEdit, {{}, {}, 1, 0, true}, "a").GetHandle();
 		InductorCompute(GraphEdit, {{}, {}, 1, 0, true}, "b").GetHandle();
 		ASSERT_TRUE(GraphEdit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), 2u);
 		EXPECT_TRUE(Graph.GetCompileResult().mbSearchExhausted);
 		EXPECT_FALSE(Graph.GetCompileResult().mbSearchComplete);
@@ -290,7 +297,7 @@ namespace arda::inductor_tests
 			Previous = CurrentOperation;
 		}
 		ASSERT_TRUE(GraphEdit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_TRUE(Graph.GetCompileResult().mbSearchComplete);
 		EXPECT_EQ(Graph.GetCompileResult().mSearchStatesExamined, 301u);
 		EXPECT_EQ(Graph.GetCompileResult().mSchedulesExamined, 3u);
@@ -310,7 +317,7 @@ namespace arda::inductor_tests
 		const auto Second = SecondOperation.GetHandle();
 		InductorCompute(GraphEdit, {{}, {}, 1, 0, false, 0, 16384}, "culled").GetHandle();
 		ASSERT_TRUE(GraphEdit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto& Result = Graph.GetCompileResult();
 		EXPECT_EQ(Result.mWorkspaceResourceIds.size(), 2u);
 		EXPECT_NE(Result.mWorkspaceResourceIds.at(First.GetIndex()),
@@ -326,7 +333,7 @@ namespace arda::inductor_tests
 		FArdaGraphEdit GraphEdit(Graph);
 		InductorCompute(GraphEdit, {{}, {}, 1, 0, true}, "node").GetHandle();
 		ASSERT_TRUE(GraphEdit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_FALSE(Graph.OptimizeFromTimingProfile());
 		EXPECT_FALSE(Graph.IsEditing());
 		EXPECT_EQ(Graph.GetCompileResult().mRevision, 1u);
@@ -347,7 +354,7 @@ namespace arda::inductor_tests
 		GEdit.Keep(D);
 		ASSERT_TRUE(GEdit.GetStatus());
 		ASSERT_TRUE(GEdit.Commit());
-		ASSERT_TRUE(G.Compile());
+		ASSERT_TRUE(G.CompileAndWait());
 		EXPECT_GT(G.GetCompileResult().mAliasedBytes, 0u);
 		EXPECT_LT(G.GetCompileResult().mAllocatedBytes, 1024u);
 		EXPECT_GE(G.GetCompileResult().mAllocatedBytes, 512u);
@@ -369,7 +376,7 @@ namespace arda::inductor_tests
 		GraphEdit.Keep(B);
 		ASSERT_TRUE(GraphEdit.GetStatus());
 		ASSERT_TRUE(GraphEdit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		ASSERT_EQ(Graph.GetCompileResult().mCudaBatches.size(), 1u);
 		EXPECT_EQ(Graph.GetCompileResult().mCudaBatches.front(), (eastl::vector<FArdaGraphNodeHandle>{First, Second}));
 	}
@@ -384,21 +391,21 @@ namespace arda::inductor_tests
 		InductorCompute(GraphEdit, {{}, B}, "b-producer").GetHandle();
 		InductorCompute(GraphEdit, {B, {}, 1, 0, true}, "b-consumer").GetHandle();
 		ASSERT_TRUE(GraphEdit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_TRUE(Graph.GetCompileResult().mMemoryDependencies.empty());
 		EXPECT_EQ(Graph.GetCompileResult().mAllocatedBytes, 512u);
 	}
 
-	struct FArdaRangeNodeParameters
-	{
-		eastl::vector<FArdaDependencyAccess> mAccesses;
-		eastl::vector<FArdaDependencyResourceHandle> mColorTargets;
-		eastl::vector<FArdaInductorPipelineRequest> mPipelines;
-		bool mbPipelineStageOnly = false;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRangeNodeParameters)
+		ARDA_NODE_PARAMETER(eastl::vector<FArdaDependencyAccess>, mAccesses)
+		ARDA_NODE_PARAMETER(eastl::vector<FArdaDependencyResourceHandle>, mColorTargets)
+		ARDA_NODE_PARAMETER(eastl::vector<FArdaInductorPipelineRequest>, mPipelines)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbPipelineStageOnly, false)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mInjectedStage, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	struct FArdaRangeTestNode
-	    : TArdaDependencyNode<FArdaRangeTestNode, FArdaRangeNodeParameters, EArdaDependencyNodeKind::Graphics>
+	    : TArdaNodeDefinition<FArdaRangeTestNode, FArdaRangeNodeParameters, EArdaNodeType::Graphics>
 	{
 		using FArdaParameters = FArdaRangeNodeParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -432,7 +439,7 @@ namespace arda::inductor_tests
 			{
 				Key.Resource(Target);
 			}
-			Key.Value(P.mbPipelineStageOnly).Value(P.mPipelines.size());
+			Key.Value(P.mbPipelineStageOnly).Value(P.mInjectedStage).Value(P.mPipelines.size());
 			for (const auto& Request : P.mPipelines)
 			{
 				Key.Value(Request.mKind).Value(Request.mTerminalNodeId).String(Request.mSlot).String(Request.mGroup);
@@ -448,6 +455,23 @@ namespace arda::inductor_tests
 			Desc.mColorTargets = P.mColorTargets;
 			Desc.mPipelines = P.mPipelines;
 			Desc.mbPipelineStageOnly = P.mbPipelineStageOnly;
+			// Deliberately invalid descriptor injection exercises the closed authoring contract.
+			if (P.mInjectedStage == 1)
+			{
+				Desc.mGraphicsStage = EArdaGraphicsStage::Vertex;
+			}
+			if (P.mInjectedStage == 2)
+			{
+				Desc.mGraphicsInput = FArdaGraphStageValue({}, EArdaGraphStageValueKind::Vertices);
+			}
+			if (P.mInjectedStage == 3)
+			{
+				Desc.mRayStage = EArdaRHIShaderStage::Miss;
+			}
+			if (P.mInjectedStage == 4)
+			{
+				Desc.mRayInputs.push_back({});
+			}
 			Desc.mbSideEffect = true;
 			return Desc;
 		}
@@ -479,7 +503,7 @@ namespace arda::inductor_tests
 		const auto C = InductorRanges(GraphEdit, {{Write}}, "write second").GetHandle();
 		const auto D = InductorRanges(GraphEdit, {{Read}}, "read second").GetHandle();
 		ASSERT_TRUE(GraphEdit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder, (eastl::vector<FArdaGraphNodeHandle>{A, B, C, D}));
 		EXPECT_TRUE(Graph.GetTopology().FindEdge(A, B));
@@ -504,7 +528,7 @@ namespace arda::inductor_tests
 		const auto ThirdReader = InductorRanges(GraphEdit, {{Read}}, "third reader").GetHandle();
 		const auto FourthReader = InductorRanges(GraphEdit, {{Read}}, "fourth reader").GetHandle();
 		ASSERT_TRUE(GraphEdit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		for (const auto Reader : {FirstReader, SecondReader})
 		{
@@ -548,7 +572,7 @@ namespace arda::inductor_tests
 			                        .GetHandle();
 			const auto Consumer = InductorRanges(GraphEdit, {{Read}}, "after update").GetHandle();
 			ASSERT_TRUE(GraphEdit.Commit());
-			const auto Status = Graph.Compile();
+			const auto Status = Graph.CompileAndWait();
 			ASSERT_TRUE(Status) << Status.mMessage.c_str();
 			EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder,
 			    (eastl::vector<FArdaGraphNodeHandle>{Producer, Reader, Update, Consumer}));
@@ -585,14 +609,14 @@ namespace arda::inductor_tests
 			const auto Third = InductorRanges(GraphEdit, {{Write}}, Reverse ? "first" : "third").GetHandle();
 			EXPECT_NE(First, Abandoned);
 			ASSERT_TRUE(GraphEdit.Commit());
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			const auto CompiledFirst = Graph.FindNode(Reverse ? "third" : "first");
 			const auto CompiledSecond = Graph.FindNode("second");
 			const auto CompiledThird = Graph.FindNode(Reverse ? "first" : "third");
 			EXPECT_TRUE(Graph.GetTopology().IsReachable(CompiledFirst, CompiledSecond));
 			EXPECT_TRUE(Graph.GetTopology().IsReachable(CompiledSecond, CompiledThird));
 			EXPECT_FALSE(Graph.GetTopology().ContainsNode(Abandoned));
-			EXPECT_FALSE(Graph.Execute().mStatus);
+			EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		}
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 2u);
 		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 1u);
@@ -625,11 +649,11 @@ namespace arda::inductor_tests
 				Reader = InductorRanges(GraphEdit, {{Read}}, "reader").GetHandle();
 			}
 			ASSERT_TRUE(GraphEdit.Commit());
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			EXPECT_EQ(bool(Graph.GetTopology().FindEdge(SecondWriter, Reader)), LateReader);
 			EXPECT_EQ(bool(Graph.GetTopology().FindEdge(FirstWriter, Reader)), !LateReader);
 			EXPECT_FALSE(Graph.GetTopology().IsReachable(LastReader, Reader));
-			EXPECT_FALSE(Graph.Execute().mStatus);
+			EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		}
 	}
 
@@ -655,7 +679,7 @@ namespace arda::inductor_tests
 				ASSERT_TRUE(GraphEdit.Order(Second, Reader));
 			}
 			ASSERT_TRUE(GraphEdit.Commit());
-			EXPECT_EQ(bool(Graph.Compile()), !ConflictingOrder);
+			EXPECT_EQ(bool(Graph.CompileAndWait()), !ConflictingOrder);
 			if (ConflictingOrder)
 			{
 				ASSERT_TRUE(Graph.DiscardPendingEdits());
@@ -696,7 +720,7 @@ namespace arda::inductor_tests
 				    "read")
 				    .GetHandle();
 				ASSERT_TRUE(GraphEdit.Commit());
-				EXPECT_EQ(bool(Graph.Compile()), IncludeInitialWriter || !ReadWrite);
+				EXPECT_EQ(bool(Graph.CompileAndWait()), IncludeInitialWriter || !ReadWrite);
 			}
 		}
 	}
@@ -725,7 +749,7 @@ namespace arda::inductor_tests
 					ASSERT_TRUE(GraphEdit.Order(Before, Second));
 				}
 				ASSERT_TRUE(GraphEdit.Commit());
-				ASSERT_TRUE(Graph.Compile());
+				ASSERT_TRUE(Graph.CompileAndWait());
 				const auto Edge = Graph.GetTopology().FindEdge(Before.GetHandle(), Second.GetHandle());
 				ASSERT_TRUE(Edge);
 				EXPECT_TRUE(Graph.GetTopology().TryGetEdge(Edge)->mPayload.mbHazard);
@@ -800,7 +824,7 @@ namespace arda::inductor_tests
 		    MakeArdaGraphRule<FArdaPrefixHazardProbeRule>(Readers, Writer.GetHandle())};
 		ASSERT_TRUE(GraphEdit.SetOptions(Options));
 		ASSERT_TRUE(GraphEdit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		EXPECT_EQ(Status.mCode, EArdaRHIResult::InvalidState);
 		EXPECT_EQ(Status.mMessage, "InspectPrefixDependencies: Dependency inspection complete.");
 	}
@@ -825,7 +849,7 @@ namespace arda::inductor_tests
 			ASSERT_TRUE(InductorRanges(GraphEdit, Reader, "reader"));
 			ASSERT_TRUE(InductorRanges(GraphEdit, Writer, "writer"));
 			ASSERT_TRUE(GraphEdit.Commit());
-			const auto Status = Graph.Compile();
+			const auto Status = Graph.CompileAndWait();
 			EXPECT_EQ(bool(Status), !Gap) << Status.mMessage.c_str();
 		}
 	}
@@ -858,7 +882,7 @@ namespace arda::inductor_tests
 		    InductorRanges(GraphEdit, {{Access(EArdaDependencyAccess::Write, {128, 128})}}, "write upper half")
 		        .GetHandle();
 		ASSERT_TRUE(GraphEdit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		EXPECT_TRUE(Graph.GetTopology().FindEdge(First, EarlyRead));
 		EXPECT_TRUE(Graph.GetTopology().FindEdge(First, Before));
@@ -889,7 +913,7 @@ namespace arda::inductor_tests
 		InductorRanges(GraphEdit, {{Access(EArdaDependencyAccess::Write, {})}}, "write all").GetHandle();
 		InductorRanges(GraphEdit, {{Access(EArdaDependencyAccess::Write, {64, 64})}}, "overwrite suffix").GetHandle();
 		ASSERT_TRUE(GraphEdit.Commit());
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 	}
 
 	TEST(ArdaInductor, IndexedBufferProducersPreserveUnionsAndHalfOpenBoundaries)
@@ -928,7 +952,7 @@ namespace arda::inductor_tests
 			    InductorRanges(GraphEdit, {{Access(EArdaDependencyAccess::Read, {32, 128})}}, "joined read");
 			ASSERT_TRUE(LowerRead && UpperRead && JoinedRead);
 			ASSERT_TRUE(GraphEdit.Commit());
-			const auto Status = Graph.Compile();
+			const auto Status = Graph.CompileAndWait();
 			ASSERT_TRUE(Status) << Status.mMessage.c_str();
 			EXPECT_TRUE(Graph.GetTopology().IsReachable(LowerWriter, LowerRead.GetHandle()));
 			EXPECT_FALSE(Graph.GetTopology().IsReachable(UpperWriter, LowerRead.GetHandle()));
@@ -974,7 +998,7 @@ namespace arda::inductor_tests
 			const auto SecondNode = InductorRanges(GraphEdit, Second, "second");
 			ASSERT_TRUE(FirstNode && SecondNode);
 			ASSERT_TRUE(GraphEdit.Commit());
-			const auto Status = Graph.Compile();
+			const auto Status = Graph.CompileAndWait();
 			EXPECT_EQ(bool(Status), Case != 1) << Status.mMessage.c_str();
 			if (Status && Case == 0)
 			{
@@ -1009,13 +1033,13 @@ namespace arda::inductor_tests
 		const auto Odd = InductorRanges(GraphEdit, OddRows, "odd");
 		ASSERT_TRUE(Read && Even && Odd);
 		ASSERT_TRUE(GraphEdit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		EXPECT_TRUE(Graph.GetTopology().IsReachable(Even.GetHandle(), Read.GetHandle()));
 		EXPECT_TRUE(Graph.GetTopology().IsReachable(Odd.GetHandle(), Read.GetHandle()));
 		EXPECT_FALSE(Graph.GetTopology().IsReachable(Even.GetHandle(), Odd.GetHandle()));
 		EXPECT_FALSE(Graph.GetTopology().IsReachable(Odd.GetHandle(), Even.GetHandle()));
-		EXPECT_EQ(Graph.GetTopology().TryGetNode(Read.GetHandle())->mPayload.mDesc.mAccesses.size(), RowCount);
+		EXPECT_EQ(Graph.GetNodeDescription(Read.GetHandle()).mAccesses.size(), RowCount);
 	}
 
 	FArdaRHITextureDesc RangeTexture()
@@ -1059,7 +1083,7 @@ namespace arda::inductor_tests
 		    InductorRanges(GraphEdit, {{Access(EArdaDependencyAccess::Write, {2, 1, 0, 2})}}, "write last mip")
 		        .GetHandle();
 		ASSERT_TRUE(GraphEdit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		ASSERT_TRUE(Status) << Status.mMessage.c_str();
 		EXPECT_TRUE(Graph.GetTopology().FindEdge(First, EarlyRead));
 		EXPECT_TRUE(Graph.GetTopology().FindEdge(First, Before));
@@ -1100,7 +1124,7 @@ namespace arda::inductor_tests
 			const auto Read =
 			    InductorRanges(GraphEdit, {{Access(EArdaDependencyAccess::Read, 2)}}, "read both slices").GetHandle();
 			ASSERT_TRUE(GraphEdit.Commit());
-			const auto Status = Graph.Compile();
+			const auto Status = Graph.CompileAndWait();
 			EXPECT_EQ(bool(Status), bInitializeBothSlices) << Status.mMessage.c_str();
 			if (Status)
 			{
@@ -1128,7 +1152,7 @@ namespace arda::inductor_tests
 			    {Texture.GetHandle(), EArdaDependencyAccess::Write, EArdaRHIResourceState::UnorderedAccess, {}, Range});
 			ASSERT_TRUE(InductorRanges(GraphEdit, Writer, "writer"));
 			ASSERT_TRUE(GraphEdit.Commit());
-			EXPECT_FALSE(Graph.Compile());
+			EXPECT_FALSE(Graph.CompileAndWait());
 		}
 	}
 
@@ -1154,7 +1178,7 @@ namespace arda::inductor_tests
 			ASSERT_TRUE(InductorRanges(GraphEdit, Writer, "writer"));
 			ASSERT_TRUE(InductorRanges(GraphEdit, Reader, "reader"));
 			ASSERT_TRUE(GraphEdit.Commit());
-			EXPECT_EQ(bool(Graph.Compile()), Case == 0);
+			EXPECT_EQ(bool(Graph.CompileAndWait()), Case == 0);
 		}
 	}
 
@@ -1199,7 +1223,7 @@ namespace arda::inductor_tests
 			    "write lower");
 			ASSERT_TRUE(C0 && C1 && All && W0 && W1);
 			ASSERT_TRUE(GEdit.Commit());
-			const auto Compiled = G.Compile();
+			const auto Compiled = G.CompileAndWait();
 			ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 			EXPECT_FALSE(G.GetTopology().IsReachable(W0.GetHandle(), W1.GetHandle()));
 			EXPECT_FALSE(G.GetTopology().IsReachable(W1.GetHandle(), W0.GetHandle()));
@@ -1230,7 +1254,7 @@ namespace arda::inductor_tests
 			ASSERT_TRUE(LowerNode && UpperNode);
 			ASSERT_TRUE(InductorRanges(GEdit, Read, "read all"));
 			ASSERT_TRUE(GEdit.Commit());
-			const auto Status = G.Compile();
+			const auto Status = G.CompileAndWait();
 			EXPECT_EQ(bool(Status), UpperOffset == 127u) << Status.mMessage.c_str();
 			if (Status)
 			{
@@ -1263,7 +1287,7 @@ namespace arda::inductor_tests
 			}
 			ASSERT_TRUE(InductorRanges(GraphEdit, Parameters, "raster"));
 			ASSERT_TRUE(GraphEdit.Commit());
-			EXPECT_EQ(bool(Graph.Compile()), Case >= 2);
+			EXPECT_EQ(bool(Graph.CompileAndWait()), Case >= 2);
 		}
 	}
 
@@ -1289,7 +1313,7 @@ namespace arda::inductor_tests
 		const auto Join = JoinOperation.GetHandle();
 		ASSERT_TRUE(GraphEdit.Order(GraphicsOperation, JoinOperation));
 		ASSERT_TRUE(GraphEdit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto& Result = Graph.GetCompileResult();
 		ASSERT_EQ(Result.mExecutionOrder.front(), Graphics);
 		for (const auto Handle : Chain)
@@ -1403,7 +1427,7 @@ namespace arda::inductor_tests
 					const auto First = InductorRanges(GraphEdit, {{Write}}, "first overwrite").GetHandle();
 					const auto Second = InductorRanges(GraphEdit, {{Write}}, "second overwrite").GetHandle();
 					ASSERT_TRUE(GraphEdit.Commit());
-					const auto Status = Graph.Compile();
+					const auto Status = Graph.CompileAndWait();
 					EXPECT_EQ(bool(Status), bExternal) << Status.mMessage.c_str();
 					if (Status)
 					{
@@ -1452,7 +1476,7 @@ namespace arda::inductor_tests
 		ASSERT_TRUE(ImportedTexture);
 		const auto Reader = InductorCompute(GraphEdit, {ImportedBuffer.GetHandle(), {}}, "unused-reader").GetHandle();
 		ASSERT_TRUE(GraphEdit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto& Result = Graph.GetCompileResult();
 		EXPECT_TRUE(Result.mExecutionOrder.empty());
 		EXPECT_EQ(Result.mCulledNodes, (eastl::vector<FArdaGraphNodeHandle>{Reader}));
@@ -1472,11 +1496,11 @@ namespace arda::inductor_tests
 				InductorCompute(GraphEdit, {{}, {}, 1, 0, false, 8192}, "adapter").GetHandle();
 			}
 			ASSERT_TRUE(GraphEdit.Commit());
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			EXPECT_TRUE(Graph.GetCompileResult().mExecutionOrder.empty());
 			EXPECT_EQ(Graph.GetCompileResult().mAllocatedBytes, IncludeAdapter ? 8192u : 0u);
 			EXPECT_EQ(Graph.GetCompileResult().mPeakLiveBytes, IncludeAdapter ? 8192u : 0u);
-			EXPECT_FALSE(Graph.Execute().mStatus);
+			EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		}
 	}
 
@@ -1487,7 +1511,7 @@ namespace arda::inductor_tests
 		ASSERT_TRUE(BindBuffer(GraphEdit, ExternalTestBuffer(UINT64_MAX), "maximum"));
 		ASSERT_TRUE(BindBuffer(GraphEdit, ExternalTestBuffer(1), "one-more"));
 		ASSERT_TRUE(GraphEdit.Commit());
-		const auto Status = Graph.Compile();
+		const auto Status = Graph.CompileAndWait();
 		EXPECT_FALSE(Status);
 		EXPECT_FALSE(Graph.IsEditing());
 		EXPECT_EQ(Graph.GetCompileResult().mRevision, 0u);
@@ -1520,7 +1544,7 @@ namespace arda::inductor_tests
 		const auto Join = JoinOperation.GetHandle();
 		ASSERT_TRUE(GraphEdit.Order(GraphicsEndOperation, JoinOperation));
 		ASSERT_TRUE(GraphEdit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto& Result = Graph.GetCompileResult();
 		EXPECT_FALSE(Result.mMemoryDependencies.empty());
 		for (const auto Handle : Chain)
@@ -1539,8 +1563,8 @@ namespace arda::inductor_tests
 			FArdaGraphEdit Edit(Graph);
 			ASSERT_TRUE(Edit.Commit());
 		}
-		ASSERT_TRUE(Graph.Compile());
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		ASSERT_TRUE(Graph.CompileAndWait());
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		for (const bool DuplicateSlots : {false, true})
 		{
 			FArdaGraphEdit Edit(Graph);
@@ -1555,7 +1579,7 @@ namespace arda::inductor_tests
 			}
 			ASSERT_TRUE(InductorRanges(Edit, Parameters));
 			ASSERT_TRUE(Edit.Commit());
-			const auto Status = Graph.Compile();
+			const auto Status = Graph.CompileAndWait();
 			EXPECT_FALSE(Status);
 			EXPECT_EQ(Graph.GetCompileResult().mRevision, 1u);
 			if (DuplicateSlots)
@@ -1584,11 +1608,27 @@ namespace arda::inductor_tests
 				    EArdaDependencyAccess::Write,
 				    EArdaRHIResourceState::UnorderedAccess});
 			}
-			ASSERT_TRUE(InductorRanges(GraphEdit, Parameters, "stage"));
-			ASSERT_TRUE(GraphEdit.Commit());
-			const auto Status = Graph.Compile();
+			EXPECT_FALSE(InductorRanges(GraphEdit, Parameters, "stage"));
+			const auto Status = GraphEdit.Commit();
 			EXPECT_FALSE(Status);
-			EXPECT_NE(Status.mMessage.find("Stage-only"), eastl::string::npos);
+			EXPECT_NE(Status.mMessage.find("node parameter metadata"), eastl::string::npos);
+		}
+	}
+
+	TEST(ArdaInductor, ManualStageIdentityAndConnectionsAreRejectedBeforeCommit)
+	{
+		for (uint32_t Injection = 1; Injection <= 4; ++Injection)
+		{
+			SCOPED_TRACE(Injection);
+			FArdaDependencyGraph Graph;
+			FArdaGraphEdit Edit(Graph);
+			FArdaRangeNodeParameters Parameters;
+			Parameters.mInjectedStage = Injection;
+			EXPECT_FALSE(InductorRanges(Edit, Parameters));
+			EXPECT_EQ(Edit.GetStatus().mCode, EArdaRHIResult::InvalidArgument);
+			EXPECT_NE(Edit.GetStatus().mMessage.find("node parameter metadata"), eastl::string::npos);
+			EXPECT_FALSE(Edit.Commit());
+			EXPECT_EQ(Graph.GetTopology().GetNodeCount(), 0u);
 		}
 	}
 
@@ -1618,7 +1658,7 @@ namespace arda::inductor_tests
 		    {R, EArdaDependencyAccess::Read, EArdaRHIResourceState::ShaderResource, {16, 16}}};
 		ASSERT_TRUE(InductorRanges(GEdit, P, "incompatible-views"));
 		ASSERT_TRUE(GEdit.Commit());
-		const auto Compiled = G.Compile();
+		const auto Compiled = G.CompileAndWait();
 		EXPECT_FALSE(Compiled);
 		EXPECT_NE(Compiled.mMessage.find("incompatible buffer states"), eastl::string::npos);
 		EXPECT_FALSE(G.IsEditing());

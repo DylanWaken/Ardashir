@@ -18,7 +18,7 @@ namespace arda
 		FArdaTerrainRenderer();
 		~FArdaTerrainRenderer();
 		void ReleaseFrameGraphs();
-		/** Enable the one-time CPU geometry and gradient readback only for explicit verification runs. */
+		/** Enable initial geometry, gradient and rendered contour readbacks for explicit verification runs. */
 		bool Initialize(arda::FArdaRHIDeviceRef device,
 		    arda::EArdaRHIFormat swapChainFormat,
 		    bool bVerifyTerrain = false);
@@ -32,7 +32,11 @@ namespace arda
 
 	private:
 		struct FArdaFrameGraph;
-		bool CreateFrameGraph(const FArdaRHITextureRef& Color, uint32_t Width, uint32_t Height);
+		bool CreateFrameGraph(const FArdaRHITextureRef& Color,
+		    uint32_t Width,
+		    uint32_t Height,
+		    bool bCaptureStages = false);
+		void DiagnoseTerrainFailure(FArdaFrameGraph& Frame, uint32_t Width, uint32_t Height);
 
 		arda::FArdaRHIDeviceRef mDevice;
 

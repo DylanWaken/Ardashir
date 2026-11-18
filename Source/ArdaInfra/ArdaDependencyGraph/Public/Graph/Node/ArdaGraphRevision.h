@@ -1,10 +1,21 @@
 /** Persistent construction-cache diagnostics. */
 #pragma once
 
+#include "Graph/Resources/ArdaDependencyResource.h"
+
 #include <cstdint>
 
 namespace arda
 {
+	/** One edit's ordering version for shared storage. This is not a resource-handle generation. */
+	struct FArdaGraphResourceRevision
+	{
+		/** Complete graph-owned identity; concurrent commit rebases it without losing its generation. */
+		FArdaDependencyResourceHandle mResource;
+		/** Smaller versions execute before larger versions; equal versions retain commit order. */
+		uint64_t mRevision = 0;
+	};
+
 	/** Graph-wide counters and the current recording/compilation state. */
 	struct FArdaGraphRevisionStats
 	{

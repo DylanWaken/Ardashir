@@ -301,13 +301,13 @@ namespace arda::resource_usage_gpu_tests
 		const auto Read = Readback(Edit, Output);
 		ASSERT_TRUE(Read);
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		EXPECT_EQ(Graph.FindResource(Input)->mBuffer.mUsage,
 		    EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource);
 		EXPECT_EQ(Graph.FindResource(Output)->mBuffer.mUsage,
 		    EArdaRHIBufferUsage::Raw | EArdaRHIBufferUsage::UnorderedAccess);
-		const auto Executed = Graph.Execute();
+		const auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		ASSERT_EQ(Read->size(), sizeof(Values));
 		for (uint32_t Index = 0; Index < 4; ++Index)
@@ -337,11 +337,11 @@ namespace arda::resource_usage_gpu_tests
 		ASSERT_TRUE(BufferBytes);
 		ASSERT_TRUE(TextureBytes);
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		EXPECT_EQ(Graph.FindResource(Buffer)->mBuffer.mUsage, EArdaRHIBufferUsage::UnorderedAccess);
 		EXPECT_EQ(Graph.FindResource(Texture)->mTexture.mUsage, EArdaRHITextureUsage::RenderTarget);
-		const auto Executed = Graph.Execute();
+		const auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		ASSERT_EQ(BufferBytes->size(), 64u);
 		for (size_t Offset = 0; Offset < BufferBytes->size(); Offset += sizeof(uint32_t))
@@ -375,12 +375,12 @@ namespace arda::resource_usage_gpu_tests
 		ASSERT_TRUE(NativeOutput);
 		FArdaDependencyGraph Graph(GetDevice());
 		FArdaGraphEdit Edit(Graph);
-		const auto Input = BindBuffer(Edit, NativeInput.mValue);
-		const auto Output = BindBuffer(Edit, NativeOutput.mValue);
+		const auto Input = BindBuffer(Edit, NativeInput.mValue, "Input");
+		const auto Output = BindBuffer(Edit, NativeOutput.mValue, "Output");
 		ASSERT_TRUE(ComputeResourceUsage(Edit, Input, Output)) << Edit.GetStatus().mMessage.c_str();
 		Edit.Keep(Output);
 		ASSERT_TRUE(Edit.Commit());
-		EXPECT_FALSE(Graph.Compile());
+		EXPECT_FALSE(Graph.CompileAndWait());
 		EXPECT_EQ(NativeOutput.mValue->GetDesc().mUsage, OutputDesc.mUsage);
 	}
 
@@ -416,13 +416,13 @@ namespace arda::resource_usage_gpu_tests
 		const auto Read = Readback(Edit, Color);
 		ASSERT_TRUE(Read);
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		EXPECT_EQ(Graph.FindResource(PositionBuffer)->mBuffer.mUsage,
 		    EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource);
 		EXPECT_EQ(Graph.FindResource(Color)->mTexture.mUsage, EArdaRHITextureUsage::RenderTarget);
 		EXPECT_EQ(Graph.FindResource(Depth)->mTexture.mUsage, EArdaRHITextureUsage::DepthStencil);
-		const auto Executed = Graph.Execute();
+		const auto Executed = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 		ASSERT_EQ(Read->size(), 4u * 4u * 4u);
 		for (size_t Offset = 0; Offset < Read->size(); Offset += 4)

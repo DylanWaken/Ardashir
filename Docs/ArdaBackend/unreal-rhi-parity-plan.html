@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ArdaBackend and Unreal RHI/RDG parity review — Ardashir engineering documentation.">
+  <title>ArdaBackend and Unreal RHI/RDG parity review | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick guide</a>
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="gpu-allocator.html">GPU allocator</a>
+        <a href="cuda-interop.html">CUDA operands</a>
+        <a href="cuda-sequences.html">CUDA sequences</a>
+        <a href="cuda-external-calls.html">External CUDA calls</a>
+        <a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+        <a href="validation.html">GPU validation</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaBackend</a>
+      </nav>
+      <article>
+<h1 id="ardabackend-and-unreal-rhirdg-parity-review">ArdaBackend and Unreal RHI/RDG parity review</h1>
+<nav class="toc" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ul>
+        <li><a href="#scope-and-method">Scope and method</a></li>
+        <li><a href="#research-conclusions-that-shaped-the-design">Research conclusions that shaped the design</a></li>
+        <li><a href="#frozen-implementation-plan">Frozen implementation plan</a></li>
+        <li><a href="#as-built-feature-comparison">As-built feature comparison</a></li>
+        <li><a href="#deliberate-differences-from-unreal">Deliberate differences from Unreal</a></li>
+        <li><a href="#conformance-and-acceptance-contract">Conformance and acceptance contract</a></li>
+        <li><a href="#advanced-feature-execution-test-additions-2026-08-22">Advanced-feature execution test additions (2026-08-22)</a></li>
+      </ul>
+    </nav>
+<section id="objectives"><h2>How to use this guide</h2><p>Use the parity review to understand source evidence, native test requirements and the ordering of proposed backend work.</p><p>Start with the <a href="index.html">module overview</a> and follow exact declarations in the <a href="api-reference.html">canonical API reference</a>.</p></section>
+
+<blockquote>
+<p>Current findings and feature decisions live in the
+<a href="unreal-rhi-audit.html">2026-09-17 RHI audit</a>. This document records the earlier
+implementation tranche. Its &quot;implemented&quot; labels identify executable feature
+paths, not complete invalid-input, concurrency or failure-path coverage.</p>
+</blockquote>
+<blockquote>
+<p><a href="rhi-feature-guide.html">ArdaRHI feature guide</a> is the feature-by-feature user
+guide with diagrams. This document is the research record, comparison,
+implementation plan, as-built status, and acceptance contract.</p>
+</blockquote>
+<h2 id="scope-and-method">Scope and method</h2>
+<p>This review compares ArdaBackend, ArdaRHI, and ArdaDependencyGraph with the local
+Unreal Engine 5.8.1 snapshot at <code>D:\UnrealEngine\Engine</code>. Research and planning
+were completed before implementation. The result deliberately targets 64-bit
+desktop D3D12 and desktop Vulkan; console, mobile, and Metal breadth are not
+parity goals.</p>
+<p>Support labels are strict:</p>
+<ul>
+<li><strong>Implemented</strong> means the public facade reaches a native API and a
+non-interactive execution/lifecycle test exists.</li>
+<li><strong>Capability-gated</strong> means the complete portable contract exists, native
+probing is truthful, and unavailable adapters return <code>Unsupported</code>.</li>
+<li><strong>Partial</strong> means an executable subset is narrower than Unreal or the native
+API, and the missing semantics are named.</li>
+<li><strong>Out of scope</strong> means the omission is deliberate for this desktop RT/ML
+renderer rather than an untracked implementation gap.</li>
+</ul>
+<p>The main Unreal research locations were:</p>
+<ul>
+<li><code>Engine/Source/Runtime/RHI/Public/RHIAccess.h</code></li>
+<li><code>Engine/Source/Runtime/RHI/Public/RHIPipeline.h</code></li>
+<li><code>Engine/Source/Runtime/RHI/Public/RHITransition.h</code></li>
+<li><code>Engine/Source/Runtime/RHI/Public/RHIResources.h</code></li>
+<li><code>Engine/Source/Runtime/RHI/Public/RHIContext.h</code></li>
+<li><code>Engine/Source/Runtime/RHI/Public/RHICommandList.h</code></li>
+<li><code>Engine/Source/Runtime/RHI/Public/RHIValidationCommon.h</code></li>
+<li><code>Engine/Source/Runtime/RHI/Public/RHIValidationContext.h</code></li>
+<li><code>Engine/Source/Runtime/RHI/Public/RHITransientResourceAllocator.h</code></li>
+<li><code>Engine/Source/Runtime/RenderCore/Public/RenderGraphBuilder.h</code></li>
+<li><code>Engine/Source/Runtime/RenderCore/Private/RenderGraphBuilder.cpp</code></li>
+<li><code>Engine/Source/Runtime/VulkanRHI/Private/VulkanBindlessDescriptorManager.cpp</code></li>
+<li><code>Engine/Source/Runtime/VulkanRHI/Private/VulkanPipeline.cpp</code></li>
+<li><code>Engine/Source/Runtime/VulkanRHI/Private/VulkanCommandBuffer.cpp</code></li>
+<li><code>Engine/Plugins/Tests/RHITests/Source/RHITests</code></li>
+</ul>
+<p>The main Arda implementation and evidence locations are:</p>
+<ul>
+<li><code>Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h</code></li>
+<li><code>Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h</code></li>
+<li><code>Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/</code></li>
+<li><code>Source/ArdaInfra/ArdaBackend/Public/RHI/Providers/ArdaRHIProviderDevice.h</code></li>
+<li><code>Source/ArdaInfra/ArdaBackend/Private/RHI/Device/ArdaRHIDevice.cpp</code></li>
+<li><code>Source/ArdaInfra/ArdaBackendImpls/D3D12/ArdaD3D12Backend.cpp</code></li>
+<li><code>Source/ArdaInfra/ArdaBackendImpls/Vulkan/ArdaVulkanBackend.cpp</code></li>
+<li><code>Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorCommandExecutor.cpp</code></li>
+<li><code>Source/ArdaInfra/ArdaBackend/Tests/ArdaResourceStateConformanceTests.cpp</code></li>
+<li><code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code></li>
+<li><code>Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorCommandProgramTests.cpp</code></li>
+</ul>
+<p>Native behavior was cross-checked against the D3D12 Agility SDK 1.619.5
+headers, Vulkan-Headers 1.4.357, DXC 1.9, the local adapter feature data, the
+<a href="https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html">DirectX Raytracing specification</a>,
+<a href="https://microsoft.github.io/DirectX-Specs/d3d/SamplerFeedback.html">Sampler Feedback specification</a>,
+<a href="https://microsoft.github.io/DirectX-Specs/d3d/WorkGraphs.html">Work Graphs specification</a>,
+and the <a href="https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html">current Vulkan specification</a>.</p>
+<h2 id="research-conclusions-that-shaped-the-design">Research conclusions that shaped the design</h2>
+<h3 id="capabilities-are-a-family-not-a-boolean">Capabilities are a family, not a Boolean</h3>
+<p>Unreal reports ray tracing, descriptors, queues, residency, and advanced
+pipelines as structured capability families. A single <code>mbRayTracing</code> value
+cannot decide whether a module that needs compaction, local SBT data, indirect
+trace, or hardware RT cores can run. Arda therefore publishes structured
+sub-capabilities in <code>FArdaRHICapabilities</code>, which serves as the immutable
+per-device ability table after initialization.</p>
+<p><code>FArdaRHICapabilities::Evaluate</code> compares the table with
+<code>FArdaRHIFeatureRequirements</code> and returns every missing ability.
+<code>GetArdaRHIProfileRequirements</code> maps <code>EArdaRHIDeviceProfile</code> to a standard
+requirement set. Built-in profiles distinguish basic RT infrastructure,
+real-time hardware RT, and
+real-time RT plus ML facts. A future software tracer may omit
+<code>mbRequireHardwareRayTracing</code>; real-time Ardashir modules do not.</p>
+<h3 id="ray-tracing-has-four-independent-lifecycles">Ray tracing has four independent lifecycles</h3>
+<ol>
+<li>Geometry and instances determine BLAS/TLAS prebuild sizes.</li>
+<li>Build/update consumes input and scratch storage and changes AS lifecycle
+state.</li>
+<li>Optional native property queries determine compacted storage followed by a
+compact copy.</li>
+<li>Libraries, hit groups, local layouts, SBT records, and direct/indirect
+dispatch form the execution ABI.</li>
+</ol>
+<p>D3D12 uses DXR prebuild info, state-object subobjects, export/root-signature
+associations, shader identifiers, <code>DISPATCH_RAYS</code>, and AS compact copy. Vulkan
+uses KHR build sizes/commands/property queries, shader groups, aligned strided
+device-address SBT regions, and <code>vkCmdTraceRaysIndirectKHR</code> when supported.</p>
+<h3 id="descriptor-models-must-not-be-conflated">Descriptor models must not be conflated</h3>
+<p>Vulkan descriptor indexing, <code>VK_EXT_descriptor_buffer</code>, and
+<code>VK_EXT_descriptor_heap</code> are distinct mechanisms. Ordinary descriptor-set
+support does not imply partially bound, update-after-bind, variable count, or
+direct heap indexing. D3D12 direct indexing similarly requires the appropriate
+root-signature/shader model flags. Arda reports each fact separately and uses
+the selected layout ABI consistently from pipeline creation through command
+binding.</p>
+<h3 id="queue-identity-is-part-of-resource-state">Queue identity is part of resource state</h3>
+<p>Dedicated Vulkan compute/transfer families require family-specific command
+pools, timeline-semaphore dependencies, and paired release/acquire ownership
+barriers. Multiple handles from the graphics family are not equivalent. The
+Vulkan native state snapshot consequently includes layout, stage/access masks,
+and queue-family owner.</p>
+<h3 id="sparse-residency-separates-virtual-shape-from-committed-bytes">Sparse residency separates virtual shape from committed bytes</h3>
+<p>D3D12 reserved resources use tile mappings and DXGI memory-budget telemetry.
+Vulkan sparse resources use sparse requirements and <code>vkQueueBindSparse</code>, with
+budget telemetry from <code>VK_EXT_memory_budget</code>. Sparse buffers, 2D images, 3D
+images, aliased mappings, reservation, and sparse-capable queue availability
+must be queried independently.</p>
+<h3 id="platform-specific-features-stay-platform-specific">Platform-specific features stay platform-specific</h3>
+<ul>
+<li>Native sampler feedback is D3D12-only in this contract. Vulkan reports false.</li>
+<li>Opacity micromaps use <code>VK_EXT_opacity_micromap</code>; D3D12 reports false.</li>
+<li>Work graphs use D3D12 Shader Model 6.8/options21. Vulkan AMDX shader enqueue
+is not claimed.</li>
+<li>Shader bundles remain a portable prepared-record abstraction independent of
+whether a future backend uses work graphs or device-generated commands.</li>
+<li>Custom present belongs to the swap-chain boundary, not merely device
+capability reporting.</li>
+</ul>
+<h2 id="frozen-implementation-plan">Frozen implementation plan</h2>
+<p>The plan was completed in this dependency order so support bits could not get
+ahead of native execution:</p>
+<ol>
+<li>Add structured capabilities, ability-table evaluation, RT/ML profiles, and
+admission/rejection tests.</li>
+<li>Add per-queue native signaling, D3D12 GPU waits, Vulkan family selection,
+timeline waits, and ownership transfer.</li>
+<li>Complete BLAS/TLAS sizing, creation, build/update, state tracking, compacted
+size queries, and compact copy on both APIs.</li>
+<li>Complete hit groups, local export associations, aligned local SBT arguments,
+persistent records, and direct/indirect trace dispatch.</li>
+<li>Enable Vulkan KHR ray tracing and EXT mesh shader pipelines/dispatch.</li>
+<li>Implement unbounded/update-after-bind/variable-count descriptor tables and
+actual direct resource/sampler heap indexing on both APIs.</li>
+<li>Implement D3D12 reserved and Vulkan sparse resources, mapping/commit,
+budgets/reservations, and mutable resource collections.</li>
+<li>Implement native D3D12 sampler feedback and Vulkan opacity-micromap
+build/compaction/BLAS attachment.</li>
+<li>Implement D3D12 work graphs, portable shader bundles, and desktop custom
+present.</li>
+<li>Extend native/RDG conformance tests, regenerate API inventories, and update
+the feature guide with SVG explanations only after behavior stabilized.</li>
+</ol>
+<h2 id="as-built-feature-comparison">As-built feature comparison</h2>
+<h3 id="resource-states-and-rdg-validation--implemented">Resource states and RDG validation — implemented</h3>
+<p>Like Unreal, Arda separates abstract access from pipeline/queue context and
+tracks mip/array/format-plane ranges. It supports explicit before/after
+descriptors, read-only combinations, split begin/end transitions, discard,
+UAV ordering, alias barriers, and persistent submitted-state validation.
+Full command-state and shader-binding validation remain narrower than Unreal;
+state snapshots do not replace the open-list, PSO and dispatch-limit checks
+tracked in the current audit.</p>
+<p>The key acceptance improvement is independent evidence. Tests compare:</p>
+<ol>
+<li>the compiled RDG expected state and owner;</li>
+<li>the facade command-list tracker;</li>
+<li>the common native-backend tracker; and</li>
+<li>exact D3D12 state bits or Vulkan layout/stage/access/family values.</li>
+</ol>
+<p>D3D12 has no driver query for current resource state, so “native state” means
+the exact persisted <code>D3D12_RESOURCE_STATES</code> value used for emitted barriers plus
+a clean debug-layer result. Vulkan evidence includes exact synchronization2
+encoding and validation output.</p>
+<h3 id="copies-resolve-staging-and-indirect-work--implemented">Copies, resolve, staging, and indirect work — implemented</h3>
+<p>Both backends execute buffer/texture regions, multisample resolve, pitched
+staging upload/readback, direct draw/dispatch, indirect draw/indexed draw,
+indirect compute, mesh dispatch, and indirect ray dispatch. Copy paths have
+range, format and sample checks; indirect paths validate usage, bounds, state
+and, following the current audit, DWORD alignment. Direct draw/dispatch still
+need a complete shared command-state/PSO/device-limit gate. Successful native
+output tests cover supported workloads rather than every misuse. Unreal remains broader in
+multi-draw/count variants, conversion/reallocation policy, and platform copy
+specializations.</p>
+<h3 id="heaps-aliasing-sparse-residency-and-collections--implemented">Heaps, aliasing, sparse residency, and collections — implemented</h3>
+<p>Both backends expose memory requirements, committed/virtual/placed resources,
+explicit heaps, alias barriers, and RDG transient heap placement. D3D12
+reserved resources and Vulkan sparse buffers/2D images support map, unmap,
+prefix commit/decommit, streaming budgets, and reservation where native support
+exists. Mutable resource collections retain validated mixed resource members
+and can expose a direct descriptor base.</p>
+<p>Arda&#39;s allocator and sparse shape breadth remain smaller than Unreal&#39;s many
+platform policies. The capability structure identifies sparse 3D and aliased
+mapping support rather than overclaiming them.</p>
+<h3 id="descriptor-indexing-and-direct-heaps--implemented-and-gated">Descriptor indexing and direct heaps — implemented and gated</h3>
+<p>Conventional sets and mutable bindless tables execute on D3D12 and Vulkan.
+Tables support unbounded shader declarations, partially bound entries,
+update-after-bind/update-unused-while-pending, variable live counts, typed null
+descriptors, register-space/descriptor-set identity, and in-flight version
+retention.</p>
+<p>The direct path uses D3D12 resource/sampler heaps or actual
+<code>VK_EXT_descriptor_heap</code> resource/sampler heaps. Vulkan encodes native
+descriptors into mapped device-address storage, maps heap sources into every
+pipeline stage, binds both heaps, and pushes each layout&#39;s allocation base.
+Execution tests sample a texture through both a resource heap and sampler heap,
+so nonzero base remapping is verified rather than inferred.</p>
+<h3 id="mesh-and-ray-tracing-pipeline-subset--implemented-and-gated">Mesh and ray-tracing pipeline subset — implemented and gated</h3>
+<p>D3D12 and Vulkan create and execute native mesh pipelines on capable adapters.
+Both create ray pipelines with library exports, hit groups, payload/attribute
+limits, recursion depth, global layouts, local export associations, shader-table
+records, inline local bytes, and direct/indirect trace dispatch.
+The current audit additionally tracks immutable bound shader-table generations:
+recommitting a mutable table must not release storage already referenced by
+recorded or submitted dispatches, and failed commits must preserve published storage.</p>
+<p>BLAS/TLAS creation, build/update, GPU instance-buffer build with a CPU-supplied count, native
+compacted-size query, compact destination creation, and compact copy execute on
+both APIs. State tests validate the facade/common/native lifecycle before and
+after submission.</p>
+<p>Vulkan opacity micromaps support native sizing, build, compact copy, and BLAS
+attachment. On drivers that advertise compact copy but reject the optional
+micromap compacted-size query-pool type, Arda returns the legal conservative
+source storage size for the destination and still executes native compact mode.</p>
+<h3 id="queues-and-synchronization--implemented-and-gated">Queues and synchronization — implemented and gated</h3>
+<p>D3D12 owns direct, compute, and copy queues with queue-specific fences and GPU
+waits. Vulkan selects dedicated compute and transfer families when available,
+creates family-specific pools, submits timeline-semaphore wait edges, and
+lowers release/acquire ownership transfer. Sparse binds share the same ordering
+model. RDG uses queue fallback only when compilation policy permits it.
+The current audit found that these feature paths needed additional protection
+for in-flight command storage reuse and concurrent timeline signaling. Refer to
+its overlapping-submission and failure-injection regressions for those guarantees.</p>
+<p>Physical RDG replay now performs a complete resource handoff whenever adjacent
+uses select different queues: the producer transitions to <code>Common</code>, emits the
+release, the consumer queue waits on the producer instance, then the consumer
+acquires and transitions to its declared state. <code>QueueRelease</code> and
+<code>QueueAcquire</code> conformance records prove that RDG, facade, common backend, and
+native state agree at both boundaries. The dedicated-queue regression uploads
+known bytes, exposes the buffer as an async-compute UAV, reads it back through
+the copy queue, and validates both the bytes and every state checkpoint. This
+also prevents D3D12 copy command lists from encoding an illegal transition whose
+before-state is a shader-only UAV state.</p>
+<h3 id="sampler-feedback--d3d12-implemented-vulkan-unsupported">Sampler feedback — D3D12 implemented, Vulkan unsupported</h3>
+<p>D3D12 creates a native sampler-feedback map paired with a committed or tiled texture, clears
+it, resolves/decodes it to an ordinary texture, and tracks facade/common/native
+states. Vulkan intentionally reports no native sampler feedback facility.</p>
+<h3 id="work-graphs--d3d12-implemented-vulkan-unsupported">Work graphs — D3D12 implemented, Vulkan unsupported</h3>
+<p>DXC emits Shader Model 6.8 libraries. D3D12 creates the executable graph state,
+identifies the program/entry point, manages backing memory, and dispatches CPU
+input records. Tests run a node shader and validate its GPU output. Vulkan
+truthfully reports the feature unsupported.</p>
+<h3 id="shader-bundles--implemented-on-d3d12-and-vulkan">Shader bundles — implemented on D3D12 and Vulkan</h3>
+<p>The portable bundle owns persistent validated compute records and replays a
+selected range with retained pipeline/binding/resource state. Tests execute
+multiple records and verify independent output buffers. This is not a claim of
+native Vulkan device-generated commands.</p>
+<h3 id="custom-present--implemented-on-both-desktop-swap-chains">Custom present — implemented on both desktop swap chains</h3>
+<p><code>IArdaCustomPresent</code> receives resize, native back-buffer identity and extent,
+native-present policy, and post-present callbacks. Hidden Win32 D3D12 and
+Vulkan swap-chain tests validate acquisition, callback ordering,
+native-present bypass, post-present, and resize. Vulkan presentation remains
+dependent on a host-provided surface and reports the surface-clamped extent.</p>
+<h3 id="capability-admission--implemented">Capability admission — implemented</h3>
+<p><code>FArdaRHICapabilities::Evaluate</code> and named device profiles let every later
+renderer or ML module ask whether its exact requirements are available. The report contains
+all missing abilities. A software RT profile can omit hardware cores; the
+real-time renderer profile can require them and refuse to run.</p>
+<h2 id="deliberate-differences-from-unreal">Deliberate differences from Unreal</h2>
+<p>Arda is still intentionally smaller than Unreal RHI/RDG:</p>
+<ul>
+<li>only desktop D3D12 and Vulkan are supported;</li>
+<li>rasterization exists for tooling/presentation/compatibility but is not a
+required shading path for the RT/ML renderer;</li>
+<li>no console, mobile, Metal, or multi-GPU platform layer is planned here;</li>
+<li>HDR/display-mode/frame-pacing policy, render-pass/subpass breadth,
+multi-draw/count variants, and Unreal&#39;s full validation/replay ecosystem are
+outside this tranche; and</li>
+<li>platform-specific advanced facilities are never silently emulated and
+reported as native.</li>
+</ul>
+<h2 id="conformance-and-acceptance-contract">Conformance and acceptance contract</h2>
+<p>Capabilities remain false until a native path exists. Capability-dependent
+tests skip only when the adapter reports the named feature unavailable. When a
+feature is true, tests must create native objects, execute native commands,
+validate output or lifecycle evidence, compare all available state authorities,
+and produce no D3D12 debug-layer or Vulkan validation error.
+Inventory coverage of every public capability field is distinct from complete
+boundary/lifecycle coverage. Hardware skips do not establish execution on that
+adapter. Missing stencil/blend/depth-bias controls, dynamic uniform offsets,
+occlusion queries and other partial/deferred features are explicitly listed in
+the current audit.</p>
+<p>Required focused coverage includes:</p>
+<ul>
+<li>RT/ML profile admission and explicit missing-ability traces;</li>
+<li>BLAS/TLAS build, update, compaction, hit/local SBT records, and indirect ray
+dispatch on D3D12 and Vulkan;</li>
+<li>Vulkan mesh/ray pipelines and opacity-micromap build, compact copy, and BLAS
+use;</li>
+<li>unbounded/update-after-bind/variable descriptors and direct resource/sampler
+heap execution;</li>
+<li>compute/copy/graphics submission, GPU wait edges, and Vulkan family ownership;</li>
+<li>sparse map/unmap/commit and streaming-budget telemetry;</li>
+<li>resource collections, sampler feedback, work graphs, shader bundles, and
+custom-present ordering; and</li>
+<li>RDG initial/intermediate/final state, culling, parallel recording,
+cross-queue waits, extraction, and transient placement.</li>
+</ul>
+<p>The non-interactive acceptance command is:</p>
+<pre><code class="language-text">ctest --test-dir build-state-parity -C Debug --output-on-failure
+</code></pre>
+<p>Hidden, frame-limited <code>RHITest</code> and <code>ARDGExample</code> invocations are registered as
+unattended GPU tests. Interactive unbounded runs still require a desktop
+window. Windows symbolic-link-policy tests may skip on hosts that cannot create
+symbolic links.</p>
+<h2 id="advanced-feature-execution-test-additions-2026-08-22">Advanced-feature execution test additions (2026-08-22)</h2>
+<p>The parity work now distinguishes declaration/lifecycle coverage from
+known-result native execution:</p>
+<ul>
+<li>D3D12 and Vulkan build a triangle BLAS and one-instance TLAS, route rays
+through a closest-hit group and miss record, pack non-empty local
+shader-table arguments, dispatch indirectly from the portable
+<code>{width,height,depth}</code> GPU record, and read back deterministic hit/miss
+values.</li>
+<li>D3D12 translates that portable ray record into a native
+<code>D3D12_DISPATCH_RAYS_DESC</code> on the command list using the currently bound SBT
+address ranges. Facade and native trackers require and preserve
+<code>IndirectArgument</code> state.</li>
+<li>Vulkan builds and compacts an opaque two-state micromap, attaches it to a
+BLAS, builds a TLAS, traces the compacted result, and validates deterministic
+hit/miss output. This supplements size, identity, state, and lifecycle
+assertions.</li>
+<li>D3D12 sampler-feedback shaders request mip 2 and verify its known sampled color.
+Decoded <code>R8UInt</code> readback contains mip 2 for minimum-mip feedback or <code>0xFF</code> at
+mip 2 for a used region. Unwritten regions retain <code>0xFF</code> or zero respectively.</li>
+<li>D3D12 and Vulkan sparse-buffer prefix commit writes and reads back
+<code>0x51A25EED</code> before decommit, in addition to tile-map and budget assertions.</li>
+<li>Empty and complete capability profiles exercise every RT/ML desktop
+admission requirement, including AS update/compaction, indirect rays, local
+SBT arguments, micromaps, descriptors, queues, sparse residency, feedback,
+work graphs, bundles, present, FP16, and INT8.</li>
+<li>D3D12 command submission uses independent per-queue fences and retains each
+native submission payload until its own fence completes. A 256-list
+immediate-release unit test and a 120-frame ARDG example test guard this
+lifetime rule.</li>
+</ul>
+<p>These checks are additive to existing deterministic readbacks for copy and
+resolve, explicit heap aliasing, bindless and direct heap indexing, dedicated
+compute/copy work, mesh pipelines, work graphs, and shader bundles.
+Capability-dependent tests skip only when the probed desktop adapter reports
+the native feature unavailable.</p>
+<section id="summary"><h2>Review and next steps</h2><p>The parity plan records requirements and priorities; current capability guards and native tests determine which features an application can use.</p><p>Continue with the <a href="index.html">module guides</a> and <a href="api-reference.html">API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend · Ardashir engineering documentation</p></footer>
+</body>
+</html>

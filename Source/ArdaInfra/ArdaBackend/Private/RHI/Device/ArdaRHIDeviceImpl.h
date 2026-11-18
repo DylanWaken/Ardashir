@@ -11,6 +11,8 @@
 #include "RHI/Shaders/ArdaRHIShaderImpl.h"
 #include "RHI/Pipelines/ArdaRHIPipelineImpl.h"
 #include "RHI/Scheduling/ArdaRHISignalImpl.h"
+#include "RHI/Scheduling/ArdaRHIBufferCopyCompletion.h"
+#include <EASTL/unordered_map.h>
 #include "RHI/Memory/ArdaGpuAllocatorPrivate.h"
 #include <EASTL/shared_ptr.h>
 #include <EASTL/utility.h>
@@ -88,7 +90,7 @@ namespace arda::detail
 			FlushAndDisablePipelineCachePersistence();
 			if (mDevice)
 			{
-				(void)mDevice->WaitForIdle();
+				(void)WaitForIdle();
 			}
 		}
 
@@ -298,25 +300,17 @@ namespace arda::detail
 		FArdaRHICacheStats GetDescriptorCacheStats() const noexcept override;
 		FArdaRHIResourceLifetimeStats GetResourceLifetimeStats() const noexcept override;
 
-		FArdaRHIStatus WaitForIdle() override
-		{
-			return mDevice->WaitForIdle();
-		}
+		FArdaRHIStatus WaitForIdle() override;
 
-		FArdaRHIStatus WaitForSubmission(uint64_t Submission) override
-		{
-			return mDevice->WaitForSubmission(Submission);
-		}
+		FArdaRHIStatus WaitForSubmission(uint64_t Submission) override;
 
-		TArdaRHIResult<bool> PollSubmission(uint64_t Submission) override
-		{
-			return mDevice->PollSubmission(Submission);
-		}
+		TArdaRHIResult<bool> PollSubmission(uint64_t Submission) override;
 
 		void FlushAndDisablePipelineCachePersistence() noexcept override;
 
 		void RunGarbageCollection() override
 		{
+			PollBufferCopies();
 			mDevice->RunGarbageCollection();
 			mAllocator.Collect();
 		}
@@ -332,6 +326,12 @@ namespace arda::detail
 		}
 
 	private:
+		using FArdaCopyBatch = eastl::vector<FArdaPendingBufferCopyCompletion>;
+		std::mutex mCopyMutex;
+		eastl::unordered_map<uint64_t, FArdaCopyBatch> mPendingCopies;
+		void PollBufferCopies();
+		void RetireBufferCopies(uint64_t Submission, const FArdaRHIStatus& Status);
+		FArdaRHIStatus CompleteBufferCopies(FArdaCopyBatch Pending, const FArdaRHIStatus& Status);
 		TArdaRHIResult<uint64_t> FinishCommandListSubmission(FArdaCommandList& CommandList,
 		    TArdaRHIResult<uint64_t> Submitted);
 

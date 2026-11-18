@@ -1,5 +1,5 @@
+#include "ArdaGraphTestNodeTypes.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
-#include "Graph/Node/ArdaDependencyNode.h"
 #include "ArdaDependencyGraph.h"
 #include "RHI/Memory/ArdaMemoryPlanner.h"
 
@@ -134,17 +134,16 @@ namespace arda::dependencygraphaccelerationstructure_tests
 		uint32_t mReferences = 0;
 	};
 
-	struct FArdaASParameters
-	{
-		FArdaDependencyResourceHandle mResource;
-		EArdaDependencyAccess mAccess = EArdaDependencyAccess::Read;
-		EArdaRHIResourceState mState = EArdaRHIResourceState::AccelStructRead;
-		FArdaRHIBufferRange mRange;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaASParameters)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mResource)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(EArdaDependencyAccess, mAccess, EArdaDependencyAccess::Read)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(EArdaRHIResourceState, mState, EArdaRHIResourceState::AccelStructRead)
+		ARDA_NODE_PARAMETER(FArdaRHIBufferRange, mRange)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	template <EArdaDependencyNodeKind Kind>
 	struct TArdaAccelerationStructureTestNode
-	    : TArdaDependencyNode<TArdaAccelerationStructureTestNode<Kind>, FArdaASParameters, Kind>
+	    : TArdaNodeDefinition<TArdaAccelerationStructureTestNode<Kind>, FArdaASParameters, ArdaTestNodeType(Kind)>
 	{
 		using FArdaParameters = FArdaASParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -226,7 +225,7 @@ namespace arda::dependencygraphaccelerationstructure_tests
 			EXPECT_FALSE(AliasEdit.Commit());
 			ASSERT_TRUE(AliasEdit.Cancel());
 		}
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mAllocatedBytes, 131072u);
 	}
 
@@ -254,7 +253,7 @@ namespace arda::dependencygraphaccelerationstructure_tests
 		ASSERT_TRUE(Writer);
 		ASSERT_TRUE(ASGraphics(Edit, FArdaASParameters{}, "independent graphics"));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_TRUE(Graph.GetTopology().IsReachable(Writer.GetHandle(), Reader.GetHandle()));
 		for (auto Queue : Graph.GetCompileResult().mQueues)
 		{
@@ -291,7 +290,7 @@ namespace arda::dependencygraphaccelerationstructure_tests
 			const auto After = ASCompute(Edit, Read, "read second build");
 			ASSERT_TRUE(Initial && First && Before && Second && After);
 			ASSERT_TRUE(Edit.Commit());
-			const auto Status = Graph.Compile();
+			const auto Status = Graph.CompileAndWait();
 			ASSERT_TRUE(Status) << Status.mMessage.c_str();
 			EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder,
 			    (eastl::vector<FArdaGraphNodeHandle>{Initial.GetHandle(),
@@ -341,7 +340,7 @@ namespace arda::dependencygraphaccelerationstructure_tests
 			auto Attached = Case == 2 ? ASCopy(Edit, P, "invalid") : ASCompute(Edit, P, "invalid");
 			ASSERT_TRUE(Attached);
 			ASSERT_TRUE(Edit.Commit());
-			EXPECT_FALSE(Graph.Compile());
+			EXPECT_FALSE(Graph.CompileAndWait());
 		}
 	}
 
@@ -413,7 +412,7 @@ namespace arda::dependencygraphaccelerationstructure_tests
 		ASSERT_TRUE(Edit.GetStatus());
 		ASSERT_TRUE(BindAccelerationStructure(Edit, Resource, "AS"));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mAllocatedBytes, 131072u + 256u);
 	}
 }

@@ -16,14 +16,14 @@ namespace arda
 	    const FArdaRHIRayTracingPipelineRef& Pipeline)
 	{
 		eastl::vector<FArdaDependencyShaderTableRecord> Records;
-		const auto T = eastl::find_if(Node.mDesc.mShaderTables.begin(),
-		    Node.mDesc.mShaderTables.end(),
+		const auto T = eastl::find_if(G.GetNodeDescription(Node).mShaderTables.begin(),
+		    G.GetNodeDescription(Node).mShaderTables.end(),
 		    [&](const auto& Table)
 		    {
 			    return Table.mPipelineSlot == Slot;
 		    });
 		const auto& PD = Pipeline->GetDesc();
-		if (T != Node.mDesc.mShaderTables.end())
+		if (T != G.GetNodeDescription(Node).mShaderTables.end())
 		{
 			Records = T->mRecords;
 		}
@@ -90,7 +90,7 @@ namespace arda
 				}
 			}
 		}
-		auto Created = G.mDevice->CreateShaderTable(Pipeline, Desc);
+		auto Created = G.mCompile.mExecution->mDevice->CreateShaderTable(Pipeline, Desc);
 		if (!Created)
 		{
 			return Created.mStatus;
@@ -151,7 +151,7 @@ namespace arda
 				{
 					return BindingError("Ray local shader schema does not match its export's layout.");
 				}
-				auto Set = G.mDevice->CreateBindingSet(MakeSet(G, Frame, R.mLocalBindings, Local));
+				auto Set = G.mCompile.mExecution->mDevice->CreateBindingSet(MakeSet(G, Frame, R.mLocalBindings, Local));
 				if (!Set)
 				{
 					return Set.mStatus;
@@ -162,12 +162,12 @@ namespace arda
 			{
 				return BindingError("Shader table export needs declared local binding parameters.");
 			}
-			if (auto S = G.mDevice->SetShaderTableRecord(Created.mValue, Native); !S)
+			if (auto S = G.mCompile.mExecution->mDevice->SetShaderTableRecord(Created.mValue, Native); !S)
 			{
 				return S;
 			}
 		}
-		if (auto S = G.mDevice->CommitShaderTable(Created.mValue); !S)
+		if (auto S = G.mCompile.mExecution->mDevice->CommitShaderTable(Created.mValue); !S)
 		{
 			return S;
 		}

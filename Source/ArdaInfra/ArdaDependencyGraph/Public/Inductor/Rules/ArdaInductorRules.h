@@ -1,6 +1,7 @@
 /** Public stateless rule library and compiler rule program. */
 #pragma once
 #include "Inductor/Rules/ArdaInductorDependencyRules.h"
+#include "Inductor/Rules/ArdaInductorSubgraphRules.h"
 #include "Inductor/Rules/ArdaInductorResourceUsageRules.h"
 #include "Inductor/Rules/ArdaInductorGraphicsRules.h"
 #include "Inductor/Rules/ArdaInductorCullingRules.h"
@@ -13,3 +14,5 @@
 #include "Inductor/Config/ArdaInductorRuleSet.h"
 
 #include "Inductor/Rules/ArdaInductorDispatchRules.h"
+#include "Inductor/Rules/ArdaInductorBatchingRules.h"
+#include "Inductor/Rules/ArdaInductorInstancingRules.h"

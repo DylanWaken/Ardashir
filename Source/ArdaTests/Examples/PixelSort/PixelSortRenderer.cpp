@@ -248,7 +248,7 @@ namespace arda
 
 		// Compile before replacing the cached graph so authoring failures leave it intact.
 		CheckArdaExampleStatus(Edit.Commit());
-		CheckArdaExampleStatus(Graph.Compile());
+		CheckArdaExampleStatus(Graph.CompileAndWait());
 		if (Found == mFrames.end())
 		{
 			mFrames.push_back(std::move(Frame));
@@ -282,7 +282,7 @@ namespace arda
 
 		// Submit asynchronous graph work and present the acquired image.
 		SwapChain.PrepareSubmit();
-		const auto Ticket = TakeArdaExampleValue(Frame.mGraph.Submit());
+		const auto Ticket = TakeArdaExampleValue(Frame.mGraph.SubmitAndWait());
 		if (!SwapChain.Present())
 		{
 			throw std::runtime_error(SwapChain.GetError().c_str());

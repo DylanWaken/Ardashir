@@ -1,4 +1,4 @@
-#include "Graph/Node/ArdaDependencyNode.h"
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include <gtest/gtest.h>
 #include <string>
 
@@ -6,7 +6,12 @@ namespace arda::dependency_node_tests
 {
 	using namespace arda;
 
-	struct FArdaLifecycleNode : TArdaComputeDependencyNode<FArdaLifecycleNode, uint32_t>
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaNodeValueParameters)
+		ARDA_NODE_PARAMETER(uint32_t, mValue)
+	ARDA_END_NODE_PARAMETER_STRUCT()
+
+	struct FArdaLifecycleNode
+	    : TArdaNodeDefinition<FArdaLifecycleNode, FArdaNodeValueParameters, EArdaNodeType::Compute>
 	{
 		inline static uint32_t mPreparations = 0, mInstances = 0, mLiveStates = 0, mLiveInstances = 0;
 		inline static bool mbFailPrepare = false, mbNullPrepare = false, mbFailInstance = false, mbNullInstance = false;
@@ -46,12 +51,13 @@ namespace arda::dependency_node_tests
 
 		static eastl::string GetCanonicalKey(const FArdaParameters& P)
 		{
-			return FArdaDependencyKeyBuilder{}.Value(P).Build();
+			return FArdaDependencyKeyBuilder{}.Value(P.mValue).Build();
 		}
 
 		static FArdaRHIStatus Validate(const FArdaParameters& P)
 		{
-			return P ? FArdaRHIStatus{} : FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Zero is invalid.");
+			return P.mValue ? FArdaRHIStatus{}
+			                : FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Zero is invalid.");
 		}
 
 		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef)
@@ -87,7 +93,7 @@ namespace arda::dependency_node_tests
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters& P, const FArdaState&)
 		{
 			FArdaDependencyNodeDesc D;
-			D.mEstimatedCost = P;
+			D.mEstimatedCost = P.mValue;
 			D.mbSideEffect = true;
 			return D;
 		}
@@ -97,21 +103,21 @@ namespace arda::dependency_node_tests
 		    const FArdaState&,
 		    FArdaInstanceState& I)
 		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, std::to_string(P + ++I.mCalls).c_str());
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, std::to_string(P.mValue + ++I.mCalls).c_str());
 		}
 	};
 
 	ARDA_DECLARE_GRAPH_NODE(FArdaLifecycleNode, Lifecycle);
 	ARDA_DEFINE_GRAPH_NODE(FArdaLifecycleNode, Lifecycle);
 
-	struct FArdaAutoOutputParameters
-	{
-		FArdaDependencyResourceHandle mOutput;
-		uint32_t mBytes = 64;
-		bool mbFail = false;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaAutoOutputParameters)
+		ARDA_NODE_BUFFER(mOutput, EArdaDependencyAccess::Write, EArdaRHIResourceState::UnorderedAccess)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mBytes, 64)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbFail, false)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaAutoOutputNode : TArdaComputeDependencyNode<FArdaAutoOutputNode, FArdaAutoOutputParameters>
+	struct FArdaAutoOutputNode
+	    : TArdaNodeDefinition<FArdaAutoOutputNode, FArdaAutoOutputParameters, EArdaNodeType::Compute>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata()
 		{
@@ -138,7 +144,6 @@ namespace arda::dependency_node_tests
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters& P, const FArdaState&)
 		{
 			FArdaDependencyNodeDesc D;
-			D.mAccesses = {{P.mOutput, EArdaDependencyAccess::Write, EArdaRHIResourceState::UnorderedAccess}};
 			D.mbSideEffect = true;
 			return D;
 		}
@@ -177,8 +182,8 @@ namespace arda::dependency_node_tests
 			EXPECT_EQ(Graph.FindResource(Original)->mBuffer.mByteSize, 64u);
 			ASSERT_TRUE(Edit.Commit());
 		}
-		ASSERT_TRUE(Graph.Compile());
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		ASSERT_TRUE(Graph.CompileAndWait());
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		FArdaGraphEdit Next(Graph);
 		const auto Temporary = AutoOutput(Next);
 		ASSERT_TRUE(Temporary);
@@ -229,9 +234,9 @@ namespace arda::dependency_node_tests
 		EXPECT_NE(OutputA, OutputB);
 		EXPECT_NE(OutputB, OutputC);
 		ASSERT_TRUE(FirstEdit.Commit());
-		ASSERT_TRUE(First.Compile());
+		ASSERT_TRUE(First.CompileAndWait());
 		ASSERT_TRUE(SecondEdit.Commit());
-		ASSERT_TRUE(Second.Compile());
+		ASSERT_TRUE(Second.CompileAndWait());
 	}
 
 	TEST(ArdaNodeResources, InlineInitializationRequiresAnEditAndPropagatesFailure)
@@ -267,7 +272,7 @@ namespace arda::dependency_node_tests
 		ASSERT_TRUE(Result);
 		EXPECT_EQ(Graph.FindResource(Result.GetBuffer("Result"))->mBuffer.mByteSize, 256u);
 		ASSERT_TRUE(Retry.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 	}
 
 	class FArdaDependencyNodeTest : public testing::Test
@@ -298,7 +303,7 @@ namespace arda::dependency_node_tests
 		ASSERT_TRUE(First);
 		ASSERT_TRUE(FArdaLifecycleNode::Register());
 		EXPECT_EQ(First, Registry.Find(First->mName));
-		EXPECT_EQ(First->mParameterType, &ArdaDependencyParameterType<uint32_t>);
+		EXPECT_EQ(First->mParameterType, &ArdaDependencyParameterType<FArdaNodeValueParameters>);
 		EXPECT_NE(First->mPreparedParameterType, First->mParameterType);
 		EXPECT_TRUE(First->mPrepare);
 		EXPECT_EQ(FArdaLifecycleNode::mPreparations, 0u);
@@ -310,9 +315,9 @@ namespace arda::dependency_node_tests
 	}
 
 	struct FArdaNameCollisionNode
-	    : TArdaDependencyNode<FArdaNameCollisionNode, uint32_t, EArdaDependencyNodeKind::Compute>
+	    : TArdaNodeDefinition<FArdaNameCollisionNode, FArdaNodeValueParameters, EArdaNodeType::Compute>
 	{
-		using FArdaParameters = uint32_t;
+		using FArdaParameters = FArdaNodeValueParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
 		using FArdaInstanceState = FArdaEmptyDependencyNodeState;
 
@@ -328,7 +333,7 @@ namespace arda::dependency_node_tests
 		}
 
 		// Expose resource effects and pipeline needs to the compiler.
-		static FArdaDependencyNodeDesc Describe(uint32_t, const FArdaState&)
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&, const FArdaState&)
 		{
 			return FArdaDependencyNodeDesc{};
 		}
@@ -375,20 +380,27 @@ namespace arda::dependency_node_tests
 
 		FArdaDependencyGraph Graph;
 		FArdaGraphEdit Edit(Graph);
-		const auto First = Lifecycle(Edit, uint32_t{7}, "first");
+		const auto First = Lifecycle(Edit, FArdaNodeValueParameters{uint32_t{7}}, "first");
 		const auto Second = Lifecycle(Edit, uint32_t{7});
-		const auto Named = Edit.Invoke(FArdaLifecycleNode::GetMetadata().mName, uint32_t{9});
+		const auto Named = Edit.Invoke(FArdaLifecycleNode::GetMetadata().mName, FArdaNodeValueParameters{9});
 		ASSERT_TRUE(First);
 		ASSERT_TRUE(Second);
 		ASSERT_TRUE(Named);
 		EXPECT_NE(First.GetHandle(), Second.GetHandle());
-		EXPECT_EQ(Graph.GetTopology().TryGetNode(Named.GetHandle())->mPayload.mDesc.mEstimatedCost, 9u);
+		EXPECT_EQ(Graph.GetNodeDescription(Named.GetHandle()).mEstimatedCost, 9u);
 		EXPECT_EQ(FArdaLifecycleNode::mPreparations, 1u);
+		EXPECT_EQ(FArdaLifecycleNode::mInstances, 0u);
+		EXPECT_TRUE(Edit.GetGraph().GetCompileResult().mNodes.empty());
+		ASSERT_TRUE(Edit.Commit());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(FArdaLifecycleNode::mInstances, 3u);
-		EXPECT_FALSE(Lifecycle(Edit, uint32_t{7}, "first"));
+		FArdaDependencyGraph InvalidGraph;
+		FArdaGraphEdit Duplicate(InvalidGraph);
+		ASSERT_TRUE(Lifecycle(Duplicate, FArdaNodeValueParameters{uint32_t{7}}, "first"));
+		EXPECT_FALSE(Lifecycle(Duplicate, FArdaNodeValueParameters{uint32_t{7}}, "first"));
 		EXPECT_EQ(FArdaLifecycleNode::mInstances, 3u);
-		ASSERT_TRUE(Edit.Cancel());
-		FArdaGraphEdit WrongType(Graph);
+		ASSERT_TRUE(Duplicate.Cancel());
+		FArdaGraphEdit WrongType(InvalidGraph);
 		EXPECT_FALSE(WrongType.Invoke(FArdaLifecycleNode::GetMetadata().mName, int32_t{7}));
 		EXPECT_EQ(FArdaLifecycleNode::mInstances, 3u);
 	}
@@ -399,28 +411,34 @@ namespace arda::dependency_node_tests
 		FArdaGraphEdit FirstEdit(First);
 		FArdaGraphEdit SecondEdit(Second);
 		uint32_t Input = 10;
-		const auto A = Lifecycle(FirstEdit, Input, "a");
+		const auto A = Lifecycle(FirstEdit, FArdaNodeValueParameters{Input}, "a");
 		Input = 200;
-		const auto B = Lifecycle(SecondEdit, 20, "b");
+		const auto B = Lifecycle(SecondEdit, FArdaNodeValueParameters{20}, "b");
 		ASSERT_TRUE(A);
 		ASSERT_TRUE(B);
 		EXPECT_EQ(FArdaLifecycleNode::mPreparations, 1u);
 		EXPECT_EQ(FArdaLifecycleNode::mLiveStates, 1u);
-		EXPECT_EQ(FArdaLifecycleNode::mLiveInstances, 2u);
+		EXPECT_EQ(FArdaLifecycleNode::mLiveInstances, 0u);
 		FArdaDependencyExecutionContext Context;
 		const auto& PA = First.GetTopology().TryGetNode(A.GetHandle())->mPayload;
 		const auto& PB = Second.GetTopology().TryGetNode(B.GetHandle())->mPayload;
-		EXPECT_EQ(PA.mDefinition->mRecord(Context, PA.mParameters.get()).mMessage, "11");
-		EXPECT_EQ(PA.mDefinition->mRecord(Context, PA.mParameters.get()).mMessage, "12");
-		EXPECT_EQ(PB.mDefinition->mRecord(Context, PB.mParameters.get()).mMessage, "21");
+		auto PreparedA = PA.mDefinition->mPrepare({}, PA.mSourceParameters);
+		auto PreparedB = PB.mDefinition->mPrepare({}, PB.mSourceParameters);
+		ASSERT_TRUE(PreparedA && PreparedB);
+		EXPECT_EQ(FArdaLifecycleNode::mLiveInstances, 2u);
+		EXPECT_EQ(PA.mDefinition->mRecord(Context, PreparedA.mValue.get()).mMessage, "11");
+		EXPECT_EQ(PA.mDefinition->mRecord(Context, PreparedA.mValue.get()).mMessage, "12");
+		EXPECT_EQ(PB.mDefinition->mRecord(Context, PreparedB.mValue.get()).mMessage, "21");
 		ASSERT_TRUE(FirstEdit.Cancel());
+		PreparedA.mValue.reset();
 		EXPECT_EQ(FArdaLifecycleNode::mLiveStates, 1u);
 		EXPECT_EQ(FArdaLifecycleNode::mLiveInstances, 1u);
 		ASSERT_TRUE(SecondEdit.Cancel());
+		PreparedB.mValue.reset();
 		EXPECT_EQ(FArdaLifecycleNode::mLiveStates, 0u);
 		EXPECT_EQ(FArdaLifecycleNode::mLiveInstances, 0u);
 		FArdaGraphEdit FreshEdit(Second);
-		ASSERT_TRUE(Lifecycle(FreshEdit, 1, "fresh"));
+		ASSERT_TRUE(Lifecycle(FreshEdit, FArdaNodeValueParameters{1}, "fresh"));
 		EXPECT_EQ(FArdaLifecycleNode::mPreparations, 2u);
 	}
 
@@ -428,12 +446,10 @@ namespace arda::dependency_node_tests
 	{
 
 		FArdaDependencyGraph Graph;
-		for (uint32_t Failure = 0; Failure < 4; ++Failure)
+		for (uint32_t Failure = 0; Failure < 2; ++Failure)
 		{
 			FArdaLifecycleNode::mbFailPrepare = Failure == 0;
 			FArdaLifecycleNode::mbNullPrepare = Failure == 1;
-			FArdaLifecycleNode::mbFailInstance = Failure == 2;
-			FArdaLifecycleNode::mbNullInstance = Failure == 3;
 			FArdaGraphEdit Edit(Graph);
 			EXPECT_FALSE(Lifecycle(Edit, uint32_t{1}));
 			EXPECT_EQ(Edit.GetStatus().mCode, Failure % 2 ? EArdaRHIResult::InvalidState : EArdaRHIResult::Unsupported);
@@ -441,18 +457,34 @@ namespace arda::dependency_node_tests
 			{
 				EXPECT_EQ(Edit.GetStatus().mMessage, "Preparation failed.");
 			}
-			if (Failure == 2)
-			{
-				EXPECT_EQ(Edit.GetStatus().mMessage, "Instance failed.");
-			}
 			EXPECT_TRUE(Graph.GetTopology().GetNodes().empty());
 			EXPECT_EQ(FArdaLifecycleNode::mLiveStates, 0u);
 			ASSERT_TRUE(Edit.Cancel());
 		}
-		FArdaLifecycleNode::mbNullInstance = false;
+		FArdaLifecycleNode::mbNullPrepare = false;
 		FArdaGraphEdit Edit(Graph);
-		ASSERT_TRUE(Lifecycle(Edit, uint32_t{1}));
-		EXPECT_EQ(FArdaLifecycleNode::mPreparations, 5u);
+		const auto Operation = Lifecycle(Edit, uint32_t{1});
+		ASSERT_TRUE(Operation);
+		const auto& Node = Graph.GetTopology().TryGetNode(Operation.GetHandle())->mPayload;
+		EXPECT_EQ(FArdaLifecycleNode::mInstances, 0u);
+		for (uint32_t Failure = 0; Failure < 2; ++Failure)
+		{
+			FArdaLifecycleNode::mbFailInstance = Failure == 0;
+			FArdaLifecycleNode::mbNullInstance = Failure == 1;
+			const auto Prepared = Node.mDefinition->mPrepare({}, Node.mSourceParameters);
+			EXPECT_FALSE(Prepared);
+			EXPECT_EQ(Prepared.mStatus.mCode, Failure ? EArdaRHIResult::InvalidState : EArdaRHIResult::Unsupported);
+			if (!Failure)
+			{
+				EXPECT_EQ(Prepared.mStatus.mMessage, "Instance failed.");
+			}
+			EXPECT_EQ(FArdaLifecycleNode::mLiveStates, 1u);
+			EXPECT_EQ(FArdaLifecycleNode::mLiveInstances, 0u);
+		}
+		FArdaLifecycleNode::mbNullInstance = false;
+		ASSERT_TRUE(Edit.Commit());
+		ASSERT_TRUE(Graph.CompileAndWait());
+		EXPECT_EQ(FArdaLifecycleNode::mPreparations, 3u);
 		EXPECT_EQ(FArdaLifecycleNode::mInstances, 3u);
 	}
 
@@ -463,13 +495,13 @@ namespace arda::dependency_node_tests
 		FArdaGraphNodeHandle Original;
 		{
 			FArdaGraphEdit Edit(Graph);
-			const auto Operation = Lifecycle(Edit, uint32_t{1}, "original");
+			const auto Operation = Lifecycle(Edit, FArdaNodeValueParameters{uint32_t{1}}, "original");
 			ASSERT_TRUE(Operation);
 			Original = Operation.GetHandle();
 			ASSERT_TRUE(Edit.Commit());
 		}
-		ASSERT_TRUE(Graph.Compile());
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		ASSERT_TRUE(Graph.CompileAndWait());
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		{
 			FArdaGraphEdit Canceled(Graph);
 			EXPECT_TRUE(Graph.GetTopology().GetNodes().empty());
@@ -481,7 +513,7 @@ namespace arda::dependency_node_tests
 			FArdaGraphEdit Empty(Graph);
 			ASSERT_TRUE(Empty.Commit());
 		}
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(FArdaLifecycleNode::mLiveStates, 1u);
 		EXPECT_EQ(FArdaLifecycleNode::mLiveInstances, 1u);
 		ASSERT_TRUE(Graph.InvalidatePersistentCache());
@@ -489,7 +521,7 @@ namespace arda::dependency_node_tests
 		EXPECT_EQ(FArdaLifecycleNode::mLiveInstances, 0u);
 	}
 
-	struct FArdaCudaNode : TArdaCudaDependencyNode<FArdaCudaNode, uint32_t>
+	struct FArdaCudaNode : TArdaNodeDefinition<FArdaCudaNode, FArdaNodeValueParameters, EArdaNodeType::Cuda>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata()
 		{
@@ -498,7 +530,7 @@ namespace arda::dependency_node_tests
 
 		static eastl::string GetCanonicalKey(const FArdaParameters& P)
 		{
-			return FArdaDependencyKeyBuilder{}.Value(P).Build();
+			return FArdaDependencyKeyBuilder{}.Value(P.mValue).Build();
 		}
 
 		static FArdaDependencyNodeDesc Describe(const FArdaParameters&, const FArdaState&)
@@ -512,7 +544,7 @@ namespace arda::dependency_node_tests
 		    FArdaInstanceState&,
 		    FArdaCudaSequence&)
 		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, std::to_string(P).c_str());
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, std::to_string(P.mValue).c_str());
 		}
 	};
 
@@ -523,21 +555,24 @@ namespace arda::dependency_node_tests
 	{
 		FArdaDependencyGraph Graph;
 		FArdaGraphEdit GraphEdit(Graph);
-		const auto Node = CudaSequenceProbe(GraphEdit, 33, "cuda");
+		const auto Node = CudaSequenceProbe(GraphEdit, FArdaNodeValueParameters{33}, "cuda");
 		ASSERT_TRUE(Node);
 		const auto& P = Graph.GetTopology().TryGetNode(Node.GetHandle())->mPayload;
 		EXPECT_FALSE(P.mDefinition->mRecord);
 		ASSERT_TRUE(P.mDefinition->mPrepareCuda);
 		FArdaDependencyExecutionContext Context;
 		FArdaCudaSequence Sequence({});
-		EXPECT_EQ(P.mDefinition->mPrepareCuda(Context, P.mParameters.get(), Sequence).mMessage, "33");
+		const auto Prepared = P.mDefinition->mPrepare(Graph.GetDevice(), P.mSourceParameters);
+		ASSERT_TRUE(Prepared);
+		EXPECT_EQ(P.mDefinition->mPrepareCuda(Context, Prepared.mValue.get(), Sequence).mMessage, "33");
 	}
 
 	// Declarations alone suffice: invalid contracts must be rejected without instantiating their adapters.
 	template <int Missing>
-	struct TArdaContractProbe : TArdaComputeDependencyNode<TArdaContractProbe<Missing>, uint32_t>
+	struct TArdaContractProbe
+	    : TArdaNodeDefinition<TArdaContractProbe<Missing>, FArdaNodeValueParameters, EArdaNodeType::Compute>
 	{
-		using FArdaParameters = uint32_t;
+		using FArdaParameters = FArdaNodeValueParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
 		using FArdaInstanceState = FArdaEmptyDependencyNodeState;
 		template <int N = Missing, std::enable_if_t<N != 1, int> = 0>
@@ -556,7 +591,8 @@ namespace arda::dependency_node_tests
 		    FArdaInstanceState&);
 	};
 
-	struct FArdaCustomStateWithoutPrepare : TArdaComputeDependencyNode<FArdaCustomStateWithoutPrepare, uint32_t>
+	struct FArdaCustomStateWithoutPrepare
+	    : TArdaNodeDefinition<FArdaCustomStateWithoutPrepare, FArdaNodeValueParameters, EArdaNodeType::Compute>
 	{
 		struct FArdaState
 		{
@@ -571,7 +607,8 @@ namespace arda::dependency_node_tests
 		    FArdaInstanceState&);
 	};
 
-	struct FArdaCustomInstanceWithoutCreate : TArdaComputeDependencyNode<FArdaCustomInstanceWithoutCreate, uint32_t>
+	struct FArdaCustomInstanceWithoutCreate
+	    : TArdaNodeDefinition<FArdaCustomInstanceWithoutCreate, FArdaNodeValueParameters, EArdaNodeType::Compute>
 	{
 		struct FArdaInstanceState
 		{
@@ -590,7 +627,8 @@ namespace arda::dependency_node_tests
 	{
 	};
 
-	struct FArdaNativeWithCuda : TArdaComputeDependencyNode<FArdaNativeWithCuda, uint32_t>
+	struct FArdaNativeWithCuda
+	    : TArdaNodeDefinition<FArdaNativeWithCuda, FArdaNodeValueParameters, EArdaNodeType::Compute>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata();
 		static eastl::string GetCanonicalKey(const FArdaParameters&);
@@ -602,7 +640,8 @@ namespace arda::dependency_node_tests
 		    FArdaCudaSequence&);
 	};
 
-	struct FArdaCudaWithBothHooks : TArdaCudaDependencyNode<FArdaCudaWithBothHooks, uint32_t>
+	struct FArdaCudaWithBothHooks
+	    : TArdaNodeDefinition<FArdaCudaWithBothHooks, FArdaNodeValueParameters, EArdaNodeType::Cuda>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata();
 		static eastl::string GetCanonicalKey(const FArdaParameters&);
@@ -624,6 +663,26 @@ namespace arda::dependency_node_tests
 		EXPECT_FALSE(TArdaDependencyNodeContract<FArdaCustomStateWithoutPrepare>::value);
 		EXPECT_FALSE(TArdaDependencyNodeContract<FArdaCustomInstanceWithoutCreate>::value);
 	}
+
+	// Even a complete manually described node cannot bypass the parameter schema contract.
+	struct FArdaUndeclaredParameters
+	{
+		uint32_t mValue = 0;
+	};
+
+	struct FArdaUndeclaredParameterNode
+	    : TArdaNodeDefinition<FArdaUndeclaredParameterNode, FArdaUndeclaredParameters, EArdaNodeType::Compute>
+	{
+		static FArdaDependencyNodeMetadata GetMetadata();
+		static eastl::string GetCanonicalKey(const FArdaParameters&);
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&, const FArdaState&);
+		static FArdaRHIStatus Record(FArdaDependencyExecutionContext&,
+		    const FArdaParameters&,
+		    const FArdaState&,
+		    FArdaInstanceState&);
+	};
+
+	static_assert(!TArdaDependencyNodeContract<FArdaUndeclaredParameterNode>::value);
 
 	static_assert(TArdaDependencyNodeContract<FArdaLifecycleNode>::value);
 	static_assert(TArdaDependencyNodeContract<FArdaCudaNode>::value);

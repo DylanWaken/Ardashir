@@ -1176,6 +1176,7 @@
     prepareHeaderControls();
     initializeTheme();
     initializeNavigation();
+    doc.documentElement.classList.add("has-js");
     initializeGlossaryTooltips();
     initializeGlossaryFilter();
     initializeCodeBlocks();

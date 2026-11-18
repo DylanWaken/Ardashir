@@ -2,6 +2,50 @@
 
 namespace arda::inductor_detail
 {
+	namespace
+	{
+		bool IsBatchRefinement(const eastl::vector<eastl::vector<FArdaGraphNodeHandle>>& Safe,
+		    const eastl::vector<eastl::vector<FArdaGraphNodeHandle>>& Proposed,
+		    size_t MinimumSize)
+		{
+			eastl::unordered_map<uint32_t, eastl::pair<size_t, size_t>> Positions;
+			for (size_t Batch = 0; Batch < Safe.size(); ++Batch)
+			{
+				for (size_t Lane = 0; Lane < Safe[Batch].size(); ++Lane)
+				{
+					Positions.emplace(Safe[Batch][Lane].GetIndex(), eastl::make_pair(Batch, Lane));
+				}
+			}
+			eastl::unordered_set<FArdaGraphNodeHandle, FArdaGraphNodeHandleHash> Seen;
+			for (const auto& Batch : Proposed)
+			{
+				if (Batch.size() < MinimumSize)
+				{
+					return false;
+				}
+				const auto First = Positions.find(Batch.front().GetIndex());
+				if (First == Positions.end())
+				{
+					return false;
+				}
+				const auto& Original = Safe[First->second.first];
+				const auto Offset = First->second.second;
+				if (Batch.size() > Original.size() - Offset)
+				{
+					return false;
+				}
+				for (size_t Lane = 0; Lane < Batch.size(); ++Lane)
+				{
+					if (Batch[Lane] != Original[Offset + Lane] || !Seen.insert(Batch[Lane]).second)
+					{
+						return false;
+					}
+				}
+			}
+			return true;
+		}
+	}
+
 	FArdaRHIStatus ValidateNodeOrder(const FArdaDependencyGraph::FArdaImpl& G, const FArdaInductorCompileResult& R)
 	{
 		if (!R.mStatus)
@@ -97,15 +141,15 @@ namespace arda::inductor_detail
 			}
 		}
 		eastl::vector<eastl::pair<FArdaGraphNodeHandle, FArdaGraphNodeHandle>> MemoryEdges;
+		eastl::unordered_map<uint32_t, FArdaGraphNodeHandle> LiveNodes;
+		for (auto Handle : R.mExecutionOrder)
+		{
+			LiveNodes.emplace(Handle.GetIndex(), Handle);
+		}
 		const auto Find = [&](uint32_t Id)
 		{
-			const auto I = eastl::find_if(R.mExecutionOrder.begin(),
-			    R.mExecutionOrder.end(),
-			    [&](auto H)
-			    {
-				    return H.GetIndex() == Id;
-			    });
-			return I == R.mExecutionOrder.end() ? FArdaGraphNodeHandle{} : *I;
+			const auto I = LiveNodes.find(Id);
+			return I == LiveNodes.end() ? FArdaGraphNodeHandle{} : I->second;
 		};
 		for (const auto& E : R.mMemoryPlan->mAliasEdges)
 		{
@@ -120,7 +164,12 @@ namespace arda::inductor_detail
 		{
 			return Error("Allocation dependencies were changed without rebuilding the plan.");
 		}
-		const FArdaInductorQueueContext Input{G.mTopology, G.mResources, G.mOptions, G.mDevice, {}};
+		const FArdaInductorQueueContext Input{G.mTopology,
+		    G.mResources,
+		    G.mOptions,
+		    G.mCompile.mExecution->mDevice,
+		    {},
+		    G.mCompile};
 		if (auto S = ValidateQueueAssignment(Input, R); !S)
 		{
 			return S;
@@ -133,6 +182,24 @@ namespace arda::inductor_detail
 			return Error("CUDA batches do not cover the selected CUDA operations.");
 		}
 		auto View = FArdaInductorGraphAccess::View(const_cast<FArdaDependencyGraph::FArdaImpl&>(G));
+		if (auto S = FArdaBatchPipelinesRule{}.Apply(View, Expected); !S)
+		{
+			return S;
+		}
+		if (!IsBatchRefinement(Expected.mPipelineBatches, R.mPipelineBatches, 1))
+		{
+			return Error("Pipeline batches cross compatible pipeline, hazard or alias boundaries.");
+		}
+		Expected.mPipelineBatches = R.mPipelineBatches;
+		if (auto S = FArdaMergeDrawInstancesRule{}.Apply(View, Expected); !S)
+		{
+			return S;
+		}
+		if (!IsBatchRefinement(Expected.mInstancedDraws, R.mInstancedDraws, 2))
+		{
+			return Error("Instanced draws disagree with compatible bindings and stage contracts.");
+		}
+		Expected.mInstancedDraws = R.mInstancedDraws;
 		if (auto S = FArdaFlattenDispatchesRule{}.Apply(View, Expected); !S)
 		{
 			return S;
@@ -155,10 +222,22 @@ namespace arda::inductor_detail
 		{
 			return S;
 		}
+		const auto EdgeKey = [](uint32_t From, uint32_t To)
+		{
+			return (uint64_t(From) << 32) | To;
+		};
+		eastl::unordered_set<uint64_t> DependencyKeys, FenceKeys;
+		for (const auto& E : R.mDispatchDependencies)
+		{
+			DependencyKeys.insert(EdgeKey(E.first, E.second));
+		}
+		for (const auto& F : R.mFences)
+		{
+			FenceKeys.insert(EdgeKey(F.mProducer, F.mConsumer));
+		}
 		for (const auto& E : Expected.mDispatchDependencies)
 		{
-			if (eastl::find(R.mDispatchDependencies.begin(), R.mDispatchDependencies.end(), E) ==
-			    R.mDispatchDependencies.end())
+			if (!DependencyKeys.count(EdgeKey(E.first, E.second)))
 			{
 				return Error("A required dispatch dependency is missing.");
 			}
@@ -175,12 +254,7 @@ namespace arda::inductor_detail
 			const auto& P = R.mDispatches[E.first];
 			const auto& C = R.mDispatches[E.second];
 			if ((P.mQueue != C.mQueue || P.mCudaStream != C.mCudaStream) &&
-			    eastl::none_of(R.mFences.begin(),
-			        R.mFences.end(),
-			        [&](const auto& F)
-			        {
-				        return F.mProducer == E.first && F.mConsumer == E.second;
-			        }))
+			    !FenceKeys.count(EdgeKey(E.first, E.second)))
 			{
 				return Error("A cross-domain dispatch dependency has no fence.");
 			}
@@ -188,9 +262,7 @@ namespace arda::inductor_detail
 		for (const auto& F : R.mFences)
 		{
 			if (F.mProducer >= F.mConsumer || F.mConsumer >= R.mDispatches.size() ||
-			    eastl::find(R.mDispatchDependencies.begin(),
-			        R.mDispatchDependencies.end(),
-			        eastl::make_pair(F.mProducer, F.mConsumer)) == R.mDispatchDependencies.end())
+			    !DependencyKeys.count(EdgeKey(F.mProducer, F.mConsumer)))
 			{
 				return Error("A fence references a missing or invalid dispatch dependency.");
 			}

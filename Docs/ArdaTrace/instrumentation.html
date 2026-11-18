@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Instrumentation — Ardashir engineering documentation.">
+  <title>Instrumentation | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaTrace pages">
+      <h2>ArdaTrace</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="instrumentation.html">Instrumentation</a>
+        <a href="viewer-and-format.html">Viewer and capture format</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaTrace</a>
+      </nav>
+      <article>
+<h1 id="instrumentation">Instrumentation</h1>
+<p>ArdaTrace instrumentation describes events; it does not print timing strings
+from the measured process. Names are registered once, event records use integer
+identifiers, and the viewer reconstructs hierarchy from explicit parent scope
+identifiers.</p>
+<p><img src="assets/scope-hierarchy.svg" alt="Nested scopes become a viewer hierarchy" /></p>
+<h2 id="automatic-function-scopes">Automatic function scopes</h2>
+<p><code>ARDA_SCOPE_TIMER()</code> uses the enclosing function's <code>__func__</code> value:</p>
+<pre><code class="language-cpp">void BuildAccelerationStructure()
+{
+    ARDA_SCOPE_TIMER();
+    // Traced as &quot;BuildAccelerationStructure&quot;.
+}
+</code></pre>
+<p>Use it near the beginning of a function to measure the remaining function
+body. The RAII timer records the end timestamp on normal return, early return,
+or C++ stack unwinding.</p>
+<h2 id="explicitly-named-scopes">Explicitly named scopes</h2>
+<p>Use a stable string literal when a function contains multiple meaningful
+phases:</p>
+<pre><code class="language-cpp">void RenderFrame()
+{
+    ARDA_NAMED_SCOPE_TIMER(&quot;Rendering&quot;);
+
+    {
+        ARDA_NAMED_SCOPE_TIMER(&quot;Raytracer&quot;);
+        TraceScene();
+    }
+
+    {
+        ARDA_NAMED_SCOPE_TIMER(&quot;Post Processing&quot;);
+        ApplyPostProcessing();
+    }
+}
+</code></pre>
+<p>The named macro caches its label at that call site. Do not pass a temporary or
+a value intended to change between invocations. Use a stable string literal.</p>
+<h2 id="hierarchical-scope-paths">Hierarchical scope paths</h2>
+<p>Each thread maintains its own active scope identifier. Constructing a timer
+stores the currently active identifier as its parent; destroying it restores
+that parent. Nested function calls work without manually repeating prefixes:</p>
+<pre><code class="language-cpp">void Render()
+{
+    ARDA_NAMED_SCOPE_TIMER(&quot;Rendering&quot;);
+    Raytrace();
+}
+
+void Raytrace()
+{
+    ARDA_NAMED_SCOPE_TIMER(&quot;Raytracer&quot;);
+    SampleLighting();
+}
+
+void SampleLighting()
+{
+    ARDA_NAMED_SCOPE_TIMER(&quot;Gaussian Sampler&quot;);
+}
+</code></pre>
+<p>The viewer can display:</p>
+<pre><code class="language-text">Rendering
+└── Raytracer
+    └── Gaussian Sampler
+</code></pre>
+<p>Parent relationships never cross threads. Work transferred to another thread
+starts a new root hierarchy on that thread.</p>
+<h2 id="thread-names">Thread names</h2>
+<p>Name each participating thread from that thread:</p>
+<pre><code class="language-cpp">void RenderThreadMain()
+{
+    arda::SetCurrentTraceThreadName(&quot;Render Thread&quot;);
+    ARDA_NAMED_SCOPE_TIMER(&quot;Render Thread Loop&quot;);
+    // ...
+}
+</code></pre>
+<p>Calling the function again updates the viewer label for the same trace thread.
+Names are copied by the recorder.</p>
+<h2 id="counter-samples">Counter samples</h2>
+<p>Counters are timestamped <code>double</code> samples:</p>
+<pre><code class="language-cpp">ARDA_TRACE_COUNTER(&quot;Visible Objects&quot;, VisibleObjectCount);
+ARDA_TRACE_COUNTER(&quot;Upload Queue MiB&quot;, QueuedBytes / (1024.0 * 1024.0));
+</code></pre>
+<p>Sample at a meaningful cadence, such as once per frame or after a state change.
+Avoid emitting unchanged values from extremely hot loops.</p>
+<h2 id="markers">Markers</h2>
+<p>Markers identify instantaneous events:</p>
+<pre><code class="language-cpp">ARDA_TRACE_MARKER(&quot;Frame Begin&quot;);
+ARDA_TRACE_MARKER(&quot;Shader Reload Requested&quot;);
+</code></pre>
+<p>The viewer draws markers vertically across the shared timeline, making them
+useful for correlating activity on multiple threads.</p>
+<h2 id="direct-api">Direct API</h2>
+<p>Macros are preferred because they create one static <code>FArdaTraceName</code> per call
+site. Code that needs a reusable registered name can call the API directly:</p>
+<pre><code class="language-cpp">static const arda::FArdaTraceName QueueDepthName(&quot;Queue Depth&quot;);
+arda::RecordTraceCounter(QueueDepthName, QueueDepth);
+</code></pre>
+<p><code>FArdaTraceName</code> labels must remain valid for the process lifetime. String
+literals satisfy this requirement.</p>
+<h2 id="scope-placement-guidance">Scope placement guidance</h2>
+<ul>
+<li>Instrument subsystem boundaries and operations that are large enough to
+diagnose or optimize.</li>
+<li>Prefer stable names so aggregate rows combine equivalent work.</li>
+<li>Avoid a timer around every trivial accessor or iteration.</li>
+<li>Name worker threads before their first important event.</li>
+<li>Use counters for changing values, markers for points in time, and scopes for
+intervals.</li>
+<li>Keep capture start/stop outside instrumented worker activity.</li>
+</ul>
+<h2 id="runtime-behavior-and-overhead">Runtime behavior and overhead</h2>
+<p>When capture is active, a scope records two steady-clock timestamps and appends
+one completed event to its thread-local chunk. Counter and marker calls append
+one timestamped event. Full chunks are published under synchronization; the
+normal event path does not format strings or perform web operations.</p>
+<p>Instrumentation still has measurable cost. Compare captures at the same
+instrumentation level, and disable tracing for builds where that cost is not
+acceptable:</p>
+<pre><code class="language-powershell">cmake -S . -B build-shipping -DARDASHIR_ENABLE_TRACE=OFF
+</code></pre>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaTrace · Ardashir engineering documentation</p></footer>
+</body>
+</html>

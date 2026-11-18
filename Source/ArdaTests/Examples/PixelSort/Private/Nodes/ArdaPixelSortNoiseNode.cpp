@@ -1,14 +1,10 @@
+#include "ArdaExampleNodeState.h"
 #include "Nodes/ArdaPixelSortNoiseNode.h"
 #include "ArdaPixelSortNodeInternal.h"
 
 namespace arda
 {
 	ARDA_DEFINE_GRAPH_NODE(FArdaPixelSortNoiseNode, PixelSortNoise);
-
-	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPixelSortNoiseShaderParameters)
-		ARDA_SHADER_CONSTANT_BUFFER(mConstants, 0, 0, EArdaRHIShaderStage::Compute)
-		ARDA_SHADER_TEXTURE_UAV(mNoise, 0, 0, EArdaRHIShaderStage::Compute)
-	ARDA_END_SHADER_PARAMETER_STRUCT()
 
 	class FArdaPixelSortNoiseShader final : public FArdaGlobalShader
 	{
@@ -69,16 +65,6 @@ namespace arda
 		return {"example.pixel-sort.noise", 1};
 	}
 
-	eastl::string FArdaPixelSortNoiseNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		return FArdaDependencyKeyBuilder()
-		    .Resource(P.mConstants)
-		    .Resource(P.mNoise)
-		    .Value(P.mWidth)
-		    .Value(P.mHeight)
-		    .Build();
-	}
-
 	FArdaRHIStatus FArdaPixelSortNoiseNode::Validate(const FArdaParameters& P)
 	{
 		return ValidatePixelSortExtent(P.mWidth, P.mHeight);
@@ -87,29 +73,12 @@ namespace arda
 	TArdaRHIResult<eastl::shared_ptr<const FArdaPixelSortNoiseNode::FArdaState>> FArdaPixelSortNoiseNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
-		if (!Device)
-		{
-			return {{},
-			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This node requires an initialized device.")};
-		}
-
-		auto State = eastl::make_shared<FArdaState>();
-		State->mDevice = eastl::move(Device);
-
-		// Publish prepared state only after all node-owned setup succeeds.
-		auto Status = State->Initialize();
-		if (!Status)
-		{
-			return {{}, eastl::move(Status)};
-		}
-
-		return {eastl::move(State), {}};
+		return PrepareExampleNodeState<FArdaState>(eastl::move(Device));
 	}
 
 	FArdaDependencyNodeDesc FArdaPixelSortNoiseNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
-		D.BindShader<FArdaPixelSortNoiseShaderParameters>({{"mConstants", P.mConstants}, {"mNoise", P.mNoise}});
 		D.mPipelines = {{"default", 0, EArdaPipelineStateKind::Compute, {}, Prepared.mNoise}};
 
 		return D;

@@ -38,7 +38,7 @@
         <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
 
         <a href="resource-recipes.html">Resource recipes</a>
-        <a href="Gpu-Allocator.md">GPU allocator</a>
+        <a href="gpu-allocator.html">GPU allocator</a>
         <a href="capability-recipes.html">Capability recipes</a>
         <a href="cuda-interop.html">CUDA and graphics</a>
         <a href="cuda-graphics.html">CUDA in graphics fundamentals</a>
@@ -56,7 +56,7 @@
         ArdaBackend
       </nav>
       <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>Complete GPU examples</h1><p>Read the source-backed workloads behind the resource and capability recipes. Code is regenerated from the compiled tests.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#fixture">Shared fixture and application replacements</a><a href="#shader-sources">Shader interfaces paired with the workloads</a><a href="#shader-artifacts">Build the exact shader variants</a><a href="#VerifyExtendedCommands">VerifyExtendedCommands</a><a href="#NativeTransientResourcesAndDescriptorsReturnToBaseline">NativeTransientResourcesAndDescriptorsReturnToBaseline</a><a href="#VerifyExplicitHeapAliasing">VerifyExplicitHeapAliasing</a><a href="#VerifyQueryExecution">VerifyQueryExecution</a><a href="#CreateExtendedShader">CreateExtendedShader</a><a href="#VerifyShaderLibraryExecution">VerifyShaderLibraryExecution</a><a href="#VerifyBindlessDescriptorTable">VerifyBindlessDescriptorTable</a><a href="#VerifyExpandedDescriptorsAndResourceCollections">VerifyExpandedDescriptorsAndResourceCollections</a><a href="#VerifyMeshPipelineCapabilityAndExecution">VerifyMeshPipelineCapabilityAndExecution</a><a href="#VerifyAccelerationStructureLifecycleAndStateParity">VerifyAccelerationStructureLifecycleAndStateParity</a><a href="#VerifyRayTracingPipelineCapabilityAndExecution">VerifyRayTracingPipelineCapabilityAndExecution</a><a href="#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a><a href="#VerifyD3D12WorkGraphExecution">VerifyD3D12WorkGraphExecution</a><a href="#VerifyShaderBundleExecution">VerifyShaderBundleExecution</a><a href="#VerifySamplerFeedbackStateParity">VerifySamplerFeedbackStateParity</a><a href="#VerifyVulkanOpacityMicromapLifecycleAndStateParity">VerifyVulkanOpacityMicromapLifecycleAndStateParity</a><a href="#VerifyRuntimeDescriptorVersions">VerifyRuntimeDescriptorVersions</a><a href="#VerifyDirectResourceAndSamplerHeapIndexing">VerifyDirectResourceAndSamplerHeapIndexing</a><a href="#VerifyQueueBreadth">VerifyQueueBreadth</a><a href="#VerifySparseResidencyAndStreamingBudget">VerifySparseResidencyAndStreamingBudget</a><a href="#VerifyStreamingBudgetExecution">VerifyStreamingBudgetExecution</a><a href="#VerifyComputeArithmetic">VerifyComputeArithmetic</a><a href="#VerifyD3D12CustomPresentExecution">VerifyD3D12CustomPresentExecution</a><a href="#VerifyCapabilityInvariants">VerifyCapabilityInvariants</a><a href="#VerifyRasterStageCapabilityAndExecution">VerifyRasterStageCapabilityAndExecution</a><a href="#VerifyResolveAndPlaneTracking">VerifyResolveAndPlaneTracking</a><a href="#VerifyResourceAdmissionFacts">VerifyResourceAdmissionFacts</a><a href="#VerifyPerQueueTimerExecution">VerifyPerQueueTimerExecution</a><a href="#summary">Checkpoints</a></nav>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#fixture">Shared fixture and application replacements</a><a href="#shader-sources">Shader interfaces paired with the workloads</a><a href="#shader-artifacts">Build the exact shader variants</a><a href="#VerifyExtendedCommands">VerifyExtendedCommands</a><a href="#NativeTransientResourcesAndDescriptorsReturnToBaseline">NativeTransientResourcesAndDescriptorsReturnToBaseline</a><a href="#VerifyExplicitHeapAliasing">VerifyExplicitHeapAliasing</a><a href="#VerifyQueryExecution">VerifyQueryExecution</a><a href="#CreateExtendedShader">CreateExtendedShader</a><a href="#VerifyShaderLibraryExecution">VerifyShaderLibraryExecution</a><a href="#VerifyBindlessDescriptorTable">VerifyBindlessDescriptorTable</a><a href="#VerifyExpandedDescriptorsAndResourceCollections">VerifyExpandedDescriptorsAndResourceCollections</a><a href="#VerifyMeshPipelineCapabilityAndExecution">VerifyMeshPipelineCapabilityAndExecution</a><a href="#VerifyAccelerationStructureLifecycleAndStateParity">VerifyAccelerationStructureLifecycleAndStateParity</a><a href="#VerifyRayTracingPipelineCapabilityAndExecution">VerifyRayTracingPipelineCapabilityAndExecution</a><a href="#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a><a href="#VerifyD3D12WorkGraphExecution">VerifyD3D12WorkGraphExecution</a><a href="#VerifyShaderBundleExecution">VerifyShaderBundleExecution</a><a href="#VerifySamplerFeedbackStateParity">VerifySamplerFeedbackStateParity</a><a href="#VerifyVulkanOpacityMicromapLifecycleAndStateParity">VerifyVulkanOpacityMicromapLifecycleAndStateParity</a><a href="#VerifyRuntimeDescriptorVersions">VerifyRuntimeDescriptorVersions</a><a href="#VerifyDirectResourceAndSamplerHeapIndexing">VerifyDirectResourceAndSamplerHeapIndexing</a><a href="#VerifyQueueBreadth">VerifyQueueBreadth</a><a href="#VerifySparseResidencyAndStreamingBudget">VerifySparseResidencyAndStreamingBudget</a><a href="#VerifyStreamingBudgetExecution">VerifyStreamingBudgetExecution</a><a href="#VerifyComputeArithmetic">VerifyComputeArithmetic</a><a href="#VerifyD3D12CustomPresentExecution">VerifyD3D12CustomPresentExecution</a><a href="#VerifyCapabilityInvariants">VerifyCapabilityInvariants</a><a href="#VerifyRasterStageCapabilityAndExecution">VerifyRasterStageCapabilityAndExecution</a><a href="#VerifyRasterStorageAndAtomics">VerifyRasterStorageAndAtomics</a><a href="#VerifyResolveAndPlaneTracking">VerifyResolveAndPlaneTracking</a><a href="#VerifyResourceAdmissionFacts">VerifyResourceAdmissionFacts</a><a href="#VerifyPerQueueTimerExecution">VerifyPerQueueTimerExecution</a><a href="#summary">Checkpoints</a></nav>
 <section id="objectives"><h2>How to use these examples</h2>
 <p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
 <p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
@@ -79,6 +79,7 @@ ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
 #include &lt;cstring&gt;
 #include &lt;fstream&gt;
 #include &lt;filesystem&gt;
+#include &lt;limits&gt;
 #include &lt;regex&gt;
 #include &lt;string&gt;
 #include &lt;vector&gt;
@@ -525,6 +526,35 @@ float4 RasterStagePS(FArdaRasterVertex Input)
 {
 	return Input.Color;
 }
+</code></pre></details><details id="shader-ardarasterstoragetest"><summary>ArdaRasterStorageTest.hlsl</summary><pre><code class="language-hlsl">RWStructuredBuffer&lt;uint&gt; Output : register(u0);
+
+struct FArdaRasterStorageVertex
+{
+	float4 Position : SV_Position;
+	float4 Color : COLOR0;
+};
+
+FArdaRasterStorageVertex RasterStorageVS(uint VertexId: SV_VertexID)
+{
+	const float2 Positions[3] = { float2(-1, -1), float2(-1, 3), float2(3, -1) };
+	uint Ignored;
+	InterlockedAdd(Output[0], 1, Ignored);
+	Output[VertexId + 1] = 0xface0000u + VertexId;
+	FArdaRasterStorageVertex Vertex;
+	Vertex.Position = float4(Positions[VertexId], 0, 1);
+	Vertex.Color = float4(1, 0, 0, 1);
+	return Vertex;
+}
+
+float4 RasterStoragePS(FArdaRasterStorageVertex Input)
+    : SV_Target0
+{
+	uint Ignored;
+	InterlockedAdd(Output[0], 1, Ignored);
+	uint Pixel = uint(Input.Position.y) * 4 + uint(Input.Position.x);
+	Output[Pixel + 1] = 0xface0000u + Pixel;
+	return Input.Color;
+}
 </code></pre></details><details id="shader-ardaraytracingtest"><summary>ArdaRayTracingTest.hlsl</summary><pre><code class="language-hlsl">RWStructuredBuffer&lt;uint&gt; RayOutput : register(u0);
 RaytracingAccelerationStructure RayScene : register(t0);
 
@@ -610,6 +640,34 @@ void SamplerFeedbackCS()
 void SamplerFeedbackRegionCS()
 {
 	RegionFeedback.WriteSamplerFeedbackLevel(PairedTexture, PointSampler, float2(0.25, 0.25), SampleRequestedMip());
+}
+</code></pre></details><details id="shader-ardashadermatrixtest"><summary>ArdaShaderMatrixTest.hlsl</summary><pre><code class="language-hlsl">cbuffer Matrices : register(b0)
+{
+	row_major float4x4 ModelToClip;
+	row_major float3x3 NormalToWorld;
+	row_major float4x4 WorldToView;
+	row_major float4x4 ViewToClip;
+	float4 Position;
+	float4 Normal;
+	float4 ViewDepths;
+};
+
+RWStructuredBuffer&lt;float4&gt; Output : register(u0);
+
+float ProjectDeviceZ(float ViewZ)
+{
+	const float4 Clip = mul(ViewToClip, float4(0, 0, ViewZ, 1));
+	return Clip.z / Clip.w;
+}
+
+[numthreads(1, 1, 1)]
+void MatrixInteropCS()
+{
+	Output[0] = mul(ModelToClip, Position);
+	Output[1] = float4(normalize(mul(NormalToWorld, Normal.xyz)), 0);
+	Output[2] = mul(ViewToClip, mul(WorldToView, Position));
+	Output[3] =
+	    float4(ProjectDeviceZ(ViewDepths.x), ProjectDeviceZ(ViewDepths.y), ProjectDeviceZ(ViewDepths.z), ViewDepths.w);
 }
 </code></pre></details><details id="shader-ardashaderstructtest"><summary>ArdaShaderStructTest.hlsl</summary><pre><code class="language-hlsl">RWStructuredBuffer&lt;uint&gt; Output : register(u0);
 
@@ -765,6 +823,27 @@ namespace
 			const std::filesystem::path SourceDirectory = ARDA_BACKEND_TEST_SHADER_SOURCE_DIR;
 			const std::string StructSource = (SourceDirectory / &quot;ArdaShaderStructTest.hlsl&quot;).string();
 			const std::string RayTracingSource = (SourceDirectory / &quot;ArdaRayTracingTest.hlsl&quot;).string();
+			// Cook fixture artifacts while registrations are scoped to setup, keeping registry tests isolated.
+			const auto MatrixSource = (SourceDirectory / &quot;ArdaShaderMatrixTest.hlsl&quot;).string();
+			FArdaShaderTypeRegistration MatrixInterop(&quot;ArdaMatrixInterop&quot;,
+			    MatrixSource.c_str(),
+			    &quot;ArdaMatrixInterop&quot;,
+			    &quot;MatrixInteropCS&quot;,
+			    FArdaStage::Compute,
+			    nullptr);
+			const auto RasterStorageSource = (SourceDirectory / &quot;ArdaRasterStorageTest.hlsl&quot;).string();
+			FArdaShaderTypeRegistration RasterStorageVertex(&quot;ArdaRasterStorageVS&quot;,
+			    RasterStorageSource.c_str(),
+			    &quot;ArdaRasterStorageVS&quot;,
+			    &quot;RasterStorageVS&quot;,
+			    FArdaStage::Vertex,
+			    nullptr);
+			FArdaShaderTypeRegistration RasterStoragePixel(&quot;ArdaRasterStoragePS&quot;,
+			    RasterStorageSource.c_str(),
+			    &quot;ArdaRasterStoragePS&quot;,
+			    &quot;RasterStoragePS&quot;,
+			    FArdaStage::Pixel,
+			    nullptr);
 			const auto RasterStageSource = (SourceDirectory / &quot;ArdaRasterStageTest.hlsl&quot;).string();
 			FArdaShaderTypeRegistration RasterVertex(&quot;ArdaRasterStageVS&quot;,
 			    RasterStageSource.c_str(),
@@ -1630,6 +1709,7 @@ int main(int ArgumentCount, char** Arguments)
 
 	EXPECT_EQ(Device-&gt;GetTimerQuerySeconds(Timer.mValue).mStatus.mCode, EArdaRHIResult::InvalidState);
 	FArdaRHIBufferDesc TimedBufferDesc;
+	TimedBufferDesc.mUsage = EArdaRHIBufferUsage::None;
 	TimedBufferDesc.mByteSize = 1024 * 1024;
 	TimedBufferDesc.mInitialState = EArdaRHIResourceState::Common;
 	auto TimedBuffer = Device-&gt;CreateBuffer(TimedBufferDesc);
@@ -2488,7 +2568,20 @@ int main(int ArgumentCount, char** Arguments)
 	ASSERT_TRUE(Miss) &lt;&lt; Miss.mStatus.mMessage.c_str();
 	ASSERT_TRUE(ClosestHit) &lt;&lt; ClosestHit.mStatus.mMessage.c_str();
 
-	const float Vertices[9] = {-1.f, -1.f, 0.f, 0.f, 1.f, 0.f, 1.f, -1.f, 0.f};
+	// Keep the world-space hit/miss oracle fixed while exercising an asymmetric
+	// affine matrix at the Eigen-to-native TLAS instance boundary. Incorrect
+	// column-major serialization leaves the triangle away from the hit ray.
+	FArdaAffineTransform3f ObjectToWorld = FArdaAffineTransform3f::Identity();
+	ObjectToWorld.matrix() &lt;&lt; 2.f, 0.25f, 0.5f, 7.f, -0.5f, 1.5f, 0.25f, -3.f, 0.125f, -0.25f, 0.75f, 2.f, 0.f, 0.f,
+	    0.f, 1.f;
+	const FArdaAffineTransform3f WorldToObject = ObjectToWorld.inverse();
+	const FArdaVector3f WorldVertices[] = {{-1.f, -1.f, 0.f}, {0.f, 1.f, 0.f}, {1.f, -1.f, 0.f}};
+	float Vertices[9];
+	for (size_t Index = 0; Index &lt; 3; ++Index)
+	{
+		const FArdaVector3f Position = WorldToObject * WorldVertices[Index];
+		std::memcpy(Vertices + Index * 3, Position.data(), sizeof(float) * 3);
+	}
 	FArdaRHIBufferDesc VertexDesc;
 	VertexDesc.mByteSize = sizeof(Vertices);
 	VertexDesc.mUsage = EArdaRHIBufferUsage::Vertex | EArdaRHIBufferUsage::AccelStructBuildInput;
@@ -2633,20 +2726,30 @@ int main(int ArgumentCount, char** Arguments)
 	ASSERT_TRUE(Commands.mValue-&gt;WriteBuffer(*VertexBuffer.mValue, Vertices, sizeof(Vertices), 0));
 	ASSERT_TRUE(Commands.mValue-&gt;BuildBottomLevelAccelStruct(*Blas.mValue, {Geometry}, BlasDesc.mBuildFlags));
 	FArdaRHIRayTracingInstanceDesc Instance;
+	Instance.mTransform = ObjectToWorld.matrix().topRows&lt;3&gt;();
 	Instance.mBottomLevelAccelStruct = Blas.mValue;
+	for (float InvalidValue : {std::numeric_limits&lt;float&gt;::quiet_NaN(), std::numeric_limits&lt;float&gt;::infinity()})
+	{
+		auto InvalidInstance = Instance;
+		InvalidInstance.mTransform(1, 2) = InvalidValue;
+		EXPECT_EQ(
+		    Commands.mValue-&gt;BuildTopLevelAccelStruct(*Tlas.mValue, {InvalidInstance}, TlasDesc.mBuildFlags).mCode,
+		    EArdaRHIResult::InvalidArgument);
+	}
 	if (bInstanceBuffer)
 	{
 		// D3D12 and Vulkan both consume a 3x4 transform, two packed words,
 		// and a 64-bit BLAS address in each native instance record.
 		struct FArdaNativeInstance
 		{
-			float mTransform[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
+			float mTransform[12]{};
 			uint32_t mIdAndMask = 0xff000000;
 			uint32_t mContributionAndFlags = 0;
 			uint64_t mBlasAddress = 0;
 		} Native;
 
 		static_assert(sizeof(Native) == 64);
+		std::memcpy(Native.mTransform, Instance.mTransform.data(), sizeof(Native.mTransform));
 		Native.mBlasAddress = Blas.mValue-&gt;GetDeviceAddress();
 		ASSERT_NE(Native.mBlasAddress, 0u);
 		FArdaRHIBufferDesc InstancesDesc;
@@ -2941,6 +3044,7 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_NE(Feedback.mValue-&gt;GetPhysicalIdentity(), nullptr);
 
 	FArdaRHITextureDesc DecodedDesc;
+	DecodedDesc.mUsage = EArdaRHITextureUsage::ShaderResource;
 	DecodedDesc.mDebugName = &quot;Decoded sampler feedback&quot;;
 	DecodedDesc.mWidth = (PairedDesc.mWidth + FeedbackDesc.mMipRegionX - 1u) / FeedbackDesc.mMipRegionX;
 	DecodedDesc.mHeight = (PairedDesc.mHeight + FeedbackDesc.mMipRegionY - 1u) / FeedbackDesc.mMipRegionY;
@@ -3601,6 +3705,7 @@ int main(int ArgumentCount, char** Arguments)
 	if (Capabilities.mQueues.mbCopy)
 	{
 		FArdaRHIBufferDesc BufferDesc;
+		BufferDesc.mUsage = EArdaRHIBufferUsage::None;
 		BufferDesc.mByteSize = sizeof(uint32_t);
 		BufferDesc.mInitialState = EArdaRHIResourceState::Common;
 		BufferDesc.mDebugName = &quot;Queue breadth source&quot;;
@@ -4306,6 +4411,110 @@ int main(int ArgumentCount, char** Arguments)
 	ASSERT_TRUE(Device-&gt;UnmapStagingTexture(Readback.mValue));
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
+<section id="VerifyRasterStorageAndAtomics"><h2>VerifyRasterStorageAndAtomics</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRasterStorageAndAtomics(const char* BackendName, bool bPixelStage)
+{
+	using namespace arda;
+	ShutdownBackend();
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	auto Configuration = MakeArdaTestBackendConfiguration();
+	Configuration.mBackendName = BackendName;
+	Configuration.mMessageCallback = &amp;Diagnostics;
+	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+	ASSERT_TRUE(ConfigureBackend(Configuration));
+	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
+	auto Device = GetDevice();
+	ASSERT_TRUE(Device);
+	FArdaRHIFeatureRequirements Requirements;
+	Requirements.mbRequireVertexShaderStoresAndAtomics = !bPixelStage;
+	Requirements.mbRequireFragmentShaderStoresAndAtomics = bPixelStage;
+	const auto Admission = Device-&gt;RequireFeatures(Requirements);
+	ASSERT_TRUE(Admission) &lt;&lt; Admission.mMessage.c_str();
+
+	auto Vertex = CreateExtendedShader(*Device,
+	    BackendName,
+	    bPixelStage ? &quot;ArdaRasterStageVS&quot; : &quot;ArdaRasterStorageVS&quot;,
+	    bPixelStage ? &quot;RasterStageVS&quot; : &quot;RasterStorageVS&quot;,
+	    EArdaRHIShaderStage::Vertex);
+	auto Pixel = CreateExtendedShader(*Device,
+	    BackendName,
+	    bPixelStage ? &quot;ArdaRasterStoragePS&quot; : &quot;ArdaRasterStagePS&quot;,
+	    bPixelStage ? &quot;RasterStoragePS&quot; : &quot;RasterStagePS&quot;,
+	    EArdaRHIShaderStage::Pixel);
+	ASSERT_TRUE(Vertex) &lt;&lt; Vertex.mStatus.mMessage.c_str();
+	ASSERT_TRUE(Pixel) &lt;&lt; Pixel.mStatus.mMessage.c_str();
+	FArdaRHIBindingLayoutDesc LayoutDesc;
+	LayoutDesc.mVisibility = bPixelStage ? EArdaRHIShaderStage::Pixel : EArdaRHIShaderStage::Vertex;
+	LayoutDesc.mItems.push_back({0, 1, EArdaRHIBindingType::StructuredBufferUAV});
+	auto Layout = Device-&gt;CreateBindingLayout(LayoutDesc);
+	ASSERT_TRUE(Layout) &lt;&lt; Layout.mStatus.mMessage.c_str();
+	FArdaRHIGraphicsPipelineDesc PipelineDesc;
+	PipelineDesc.mVertexShader = Vertex.mValue;
+	PipelineDesc.mPixelShader = Pixel.mValue;
+	PipelineDesc.mBindingLayouts = {Layout.mValue};
+	PipelineDesc.mColorFormats = {EArdaRHIFormat::RGBA8UNorm};
+	PipelineDesc.mRasterState.mCullMode = EArdaRHICullMode::None;
+	PipelineDesc.mDepthStencilState.mbDepthTest = false;
+	PipelineDesc.mDepthStencilState.mbDepthWrite = false;
+	auto Pipeline = Device-&gt;CreateGraphicsPipeline(PipelineDesc);
+	ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();
+
+	FArdaRHIBufferDesc OutputDesc;
+	OutputDesc.mByteSize = 17 * sizeof(uint32_t);
+	OutputDesc.mStructureStride = sizeof(uint32_t);
+	OutputDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess;
+	auto Output = Device-&gt;CreateBuffer(OutputDesc);
+	ASSERT_TRUE(Output) &lt;&lt; Output.mStatus.mMessage.c_str();
+	FArdaRHIBindingSetDesc SetDesc;
+	SetDesc.mLayout = Layout.mValue;
+	FArdaRHIBindingItem Item;
+	Item.mType = EArdaRHIBindingType::StructuredBufferUAV;
+	Item.mResource = FArdaRHIResourceRef(Output.mValue.Get());
+	SetDesc.mItems.push_back(Item);
+	auto Set = Device-&gt;CreateBindingSet(SetDesc);
+	ASSERT_TRUE(Set) &lt;&lt; Set.mStatus.mMessage.c_str();
+	FArdaRHITextureDesc TargetDesc;
+	TargetDesc.mWidth = TargetDesc.mHeight = 4;
+	TargetDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	TargetDesc.mUsage = EArdaRHITextureUsage::RenderTarget;
+	TargetDesc.mInitialState = EArdaRHIResourceState::RenderTarget;
+	auto Target = Device-&gt;CreateTexture(TargetDesc);
+	ASSERT_TRUE(Target) &lt;&lt; Target.mStatus.mMessage.c_str();
+	FArdaRHIFramebufferDesc FramebufferDesc;
+	FramebufferDesc.mColorAttachments.push_back({Target.mValue, {}});
+	auto Framebuffer = Device-&gt;CreateFramebuffer(FramebufferDesc);
+	ASSERT_TRUE(Framebuffer) &lt;&lt; Framebuffer.mStatus.mMessage.c_str();
+
+	auto Commands = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
+	ASSERT_TRUE(Commands);
+	ASSERT_TRUE(Commands.mValue-&gt;Open());
+	const uint32_t Zero[17]{};
+	ASSERT_TRUE(Commands.mValue-&gt;WriteBuffer(*Output.mValue, Zero, sizeof(Zero)));
+	ASSERT_TRUE(Commands.mValue-&gt;SetBufferState(*Output.mValue, EArdaRHIResourceState::UnorderedAccess));
+	FArdaRHIGraphicsState State;
+	State.mPipeline = Pipeline.mValue;
+	State.mFramebuffer = Framebuffer.mValue;
+	State.mBindings = {Set.mValue};
+	State.mViewports = {{0, 4, 0, 4, 0, 1}};
+	State.mScissors = {{0, 4, 0, 4}};
+	ASSERT_TRUE(Commands.mValue-&gt;SetGraphicsState(State));
+	Commands.mValue-&gt;Draw({3});
+	eastl::vector&lt;uint8_t&gt; Readback;
+	ASSERT_TRUE(Commands.mValue-&gt;CopyBufferDeviceToHost(*Output.mValue, Readback, 0, sizeof(Zero)));
+	ASSERT_TRUE(Commands.mValue-&gt;Close());
+	ASSERT_TRUE(Device-&gt;ExecuteCommandList(Commands.mValue));
+	ASSERT_TRUE(Device-&gt;WaitForIdle());
+	ASSERT_EQ(Readback.size(), sizeof(Zero));
+	uint32_t Values[17];
+	std::memcpy(Values, Readback.data(), sizeof(Values));
+	const uint32_t RecordCount = bPixelStage ? 16 : 3;
+	EXPECT_GE(Values[0], RecordCount);
+	for (uint32_t Index = 0; Index &lt; RecordCount; ++Index)
+	{
+		EXPECT_EQ(Values[Index + 1], 0xface0000u + Index);
+	}
+	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+}</code></pre></details></section>
 <section id="VerifyResolveAndPlaneTracking"><h2>VerifyResolveAndPlaneTracking</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyResolveAndPlaneTracking(const char* BackendName)
 {
 	using namespace arda;
@@ -4470,6 +4679,7 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_TRUE(Color.mbTexture2D &amp;&amp; Color.mbShaderResource &amp;&amp; Color.mbFilterable &amp;&amp; Color.mbColorAttachment);
 	EXPECT_NE(Color.mSampleCounts &amp; 1, 0u);
 	FArdaRHITextureDesc TextureDesc;
+	TextureDesc.mUsage = EArdaRHITextureUsage::ShaderResource;
 	TextureDesc.mWidth = TextureDesc.mHeight = 4;
 	TextureDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
 	ASSERT_TRUE(Device-&gt;CreateTexture(TextureDesc));
@@ -4481,6 +4691,7 @@ int main(int ArgumentCount, char** Arguments)
 	if (Limits.mMaxBufferSize &amp;&amp; Limits.mMaxBufferSize != UINT64_MAX)
 	{
 		FArdaRHIBufferDesc BufferDesc;
+		BufferDesc.mUsage = EArdaRHIBufferUsage::None;
 		BufferDesc.mByteSize = Limits.mMaxBufferSize + 1;
 		EXPECT_EQ(Device-&gt;CreateBuffer(BufferDesc).mStatus.mCode, EArdaRHIResult::Unsupported);
 	}
@@ -4504,6 +4715,7 @@ int main(int ArgumentCount, char** Arguments)
 	ASSERT_TRUE(Timer) &lt;&lt; Timer.mStatus.mMessage.c_str();
 	const auto&amp; Caps = Device-&gt;GetCapabilities().mQueues;
 	FArdaRHIBufferDesc Desc;
+	Desc.mUsage = EArdaRHIBufferUsage::None;
 	Desc.mByteSize = 2 * 1024 * 1024;
 	Desc.mInitialState = EArdaRHIResourceState::Common;
 	Desc.mbKeepInitialState = true;

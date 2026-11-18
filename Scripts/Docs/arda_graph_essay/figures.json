@@ -79,6 +79,10 @@
     "alt": "Strict torch.export capture produces ONNX. Pinned IREE compilation and bounded static HAL evaluation produce a package with PTX and explicit recipe data. Runtime imports the recipe as Arda graph operations. This route does not call TorchInductor.",
     "caption": "The offline compiler supplies kernel implementations and a closed recipe. The runtime graph planner integrates that recipe with transfers, rendering and other compute work; it does not recompile the model’s arithmetic."
   },
+  "exec-frame-order": {
+    "alt": "CPU recording returns a ticket. GPU execution can overlap independent CPU work. Waiting retires the frame before the consumer uses the output.",
+    "caption": "The producer ticket establishes when its output can be consumed. Independent frames can have several outstanding tickets."
+  },
   "package-runtime": {
     "alt": "Package invocation emits ordered graph commands. A caller buffer can hold two disjoint 64-byte package storage ranges, even if each exposed tensor has only 16 visible bytes. Moving the second origin to byte 32 overlaps the package backing extents and is rejected.",
     "caption": "A tensor’s visible element count may be smaller than the compiled storage extent it binds. Package validation protects the latter, so apparently disjoint visible tensors cannot hide overlapping backing storage."

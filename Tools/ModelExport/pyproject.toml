@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools==78.1.0", "wheel>=0.45,<1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arda-model-export"
+version = "0.1.0"
+description = "Offline PyTorch export to closed Arda CUDA graph packages"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "torch==2.14.1",
+    "iree-base-compiler[onnx]==3.11.0",
+    "onnx==1.23.1",
+    "numpy==2.5.3",
+    "onnxscript==0.7.2",
+    "onnx-ir==1.0.0",
+]
+
+[tool.setuptools]
+packages = ["arda"]
+py-modules = ["ArdaIreeExport", "ArdaModelPackage", "ArdaCudaReplay", "ArdaDTypes"]

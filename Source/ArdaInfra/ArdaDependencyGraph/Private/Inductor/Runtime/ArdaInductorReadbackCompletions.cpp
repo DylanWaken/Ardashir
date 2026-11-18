@@ -20,25 +20,33 @@ namespace arda
 	{
 		auto Promise = eastl::make_shared<std::promise<FArdaRHIBufferReadbackResult>>();
 		FArdaPending Pending{Promise->get_future(), eastl::move(Destination), PassIndex};
-		{
-			std::lock_guard<std::mutex> Lock(mMutex);
-			mPending.push_back(eastl::move(Pending));
-		}
+		mPending.push_back(eastl::move(Pending));
 		return [Promise = eastl::move(Promise)](FArdaRHIBufferReadbackResult Result)
 		{
 			Promise->set_value(eastl::move(Result));
 		};
 	}
 
+	void FArdaInductorReadbackCompletions::SetSubmissions(const eastl::vector<uint64_t>& Submissions,
+	    const FArdaRHIDeviceRef& Device)
+	{
+		if (!mPending.empty())
+		{
+			mDevice = Device;
+			for (auto& Readback : mPending)
+			{
+				if (Readback.mPassIndex < Submissions.size())
+				{
+					Readback.mSubmission = Submissions[Readback.mPassIndex];
+				}
+			}
+		}
+	}
+
 	FArdaRHIStatus FArdaInductorReadbackCompletions::Drain(FArdaRHIStatus SubmissionStatus)
 	{
-		eastl::vector<FArdaPending> Pending;
-		{
-			std::lock_guard<std::mutex> Lock(mMutex);
-			Pending.swap(mPending);
-		}
-		// Parallel recording order is not semantic order. Multiple nodes targeting
-		// one host vector publish in the compiled pass order on this calling thread.
+		auto Pending = eastl::move(mPending);
+		// Late-recorded passes can register after their semantic successors.
 		// EASTL's stable sort copies elements; pending std::future values are move-only.
 		std::stable_sort(Pending.begin(),
 		    Pending.end(),
@@ -53,6 +61,11 @@ namespace arda
 			FArdaRHIBufferReadbackResult Result;
 			try
 			{
+				if (Completion.mSubmission &&
+				    Completion.mFuture.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
+				{
+					(void)mDevice->WaitForSubmission(Completion.mSubmission);
+				}
 				Result = Completion.mFuture.get();
 			}
 			catch (const std::future_error&)
@@ -86,11 +99,14 @@ namespace arda
 
 	bool FArdaInductorReadbackCompletions::IsReady()
 	{
-		std::lock_guard<std::mutex> Lock(mMutex);
 		return eastl::all_of(mPending.begin(),
 		    mPending.end(),
-		    [](auto& Completion)
+		    [this](auto& Completion)
 		    {
+			    if (Completion.mSubmission)
+			    {
+				    (void)mDevice->PollSubmission(Completion.mSubmission);
+			    }
 			    return Completion.mFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
 		    });
 	}

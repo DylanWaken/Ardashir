@@ -11,7 +11,7 @@ Do not rely on an API list stored in this skill. Discover the current source tre
 
 ## Non-negotiable outcomes
 
-- Publish static HTML, CSS, JavaScript, and SVG that work on GitHub Pages.
+- Publish static HTML, CSS, JavaScript, and SVG that work on GitHub Pages. Keep all documentation under `Docs` in HTML; do not create Markdown files or local Markdown documentation links there. Repository READMEs and contributor guidance outside `Docs` may remain Markdown.
 - Use relative URLs throughout. Support hosting beneath an arbitrary repository subpath.
 - Do not require server routing, server-side rendering, databases, runtime source access, or other server-only features.
 - Preserve source-of-truth spelling, capitalization, namespaces, signatures, and ownership names.

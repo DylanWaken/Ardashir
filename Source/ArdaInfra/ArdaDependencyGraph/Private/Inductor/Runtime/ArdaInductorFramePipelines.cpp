@@ -27,29 +27,10 @@ namespace arda
 		}
 		else
 		{
-			eastl::vector<FArdaInductorPipelineNode> PipelineNodes;
-			for (auto Handle : Graph.mTopology.GetNodes())
+			if (!Graph.mCompile.mExecution->mPipelineCache)
 			{
-				FArdaInductorPipelineNode Node;
-				Node.mNodeId = Handle.GetIndex();
-				Node.mContributions = Graph.mTopology.TryGetNode(Handle)->mPayload.mDesc.mPipelineStages;
-				for (const auto& Request : Graph.mTopology.TryGetNode(Handle)->mPayload.mDesc.mPipelines)
-				{
-					Node.mPipelineBoundaries.push_back(Request.mKind);
-				}
-				if (!Graph.mTopology.TryGetNode(Handle)->mPayload.mbGraphicsLowered &&
-				    !Graph.mTopology.TryGetNode(Handle)->mPayload.mbRayTracingLowered)
-				{
-					for (auto Edge : Graph.mTopology.GetIncomingEdges(Handle))
-					{
-						Node.mDependencies.push_back(Graph.mTopology.TryGetEdge(Edge)->mFrom.GetIndex());
-					}
-				}
-				PipelineNodes.push_back(eastl::move(Node));
-			}
-			if (!Graph.mPipelineCache)
-			{
-				Graph.mPipelineCache = eastl::make_shared<FArdaPipelineStateCache>(Graph.mDevice);
+				Graph.mCompile.mExecution->mPipelineCache =
+				    eastl::make_shared<FArdaPipelineStateCache>(Graph.mCompile.mExecution->mDevice);
 			}
 			for (auto Handle : Graph.mCompile.mExecutionOrder)
 			{
@@ -58,15 +39,24 @@ namespace arda
 					continue;
 				}
 				const auto& Node = Graph.mTopology.TryGetNode(Handle)->mPayload;
+				FArdaInductorPipelineNode Projection;
+				Projection.mNodeId = Handle.GetIndex();
+				Projection.mContributions = Graph.GetNodeDescription(Node).mPipelineStages;
+				for (const auto& Request : Graph.GetNodeDescription(Node).mPipelines)
+				{
+					Projection.mPipelineBoundaries.push_back(Request.mKind);
+				}
+				const eastl::vector<FArdaInductorPipelineNode> PipelineNodes{eastl::move(Projection)};
 				FArdaRHIFramebufferRef Framebuffer;
-				if (!Node.mDesc.mColorTargets.empty() || Node.mDesc.mDepthTarget)
+				if (!Graph.GetNodeDescription(Node).mColorTargets.empty() ||
+				    Graph.GetNodeDescription(Node).mDepthTarget)
 				{
 					FArdaRHIFramebufferDesc Desc;
 					Desc.mDebugName = Node.mName;
-					const auto Attachment = [&Node](FArdaDependencyResourceHandle Target, bool bDepth)
+					const auto Attachment = [&Graph, &Node](FArdaDependencyResourceHandle Target, bool bDepth)
 					{
 						FArdaRHIFramebufferAttachment Result;
-						for (const auto& Access : Node.mDesc.mAccesses)
+						for (const auto& Access : Graph.GetNodeDescription(Node).mAccesses)
 						{
 							if (Access.mResource != Target)
 							{
@@ -84,7 +74,7 @@ namespace arda
 						}
 						return Result;
 					};
-					for (auto Target : Node.mDesc.mColorTargets)
+					for (auto Target : Graph.GetNodeDescription(Node).mColorTargets)
 					{
 						if (!Graph.HasResource(Target) || !Frame->mMemory.mTextures[Target.mIndex])
 						{
@@ -93,9 +83,9 @@ namespace arda
 						Desc.mColorAttachments.push_back(
 						    {Frame->mMemory.mTextures[Target.mIndex], Attachment(Target, false)});
 					}
-					if (Node.mDesc.mDepthTarget)
+					if (Graph.GetNodeDescription(Node).mDepthTarget)
 					{
-						const auto Target = Node.mDesc.mDepthTarget;
+						const auto Target = Graph.GetNodeDescription(Node).mDepthTarget;
 						if (!Graph.HasResource(Target) || !Frame->mMemory.mTextures[Target.mIndex])
 						{
 							return MakeArdaInductorRuntimeError("A depth target has no materialized texture.");
@@ -103,7 +93,7 @@ namespace arda
 						Desc.mDepthAttachment.mTexture = Frame->mMemory.mTextures[Target.mIndex];
 						Desc.mDepthAttachment.mAttachment = Attachment(Target, true);
 					}
-					auto Created = Graph.mDevice->CreateFramebuffer(Desc);
+					auto Created = Graph.mCompile.mExecution->mDevice->CreateFramebuffer(Desc);
 					if (!Created)
 					{
 						return Created.mStatus;
@@ -111,7 +101,7 @@ namespace arda
 					Framebuffer = Created.mValue;
 					Frame->mNodeBindings[Handle.GetIndex()].mFramebuffer = Framebuffer;
 				}
-				for (auto Request : Node.mDesc.mPipelines)
+				for (auto Request : Graph.GetNodeDescription(Node).mPipelines)
 				{
 					Request.mTerminalNodeId = Handle.GetIndex();
 					if (Request.mSlot.empty())
@@ -128,7 +118,9 @@ namespace arda
 					{
 						return Pattern.mStatus;
 					}
-					auto Resolved = ResolveArdaInductorPipeline(*Graph.mPipelineCache, Pattern.mValue, Framebuffer);
+					auto Resolved = ResolveArdaInductorPipeline(*Graph.mCompile.mExecution->mPipelineCache,
+					    Pattern.mValue,
+					    Framebuffer);
 					if (!Resolved)
 					{
 						return Resolved.mStatus;

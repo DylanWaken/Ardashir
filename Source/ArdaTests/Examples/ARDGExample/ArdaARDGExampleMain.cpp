@@ -300,7 +300,7 @@ namespace arda
 				    "  [--width N --height N] [--verify] [--validation]\n"
 				    "  [--shader-mode startup|ondemand|load-only] [--shader-cache DIR] [--shader-source DIR]\n"
 				    "  [--arda-cook-shaders DIR]\n"
-				    "--verify checks terrain geometry, gradients and sampled generated heights without native validation layers.\n"
+				    "--verify checks terrain geometry, generated heights and rendered contour colors without native validation layers.\n"
 				    "--validation explicitly enables native GPU validation and requires its debug layers.\n");
 				return EXIT_SUCCESS;
 			}

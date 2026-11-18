@@ -1,6 +1,6 @@
+#include "ArdaGraphTestNodeTypes.h"
 #include "Graph/Node/ArdaGraphEdit.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
-#include "Graph/Node/ArdaDependencyNode.h"
 #include "Inductor/Compiler/ArdaInductorCommandProgram.h"
 #include "ArdaDependencyGraph.h"
 #include "Graph/DefaultNodes/ArdaDependencyGraphNodes.h"
@@ -17,14 +17,14 @@ namespace arda::inductor_lifecycle_tests
 	using namespace arda;
 
 	// Supply executable identity and estimated work through the public operation contract.
-	struct FArdaLifecycleNodeParameters
-	{
-		uint32_t mCost = 1;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaLifecycleNodeParameters)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCost, 1)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	template <EArdaDependencyNodeKind Kind>
-	struct TArdaAdaptiveLifecycleFixtureNode
-	    : TArdaDependencyNode<TArdaAdaptiveLifecycleFixtureNode<Kind>, FArdaLifecycleNodeParameters, Kind>
+	struct TArdaAdaptiveLifecycleFixtureNode : TArdaNodeDefinition<TArdaAdaptiveLifecycleFixtureNode<Kind>,
+	                                               FArdaLifecycleNodeParameters,
+	                                               ArdaTestNodeType(Kind)>
 	{
 		using FArdaParameters = FArdaLifecycleNodeParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -307,7 +307,7 @@ namespace arda::inductor_lifecycle_tests
 			mProvider->mCapabilities.mQueues.mbGpuWaits = true;
 			mProvider->mCapabilities.mQueues.mGraphicsTimestampValidBits = 64;
 			mProvider->mCapabilities.mQueues.mComputeTimestampValidBits = 64;
-			mGraph.mDevice = CreateArdaRHIDevice(mProvider);
+			mGraph.mCompile.mExecution->mDevice = CreateArdaRHIDevice(mProvider);
 			mGraph.mIdentity = 333;
 			mGraph.mCompile.mRevision = 7;
 			mGraph.mOptions.mbEnableGpuTiming = true;
@@ -317,7 +317,7 @@ namespace arda::inductor_lifecycle_tests
 			mGraph.mOptions.mAdaptiveSchedulingSearchBudget = 1;
 			mGraph.mOptions.mMaxVramBytes = 1;
 			// Assemble through operations, then seed the deliberately suboptimal schedule under test.
-			FArdaDependencyGraph Construction(mGraph.mDevice);
+			FArdaDependencyGraph Construction(mGraph.mCompile.mExecution->mDevice);
 			FArdaGraphEdit Edit(Construction);
 			const auto Independent = AdaptiveGraphics(Edit, FArdaLifecycleNodeParameters{10}, "independent graphics");
 			const auto Producer = AdaptiveGraphics(Edit, FArdaLifecycleNodeParameters{1}, "graphics producer");
@@ -330,11 +330,12 @@ namespace arda::inductor_lifecycle_tests
 			{
 				return Status;
 			}
-			if (auto Status = Construction.Compile(); !Status)
+			if (auto Status = Construction.CompileAndWait(); !Status)
 			{
 				return Status;
 			}
 			mGraph.mTopology = Construction.GetTopology().CloneSnapshot();
+			mGraph.mCompile.mNodes = Construction.GetCompileResult().mNodes;
 			mIndependent = Independent.GetHandle();
 			mProducer = Producer.GetHandle();
 			mCompute = Compute.GetHandle();
@@ -349,6 +350,10 @@ namespace arda::inductor_lifecycle_tests
 			FArdaMemoryPlan Plan;
 			Plan.mbBudgetAccepted = true;
 			const auto Input = FArdaInductorGraphAccess::View(mGraph);
+			if (auto Status = FArdaBatchPipelinesRule{}.Apply(Input, mGraph.mCompile); !Status)
+			{
+				return Status;
+			}
 			if (auto Status = FArdaFlattenDispatchesRule{}.Apply(Input, mGraph.mCompile); !Status)
 			{
 				return Status;
@@ -365,7 +370,10 @@ namespace arda::inductor_lifecycle_tests
 			for (const auto H : mGraph.mCompile.mExecutionOrder)
 			{
 				const auto& N = mGraph.mTopology.TryGetNode(H)->mPayload;
-				mGraph.mTiming->Add(N.mName, N.mDesc.mEstimatedCost * .001, {H}, 1);
+				mGraph.mCompile.mExecution->mTiming->Add(N.mName,
+				    mGraph.GetNodeDescription(N).mEstimatedCost * .001,
+				    {H},
+				    1);
 			}
 		}
 
@@ -410,7 +418,7 @@ namespace arda::inductor_lifecycle_tests
 
 	template <EArdaDependencyNodeKind Kind>
 	struct TArdaRevisionLifecycleNode
-	    : TArdaDependencyNode<TArdaRevisionLifecycleNode<Kind>, FArdaLifecycleNodeParameters, Kind>
+	    : TArdaNodeDefinition<TArdaRevisionLifecycleNode<Kind>, FArdaLifecycleNodeParameters, ArdaTestNodeType(Kind)>
 	{
 		using FArdaParameters = FArdaLifecycleNodeParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -452,7 +460,7 @@ namespace arda::inductor_lifecycle_tests
 	ARDA_DECLARE_GRAPH_NODE(FArdaRevisionComputeNode, RevisionCompute);
 	ARDA_DEFINE_GRAPH_NODE(FArdaRevisionComputeNode, RevisionCompute);
 
-	TEST(ArdaInductorLifecycle, FrameReconstructionPreservesBackgroundTuningAndPersistentIdentity)
+	TEST(ArdaInductorLifecycle, FrameReconstructionPreservesTimingOptimizationAndPersistentIdentity)
 	{
 		auto Provider = eastl::make_shared<FArdaLifecycleProvider>();
 		Provider->mCapabilities.mQueues.mbCompute = true;
@@ -478,7 +486,7 @@ namespace arda::inductor_lifecycle_tests
 		};
 		FArdaRevisionLifecycleCaptureRule::mGraph = nullptr;
 		ASSERT_TRUE(RecordFrame());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		auto* Persistent = FArdaRevisionLifecycleCaptureRule::mGraph;
 		ASSERT_NE(Persistent, nullptr);
 		const auto StructureRevision = Graph.GetRevisionStats().mPersistentRevision;
@@ -488,9 +496,13 @@ namespace arda::inductor_lifecycle_tests
 		ASSERT_EQ(Nodes.size(), 3u);
 		// This fixture tests CPU lifecycle without native command recording. Consume the execution
 		// boundary, then prepare the same known suboptimal schedule used by the adaptive unit fixture.
-		Persistent->mPendingMemoryPlan.reset();
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		Persistent->mCompile.mMemoryPlan.reset();
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
+		const auto PreparedNodes = Persistent->mCompile.mNodes;
+		const auto Execution = Persistent->mCompile.mExecution;
 		Persistent->mCompile = {};
+		Persistent->mCompile.mNodes = PreparedNodes;
+		Persistent->mCompile.mExecution = Execution;
 		Persistent->mCompile.mRevision = ScheduleRevision;
 		Persistent->mCompile.mExecutionOrder = Nodes;
 		Persistent->mCompile.mQueues = {EArdaRHIQueueType::Graphics,
@@ -499,20 +511,24 @@ namespace arda::inductor_lifecycle_tests
 		FArdaMemoryPlan Plan;
 		Plan.mbBudgetAccepted = true;
 		const auto Input = FArdaInductorGraphAccess::View(*Persistent);
+		ASSERT_TRUE(FArdaBatchPipelinesRule{}.Apply(Input, Persistent->mCompile));
 		ASSERT_TRUE(FArdaFlattenDispatchesRule{}.Apply(Input, Persistent->mCompile));
 		ASSERT_TRUE(FArdaResolveFencesRule{}.Apply(Input, Persistent->mCompile));
 		ASSERT_TRUE(FArdaInductorRuntime::Prepare(*Persistent, Plan));
 		for (const auto Node : Nodes)
 		{
 			const auto& Definition = Persistent->mTopology.TryGetNode(Node)->mPayload;
-			Persistent->mTiming->Add(Definition.mName, Definition.mDesc.mEstimatedCost * .001, {Node}, 1);
+			Persistent->mCompile.mExecution->mTiming->Add(Definition.mName,
+			    Persistent->GetNodeDescription(Definition).mEstimatedCost * .001,
+			    {Node},
+			    1);
 		}
 		ASSERT_TRUE(Graph.OptimizeFromTimingProfile());
-		const auto Pending = Persistent->mAdaptiveJob;
+		const auto Pending = Persistent->mCompile.mExecution->mPendingSchedule;
 		ASSERT_TRUE(Pending);
 		ASSERT_TRUE(RecordFrame());
-		ASSERT_TRUE(Graph.Compile());
-		EXPECT_EQ(Persistent->mAdaptiveJob, Pending);
+		ASSERT_TRUE(Graph.CompileAndWait());
+		EXPECT_EQ(Persistent->mCompile.mExecution->mPendingSchedule, Pending);
 		EXPECT_TRUE(Graph.GetAdaptiveSchedulingStats().mbPending);
 		EXPECT_EQ(Graph.GetRevisionStats().mCompileCount, 1u);
 		EXPECT_EQ(Graph.GetRevisionStats().mCacheHitCount, 1u);
@@ -531,53 +547,53 @@ namespace arda::inductor_lifecycle_tests
 		FArdaRevisionLifecycleCaptureRule::mGraph = nullptr;
 	}
 
-	TEST(ArdaInductorLifecycle, BackgroundTuningDefersAdoptionUntilReadyAndReusesThePreparedPool)
+	TEST(ArdaInductorLifecycle, TimingOptimizationDefersAdoptionUntilReadyAndReusesThePreparedPool)
 	{
 		FArdaAdaptiveLifecycleFixture F;
 		ASSERT_TRUE(F.Prepare());
 		ASSERT_EQ(F.mProvider->mTimerQueryAttempts, 3u);
 		const auto OriginalOrder = F.mGraph.mCompile.mExecutionOrder;
-		const auto* OriginalRuntime = F.mGraph.mRuntime.get();
+		const auto* OriginalRuntime = F.mGraph.mCompile.mExecution->mRuntime.get();
 		eastl::unordered_map<uint32_t, FArdaRHITimerQueryRef> OriginalTimers;
-		for (const auto& Timer : F.mGraph.mRuntime->mFrames.front()->mTimers)
+		for (const auto& Timer : F.mGraph.mCompile.mExecution->mRuntime->mFrames.front()->mTimers)
 		{
 			OriginalTimers.emplace(Timer.mNodes.front().GetIndex(), Timer.mQuery);
 		}
 		auto Pending = eastl::make_shared<FArdaDependencyFrameTicket::FArdaState>();
-		Pending->mDevice = F.mGraph.mDevice;
+		Pending->mDevice = F.mGraph.mCompile.mExecution->mDevice;
 		Pending->mSequence = 1;
 		Pending->mExecution.mLastSubmittedInstances = {41, 0, 0};
-		F.mGraph.mRuntime->mFrames.front()->mActive = Pending;
+		F.mGraph.mCompile.mExecution->mRuntime->mFrames.front()->mActive = Pending;
 		F.mProvider->mbPollReady = false;
 		F.AddSamples();
-		F.mGraph.mNextFrameSequence = 2;
-		// This poll is reached only after the worker publishes its prepared proposal;
+		F.mGraph.mCompile.mExecution->mNextFrameSequence = 2;
+		// This poll is reached only after the candidate schedule is prepared;
 		// the fake frame has no telemetry that could poll its submission earlier.
 		ASSERT_TRUE(F.AdvanceUntil(
 		    [&]
 		    {
 			    return F.mProvider->mSubmissionPollCount != 0;
 		    }));
-		EXPECT_TRUE(F.mGraph.mAdaptiveStats.mbPending);
+		EXPECT_TRUE(bool(F.mGraph.mCompile.mExecution->mPendingSchedule));
 		EXPECT_EQ(F.mGraph.mCompile.mExecutionOrder, OriginalOrder);
-		EXPECT_EQ(F.mGraph.mRuntime.get(), OriginalRuntime);
-		EXPECT_EQ(F.mGraph.mAdaptiveStats.mAcceptedSchedules, 0u);
+		EXPECT_EQ(F.mGraph.mCompile.mExecution->mRuntime.get(), OriginalRuntime);
+		EXPECT_EQ(F.mGraph.mCompile.mExecution->mAdaptiveStats.mAcceptedSchedules, 0u);
 		EXPECT_TRUE(F.mProvider->mWaitedSubmissions.empty());
 		F.mProvider->mbPollReady = true;
 		ASSERT_TRUE(F.AdvanceUntil(
 		    [&]
 		    {
-			    return F.mGraph.mAdaptiveStats.mAcceptedSchedules == 1;
+			    return F.mGraph.mCompile.mExecution->mAdaptiveStats.mAcceptedSchedules == 1;
 		    }));
 		EXPECT_TRUE(Pending->mbComplete);
-		EXPECT_FALSE(F.mGraph.mAdaptiveStats.mbPending);
-		EXPECT_EQ(F.mGraph.mAdaptiveStats.mCandidatesExamined, 1u);
+		EXPECT_FALSE(bool(F.mGraph.mCompile.mExecution->mPendingSchedule));
+		EXPECT_EQ(F.mGraph.mCompile.mExecution->mAdaptiveStats.mCandidatesExamined, 1u);
 		EXPECT_NE(F.mGraph.mCompile.mExecutionOrder, OriginalOrder);
 		EXPECT_EQ(F.mGraph.mCompile.mExecutionOrder.front(), F.mProducer);
 		EXPECT_EQ(F.mGraph.mCompile.mRevision, 8u);
 		EXPECT_NEAR(F.mGraph.mCompile.mEstimatedExecutionCost, 11, 1e-10);
-		EXPECT_EQ(F.mGraph.mRuntime->mBinding->mGraph, &F.mGraph);
-		for (const auto& Timer : F.mGraph.mRuntime->mFrames.front()->mTimers)
+		EXPECT_EQ(F.mGraph.mCompile.mExecution->mRuntime->mBinding->mGraph, &F.mGraph);
+		for (const auto& Timer : F.mGraph.mCompile.mExecution->mRuntime->mFrames.front()->mTimers)
 		{
 			EXPECT_EQ(Timer.mQuery, OriginalTimers.at(Timer.mNodes.front().GetIndex()));
 		}
@@ -593,33 +609,33 @@ namespace arda::inductor_lifecycle_tests
 		FArdaAdaptiveLifecycleFixture F;
 		ASSERT_TRUE(F.Prepare());
 		const auto OriginalOrder = F.mGraph.mCompile.mExecutionOrder;
-		const auto* OriginalRuntime = F.mGraph.mRuntime.get();
+		const auto* OriginalRuntime = F.mGraph.mCompile.mExecution->mRuntime.get();
 		F.AddSamples();
-		F.mGraph.mNextFrameSequence = 2;
+		F.mGraph.mCompile.mExecution->mNextFrameSequence = 2;
 		AdvanceArdaInductorTelemetry(F.mGraph);
-		ASSERT_TRUE(F.mGraph.mAdaptiveStats.mbPending);
-		F.mGraph.mTiming->Clear();
+		ASSERT_TRUE(bool(F.mGraph.mCompile.mExecution->mPendingSchedule));
+		F.mGraph.mCompile.mExecution->mTiming->Clear();
 		ASSERT_TRUE(F.AdvanceUntil(
 		    [&]
 		    {
-			    return !F.mGraph.mAdaptiveStats.mbPending;
+			    return !bool(F.mGraph.mCompile.mExecution->mPendingSchedule);
 		    }));
 		EXPECT_EQ(F.mGraph.mCompile.mExecutionOrder, OriginalOrder);
 		EXPECT_EQ(F.mGraph.mCompile.mRevision, 7u);
-		EXPECT_EQ(F.mGraph.mRuntime.get(), OriginalRuntime);
-		EXPECT_EQ(F.mGraph.mAdaptiveStats.mAcceptedSchedules, 0u);
+		EXPECT_EQ(F.mGraph.mCompile.mExecution->mRuntime.get(), OriginalRuntime);
+		EXPECT_EQ(F.mGraph.mCompile.mExecution->mAdaptiveStats.mAcceptedSchedules, 0u);
 		F.AddSamples();
-		const auto Seed = F.mGraph.mRuntime->mAdaptiveSeed;
-		const auto Reuse = F.mGraph.mRuntime->mReuseFrames;
+		const auto Seed = F.mGraph.mCompile.mExecution->mRuntime->mAdaptiveSeed;
+		const auto Reuse = F.mGraph.mCompile.mExecution->mRuntime->mReuseFrames;
 		const auto SeedOwners = Seed.use_count(), ReuseOwners = Reuse.use_count();
 		ASSERT_TRUE(RequestArdaInductorTimingOptimization(F.mGraph, false));
 		CancelArdaInductorTimingOptimization(F.mGraph);
-		EXPECT_FALSE(F.mGraph.mAdaptiveJob);
-		EXPECT_FALSE(F.mGraph.mAdaptiveStats.mbPending);
+		EXPECT_FALSE(F.mGraph.mCompile.mExecution->mPendingSchedule);
+		EXPECT_FALSE(bool(F.mGraph.mCompile.mExecution->mPendingSchedule));
 		EXPECT_EQ(Seed.use_count(), SeedOwners);
 		EXPECT_EQ(Reuse.use_count(), ReuseOwners);
 		EXPECT_EQ(F.mGraph.mCompile.mRevision, 7u);
-		EXPECT_EQ(F.mGraph.mRuntime.get(), OriginalRuntime);
+		EXPECT_EQ(F.mGraph.mCompile.mExecution->mRuntime.get(), OriginalRuntime);
 		EXPECT_EQ(F.mProvider->mTimerQueryAttempts, 3u);
 		EXPECT_EQ(F.mProvider->mAllocationAttempts, 0u);
 		EXPECT_EQ(F.mProvider->mCommandListAttempts, 0u);
@@ -637,11 +653,11 @@ namespace arda::inductor_lifecycle_tests
 		FArdaGraphEdit Edit(Graph);
 		const auto Original = AllocateBuffer(Edit, Desc, "original");
 		ASSERT_TRUE(Original);
-		const auto Writer = ClearNode(Edit, FArdaGraphClearParameters{Original.GetHandle(), 7}, "original writer");
+		const auto Writer = ClearNode(Edit, FArdaGraphClearParameters{Edit.UseBuffer(Original), 7}, "original writer");
 		ASSERT_TRUE(Writer);
 		Edit.Keep(Original.GetHandle());
 		ASSERT_TRUE(Edit.Commit());
-		const auto Initial = Graph.Compile();
+		const auto Initial = Graph.CompileAndWait();
 		ASSERT_TRUE(Initial) << Initial.mMessage.c_str();
 		ASSERT_EQ(Provider->mAllocationAttempts, 0u);
 		const auto Revision = Graph.GetCompileResult().mRevision;
@@ -649,21 +665,23 @@ namespace arda::inductor_lifecycle_tests
 
 		Provider->mbFailAllocation = true;
 		// Consume the staging lock with a failed allocation; the plan remains unmaterialized.
-		EXPECT_EQ(Graph.Submit().mStatus.mCode, EArdaRHIResult::BackendFailure);
+		EXPECT_EQ(Graph.SubmitAndWait().mStatus.mCode, EArdaRHIResult::BackendFailure);
 		FArdaGraphEdit InvalidEdit(Graph);
 		const auto Abandoned = AllocateBuffer(InvalidEdit, Desc, "abandoned");
 		ASSERT_TRUE(Abandoned);
 		const auto OtherBuffer = AllocateBuffer(InvalidEdit, Desc, "other");
 		InvalidEdit.Keep(Abandoned);
 		InvalidEdit.Keep(OtherBuffer);
-		const auto First = ClearNode(InvalidEdit, FArdaGraphClearParameters{Abandoned, 7}, "first writer");
-		const auto Other = ClearNode(InvalidEdit, FArdaGraphClearParameters{OtherBuffer, 0}, "other writer");
+		const auto First =
+		    ClearNode(InvalidEdit, FArdaGraphClearParameters{InvalidEdit.UseBuffer(Abandoned), 7}, "first writer");
+		const auto Other =
+		    ClearNode(InvalidEdit, FArdaGraphClearParameters{InvalidEdit.UseBuffer(OtherBuffer), 0}, "other writer");
 		ASSERT_TRUE(First);
 		ASSERT_TRUE(Other);
 		ASSERT_TRUE(InvalidEdit.Order(First, Other));
 		ASSERT_TRUE(InvalidEdit.Order(Other, First));
 		ASSERT_TRUE(InvalidEdit.Commit());
-		const auto CompileFailure = Graph.Compile();
+		const auto CompileFailure = Graph.CompileAndWait();
 		ASSERT_FALSE(CompileFailure);
 		const auto Restored = Graph.DiscardPendingEdits();
 		ASSERT_TRUE(Restored) << Restored.mMessage.c_str();
@@ -680,7 +698,7 @@ namespace arda::inductor_lifecycle_tests
 		ASSERT_TRUE(CanceledEdit.Cancel());
 		EXPECT_EQ(Provider->mAllocationAttempts, 1u);
 		// Cancellation retained the committed plan, ready to materialize on submission.
-		EXPECT_EQ(Graph.Submit().mStatus.mCode, EArdaRHIResult::BackendFailure);
+		EXPECT_EQ(Graph.SubmitAndWait().mStatus.mCode, EArdaRHIResult::BackendFailure);
 		EXPECT_EQ(Provider->mAllocationAttempts, 2u);
 	}
 
@@ -696,24 +714,24 @@ namespace arda::inductor_lifecycle_tests
 			Desc.mUsage = EArdaRHIBufferUsage::UnorderedAccess;
 			const auto Buffer = AllocateBuffer(Edit, Desc, "retry");
 			ASSERT_TRUE(Buffer);
-			ASSERT_TRUE(ClearBuffer(Edit, {Buffer.GetHandle(), 7}, "clear"));
+			ASSERT_TRUE(ClearBuffer(Edit, {Buffer, 7}, "clear"));
 			Edit.Keep(Buffer.GetHandle());
 			ASSERT_TRUE(Edit.Commit());
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			const auto Revision = Graph.GetCompileResult().mRevision;
 			EXPECT_EQ(Provider->mAllocationAttempts, 0u);
 			Provider->mbFailAllocation = !Throw;
 			Provider->mbThrowAllocation = Throw;
 			for (uint32_t Attempt = 1; Attempt <= 2; ++Attempt)
 			{
-				EXPECT_EQ(Graph.Execute().mStatus.mCode, EArdaRHIResult::BackendFailure);
+				EXPECT_EQ(Graph.ExecuteAndWait().mStatus.mCode, EArdaRHIResult::BackendFailure);
 				EXPECT_EQ(Provider->mAllocationAttempts, Attempt);
 				EXPECT_EQ(Provider->mCommandListAttempts, 0u);
 				EXPECT_EQ(Graph.GetCompileResult().mRevision, Revision);
 			}
 			Provider->mbFailAllocation = Provider->mbThrowAllocation = false;
 			// This provider does not record commands. Reaching recording proves the retry materialized.
-			EXPECT_EQ(Graph.Execute().mStatus.mCode, EArdaRHIResult::Unsupported);
+			EXPECT_EQ(Graph.ExecuteAndWait().mStatus.mCode, EArdaRHIResult::Unsupported);
 			EXPECT_EQ(Provider->mAllocationAttempts, 3u);
 			EXPECT_GT(Provider->mCommandListAttempts, 0u);
 		}
@@ -878,16 +896,16 @@ namespace arda::inductor_lifecycle_tests
 		auto Provider = eastl::make_shared<FArdaLifecycleProvider>();
 		FArdaDependencyGraph::FArdaImpl Graph;
 		Graph.mIdentity = 91;
-		Graph.mDevice = CreateArdaRHIDevice(Provider);
-		Graph.mRuntime = eastl::make_unique<FArdaInductorRuntime>();
+		Graph.mCompile.mExecution->mDevice = CreateArdaRHIDevice(Provider);
+		Graph.mCompile.mExecution->mRuntime = eastl::make_unique<FArdaInductorRuntime>();
 		auto Frame = eastl::make_unique<FArdaInductorFrame>();
-		Frame->mLowered = eastl::make_unique<FArdaInductorCommandProgram>(Graph.mDevice);
+		Frame->mLowered = eastl::make_unique<FArdaInductorCommandProgram>(Graph.mCompile.mExecution->mDevice);
 		(void)Frame->mLowered->Finalize();
-		Graph.mRuntime->mFrames.push_back(eastl::move(Frame));
+		Graph.mCompile.mExecution->mRuntime->mFrames.push_back(eastl::move(Frame));
 		const auto Submitted = FArdaInductorRuntime::Submit(Graph, {});
 		ASSERT_TRUE(Submitted.mValue);
 		// Model one accepted native submission whose completion is controlled by the fixture.
-		auto& Active = *Graph.mRuntime->mFrames.front()->mActive;
+		auto& Active = *Graph.mCompile.mExecution->mRuntime->mFrames.front()->mActive;
 		Active.mExecution.mStatus = {};
 		Active.mExecution.mLastSubmittedInstances = {17, 0, 0};
 		std::promise<void> Started, Complete;

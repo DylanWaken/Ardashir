@@ -4,6 +4,7 @@
 #pragma once
 
 #include "RHI/Pipelines/ArdaPipelineStateCache.h"
+#include "Graph/Node/ArdaNodeDeclaration.h"
 
 #include <EASTL/shared_ptr.h>
 
@@ -50,6 +51,7 @@ namespace arda
 		eastl::vector<FArdaRHIBindingLayoutRef> mBindingLayouts;
 		/** Optional fixed/program settings; can also seed complete shader stages. */
 		eastl::shared_ptr<const FArdaInductorPipelineConfiguration> mConfiguration;
+		FArdaNodeDeclarationOrigin mDeclaration;
 	};
 
 	/** Topology projected from the persistent IR; intermediate nodes need no shader stages. */
@@ -89,6 +91,7 @@ namespace arda
 		eastl::vector<FArdaRHIBindingLayoutRef> mBindingLayouts;
 		/** Ray export/hit-group local layouts generated from record parameter schemas. */
 		eastl::vector<eastl::pair<eastl::string, FArdaRHIBindingLayoutRef>> mLocalBindingLayouts;
+		FArdaNodeDeclarationOrigin mDeclaration;
 	};
 
 	/** Immutable result of successful inference. The stable key excludes node IDs, group/slot

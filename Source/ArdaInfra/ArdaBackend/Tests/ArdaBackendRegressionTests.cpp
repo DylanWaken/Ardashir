@@ -5,8 +5,6 @@
 
 #include <gtest/gtest.h>
 
-#include <atomic>
-#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iterator>
@@ -15,24 +13,6 @@
 namespace
 {
 	using namespace arda;
-
-	class FArdaRegressionDiagnostics final : public IArdaDiagnosticCallback
-	{
-	public:
-		void Message(EArdaDiagnosticSeverity Severity, const char* Text) override
-		{
-			if (Severity >= EArdaDiagnosticSeverity::Error)
-			{
-				++mErrors;
-			}
-			if (Text && Severity >= EArdaDiagnosticSeverity::Warning)
-			{
-				std::fprintf(stderr, "%s\n", Text);
-			}
-		}
-
-		std::atomic<uint32_t> mErrors{0};
-	};
 
 	class FArdaBackendRegressionTest : public testing::TestWithParam<const char*>
 	{
@@ -61,11 +41,11 @@ namespace
 			ShutdownBackend();
 			if (GetBackendInitializeResult() != EArdaInitializeResult::ValidationUnavailable)
 			{
-				EXPECT_EQ(mDiagnostics.mErrors.load(), 0u);
+				EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
 			}
 		}
 
-		FArdaRegressionDiagnostics mDiagnostics;
+		FArdaTestDiagnosticCallback mDiagnostics;
 		FArdaRHIDeviceRef mDevice;
 	};
 

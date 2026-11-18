@@ -4,6 +4,7 @@
 #pragma once
 
 #include "RHI/Resources/ArdaRHIBuffer.h"
+#include "RHI/Resources/ArdaRHITensor.h"
 #include "RHI/Resources/ArdaRHITexture.h"
 #include "RHI/Config/ArdaCudaConfig.h"
 #include "RHI/Context/ArdaCudaExternalCallContext.h"
@@ -13,6 +14,8 @@
 
 namespace arda
 {
+	class FArdaCudaModule;
+	struct FArdaCudaModuleKernelDesc;
 	/** Declared resource access used to order a CUDA dispatch with graphics work. */
 	enum class EArdaComputeAccess : uint8_t
 	{
@@ -55,6 +58,40 @@ namespace arda
 
 	/** Returns the shared format admission table entry; unsupported formats have zero channels. */
 	[[nodiscard]] FArdaCudaFormatInfo GetArdaCudaFormatInfo(EArdaRHIFormat Format) noexcept;
+
+	/** CUDA storage and selected instruction families for one shared Backend dtype.
+	 * This reports architecture eligibility, not operator coverage, throughput, or a compiler's
+	 * chosen lowering. Software conversions and promoted arithmetic remain valid kernel implementations.
+	 */
+	struct FArdaCudaTensorTypeSupport
+	{
+		/** Qualified CUDA can carry this known dtype in ordinary byte-addressed buffer storage. */
+		bool mbStorage = false;
+		/** Instruction fields are profiled for FP32, FP16, BF16, both FP8 types and signed/unsigned INT8.
+		 * False for other known storage types means unprofiled, not unsupported arithmetic.
+		 */
+		bool mbInstructionProfileKnown = false;
+		/** Native conversion path to/from FP32; FP8 may use packed FP16 intermediates. FP32 is identity. */
+		bool mbFloat32Conversion = false;
+		/** Same-format floating-point add and multiply instructions; excludes integer promotion. */
+		bool mbScalarAddMultiply = false;
+		/** Same-format floating-point fused multiply-add; BF16 can support this before add/multiply. */
+		bool mbScalarFma = false;
+		/** Packed four-way INT8 dot product with 32-bit accumulation (dp4a). */
+		bool mbPackedInt8DotProduct = false;
+		/** A Tensor Core matrix instruction family accepting this reduced-precision operand type.
+		 * Does not imply every tile shape, accumulation type, or sparse mode. FP32 is not TF32.
+		 */
+		bool mbTensorCore = false;
+	};
+
+	/** Returns storage and profiled PTX instruction eligibility for a qualified CUDA device.
+	 * Disabled CUDA, unknown architecture, and unknown dtype return no support. These flags never
+	 * reject an otherwise valid emulated kernel: dispatch validates the artifact target and the driver
+	 * validates its actual instructions. Tensor descriptors themselves remain provider-independent.
+	 */
+	[[nodiscard]] FArdaCudaTensorTypeSupport GetArdaCudaTensorTypeSupport(const FArdaCudaCapabilities& Capabilities,
+	    EArdaRHIDataType DataType) noexcept;
 
 	/** A retained resource view; CUDA addresses remain private to the native provider. */
 	struct FArdaCudaBinding
@@ -143,6 +180,17 @@ namespace arda
 
 		/** Returns the immutable build manifest. */
 		virtual const FArdaCudaBuildInfo& GetBuildInfo() const noexcept = 0;
+
+		/** Optional runtime artifact. The provider resolves this entry under its own CUDA context. */
+		virtual const FArdaCudaModule* GetModule() const noexcept
+		{
+			return nullptr;
+		}
+
+		virtual const FArdaCudaModuleKernelDesc* GetModuleKernel() const noexcept
+		{
+			return nullptr;
+		}
 
 		/** Queries limits in the provider's current context; no kernel is launched. */
 		virtual TArdaRHIResult<FArdaCudaKernelLimits> GetLimits() const = 0;
@@ -246,7 +294,7 @@ namespace arda
 	/** One CUDA operation and an owned, unresolved parameter object. Geometry applies only to compiled kernels. */
 	struct FArdaCudaKernel : FArdaCudaLaunchConfig
 	{
-		/** Retained compiled entry; source compilation and string entry lookup are unavailable. */
+		/** Retained compiled entry, from nvcc registration or an imported PTX/cubin artifact. */
 		eastl::shared_ptr<const IArdaCudaKernelEntry> mEntry;
 		/** Frozen values; resource representations are patched by the provider. */
 		eastl::vector<uint8_t> mParameters;

@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="External CUDA calls — Ardashir engineering documentation.">
+  <title>External CUDA calls | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick guide</a>
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="gpu-allocator.html">GPU allocator</a>
+        <a href="cuda-interop.html">CUDA operands</a>
+        <a href="cuda-sequences.html">CUDA sequences</a>
+        <a href="cuda-external-calls.html">External CUDA calls</a>
+        <a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+        <a href="validation.html">GPU validation</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaBackend</a>
+      </nav>
+      <article>
+<h1 id="external-cuda-calls">External CUDA calls</h1>
+<nav class="toc" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ul>
+        <li><a href="#binding-and-execution-contract">Binding and execution contract</a></li>
+        <li><a href="#cublas-adapter">cuBLAS adapter</a></li>
+        <li><a href="#reusing-handles-and-plans">Reusing handles and plans</a></li>
+        <li><a href="#cudnn-adapter">cuDNN adapter</a></li>
+        <li><a href="#execution-modes-and-limitations">Execution modes and limitations</a></li>
+      </ul>
+    </nav>
+<section id="objectives"><h2>How to use this guide</h2><p>Integrate an external CUDA library through the operand contract, including resource declarations, stream ownership and capture eligibility.</p><p>Start with the <a href="index.html">module overview</a> and follow exact declarations in the <a href="api-reference.html">canonical API reference</a>.</p></section>
+
+<p>Compute operands can select an external CUDA operation, including cuBLAS and cuDNN
+functions, through the same API used for a compiled kernel. An external operation
+may enqueue several kernels. It works with <code>Dispatch</code>, <code>DispatchDeferred</code>,
+<code>TArdaNodeDefinition&lt;..., EArdaNodeType::Cuda&gt;</code>, <code>FArdaCudaSequence</code>, and <code>FArdaDependencyGraph</code>. Mixing library calls
+and compiled kernels in one sequence preserves one native batch and one stream.</p>
+<p>The framework supplies the CUDA context, stream, typed resource bindings and
+completion lifetime. The application supplies its library dependency and adapter;
+ArdaBackend does not link or distribute cuBLAS or cuDNN. Include their headers only
+in the adapter&#39;s implementation and link the application against the matching
+library. The public framework headers remain usable without the CUDA SDK.</p>
+<h2 id="binding-and-execution-contract">Binding and execution contract</h2>
+<p>Include <code>Compute/ArdaCudaExternalCall.h</code>. Derive an adapter from
+<code>TArdaCudaExternalCall&lt;FArdaParameters&gt;</code>, where <code>FArdaParameters</code> is an ordinary
+<code>ARDA_CUDA_PARAMETER_STRUCT</code> schema. Implement:</p>
+<pre><code class="language-cpp">TArdaRHIResult&lt;eastl::unique_ptr&lt;IArdaCudaPreparedCall&gt;&gt; PrepareCall(
+    const FArdaCudaExternalCallContext&amp; Context,
+    const FArdaParameters::FArdaCuda&amp; Parameters) const override;
+</code></pre>
+<p><code>Context</code> exposes opaque <code>mContext</code> and <code>mStream</code> handles, <code>mLaunchMode</code>,
+<code>mComputeCapability</code>, and optional factory-specific <code>mState</code>. The provider makes
+this context current before calling the adapter. <code>Parameters</code> contains copied
+values and resolved addresses, including
+declared buffer-view offsets. Store any needed values in the returned prepared
+call; the reference itself is borrowed. Its <code>Enqueue(void* Stream)</code> method issues
+library work on the supplied stream. The prepared call&#39;s destructor runs with the
+same CUDA context current after completion, or during cleanup of a failed or
+discarded recording.</p>
+<p>There are two different preparation stages:</p>
+<ol>
+<li><code>BindKernelVariants</code>, <code>SelectKernel</code>, and operand <code>PrepareDispatch</code> operate on
+host metadata without calling CUDA. Binding retains the adapter; the plan freezes
+values, resources and selection.</li>
+<li>Native recording resolves addresses and calls the adapter&#39;s <code>PrepareCall</code> for
+every operation on a retained-graph cache miss or uncaptured dispatch, before
+capture or enqueue begins. This is the place to create
+context-specific handles, validate library support, configure descriptors, and
+prepare plans. Do not read or write graph inputs here: earlier graphics work may
+still be pending. <code>Enqueue</code> runs at submission, during CUDA Graph construction,
+or inside D3D12 CiG capture. A retained graph hit bypasses both hooks and keeps
+the original prepared state alive. Adapters must explicitly opt into this via
+<code>SupportsGraphCapture</code>; see <a href="cuda-sequences.html#retained-cuda-graphs">retained CUDA Graphs</a>.</li>
+</ol>
+<p>The registered variant is selected through the existing operand hooks:</p>
+<pre><code class="language-cpp">// In the operand&#39;s BindKernelVariants(FArdaRegistry&amp; Registry):
+eastl::shared_ptr&lt;const IArdaCudaExternalCall&gt; Call =
+    eastl::make_shared&lt;FArdaAxpyCall&gt;();
+Registry.Add(BindArdaCudaExternalCall(&quot;cublas.saxpy&quot;, uint32_t{0}, Call));
+
+// In SelectKernel, after checking the requested shapes and resource-view sizes:
+FArdaCudaKernelSelection Selection;
+Selection.mVariantId = Candidates.front().mId;
+return {Selection, {}};
+</code></pre>
+<p>The example uses <code>uint32_t</code> as the operand&#39;s variant payload. External variants
+require the exact same typed parameter signature as the operand. They do not
+require an Arda-compiled binary manifest, block/grid dimensions, or compiled-kernel
+limits. Optional <code>FArdaCudaKernelRequirements</code> still restrict compute capability
+and launch mode. At the low-level descriptor boundary, exactly one of <code>mEntry</code> and
+<code>mExternalCall</code> must be set.</p>
+<h2 id="cublas-adapter">cuBLAS adapter</h2>
+<p>This adapter computes <code>Y = Alpha * X + Y</code> for contiguous FP32 vectors. Its schema
+declares X as read-only, Y as read/write, and workspace as read/write. Host selection
+must verify that the declared X/Y views contain at least <code>mCount * sizeof(float)</code>
+bytes and that the workspace view contains at least <code>mWorkspaceBytes</code>. Return the
+operand&#39;s explicit <code>NoWork</code> selection for a mathematically empty operation.</p>
+<pre><code class="language-cpp">#include &quot;RHI/CUDA/ArdaCudaExternalCall.h&quot;
+#include &lt;cublas_v2.h&gt;
+
+namespace arda
+{
+#define ARDA_AXPY_FIELDS(VALUE, BUFFER, SURFACE)                  \
+    VALUE(int32_t, mCount)                                      \
+    VALUE(float, mAlpha)                                        \
+    VALUE(uint64_t, mWorkspaceBytes)                            \
+    BUFFER(float, mX, EArdaComputeAccess::Read)                  \
+    BUFFER(float, mY, EArdaComputeAccess::ReadWrite)             \
+    BUFFER(uint8_t, mWorkspace, EArdaComputeAccess::ReadWrite)
+ARDA_CUDA_PARAMETER_STRUCT(FArdaAxpyParameters, ARDA_AXPY_FIELDS)
+#undef ARDA_AXPY_FIELDS
+
+static FArdaRHIStatus CheckBlas(cublasStatus_t Status)
+{
+    return Status == CUBLAS_STATUS_SUCCESS ? FArdaRHIStatus{} :
+        FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+            cublasGetStatusString(Status));
+}
+
+class FArdaAxpyPrepared final : public IArdaCudaPreparedCall
+{
+public:
+    explicit FArdaAxpyPrepared(FArdaAxpyParameters::FArdaCuda Parameters)
+        : mParameters(Parameters) {}
+
+    ~FArdaAxpyPrepared() override
+    {
+        if (mHandle)
+        {
+            cublasDestroy(mHandle);
+        }
+    }
+
+    FArdaRHIStatus Enqueue(void* Stream) override
+    {
+        // Setting a stream resets cuBLAS workspace, even for the same stream.
+        if (auto S = CheckBlas(cublasSetStream(mHandle,
+                static_cast&lt;cudaStream_t&gt;(Stream))); !S)
+        {
+            return S;
+        }
+        if (auto S = CheckBlas(cublasSetWorkspace(mHandle,
+                mParameters.mWorkspace, size_t(mParameters.mWorkspaceBytes))); !S)
+        {
+            return S;
+        }
+        return CheckBlas(cublasSaxpy(mHandle, mParameters.mCount,
+            &amp;mParameters.mAlpha, mParameters.mX, 1, mParameters.mY, 1));
+    }
+
+    cublasHandle_t mHandle = nullptr;
+    FArdaAxpyParameters::FArdaCuda mParameters;
+};
+
+class FArdaAxpyCall final : public TArdaCudaExternalCall&lt;FArdaAxpyParameters&gt;
+{
+public:
+    TArdaRHIResult&lt;eastl::unique_ptr&lt;IArdaCudaPreparedCall&gt;&gt; PrepareCall(
+        const FArdaCudaExternalCallContext&amp;,
+        const FArdaAxpyParameters::FArdaCuda&amp; Parameters) const override
+    {
+        if (Parameters.mCount &lt;= 0 || !Parameters.mX || !Parameters.mY ||
+            !Parameters.mWorkspace || !Parameters.mWorkspaceBytes ||
+            reinterpret_cast&lt;uintptr_t&gt;(Parameters.mWorkspace) % 256)
+        {
+            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+                &quot;SAXPY requires positive count and a 256-byte-aligned workspace.&quot;)};
+        }
+        eastl::unique_ptr&lt;IArdaCudaPreparedCall&gt; Prepared(
+            new FArdaAxpyPrepared(Parameters));
+        auto&amp; Call = static_cast&lt;FArdaAxpyPrepared&amp;&gt;(*Prepared);
+        if (auto S = CheckBlas(cublasCreate(&amp;Call.mHandle)); !S)
+        {
+            return {{}, S};
+        }
+        if (auto S = CheckBlas(cublasSetPointerMode(Call.mHandle,
+                CUBLAS_POINTER_MODE_HOST)); !S)
+        {
+            return {{}, S};
+        }
+        return {eastl::move(Prepared), {}};
+    }
+};
+}
+</code></pre>
+<p>Use CUDA-shared RHI buffers for X, Y and workspace, then dispatch this operand
+normally or add it between compiled-kernel operands in a sequence. cuBLAS requires
+handles to belong to the current CUDA context. The explicit stream and workspace
+ordering above follows its API contract. Workspace capacity is algorithm-dependent;
+insufficient workspace can fail or reduce performance. <a href="https://docs.nvidia.com/cuda/cublas/index.html#cublas-context">cuBLAS context</a>,
+<a href="https://docs.nvidia.com/cuda/cublas/index.html#cublassetstream">stream and workspace</a></p>
+<p>The example owns one handle per prepared call to make isolation and cleanup clear.
+This is a simple adapter, with potentially expensive setup and retirement:
+<code>cublasDestroy</code> synchronizes. For frequent submissions, use the optional context
+state described next to lease and reuse handles. Never concurrently reconfigure a
+leased handle or reuse its workspace for overlapping submissions.
+<a href="https://docs.nvidia.com/cuda/cublas/index.html#thread-safety">cuBLAS lifetime and threading</a></p>
+<h2 id="reusing-handles-and-plans">Reusing handles and plans</h2>
+<p>Override the factory&#39;s optional <code>CreateContextState</code> to return a class derived from
+<code>IArdaCudaExternalCallState</code>. The default returns null successfully, so the simple
+adapters do not create cached state. A non-null state is cached per factory and CUDA
+context, with the factory retained. The provider supplies it in <code>Context.mState</code>
+when preparing subsequent calls and destroys it with that context current before
+context teardown. Keep the same factory instance across recordings to reuse its
+state. Factories remain host-only; native handles and plans belong to this state
+or a prepared call.</p>
+<p>For example, a state type can own a free list of cuBLAS handles:</p>
+<pre><code class="language-cpp">class FArdaBlasPool final : public IArdaCudaExternalCallState
+{
+public:
+    ~FArdaBlasPool() override
+    {
+        for (auto Handle : mAvailable)
+        {
+            cublasDestroy(Handle);
+        }
+    }
+
+    TArdaRHIResult&lt;cublasHandle_t&gt; Acquire()
+    {
+        if (!mAvailable.empty())
+        {
+            auto Handle = mAvailable.back();
+            mAvailable.pop_back();
+            return {Handle, {}};
+        }
+        // Reserve a return slot before creating another lease.
+        mAvailable.reserve(mAvailable.capacity() + 1);
+        cublasHandle_t Handle = nullptr;
+        auto Status = CheckBlas(cublasCreate(&amp;Handle));
+        return {Handle, Status};
+    }
+
+    void Release(cublasHandle_t Handle) noexcept { mAvailable.push_back(Handle); }
+    eastl::vector&lt;cublasHandle_t&gt; mAvailable;
+};
+
+// Override in the external-call factory:
+TArdaRHIResult&lt;eastl::unique_ptr&lt;IArdaCudaExternalCallState&gt;&gt; CreateContextState(
+    const FArdaCudaExternalCallContext&amp;) const override
+{
+    return {eastl::unique_ptr&lt;IArdaCudaExternalCallState&gt;(new FArdaBlasPool), {}};
+}
+</code></pre>
+<p>In <code>PrepareCall</code>, cast the factory&#39;s <code>Context.mState</code> to <code>FArdaBlasPool</code>, acquire a
+handle, and store both in the prepared call. Replace that prepared call&#39;s
+<code>cublasDestroy</code> with returning its handle to the pool. The state outlives every
+prepared call. Reapply pointer mode and any other handle configuration needed by
+each lease; bind stream followed by workspace at enqueue as before. The same pattern
+can retain cuDNN handles and compatible prepared plans.</p>
+<p>Provider calls into a context state are serialized by its context mutex. GPU
+submissions can remain outstanding concurrently, so CPU serialization alone does
+not make one workspace or handle safe to reuse: keep each lease exclusive until
+its prepared-call destructor runs. Pool creation, acquisition and cleanup must not
+re-enter the RHI or switch the borrowed CUDA context. Resources exposed through RHI
+remain declared in the operand schema even when native library state is cached.</p>
+<h2 id="cudnn-adapter">cuDNN adapter</h2>
+<p>The same operation can use <code>cudnnAddTensor</code>: with an FP32 descriptor covering
+<code>[1, 1, 1, mCount]</code>, alpha is <code>mAlpha</code> and beta is one. This descriptor-based example
+needs no workspace. It creates and configures a handle and descriptor in
+<code>PrepareCall</code>, then binds the provider&#39;s stream in <code>Enqueue</code>. <code>cudnnAddTensor</code> is a
+legacy API deprecated in cuDNN 9; it is shown for existing integrations. For new
+cuDNN workloads, use the execution-plan pattern following the example.
+<a href="https://docs.nvidia.com/deeplearning/cudnn/backend/latest/api/overview.html">cuDNN API overview</a></p>
+<pre><code class="language-cpp">#include &quot;RHI/CUDA/ArdaCudaExternalCall.h&quot;
+#include &lt;cudnn.h&gt;
+
+namespace arda
+{
+#define ARDA_DNN_ADD_FIELDS(VALUE, BUFFER, SURFACE)               \
+    VALUE(int32_t, mCount)                                      \
+    VALUE(float, mAlpha)                                        \
+    BUFFER(float, mX, EArdaComputeAccess::Read)                  \
+    BUFFER(float, mY, EArdaComputeAccess::ReadWrite)
+ARDA_CUDA_PARAMETER_STRUCT(FArdaDnnParameters, ARDA_DNN_ADD_FIELDS)
+#undef ARDA_DNN_ADD_FIELDS
+
+static FArdaRHIStatus CheckDnn(cudnnStatus_t Status)
+{
+    return Status == CUDNN_STATUS_SUCCESS ? FArdaRHIStatus{} :
+        FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+            cudnnGetErrorString(Status));
+}
+
+class FArdaDnnAddPrepared final : public IArdaCudaPreparedCall
+{
+public:
+    explicit FArdaDnnAddPrepared(FArdaDnnParameters::FArdaCuda Parameters)
+        : mParameters(Parameters) {}
+
+    ~FArdaDnnAddPrepared() override
+    {
+        if (mTensor) { cudnnDestroyTensorDescriptor(mTensor); }
+        if (mHandle) { cudnnDestroy(mHandle); }
+    }
+
+    FArdaRHIStatus Enqueue(void* Stream) override
+    {
+        if (auto S = CheckDnn(cudnnSetStream(mHandle,
+                static_cast&lt;cudaStream_t&gt;(Stream))); !S)
+        {
+            return S;
+        }
+        const float Beta = 1.0f;
+        return CheckDnn(cudnnAddTensor(mHandle, &amp;mParameters.mAlpha,
+            mTensor, mParameters.mX, &amp;Beta, mTensor, mParameters.mY));
+    }
+
+    cudnnHandle_t mHandle = nullptr;
+    cudnnTensorDescriptor_t mTensor = nullptr;
+    FArdaDnnParameters::FArdaCuda mParameters;
+};
+
+class FArdaDnnAddCall final : public TArdaCudaExternalCall&lt;FArdaDnnParameters&gt;
+{
+public:
+    TArdaRHIResult&lt;eastl::unique_ptr&lt;IArdaCudaPreparedCall&gt;&gt; PrepareCall(
+        const FArdaCudaExternalCallContext&amp;,
+        const FArdaDnnParameters::FArdaCuda&amp; Parameters) const override
+    {
+        if (Parameters.mCount &lt;= 0 || !Parameters.mX || !Parameters.mY)
+        {
+            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+                &quot;cuDNN add requires positive count and both tensor views.&quot;)};
+        }
+        eastl::unique_ptr&lt;IArdaCudaPreparedCall&gt; Prepared(
+            new FArdaDnnAddPrepared(Parameters));
+        auto&amp; Call = static_cast&lt;FArdaDnnAddPrepared&amp;&gt;(*Prepared);
+        if (auto S = CheckDnn(cudnnCreate(&amp;Call.mHandle)); !S)
+        {
+            return {{}, S};
+        }
+        if (auto S = CheckDnn(cudnnCreateTensorDescriptor(&amp;Call.mTensor)); !S)
+        {
+            return {{}, S};
+        }
+        if (auto S = CheckDnn(cudnnSetTensor4dDescriptor(Call.mTensor,
+                CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, 1, 1,
+                Parameters.mCount)); !S)
+        {
+            return {{}, S};
+        }
+        return {eastl::move(Prepared), {}};
+    }
+};
+}
+</code></pre>
+<p>Bind <code>FArdaDnnAddCall</code> to an operand over <code>FArdaDnnParameters</code> with
+<code>BindArdaCudaExternalCall</code>, as in the cuBLAS example. Host selection checks positive
+supported tensor dimensions, FP32 view capacity, and the operation&#39;s aliasing rules.
+Use a separate prepared state or exclusive lease for every concurrent invocation;
+cuDNN does not permit simultaneous use of one handle by several host threads.
+<code>cudnnSetStream</code> orders the call with other work in that stream, including when
+cuDNN uses internal streams. <a href="https://docs.nvidia.com/deeplearning/cudnn/backend/latest/api/cudnn-graph-library.html#cudnnsetstream">cuDNN stream API</a>,
+<a href="https://docs.nvidia.com/deeplearning/cudnn/latest/developer/misc.html#thread-safety">thread safety</a></p>
+<p>For convolution, attention, or another cuDNN execution plan, replace this prepared
+state with one owning the plan and its variant pack. Finalize the plan before
+enqueue, query <code>CUDNN_ATTR_EXECUTION_PLAN_WORKSPACE_SIZE</code>, and validate a declared
+read/write workspace view against that size. Put its resolved pointer and the
+declared input/output pointers in the variant pack. The enqueue body is then:</p>
+<pre><code class="language-cpp">if (auto S = CheckDnn(cudnnSetStream(mHandle,
+        static_cast&lt;cudaStream_t&gt;(Stream))); !S)
+{
+    return S;
+}
+return CheckDnn(cudnnBackendExecute(mHandle, mExecutionPlan, mVariantPack));
+</code></pre>
+<p>Plan authoring and algorithm choice remain application-specific. All tensor data
+and scratch referenced by the variant pack must remain valid through GPU completion.
+The prepared object can retain descriptors/plans; RHI buffers stay declared in the
+operand schema so the render graph sees their accesses. <a href="https://docs.nvidia.com/deeplearning/cudnn/backend/latest/api/cudnn-graph-library.html#cudnnbackendexecute">cuDNN graph execution</a></p>
+<h2 id="execution-modes-and-limitations">Execution modes and limitations</h2>
+<p><code>IArdaCudaExternalCall::GetSupport</code> defaults to ordinary CUDA and Vulkan CiG.
+D3D12 CiG requires an adapter override admitting that mode after its exact library,
+operation, algorithm and workspace policy have been qualified. A selected external
+call does not silently change the device&#39;s execution mode. Request a ContextSwitch
+device when a required adapter does not support the selected graphics-queue mode.</p>
+<p>CUDA Graph capture support and D3D12 CiG support are different contracts. CiG capture
+forbids host callbacks, stream synchronization, nested capture, and asynchronous
+allocation/free, including indirectly through a graph launch. Enqueue must preserve
+the supplied stream and context, use asynchronous library operations, and avoid
+re-entering Arda recording/submission APIs. Internal library streams must rejoin the
+supplied stream&#39;s dependency chain and obey the selected mode. <a href="https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__STREAM.html">CUDA CiG restrictions</a></p>
+<p>cuBLAS supports graphics-context shared-memory limits from version 12.8, but its
+operations that rely on <code>cudaMallocAsync</code> need user-provided workspace in CiG.
+Host-result routines that synchronize are also unsuitable for capture. <a href="https://docs.nvidia.com/cuda/cublas/index.html#cuda-graphs-support">cuBLAS capture support</a></p>
+<p>Do not assume all cuDNN engines support CiG. Preload needed cuDNN sublibraries and
+complete any required plan/code warmup before capture. NVIDIA notes that resource
+queries can require warmup for graph capture; such warmup must use separately valid
+data, outside native preparation of a graph whose inputs have not executed yet.
+<a href="https://docs.nvidia.com/deeplearning/cudnn/backend/v9.16.0/release-notes.html">cuDNN capture guidance</a></p>
+<p>An adapter preparation error prevents every operation in that native batch from
+enqueuing. An error returned after enqueue starts can leave partial GPU work; the
+framework cannot roll back an arbitrary library call. Return meaningful library
+errors as <code>FArdaRHIStatus</code>, and never report success after enqueueing work on an
+untracked stream. The framework retains prepared state for cleanup, but cannot
+verify hidden library resource accesses, tensor sizes, or algorithm safety.</p>
+<p>Provider interface version <strong>7</strong> introduced the external-call descriptors and
+lifecycle. The current interface version is <strong>12</strong>, including retained CUDA Graph
+metadata, submission completion, allocation residency queries and queue-qualified
+timestamp capabilities. Rebuild external providers and consumers together. See
+<a href="cuda-texture-buffers.html">CUDA texture buffers</a> for explicit graphics texture staging
+into declared linear buffers suitable for library adapters.</p>
+<section id="summary"><h2>Review and next steps</h2><p>Prepare external operations before submission, use the framework-owned stream, and declare every native resource access so graph scheduling remains valid.</p><p>Continue with the <a href="index.html">module guides</a> and <a href="api-reference.html">API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend · Ardashir engineering documentation</p></footer>
+</body>
+</html>

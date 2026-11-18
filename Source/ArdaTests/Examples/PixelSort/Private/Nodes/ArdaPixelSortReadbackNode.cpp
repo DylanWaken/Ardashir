@@ -62,7 +62,6 @@ namespace arda
 	FArdaDependencyNodeDesc FArdaPixelSortReadbackNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
-		D.mAccesses = {{P.mSource, EArdaDependencyAccess::Read, EArdaRHIResourceState::CopySource}};
 		D.mbSideEffect = true;
 		return D;
 	}

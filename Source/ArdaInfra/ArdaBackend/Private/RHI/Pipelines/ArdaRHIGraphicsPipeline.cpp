@@ -3,7 +3,7 @@
 #include "RHI/Pipelines/ArdaRHIGraphicsPipeline.h"
 #include "RHI/Shaders/ArdaRHIShader.h"
 
-#include "RHI/Resources/ArdaHash.h"
+#include "RHI/Pipelines/ArdaRHIPipelineHash.h"
 
 #include <EASTL/algorithm.h>
 
@@ -13,60 +13,26 @@ namespace arda
 {
 	namespace
 	{
-		template <typename T>
-		void Combine(size_t& Seed, const T& Value) noexcept
-		{
-			ArdaHashCombine(Seed, Value);
-		}
-
-		template <typename T>
-		void CombineRef(size_t& Seed, const TArdaRHIRef<T>& Value) noexcept
-		{
-			Combine(Seed, reinterpret_cast<uintptr_t>(Value.Get()));
-		}
-
-		template <typename T>
-		void CombineRefs(size_t& Seed, const eastl::vector<TArdaRHIRef<T>>& Values) noexcept
-		{
-			Combine(Seed, Values.size());
-			for (const auto& Value : Values)
-			{
-				CombineRef(Seed, Value);
-			}
-		}
 
 		FArdaRHIStatus Invalid(const char* Message)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, Message);
 		}
 
-		template <typename PipelineDesc>
-		void CombineRasterFixedFunctionState(size_t& Hash, const PipelineDesc& Value)
-		{
-			Combine(Hash, HashValue(Value.mBlendState));
-			Combine(Hash, HashValue(Value.mRasterState));
-			Combine(Hash, HashValue(Value.mDepthStencilState));
-			for (auto Format : Value.mColorFormats)
-			{
-				Combine(Hash, static_cast<uint8_t>(Format));
-			}
-			Combine(Hash, static_cast<uint8_t>(Value.mDepthFormat));
-			Combine(Hash, Value.mSampleCount);
-		}
 	}
 
 	size_t HashValue(const FArdaRHIGraphicsPipelineDesc& V) noexcept
 	{
 		size_t H = 0;
-		Combine(H, static_cast<uint8_t>(V.mTopology));
-		Combine(H, V.mPatchControlPoints);
-		CombineRef(H, V.mInputLayout);
-		CombineRef(H, V.mVertexShader);
-		CombineRef(H, V.mHullShader);
-		CombineRef(H, V.mDomainShader);
-		CombineRef(H, V.mGeometryShader);
-		CombineRef(H, V.mPixelShader);
-		CombineRefs(H, V.mBindingLayouts);
+		ArdaHashCombine(H, static_cast<uint8_t>(V.mTopology));
+		ArdaHashCombine(H, V.mPatchControlPoints);
+		HashPipelineRef(H, V.mInputLayout);
+		HashPipelineRef(H, V.mVertexShader);
+		HashPipelineRef(H, V.mHullShader);
+		HashPipelineRef(H, V.mDomainShader);
+		HashPipelineRef(H, V.mGeometryShader);
+		HashPipelineRef(H, V.mPixelShader);
+		HashPipelineRefs(H, V.mBindingLayouts);
 		CombineRasterFixedFunctionState(H, V);
 		return H;
 	}

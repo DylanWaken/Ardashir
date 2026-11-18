@@ -30,7 +30,6 @@ namespace arda::global_node_tests
 	FArdaDependencyNodeDesc FArdaGlobalNodeTestNode::Describe(const FArdaParameters& Parameters, const FArdaState&)
 	{
 		FArdaDependencyNodeDesc Desc;
-		Desc.mAccesses.push_back({Parameters.mOutput, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest});
 		return Desc;
 	}
 

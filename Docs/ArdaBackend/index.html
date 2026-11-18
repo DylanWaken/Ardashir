@@ -38,7 +38,7 @@
         <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
 
         <a href="resource-recipes.html">Resource recipes</a>
-        <a href="Gpu-Allocator.md">GPU allocator</a>
+        <a href="gpu-allocator.html">GPU allocator</a>
         <a href="capability-recipes.html">Capability recipes</a>
         <a href="cuda-interop.html">CUDA and graphics</a>
         <a href="cuda-graphics.html">CUDA in graphics fundamentals</a>
@@ -198,7 +198,7 @@
             </article>
             <article>
               <h3>5. <a href="rhi.html">RHI resources</a></h3>
-              <p>Learn descriptors, validation, resource creation, capabilities, views, native imports, and retained references. The <a href="Gpu-Allocator.md">GPU allocator guide</a> explains storage reuse across graphs, retention controls and allocation diagnostics.</p>
+              <p>Learn descriptors, validation, resource creation, capabilities, views, native imports, and retained references. The <a href="gpu-allocator.html">GPU allocator guide</a> explains storage reuse across graphs, retention controls and allocation diagnostics.</p>
             </article>
             <article>
               <h3>6. <a href="rhi-feature-guide.html">RHI feature guide</a></h3>
@@ -283,6 +283,22 @@
             <h3>Do not diagnose portability by backend name</h3>
             <p>“It fails on Vulkan” is not yet a cause. Record the initialization phase, selected adapter/device, queue capabilities, status code, validation message, and the descriptor or command sequence that crossed the failing boundary.</p>
           </aside>
+        </section>
+
+        <section id="engineering-guides">
+          <h2>Implementation and maintenance guides</h2>
+          <p>Follow these detailed guides for resource lifetime, CUDA composition, validation and the engineering records behind backend support.</p>
+          <ul>
+            <li><a href="gpu-allocator.html">GPU allocator</a>: allocation reuse, submission leases, retention and diagnostics.</li>
+            <li><a href="cuda-sequences.html">CUDA sequences</a>: ordered operands, scratch lifetime and graph batching.</li>
+            <li><a href="cuda-external-calls.html">External CUDA calls</a>: library preparation, stream ownership and capture.</li>
+            <li><a href="cuda-texture-buffers.html">CUDA texture buffers</a>: pitched transfers between graphics textures and linear memory.</li>
+            <li><a href="validation-tests.html">Validation tests</a>: configuration, test policies and failure interpretation.</li>
+            <li><a href="cuda-backend-plan.html">CUDA implementation record</a>: completed work, qualification and limits.</li>
+            <li><a href="unreal-rhi-audit.html">Unreal RHI audit</a> and <a href="unreal-rhi-parity-plan.html">parity plan</a>: comparison evidence, decisions and deferred work.</li>
+            <li><a href="simplification-review.html">Simplification review</a>: recorded interface and ownership decisions.</li>
+            <li><a href="documentation.html">Documentation maintenance</a>: source excerpts, generators and validation commands.</li>
+          </ul>
         </section>
 
         <section id="summary">

@@ -1,5 +1,5 @@
 #pragma once
-#include "Graph/Node/ArdaDependencyNode.h"
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include "RHI/Shaders/ArdaGlobalShaderMap.h"
 
 #ifndef ARDA_RDG_RECIPE_SHADER_DIR

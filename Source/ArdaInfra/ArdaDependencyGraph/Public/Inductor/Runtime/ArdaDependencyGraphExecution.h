@@ -105,6 +105,11 @@ namespace arda
 		/** Number of pass and boundary-barrier command lists submitted. */
 		uint32_t mSubmittedCommandListCount = 0;
 
+		/** Traditional native draws recorded by compiler-assembled graphics stages. */
+		uint32_t mRecordedGraphicsDrawCount = 0;
+		/** Source graphics draws eliminated by successful contiguous-instance merging. */
+		uint32_t mMergedGraphicsDrawCount = 0;
+
 		/** Number of command lists rejected by the RHI during submission. */
 		uint32_t mSubmissionFailureCount = 0;
 
@@ -114,8 +119,6 @@ namespace arda
 		/** Execution dependencies, including physical ownership and memory aliasing edges. */
 		eastl::vector<FArdaGraphQueueDependency> mQueueDependencies;
 
-		/** Whether pass command lists were recorded concurrently. */
-		bool mbUsedParallelRecording = false;
 
 		/** Number of placed resources activated over a previously occupied range. */
 		uint32_t mAliasingBarrierCount = 0;

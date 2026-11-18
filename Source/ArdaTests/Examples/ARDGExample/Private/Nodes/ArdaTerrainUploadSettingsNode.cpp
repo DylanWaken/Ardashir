@@ -41,14 +41,6 @@ namespace arda
 		return {};
 	}
 
-	FArdaDependencyNodeDesc FArdaTerrainUploadSettingsNode::Describe(const FArdaParameters& P,
-	    const FArdaState& Prepared)
-	{
-		FArdaDependencyNodeDesc D;
-		D.mAccesses = {{P.mDestination, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest}};
-		return D;
-	}
-
 	FArdaRHIStatus FArdaTerrainUploadSettingsNode::Record(FArdaDependencyExecutionContext& C,
 	    const FArdaParameters& P,
 	    const FArdaState& Prepared,

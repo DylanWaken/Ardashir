@@ -1,3 +1,4 @@
+#include "Graph/Node/ArdaGraphSemanticFields.h"
 #include "Graph/Node/ArdaGraphConstructionKey.h"
 #include "Graph/Node/ArdaDependencyGraphImpl.h"
 #include "Graph/Node/ArdaDependencyKey.h"
@@ -7,49 +8,32 @@ namespace arda
 {
 	namespace
 	{
-		void AppendBuffer(FArdaDependencyKeyBuilder& Key, const FArdaRHIBufferDesc& Buffer)
-		{
-			Key.Value(Buffer.mByteSize)
-			    .Value(Buffer.mStructureStride)
-			    .Value(Buffer.mMaxVersions)
-			    .Value(Buffer.mFormat)
-			    .Value(Buffer.mUsage)
-			    .Value(Buffer.mCpuAccess)
-			    .Value(Buffer.mInitialState)
-			    .Value(Buffer.mbKeepInitialState)
-			    .Value(Buffer.mbVirtual)
-			    .Value(Buffer.mbTiled)
-			    .String(Buffer.mDebugName)
-			    .Value(Buffer.mbCudaInterop);
-		}
+		thread_local const FArdaDependencyGraph::FArdaImpl* ConstructionGraph = nullptr;
 
-		void AppendTexture(FArdaDependencyKeyBuilder& Key, const FArdaRHITextureDesc& Texture)
+		struct FArdaConstructionKeyFields
 		{
-			Key.Value(Texture.mWidth)
-			    .Value(Texture.mHeight)
-			    .Value(Texture.mDepth)
-			    .Value(Texture.mArraySize)
-			    .Value(Texture.mMipLevels)
-			    .Value(Texture.mSampleCount)
-			    .Value(Texture.mFormat)
-			    .Value(Texture.mDimension)
-			    .Value(Texture.mUsage)
-			    .Value(Texture.mInitialState)
-			    .Value(Texture.mbKeepInitialState)
-			    .Value(Texture.mbVirtual)
-			    .Value(Texture.mbTiled)
-			    .Value(Texture.mClearValue.mR)
-			    .Value(Texture.mClearValue.mG)
-			    .Value(Texture.mClearValue.mB)
-			    .Value(Texture.mClearValue.mA)
-			    .Value(Texture.mbUseClearValue)
-			    .String(Texture.mDebugName)
-			    .Value(Texture.mbCudaInterop);
-		}
+			FArdaDependencyKeyBuilder& mKey;
+
+			template <class... T>
+			void Fields(const T&... Values) const
+			{
+				(Append(Values), ...);
+			}
+
+			void Append(const eastl::string& Value) const
+			{
+				mKey.String(Value);
+			}
+
+			template <class T>
+			void Append(T Value) const
+			{
+				mKey.Value(Value);
+			}
+		};
 
 		void AppendOptions(FArdaDependencyKeyBuilder& Key, const FArdaInductorOptions& Options)
 		{
-
 			const auto AppendRules = [&](const auto& Rules)
 			{
 				Key.Value(static_cast<uint64_t>(Rules.size()));
@@ -60,28 +44,51 @@ namespace arda
 			};
 			AppendRules(Options.mRules.mPreprocessRules);
 			AppendRules(Options.mRules.mCompileRules);
-			Key.Value(Options.mObjective)
-			    .Value(Options.mSearchMode)
-			    .Value(Options.mMaxVramBytes)
-			    .Value(Options.mMinimumAsyncChain)
-			    .Value(Options.mMinimumAsyncSlack)
-			    .Value(Options.mMaxSearchStates)
-			    .Value(Options.mFramesInFlight)
-			    .Value(Options.mCudaGraphMode)
-			    .Value(Options.mCudaHandoffCost)
-			    .Value(Options.mAliasSubmissionCost)
-			    .Value(Options.mbEnableGpuTiming)
-			    .Value(Options.mGpuTimingEmaAlpha)
-			    .Value(Options.mGpuTimingSampleInterval)
-			    .Value(Options.mGpuTimingHistoryCapacity)
-			    .Value(Options.mbEnableAdaptiveScheduling)
-			    .Value(Options.mAdaptiveSchedulingInterval)
-			    .Value(Options.mAdaptiveSchedulingMinSamples)
-			    .Value(Options.mAdaptiveSchedulingSearchBudget)
-			    .Value(Options.mAdaptiveSchedulingMinImprovement)
-			    .Value(Options.mbEnableCopyQueue)
-			    .Value(Options.mbEnableAsyncCompute);
+			InductorOptionFields(FArdaConstructionKeyFields{Key}, Options);
 		}
+	}
+
+	FArdaConstructionKeyScope::FArdaConstructionKeyScope(const FArdaDependencyGraph::FArdaImpl& Graph) noexcept
+	    : mPrevious(ConstructionGraph)
+	{
+		ConstructionGraph = &Graph;
+	}
+
+	FArdaConstructionKeyScope::~FArdaConstructionKeyScope()
+	{
+		ConstructionGraph = mPrevious;
+	}
+
+	FArdaDependencyKeyBuilder& FArdaDependencyKeyBuilder::Resource(FArdaDependencyResourceHandle Handle)
+	{
+		if (ConstructionGraph)
+		{
+			Handle = ConstructionGraph->ResolveResource(Handle);
+			const bool bValid = Handle.mGraph == ConstructionGraph->mIdentity && ConstructionGraph->HasResource(Handle);
+			Value(bValid);
+			if (bValid)
+			{
+				return Value(uint64_t{0}).Value(Handle.mIndex).Value(uint64_t{0});
+			}
+		}
+		return Value(Handle.mGraph).Value(Handle.mIndex).Value(Handle.mGeneration);
+	}
+
+	FArdaDependencyKeyBuilder& FArdaDependencyKeyBuilder::Stage(FArdaGraphStageValue Input)
+	{
+		auto Handle = Input.GetProducer();
+		Value(Input.GetKind());
+		if (ConstructionGraph)
+		{
+			Handle = ConstructionGraph->ResolveNode(Handle);
+			const bool bValid = ConstructionGraph->mTopology.ContainsNode(Handle);
+			Value(bValid);
+			if (bValid)
+			{
+				return Value(uint64_t{0}).Value(Handle.GetIndex()).Value(uint32_t{0});
+			}
+		}
+		return Value(Handle.GetGraphIdentity()).Value(Handle.GetIndex()).Value(Handle.GetGeneration());
 	}
 
 	eastl::string BuildArdaGraphConstructionKey(const FArdaDependencyGraph::FArdaImpl& Graph)
@@ -89,25 +96,58 @@ namespace arda
 		FArdaDependencyKeyBuilder Key;
 		Key.Value(uint32_t{1});
 		AppendOptions(Key, Graph.mOptions);
+		eastl::vector<eastl::string> ExternalNames;
+		for (const auto& Entry : Graph.mExternalValues)
+		{
+			ExternalNames.push_back(Entry.first);
+		}
+		eastl::sort(ExternalNames.begin(), ExternalNames.end());
+		Key.Value(static_cast<uint64_t>(ExternalNames.size()));
+		for (const auto& Name : ExternalNames)
+		{
+			const auto& Binding = Graph.mExternalValues.at(Name);
+			Key.String(Name).String(Binding.mTypeName).Value(reinterpret_cast<uintptr_t>(Binding.mValue.get()));
+		}
 		Key.Value(static_cast<uint64_t>(Graph.mResources.size()));
 		for (const auto& Resource : Graph.mResources)
 		{
-			Key.String(Resource.mName).Value(Resource.mbTexture).Value(Resource.mbPersistent).Value(Resource.mbOutput);
-			AppendBuffer(Key, Resource.mBuffer);
-			AppendTexture(Key, Resource.mTexture);
+			Key.String(Resource.mName)
+			    .Value(Resource.mbTexture)
+			    .Value(Resource.mbPersistent)
+			    .Value(Resource.mbOutput)
+			    .Value(Resource.mbRevisionOrdered);
+			BufferDescriptorFields(FArdaConstructionKeyFields{Key}, Resource.mBuffer);
+			Key.Bytes(Resource.mBufferInitializer.GetData(), Resource.mBufferInitializer.GetSize());
+			TextureDescriptorFields(FArdaConstructionKeyFields{Key}, Resource.mTexture);
 			// Imported storage is retained by the cached revision, preventing identity reuse.
 			Key.Value(reinterpret_cast<uintptr_t>(Resource.mExternalBuffer.Get()))
 			    .Value(reinterpret_cast<uintptr_t>(Resource.mExternalTexture.Get()))
 			    .Value(reinterpret_cast<uintptr_t>(Resource.mExternalAccelerationStructure.Get()));
 		}
+		Key.Value(static_cast<uint64_t>(Graph.mCommittedEdits.size()));
+		for (const auto& Edit : Graph.mCommittedEdits)
+		{
+			Key.Value(static_cast<uint64_t>(Edit.mNodes.size()));
+			for (const auto Node : Edit.mNodes)
+			{
+				Key.Value(Graph.ResolveNode(Node).GetIndex());
+			}
+			Key.Value(static_cast<uint64_t>(Edit.mResources.size()));
+			for (const auto& Revision : Edit.mResources)
+			{
+				Key.Value(Graph.ResolveResource(Revision.mResource).mIndex).Value(Revision.mRevision);
+			}
+		}
 		// Explicit extensions retain persistent contents from their source revision. They must
 		// not select an otherwise identical revision backed by a different native allocation.
 		for (size_t Index = 0; Index < Graph.mResources.size(); ++Index)
 		{
-			const auto Buffer =
-			    Index < Graph.mPersistentBuffers.size() ? Graph.mPersistentBuffers[Index].Get() : nullptr;
-			const auto Texture =
-			    Index < Graph.mPersistentTextures.size() ? Graph.mPersistentTextures[Index].Get() : nullptr;
+			const auto Buffer = Index < Graph.mCompile.mExecution->mPersistentBuffers.size()
+			    ? Graph.mCompile.mExecution->mPersistentBuffers[Index].Get()
+			    : nullptr;
+			const auto Texture = Index < Graph.mCompile.mExecution->mPersistentTextures.size()
+			    ? Graph.mCompile.mExecution->mPersistentTextures[Index].Get()
+			    : nullptr;
 			Key.Value(reinterpret_cast<uintptr_t>(Buffer)).Value(reinterpret_cast<uintptr_t>(Texture));
 		}
 		auto Nodes = Graph.mTopology.GetNodes();
@@ -139,13 +179,12 @@ namespace arda
 				    .Value(Output.mRequiredBufferUsage)
 				    .Value(Output.mRequiredTextureUsage);
 			}
-			const auto& Desc = Node.mDesc;
+			const auto& Desc = Graph.GetNodeDescription(Node);
 			Key.Value(Desc.mEstimatedCost)
 			    .Value(Desc.mWorkspaceBytes)
 			    .Value(Desc.mTransientWorkspaceBytes)
 			    .Value(Desc.mbSideEffect)
 			    .Value(Desc.mbPipelineStageOnly)
-			    .Value(Desc.mbDeclarativeParameters)
 			    .Value(static_cast<uint64_t>(Desc.mAccesses.size()));
 			for (const auto& Access : Desc.mAccesses)
 			{

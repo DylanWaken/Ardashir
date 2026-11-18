@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 440" role="img" aria-labelledby="title description">
+  <title id="title">A cross-graph GPU data handoff uses scheduler prerequisites</title>
+  <desc id="description">Time moves right. Producer A and consumer B compile in parallel. B compiles first, but its execution waits in reserve. Unrelated graph C can execute while A compiles. A then submits and waits for its GPU work. Only after A succeeds and B's own compilation is complete can B execute and read A's output. B's prerequisites are held in its single accepted job descriptor.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#b4c9df"/></marker></defs>
+  <rect width="1100" height="440" rx="12" fill="#111d2e"/>
+  <g font-family="system-ui,sans-serif" font-size="16" fill="#e7eef8">
+    <text x="26" y="34" font-size="22" font-weight="700">Compile independently; publish GPU output before its consumer runs</text>
+    <path d="M220 65H1062" stroke="#b4c9df" marker-end="url(#arrow)"/><text x="972" y="55">Time →</text>
+    <text x="26" y="112">Rendering: A</text>
+    <rect x="220" y="88" width="300" height="36" rx="5" fill="#285075"/><text x="236" y="112">Compile producer</text>
+    <text x="26" y="164">Rendering: B</text>
+    <rect x="220" y="140" width="176" height="36" rx="5" fill="#285075"/><text x="236" y="164">Compile consumer</text>
+    <text x="26" y="232">RHI serial worker</text>
+    <rect x="284" y="208" width="162" height="40" rx="5" fill="#62533a"/><text x="298" y="233">Independent C</text>
+    <rect x="534" y="208" width="272" height="40" rx="5" fill="#245d51"/><text x="548" y="233">A: submit + wait for GPU</text>
+    <rect x="840" y="208" width="226" height="40" rx="5" fill="#245d51"/><text x="854" y="233">B: read A's output</text>
+    <path d="M520 125V194H534V206" stroke="#b4c9df" fill="none" marker-end="url(#arrow)"/>
+    <text x="26" y="304">B's execution job</text>
+    <rect x="220" y="278" width="586" height="42" rx="5" fill="none" stroke="#b4c9df" stroke-dasharray="6 4"/><text x="238" y="305">Reserve: own compilation + RequireSuccess(A.Execute job)</text>
+    <path d="M396 178V276" stroke="#b4c9df" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+    <path d="M808 249V299H838V250" stroke="#b4c9df" fill="none" marker-end="url(#arrow)"/>
+    <text x="840" y="319" fill="#91e4c5">Both conditions resolved</text>
+    <text x="26" y="365">A failure → B skips its body after all prerequisites resolve.</text>
+    <text x="26" y="395">A.Submit completion or a CPU label alone does not promise completed GPU writes.</text>
+    <text x="26" y="422" font-size="14" fill="#b4c9df">Solid bars: running work. Dashed box: queued work occupying no worker. Arrows: scheduler prerequisites.</text>
+  </g>
+</svg>

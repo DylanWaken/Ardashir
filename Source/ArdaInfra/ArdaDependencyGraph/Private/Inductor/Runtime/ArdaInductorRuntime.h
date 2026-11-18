@@ -11,7 +11,7 @@ namespace arda
 	{
 		FArdaDependencyGraph::FArdaImpl* mGraph = nullptr;
 	};
-	struct FArdaInductorAdaptiveJob;
+	struct FArdaInductorScheduleCandidate;
 
 	/** Device-bound slots and scheduling state, separate from semantic topology. */
 	struct FArdaInductorRuntime
@@ -20,14 +20,13 @@ namespace arda
 		eastl::shared_ptr<FArdaDependencyFrameTicket::FArdaState> mPrevious;
 		uint32_t mNextSlot = 0;
 		bool mbHasSharedResources = false;
-		FArdaMemoryPlan mMemoryPlan;
 		eastl::shared_ptr<const FArdaMemoryPlan> mAdaptivePlan;
 		eastl::shared_ptr<FArdaInductorGraphBinding> mBinding;
 		eastl::shared_ptr<const FArdaDependencyGraph::FArdaImpl> mAdaptiveSeed;
 		eastl::shared_ptr<const eastl::vector<FArdaInductorReuseFrame>> mReuseFrames;
 		~FArdaInductorRuntime();
 		static FArdaRHIStatus Prepare(FArdaDependencyGraph::FArdaImpl& Graph,
-		    FArdaMemoryPlan Plan,
+		    const FArdaMemoryPlan& Plan,
 		    const eastl::vector<FArdaInductorReuseFrame>* Reuse = nullptr);
 		static void CollectTelemetry(FArdaDependencyGraph::FArdaImpl& Graph);
 		static void CollectStateTelemetry(FArdaDependencyFrameTicket::FArdaState& State);
@@ -38,13 +37,14 @@ namespace arda
 		    const FArdaDependencyFrameTicket& Ticket);
 		static TArdaRHIResult<bool> IsComplete(FArdaDependencyGraph::FArdaImpl& Graph,
 		    const FArdaDependencyFrameTicket& Ticket);
+		/** Ticket-owned completion after the facade snapshots identity under its revision lock. */
+		static FArdaGraphExecutionResult Wait(uint64_t GraphIdentity, const FArdaDependencyFrameTicket& Ticket);
+		static TArdaRHIResult<bool> IsComplete(uint64_t GraphIdentity, const FArdaDependencyFrameTicket& Ticket);
 		FArdaRHIStatus WaitAll();
-		static FArdaGraphExecutionResult Execute(FArdaDependencyGraph::FArdaImpl& Graph,
-		    const FArdaGraphExecuteOptions& Options);
 		static FArdaGraphExecutionResult WaitState(FArdaDependencyFrameTicket::FArdaState& State);
 
 	private:
-		static FArdaRHIStatus MaterializePendingPlan(FArdaDependencyGraph::FArdaImpl& Graph);
+		static FArdaRHIStatus MaterializePlan(FArdaDependencyGraph::FArdaImpl& Graph);
 		static FArdaRHIStatus MaterializeFrame(FArdaDependencyGraph::FArdaImpl& Graph,
 		    FArdaInductorRuntime& Runtime,
 		    const FArdaMemoryPlan& Plan,

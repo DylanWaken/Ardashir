@@ -16,7 +16,7 @@ namespace arda::inductor_completion_tests
 	{
 		FArdaInductorReadbackCompletions Completions;
 		auto Destination = eastl::make_shared<eastl::vector<uint8_t>>(eastl::vector<uint8_t>{0});
-		// Parallel recording and callback order can both differ from graph order.
+		// Transfer callbacks can complete in a different order from their graph nodes.
 		auto LaterPass = Completions.Register(Destination, 9);
 		auto EarlierPass = Completions.Register(Destination, 2);
 		LaterPass({{9}, {}});

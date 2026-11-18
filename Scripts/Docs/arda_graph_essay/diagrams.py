@@ -158,7 +158,7 @@ def create():
     d.text(40,234,'Standalone Preprocess returns a graph. Standalone Compile returns a plan.','small')
     for x,label in [(40,'Original authored graph'),(700,'Retained compile snapshot')]:d.box(x,280,265,70,label,GRAY)
     d.text(352,322,'private copies preserve the input','small')
-    d.note('Graph.Compile() orchestrates preprocessing, compilation and persistent-revision selection.')
+    d.note('Graph.CompileAndWait() orchestrates preprocessing, compilation and persistent-revision selection.')
     d.finish('Preprocessing makes the program explicit without choosing a complete device schedule. Compilation chooses an internally consistent execution plan and retains the input needed to use it.')
 
     d = Drawing('compiler-hazards', 'Which contents does a reader observe?', 'With one writer, dependency resolution orders the writer before the reader even if authored later. With repeated overlapping writes, attachment order establishes each read version; readers precede the next overwrite.', 550)
@@ -308,6 +308,18 @@ def create():
         if i<2:d.line(310+i*330,490,360+i*330,490)
     d.note('ArdaInductor plans graph execution. This offline export route does not call PyTorch TorchInductor.')
     d.finish('The offline compiler supplies kernel implementations and a closed recipe. The runtime graph planner integrates that recipe with transfers, rendering and other compute work; it does not recompile the model’s arithmetic.')
+
+    d = Drawing('exec-frame-order', 'The caller submits and retires a frame', 'CPU recording returns a ticket. GPU execution can overlap independent CPU work. Waiting retires the frame before the consumer uses the output.', 420)
+    d.text(34, 140, 'Caller')
+    d.box(160, 104, 170, 55, 'Submit producer', BLUE)
+    d.box(350, 104, 195, 55, 'Independent work', GRAY)
+    d.box(565, 104, 130, 55, 'Wait(ticket)', AMBER)
+    d.box(740, 104, 195, 55, 'Submit consumer', BLUE)
+    d.text(34, 249, 'GPU')
+    d.box(325, 212, 325, 55, 'Execute producer commands', GREEN)
+    d.line(315, 162, 340, 205)
+    d.line(648, 207, 662, 162)
+    d.finish('The producer ticket establishes when its output can be consumed. Independent frames can have several outstanding tickets.')
 
     d = Drawing('package-runtime', 'Bind the backing storage contract, not only visible elements', 'Package invocation emits ordered graph commands. A caller buffer can hold two disjoint 64-byte package storage ranges, even if each exposed tensor has only 16 visible bytes. Moving the second origin to byte 32 overlaps the package backing extents and is rejected.', 610)
     for i,label in enumerate(['Input tensors','Fill workspace','Kernel dispatch','Prediction → reader']):

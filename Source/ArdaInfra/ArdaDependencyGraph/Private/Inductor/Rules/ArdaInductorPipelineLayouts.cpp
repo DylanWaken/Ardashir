@@ -10,22 +10,6 @@ namespace arda::pipeline_detail
 		return Left.mBytes == Right.mBytes;
 	}
 
-	eastl::vector<FArdaRHIBindingLayoutRef>& GlobalLayouts(FArdaInductorPipelineConfiguration& C)
-	{
-		switch (C.mKind)
-		{
-		case EArdaPipelineStateKind::Compute:
-			return C.mCompute.mDesc.mBindingLayouts;
-		case EArdaPipelineStateKind::Graphics:
-			return C.mGraphics.mDesc.mBindingLayouts;
-		case EArdaPipelineStateKind::Meshlet:
-			return C.mMeshlet.mDesc.mBindingLayouts;
-		case EArdaPipelineStateKind::RayTracing:
-			return C.mRayTracing.mDesc.mGlobalBindingLayouts;
-		default:
-			return C.mWorkGraph.mDesc.mGlobalBindingLayouts;
-		}
-	}
 
 	FArdaRHIStatus MergeLayouts(eastl::vector<FArdaRHIBindingLayoutRef>& Destination,
 	    const eastl::vector<FArdaRHIBindingLayoutRef>& Source)

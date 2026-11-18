@@ -3,11 +3,199 @@
 #include <EASTL/algorithm.h>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 namespace arda
 {
+	eastl::string ValidateTerrainColorReadback(const eastl::vector<uint8_t>& ColorBytes,
+	    uint32_t Width,
+	    uint32_t Height,
+	    EArdaRHIFormat Format)
+	{
+		bool bBlueFirst = false;
+		switch (Format)
+		{
+		case EArdaRHIFormat::RGBA8UNorm:
+		case EArdaRHIFormat::SRGBA8UNorm:
+			break;
+		case EArdaRHIFormat::BGRA8UNorm:
+		case EArdaRHIFormat::SBGRA8UNorm:
+			bBlueFirst = true;
+			break;
+		default:
+			return "Terrain color readback requires RGBA8 or BGRA8 UNorm/sRGB pixels.";
+		}
+		const uint64_t PixelCount = static_cast<uint64_t>(Width) * Height;
+		// Compare in pixels so invalid dimensions cannot overflow a byte-count product.
+		if (!Width || !Height || ColorBytes.size() % 4 || PixelCount != ColorBytes.size() / 4)
+		{
+			return "Terrain color readback dimensions do not match tightly packed pixel bytes.";
+		}
+
+		uint64_t RedCount = 0, NeutralCount = 0;
+		for (size_t Offset = 0; Offset < ColorBytes.size(); Offset += 4)
+		{
+			const uint32_t Red = ColorBytes[Offset + (bBlueFirst ? 2 : 0)];
+			const uint32_t Green = ColorBytes[Offset + 1];
+			const uint32_t Blue = ColorBytes[Offset + (bBlueFirst ? 0 : 2)];
+			const uint32_t Minimum = eastl::min(Red, eastl::min(Green, Blue));
+			const uint32_t Maximum = eastl::max(Red, eastl::max(Green, Blue));
+			RedCount += Red >= 64 && Red > Green * 2 && Red > Blue * 2;
+			NeutralCount += Minimum >= 64 && Maximum - Minimum <= 8;
+		}
+
+		// Contours cover little of the mostly black initial view. Require enough
+		// pixels to reject an isolated speck without imposing an exact screenshot.
+		const uint64_t RequiredCount = eastl::max(uint64_t(1), PixelCount / 10000);
+		if (RedCount < RequiredCount || NeutralCount < RequiredCount)
+		{
+			char Message[224]{};
+			std::snprintf(Message,
+			    sizeof(Message),
+			    "Terrain color readback lacks visible red/neutral contours: red=%llu, neutral=%llu, required=%llu "
+			    "each in the initial default-camera view.",
+			    static_cast<unsigned long long>(RedCount),
+			    static_cast<unsigned long long>(NeutralCount),
+			    static_cast<unsigned long long>(RequiredCount));
+			return Message;
+		}
+		return {};
+	}
+
 	namespace
 	{
+		template <typename ValueType>
+		bool ReadTerrainValue(const eastl::vector<uint8_t>& Bytes, size_t Offset, ValueType& Value)
+		{
+			if (Offset > Bytes.size() || Bytes.size() - Offset < sizeof(ValueType))
+			{
+				return false;
+			}
+			std::memcpy(&Value, Bytes.data() + Offset, sizeof(ValueType));
+			return true;
+		}
+
+		void DescribeSettings(eastl::string& Summary,
+		    const char* Name,
+		    const eastl::vector<uint8_t>& Bytes,
+		    const FArdaTerrainSettings& Expected)
+		{
+			char Message[384]{};
+			FArdaTerrainSettings Actual;
+			const bool bComplete = ReadTerrainValue(Bytes, 0, Actual);
+			const bool bMatches =
+			    Bytes.size() == sizeof(Expected) && std::memcmp(Bytes.data(), &Expected, sizeof(Expected)) == 0;
+			std::snprintf(Message,
+			    sizeof(Message),
+			    "%s: bytes=%llu/%llu, matches expected=%s",
+			    Name,
+			    static_cast<unsigned long long>(Bytes.size()),
+			    static_cast<unsigned long long>(sizeof(Expected)),
+			    bMatches ? "yes" : "no");
+			Summary += Message;
+			if (bComplete)
+			{
+				std::snprintf(Message,
+				    sizeof(Message),
+				    "; width=%u, height=%u, frequency=%.9g, amplitude=%.9g, time=%.9g\n",
+				    Actual.mWidth,
+				    Actual.mHeight,
+				    Actual.mFrequency,
+				    Actual.mAmplitude,
+				    Actual.mTime);
+				Summary += Message;
+			}
+			else
+			{
+				Summary += "; fields unavailable (short readback)\n";
+			}
+		}
+
+		struct FArdaTerrainCornerSamples
+		{
+			float mHeights[4]{};
+			bool mbAvailable[4]{};
+		};
+
+		void DescribeCorners(eastl::string& Summary, const FArdaTerrainCornerSamples& Samples)
+		{
+			Summary += "[";
+			for (size_t Corner = 0; Corner < 4; ++Corner)
+			{
+				if (Corner)
+				{
+					Summary += ", ";
+				}
+				if (Samples.mbAvailable[Corner])
+				{
+					char Value[32]{};
+					std::snprintf(Value, sizeof(Value), "%.9g", Samples.mHeights[Corner]);
+					Summary += Value;
+				}
+				else
+				{
+					Summary += "missing";
+				}
+			}
+			Summary += "]";
+		}
+
+		FArdaTerrainCornerSamples DescribeHeightmap(eastl::string& Summary,
+		    const char* Name,
+		    const eastl::vector<uint8_t>& Bytes)
+		{
+			constexpr size_t PixelCount = static_cast<size_t>(ArdaTerrainHeightmapWidth) * ArdaTerrainHeightmapHeight;
+			const size_t Count = eastl::min(PixelCount, Bytes.size() / sizeof(float));
+			size_t FiniteCount = 0, NonzeroCount = 0;
+			float Minimum = 0.0f, Maximum = 0.0f;
+			for (size_t Pixel = 0; Pixel < Count; ++Pixel)
+			{
+				float Value = 0.0f;
+				ReadTerrainValue(Bytes, Pixel * sizeof(float), Value);
+				if (std::isfinite(Value))
+				{
+					Minimum = FiniteCount ? eastl::min(Minimum, Value) : Value;
+					Maximum = FiniteCount ? eastl::max(Maximum, Value) : Value;
+					++FiniteCount;
+					NonzeroCount += Value != 0.0f;
+				}
+			}
+			char Message[384]{};
+			std::snprintf(Message,
+			    sizeof(Message),
+			    "%s: dimensions=%ux%u, bytes=%llu/%llu, complete=%s; finite=%llu/%llu, finite nonzero=%llu",
+			    Name,
+			    ArdaTerrainHeightmapWidth,
+			    ArdaTerrainHeightmapHeight,
+			    static_cast<unsigned long long>(Bytes.size()),
+			    static_cast<unsigned long long>(PixelCount * sizeof(float)),
+			    Bytes.size() == PixelCount * sizeof(float) ? "yes" : "no",
+			    static_cast<unsigned long long>(FiniteCount),
+			    static_cast<unsigned long long>(Count),
+			    static_cast<unsigned long long>(NonzeroCount));
+			Summary += Message;
+			if (FiniteCount)
+			{
+				std::snprintf(Message, sizeof(Message), ", finite min=%.9g, max=%.9g", Minimum, Maximum);
+				Summary += Message;
+			}
+			else
+			{
+				Summary += ", finite min/max unavailable";
+			}
+			Summary += "; first 2x2 (0,0)/(1,0)/(0,1)/(1,1)=";
+			FArdaTerrainCornerSamples Samples;
+			constexpr size_t Pixels[] = {0, 1, ArdaTerrainHeightmapWidth, ArdaTerrainHeightmapWidth + 1};
+			for (size_t Corner = 0; Corner < 4; ++Corner)
+			{
+				Samples.mbAvailable[Corner] =
+				    ReadTerrainValue(Bytes, Pixels[Corner] * sizeof(float), Samples.mHeights[Corner]);
+			}
+			DescribeCorners(Summary, Samples);
+			Summary += "\n";
+			return Samples;
+		}
+
 		float Lerp(float A, float B, float T)
 		{
 			return A + (B - A) * T;
@@ -202,12 +390,20 @@ namespace arda
 		}
 		if (MaximumGradient > 0.10f)
 		{
-			char Message[160]{};
+			const auto* Corners = Vertices + MaximumGradientCell * 4;
+			char Message[320]{};
 			std::snprintf(Message,
 			    sizeof(Message),
-			    "Terrain readback has a discontinuous height gradient of %.6f at cell %u.",
+			    "Terrain readback has a discontinuous height gradient of %.6f at cell %u (x=%u, y=%u), "
+			    "corner heights [00,10,01,11]=[%.9g, %.9g, %.9g, %.9g].",
 			    MaximumGradient,
-			    MaximumGradientCell);
+			    MaximumGradientCell,
+			    MaximumGradientCell % (ArdaTerrainHeightmapWidth - 1),
+			    MaximumGradientCell / (ArdaTerrainHeightmapWidth - 1),
+			    Corners[0].mHeight,
+			    Corners[1].mHeight,
+			    Corners[2].mHeight,
+			    Corners[3].mHeight);
 			return Message;
 		}
 		// Topology and continuity alone accept a zero heightmap, even when erosion writes
@@ -241,5 +437,58 @@ namespace arda
 			}
 		}
 		return {};
+	}
+
+	eastl::string DescribeTerrainStageReadbacks(const eastl::vector<uint8_t>& SettingsUploadBytes,
+	    const eastl::vector<uint8_t>& SettingsCopyBytes,
+	    const eastl::vector<uint8_t>& RawHeightmapBytes,
+	    const eastl::vector<uint8_t>& ErodedHeightmapBytes,
+	    const eastl::vector<uint8_t>& VertexBytes,
+	    const FArdaTerrainSettings& ExpectedSettings)
+	{
+		eastl::string Summary;
+		DescribeSettings(Summary, "Settings upload", SettingsUploadBytes, ExpectedSettings);
+		DescribeSettings(Summary, "Settings copy", SettingsCopyBytes, ExpectedSettings);
+		Summary += "Settings upload/copy bytes match=";
+		Summary += SettingsUploadBytes.size() == sizeof(ExpectedSettings) && SettingsCopyBytes == SettingsUploadBytes
+		    ? "yes\n"
+		    : "no\n";
+		DescribeHeightmap(Summary, "Raw heightmap", RawHeightmapBytes);
+		const auto Eroded = DescribeHeightmap(Summary, "Eroded heightmap", ErodedHeightmapBytes);
+		FArdaTerrainCornerSamples Vertices;
+		uint32_t MismatchCount = 0, MissingCount = 0;
+		for (size_t Corner = 0; Corner < 4; ++Corner)
+		{
+			FArdaTerrainVertex Vertex{};
+			Vertices.mbAvailable[Corner] = ReadTerrainValue(VertexBytes, Corner * sizeof(Vertex), Vertex);
+			Vertices.mHeights[Corner] = Vertex.mHeight;
+			if (!Vertices.mbAvailable[Corner] || !Eroded.mbAvailable[Corner])
+			{
+				++MissingCount;
+			}
+			else if (!std::isfinite(Vertex.mHeight) || !std::isfinite(Eroded.mHeights[Corner]) ||
+			    Vertex.mHeight != Eroded.mHeights[Corner])
+			{
+				++MismatchCount;
+			}
+		}
+		char Message[256]{};
+		std::snprintf(Message,
+		    sizeof(Message),
+		    "Vertices: bytes=%llu/%llu; first-cell heights [00,10,01,11]=",
+		    static_cast<unsigned long long>(VertexBytes.size()),
+		    static_cast<unsigned long long>(ArdaTerrainVertexCount) * sizeof(FArdaTerrainVertex));
+		Summary += Message;
+		DescribeCorners(Summary, Vertices);
+		std::snprintf(Message,
+		    sizeof(Message),
+		    "; eroded texture/vertex matches=%s, mismatched corners=%u, missing corners=%u\n",
+		    MissingCount        ? "unavailable"
+		        : MismatchCount ? "no"
+		                        : "yes",
+		    MismatchCount,
+		    MissingCount);
+		Summary += Message;
+		return Summary;
 	}
 }

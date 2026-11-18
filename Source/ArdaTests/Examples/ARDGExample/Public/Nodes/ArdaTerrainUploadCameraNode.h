@@ -3,22 +3,21 @@
 
 namespace arda
 {
-	struct FArdaTerrainUploadCameraParameters
-	{
-		FArdaDependencyResourceHandle mDestination;
-		eastl::shared_ptr<FArdaTerrainFrameInputs> mInputs;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaTerrainUploadCameraParameters)
+		ARDA_NODE_BUFFER(mDestination, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<FArdaTerrainFrameInputs>, mInputs)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	/** Self-contained operation; attachment registers and prepares only this node's implementation. */
-	class FArdaTerrainUploadCameraNode final
-	    : public TArdaCopyDependencyNode<FArdaTerrainUploadCameraNode, FArdaTerrainUploadCameraParameters>
+	/** Self-contained operation; invocation registers and prepares this node's implementation. */
+	class FArdaTerrainUploadCameraNode final : public TArdaNodeDefinition<FArdaTerrainUploadCameraNode,
+	                                               FArdaTerrainUploadCameraParameters,
+	                                               EArdaNodeType::Copy>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata();
 		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P);
 		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
 		static FArdaRHIStatus Validate(const FArdaParameters& Parameters);
-		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State);
 		static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context,
 		    const FArdaParameters& Parameters,
 		    const FArdaState& State,

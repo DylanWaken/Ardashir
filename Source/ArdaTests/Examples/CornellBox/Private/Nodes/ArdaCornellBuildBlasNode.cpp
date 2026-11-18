@@ -23,28 +23,11 @@ namespace arda
 		return {"cornell.build_blas", 1};
 	}
 
-	eastl::string FArdaCornellBuildBlasNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		FArdaDependencyKeyBuilder Key;
-		Key.Resource(P.mVertices);
-		Key.Resource(P.mIndices);
-		Key.Resource(P.mBlas);
-		Key.Value(P.mVertexCount);
-		Key.Value(P.mIndexCount);
-		Key.Value(P.mVertexStride);
-		Key.Value(static_cast<uint64_t>(P.mBuildFlags));
-		Key.Value(P.mWorkspaceBytes);
-		return Key.Build();
-	}
-
 	FArdaDependencyNodeDesc FArdaCornellBuildBlasNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
 		D.mWorkspaceBytes = P.mWorkspaceBytes;
 		// Declare the native build or compaction inputs so the compiler owns synchronization.
-		D.mAccesses = {{P.mVertices, EArdaDependencyAccess::Read, EArdaRHIResourceState::AccelStructBuildInput},
-		    {P.mIndices, EArdaDependencyAccess::Read, EArdaRHIResourceState::AccelStructBuildInput},
-		    {P.mBlas, EArdaDependencyAccess::Write, EArdaRHIResourceState::AccelStructWrite}};
 
 		return D;
 	}

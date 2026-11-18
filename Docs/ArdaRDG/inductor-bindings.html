@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Automatic resources, bindings and shader tables — Ardashir engineering documentation.">
+  <title>Automatic resources, bindings and shader tables | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRDG pages">
+      <h2>ArdaRDG</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="registering-nodes.html">Registering nodes</a>
+        <a href="node-recipes.html">Node recipes</a>
+        <a href="resources.html">Resources</a>
+        <a href="inductor.html">Inductor developer guide</a>
+        <a href="inductor-pipelines.html">Pipeline assembly</a>
+        <a href="inductor-bindings.html">Binding preparation</a>
+        <a href="batching.html">Batching and parallel edits</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaRDG</a>
+      </nav>
+      <article>
+<h1 id="automatic-resources-bindings-and-shader-tables">Automatic resources, bindings and shader tables</h1>
+<nav class="toc" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ul>
+        <li><a href="#materialization-and-lifetime">Materialization and lifetime</a></li>
+        <li><a href="#range-aware-resource-edges">Range-aware resource edges</a></li>
+        <li><a href="#bindless-parameters">Bindless parameters</a></li>
+        <li><a href="#shader-tables">Shader tables</a></li>
+        <li><a href="#scheduling-and-native-constraints">Scheduling and native constraints</a></li>
+      </ul>
+    </nav>
+<section id="objectives"><h2>How to use this guide</h2><p>Follow logical resource declarations through physical allocation, binding sets, bindless tables and shader-table preparation.</p><p>Start with the <a href="index.html">module overview</a> and follow exact declarations in the <a href="api-reference.html">canonical API reference</a>.</p></section>
+
+<p>The <a href="node-recipes.html">node recipes</a> are the tutorial and the <a href="api-reference.html">centralized API reference</a> defines the public contract. Node implementations declare logical arguments; ArdaInductor prepares physical execution state after compilation has selected resources and pipelines.</p>
+<h2 id="materialization-and-lifetime">Materialization and lifetime</h2>
+<ol>
+<li>The common node base calls DeclareResources on a parameter copy. Named outputs either declare graph-owned buffers/textures or validate supplied handles. Output resolution precedes the canonical identity check. Failed attachment rolls back provisional resources.</li>
+<li>Describe supplies shader metadata, logical resources, push-constant bytes, optional bindless entries and ray records. Metadata-derived accesses participate in dependency resolution alongside explicit copy, attachment and external-library accesses.</li>
+<li>The compiler validates producer coverage, schedules work and assigns planned memory placements without creating native buffers or textures. Shader metadata produces fixed layouts; bindless declarations produce bounded bindless layouts. Generated layouts are interned by semantic description.</li>
+<li>Pipeline inference merges layouts and shader contributions and associates explicit local ray layouts with their exports. The first submission materializes the accepted resource plan and creates or reuses native PSOs.</li>
+<li>During that first submission, each runtime frame slot receives its own fixed binding sets, descriptor tables, relocated push constants and committed shader tables. Resource arguments point at that frame&#39;s selected physical storage.</li>
+<li>Execution context state helpers bind those prepared objects and bytes. Repeated graph execution does not recreate them. Adaptive schedule adoption retains compatible prepared objects; a graph edit rebuilds changed semantics after retiring earlier work.</li>
+</ol>
+<p>The graph owns physical output storage. Shader metadata must outlive the graph (normally static shader metadata); node state retains shader objects. Descriptors and shader tables are immutable while compiled work uses them. Dynamic resource contents require synchronized uploads/imports. New dimensions, resource identities, table membership or frozen scalar values require an edit.</p>
+<p>The synchronous readback node waits for a requested CPU result. Automatic binding setup adds no separate per-execution GPU wait, but graph frame reuse, readback, native ownership transfers and existing execution policy still impose their normal synchronization.</p>
+<h2 id="range-aware-resource-edges">Range-aware resource edges</h2>
+<p>Each declared descriptor resolves to a logical resource plus its native view range. Buffer intervals overlap when max(beginA, beginB) is less than min(endA, endB). Texture ranges overlap when their mip, slice and plane intervals all intersect. Acceleration structures remain whole-resource accesses.</p>
+<p>Different nodes may write the same resource. The compiler applies two rules separately to each overlapping region. With one writer, readers depend on that producer regardless of attachment order. With multiple distinct writer nodes, write/write, write/read and read/write hazards follow original successful attachment order. Reads consume the preceding writer&#39;s contents; read/read accesses need no ordering edge. Disjoint regions keep independent producers, and readers spanning regions depend on the appropriate producer of each.</p>
+<p>Graph-owned reads require complete initialized coverage. A read before the first of multiple writes fails; imported storage may supply initial contents. ReadWrite consumes the incoming value before updating it, so an owned region needs a preceding producer. A single ReadWrite node cannot initialize its own input. Repeated writes use the same logical handle and physical graph resource within a frame slot, with no implicit output allocation or saved old version. Separate handles are needed when older contents must remain available after an overwrite. See the <a href="resources.html#worked-example">write-read-write example</a>.</p>
+<p>Removal follows data dependencies: removing a writer removes readers of the contents it produced and recursively their affected consumers. It does not remove a later pure overwrite or its readers solely because they access the same region; a ReadWrite update does depend on its incoming producer. Ordering-only hazards do not cause removal cascades. A resource&#39;s output marker survives while another producer remains. Recompilation reevaluates the remaining writer count per region, so removing a writer can restore the single-producer rule.</p>
+<p>Buffer access boundaries and texture subresource cells define the regions used for overlap analysis. Costs depend on declared ranges and their intersections, not on buffer bytes or texture texels being inspected. The <a href="compilation.html#dependencies">dependency compilation chapter</a> describes dependency construction. The graph does not inspect GPU control flow or arbitrary texture pixel coordinates.</p>
+<h2 id="bindless-parameters">Bindless parameters</h2>
+<p>Declare every potentially selected entry, including GPU-selected indices. Different indices are not proof of independent storage. A descriptor that views an entire resource conservatively declares that entire range. Sparse entries are supported, but the shader must never index an unpopulated slot.</p>
+<p>Descriptor-index relocations patch a uint32 field in a named frozen shader value during first-submission preparation. They must reference a populated table entry with the matching register and descriptor type. Default indices are table-relative; absolute heap indices require direct heap access with exactly one descriptor bank. Attachment validates table names, capacity, index ranges, register types, duplicate entries, shader schema members and push-constant byte sizes. First-submission preparation validates relocation field alignment/bounds, duplicate byte offsets, the referenced entry, absolute-index bank constraints and overflow before patching the native index.</p>
+<p>Tables are node-local, so independent nodes can use the same layout while declaring separate resources or ranges. Native table allocation and individual entry writes happen during first-submission materialization per frame slot; large table construction is not a zero-cost operation. Replay retains the resulting objects.</p>
+<h2 id="shader-tables">Shader tables</h2>
+<p>Without explicit records, a ray slot selects its unique ray-generation export and every miss, hit-group and callable export in deterministic pipeline order. More than one ray-generation export requires an explicit selection.</p>
+<p>Explicit record indices are dense and zero-based within each record category. The graph converts them into the native flat record array. Actual table preparation on first submission rejects unknown exports, wrong categories, duplicate coordinates, holes, local schemas incompatible with the resolved export layout, and missing required local arguments. Authoring and compilation still validate declared schemas, resource effects, pipeline slots and local-layout counts before that physical preparation. Local binding metadata generates an export-associated local layout and per-frame local bindings. Local resources and geometry references contribute ordinary graph accesses.</p>
+<p>Fixed local descriptor layouts work on D3D12. The current Vulkan backend requires direct-heap local descriptors and reports Unsupported for this fixed-local-metadata path. Automatically generated global-binding ray tables work on both backends. Raw local argument bytes remain author-defined and must match the shader ABI.</p>
+<h2 id="scheduling-and-native-constraints">Scheduling and native constraints</h2>
+<p>Disjoint same-state UAV buffer accesses omit unnecessary UAV ordering barriers. The executor tracks all outstanding accesses since the last barrier, so an intervening disjoint access cannot hide an older overlapping write.</p>
+<p>Buffer state and queue ownership are still tracked for the whole native buffer. Queue changes and incompatible states can therefore serialize disjoint ranges. Separate allocations allow more cross-queue freedom. Texture ownership/state uses native subresources. Explicit edges, memory alias proofs, budget-driven ordering and the single CUDA stream can impose additional order. Independence allows overlap; it does not guarantee simultaneous occupancy.</p>
+<p>See <a href="compilation.html">scheduling algorithms</a>, <a href="inductor-pipelines.html">pipeline inference</a> and <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorGpuTests.cpp">GPU conformance tests</a> for the implementation contracts and numerical examples.</p>
+<section id="summary"><h2>Review and next steps</h2><p>Declared ranges and shader metadata stay authoritative through materialization. Retained per-frame bindings must outlive submitted GPU work.</p><p>Continue with the <a href="index.html">module guides</a> and <a href="api-reference.html">API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaRDG · Ardashir engineering documentation</p></footer>
+</body>
+</html>

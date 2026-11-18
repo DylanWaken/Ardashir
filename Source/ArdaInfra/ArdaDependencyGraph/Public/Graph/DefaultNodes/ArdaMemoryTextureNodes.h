@@ -1,68 +1,65 @@
 #pragma once
 
-#include "Graph/Node/ArdaDependencyNode.h"
+#include "Graph/Node/ArdaNodeDefinition.h"
 
 namespace arda
 {
 	/** Owned upload data for a typed, single-sample, uncompressed color texture. */
-	struct FArdaMemoryUploadTextureParameters
-	{
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaMemoryUploadTextureParameters)
 		/** Required destination texture, created or imported by this graph. */
-		FArdaDependencyResourceHandle mDestination;
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mDestination)
 		/** Exact tightly packed texel bytes, ordered by row then depth slice. Frozen at attachment. */
-		eastl::vector<uint8_t> mBytes;
+		ARDA_NODE_PARAMETER(eastl::vector<uint8_t>, mBytes)
 		/** Destination mip, array layer, and region; omitted extents select its remainder. */
-		FArdaRHITextureSlice mSlice;
+		ARDA_NODE_PARAMETER(FArdaRHITextureSlice, mSlice)
 		/** Validated copy footprint, replaced during attachment; caller values are ignored. */
-		FArdaRHITextureBufferFootprint mFootprint;
+		ARDA_NODE_PARAMETER(FArdaRHITextureBufferFootprint, mFootprint)
 		/** Derived during attachment; partial writes require previously initialized texels. */
-		bool mbWholeSubresource = false;
-	};
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbWholeSubresource, false)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	/** Readback of one typed, single-sample, uncompressed color texture region. */
-	struct FArdaMemoryReadbackTextureParameters
-	{
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaMemoryReadbackTextureParameters)
 		/** Required source texture. */
-		FArdaDependencyResourceHandle mSource;
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mSource)
 		/** Required retained vector, published as tightly packed rows after Execute/Wait succeeds.
 		 * Serialize executions sharing it; do not access while completion may publish or clear it.
 		 */
-		eastl::shared_ptr<eastl::vector<uint8_t>> mDestination;
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<eastl::vector<uint8_t>>, mDestination)
 		/** Source mip, array layer, and region; omitted extents select its remainder. */
-		FArdaRHITextureSlice mSlice;
+		ARDA_NODE_PARAMETER(FArdaRHITextureSlice, mSlice)
 		/** Validated transient GPU transfer capacity; replaced during attachment for memory budgeting. */
-		uint64_t mWorkspaceBytes = 0;
-	};
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint64_t, mWorkspaceBytes, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	/** Copy between matching typed, single-sample color texture subresources, including BC formats. */
-	struct FArdaMemoryCopyTextureParameters
-	{
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaMemoryCopyTextureParameters)
 		/** Required source texture. */
-		FArdaDependencyResourceHandle mSource;
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mSource)
 		/** Required destination; must differ from the source subresource. */
-		FArdaDependencyResourceHandle mDestination;
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mDestination)
 		/** Source region; explicit extents must fit without clipping. */
-		FArdaRHITextureSlice mSourceSlice;
+		ARDA_NODE_PARAMETER(FArdaRHITextureSlice, mSourceSlice)
 		/** Destination origin/subresource; explicit extents must equal the source copy extent. */
-		FArdaRHITextureSlice mDestinationSlice;
+		ARDA_NODE_PARAMETER(FArdaRHITextureSlice, mDestinationSlice)
 		/** Replaced during attachment; partial writes preserve previously initialized destination texels. */
-		bool mbWholeSubresource = false;
-	};
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbWholeSubresource, false)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	/** Floating-point or normalized color clear; integer, depth/stencil and typeless formats are rejected. */
-	struct FArdaMemoryClearTextureParameters
-	{
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaMemoryClearTextureParameters)
 		/** Required texture with RenderTarget usage. */
-		FArdaDependencyResourceHandle mDestination;
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mDestination)
 		/** Color to write to every texel in the selected subresources. */
-		FArdaRHIColor mColor;
+		ARDA_NODE_PARAMETER(FArdaRHIColor, mColor)
 		/** Nonempty mip/layer range, normalized during attachment; plane zero only. */
-		FArdaRHITextureSubresourceRange mRange;
-	};
+		ARDA_NODE_PARAMETER(FArdaRHITextureSubresourceRange, mRange)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	/** Uploads tightly packed host texels into one texture region. */
-	class FArdaMemoryUploadTextureNode final
-	    : public TArdaGraphicsDependencyNode<FArdaMemoryUploadTextureNode, FArdaMemoryUploadTextureParameters>
+	class FArdaMemoryUploadTextureNode final : public TArdaNodeDefinition<FArdaMemoryUploadTextureNode,
+	                                               FArdaMemoryUploadTextureParameters,
+	                                               EArdaNodeType::Graphics>
 	{
 	public:
 		/** Returns this operation's stable registry name and revision. */
@@ -83,8 +80,9 @@ namespace arda
 	ARDA_DECLARE_GRAPH_NODE(FArdaMemoryUploadTextureNode, UploadTexture);
 
 	/** Publishes tightly packed texture-region bytes after successful graph completion. */
-	class FArdaMemoryReadbackTextureNode final
-	    : public TArdaGraphicsDependencyNode<FArdaMemoryReadbackTextureNode, FArdaMemoryReadbackTextureParameters>
+	class FArdaMemoryReadbackTextureNode final : public TArdaNodeDefinition<FArdaMemoryReadbackTextureNode,
+	                                                 FArdaMemoryReadbackTextureParameters,
+	                                                 EArdaNodeType::Graphics>
 	{
 	public:
 		/** Returns this operation's stable registry name and revision. */
@@ -105,8 +103,9 @@ namespace arda
 	ARDA_DECLARE_GRAPH_NODE(FArdaMemoryReadbackTextureNode, ReadbackTexture);
 
 	/** Copies one texture region between distinct subresources. */
-	class FArdaMemoryCopyTextureNode final
-	    : public TArdaGraphicsDependencyNode<FArdaMemoryCopyTextureNode, FArdaMemoryCopyTextureParameters>
+	class FArdaMemoryCopyTextureNode final : public TArdaNodeDefinition<FArdaMemoryCopyTextureNode,
+	                                             FArdaMemoryCopyTextureParameters,
+	                                             EArdaNodeType::Graphics>
 	{
 	public:
 		/** Returns this operation's stable registry name and revision. */
@@ -127,8 +126,9 @@ namespace arda
 	ARDA_DECLARE_GRAPH_NODE(FArdaMemoryCopyTextureNode, CopyTexture);
 
 	/** Clears selected color render-target subresources. */
-	class FArdaMemoryClearTextureNode final
-	    : public TArdaGraphicsDependencyNode<FArdaMemoryClearTextureNode, FArdaMemoryClearTextureParameters>
+	class FArdaMemoryClearTextureNode final : public TArdaNodeDefinition<FArdaMemoryClearTextureNode,
+	                                              FArdaMemoryClearTextureParameters,
+	                                              EArdaNodeType::Graphics>
 	{
 	public:
 		/** Returns this operation's stable registry name and revision. */

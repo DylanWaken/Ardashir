@@ -1,60 +1,115 @@
 #include "Graph/Node/ArdaDependencyGraphImpl.h"
 #include "Graph/Node/ArdaGraphRevisionState.h"
+#include "Graph/Node/ArdaGraphRecordingScope.h"
 #include "Inductor/Runtime/ArdaInductorRuntime.h"
 #include "Inductor/Runtime/ArdaInductorFrame.h"
 #include "Inductor/Runtime/ArdaInductorTelemetry.h"
 
 namespace arda
 {
-	FArdaGraphExecutionResult FArdaDependencyGraph::Execute(const FArdaGraphExecuteOptions& Options)
-	{
-		auto Submitted = Submit(Options);
-		if (Submitted.mValue)
-		{
-			return Wait(Submitted.mValue);
-		}
-		FArdaGraphExecutionResult Result;
-		Result.mStatus = Submitted.mStatus;
-		return Result;
-	}
-
 	TArdaRHIResult<FArdaDependencyFrameTicket> FArdaDependencyGraph::Submit(const FArdaGraphExecuteOptions& Options)
 	{
-		if (IsEditing() || mImpl->mbCompiling || mImpl->mbExecuting || mRevisions->mbBuilding ||
-		    !mRevisions->mPersistent || !mImpl->mCompile.mRevision)
+		if (auto Status = CheckArdaGraphRecordingReentry(mRevisions.get()); !Status)
+		{
+			return {{}, Status};
+		}
+		std::lock_guard<std::recursive_mutex> Lock(mRevisions->mMutex);
+		auto& State = *mRevisions;
+		if (mImpl->mbEditing || State.mActiveEdits != 0)
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Submit requires closed edits.")};
+		}
+		if (mImpl->mbCompiling || mImpl->mbPreprocessing || mImpl->mbExecuting)
+		{
+			return {{},
+			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Submit requires an unlocked execution stage.")};
+		}
+		if (State.mbBuilding || State.mPersistent != mImpl || !mImpl->mCompile.mRevision)
 		{
 			return {{},
 			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
-			        "Submit requires closed edits staged by a successful Compile call.")};
+			        "Submit requires the compiled construction; pending edits need another Compile call.")};
 		}
-		// Submission finishes CPU recording before returning. Further edits build a separate draft;
-		// the persistent snapshot and any outstanding frame tickets continue to own their execution data.
-		auto Submitted = FArdaInductorRuntime::Submit(*mImpl, Options);
-		mRevisions->mbLocked = false;
-		mRevisions->mNextFrameSequence = eastl::max(mRevisions->mNextFrameSequence, mImpl->mNextFrameSequence);
-		return Submitted;
+		// Capture the pre-attempt revision state, matching the staged compile lock.
+		FArdaGraphRecordingScope RecordingScope(mRevisions.get(), State.Snapshot());
+		// The attempt consumes the staged compile lock even when recording or submission fails,
+		// so the caller can repair the graph without an explicit discard.
+		State.mbLocked = false;
+		auto Result = FArdaInductorRuntime::Submit(*mImpl, Options);
+		State.mNextFrameSequence = eastl::max(State.mNextFrameSequence, mImpl->mCompile.mExecution->mNextFrameSequence);
+		return Result;
+	}
+
+	TArdaRHIResult<FArdaDependencyFrameTicket> FArdaDependencyGraph::SubmitAndWait(
+	    const FArdaGraphExecuteOptions& Options)
+	{
+		return Submit(Options);
+	}
+
+	FArdaGraphExecutionResult FArdaDependencyGraph::Execute(const FArdaGraphExecuteOptions& Options)
+	{
+		// Keep the construction stable for the complete frame and block authoring while GPU work
+		// completes, matching the synchronous execution contract.
+		std::lock_guard<std::recursive_mutex> Lock(mRevisions->mMutex);
+		const auto Submitted = Submit(Options);
+		if (!Submitted.mValue)
+		{
+			FArdaGraphExecutionResult Result;
+			Result.mStatus = Submitted.mStatus;
+			return Result;
+		}
+		return Wait(Submitted.mValue);
+	}
+
+	FArdaGraphExecutionResult FArdaDependencyGraph::ExecuteAndWait(const FArdaGraphExecuteOptions& Options)
+	{
+		return Execute(Options);
 	}
 
 	FArdaGraphExecutionResult FArdaDependencyGraph::Wait(const FArdaDependencyFrameTicket& Ticket)
 	{
-		return FArdaInductorRuntime::Wait(*mImpl, Ticket);
+		if (auto Status = CheckArdaGraphRecordingReentry(mRevisions.get()); !Status)
+		{
+			FArdaGraphExecutionResult Result;
+			Result.mStatus = Status;
+			return Result;
+		}
+		uint64_t Identity;
+		{
+			std::lock_guard<std::recursive_mutex> Lock(mRevisions->mMutex);
+			Identity = mImpl->mIdentity;
+		}
+		return FArdaInductorRuntime::Wait(Identity, Ticket);
 	}
 
 	TArdaRHIResult<bool> FArdaDependencyGraph::IsComplete(const FArdaDependencyFrameTicket& Ticket) const
 	{
-		return FArdaInductorRuntime::IsComplete(*mImpl, Ticket);
+		if (auto Status = CheckArdaGraphRecordingReentry(mRevisions.get()); !Status)
+		{
+			return {false, Status};
+		}
+		uint64_t Identity;
+		{
+			std::unique_lock<std::recursive_mutex> Lock(mRevisions->mMutex, std::try_to_lock);
+			if (!Lock.owns_lock())
+			{
+				return {false, {}};
+			}
+			Identity = mImpl->mIdentity;
+		}
+		return FArdaInductorRuntime::IsComplete(Identity, Ticket);
 	}
 
 	eastl::vector<FArdaInductorTimingSample> FArdaDependencyGraph::GetTimingProfile() const
 	{
 		FArdaInductorRuntime::CollectTelemetry(*mImpl);
-		return mImpl->mTiming->Snapshot();
+		return mImpl->mCompile.mExecution->mTiming->Snapshot();
 	}
 
 	eastl::vector<FArdaInductorNodeTiming> FArdaDependencyGraph::GetTimingHistory() const
 	{
 		FArdaInductorRuntime::CollectTelemetry(*mImpl);
-		return mImpl->mTiming->History();
+		return mImpl->mCompile.mExecution->mTiming->History();
 	}
 
 	void FArdaDependencyGraph::CollectTelemetry()
@@ -64,22 +119,25 @@ namespace arda
 
 	FArdaInductorAdaptiveSchedulingStats FArdaDependencyGraph::GetAdaptiveSchedulingStats() const
 	{
-		return mImpl->mAdaptiveStats;
+		const auto& Execution = *mImpl->mCompile.mExecution;
+		auto Stats = Execution.mAdaptiveStats;
+		Stats.mbPending = bool(Execution.mPendingSchedule);
+		return Stats;
 	}
 
 	void FArdaDependencyGraph::ClearTimingProfile()
 	{
-		mImpl->mTiming->Clear();
+		mImpl->mCompile.mExecution->mTiming->Clear();
 	}
 
 	FArdaCudaGraphStats FArdaDependencyGraph::GetCudaGraphStats() const
 	{
 		FArdaCudaGraphStats Result;
-		if (!mImpl->mRuntime)
+		if (!mImpl->mCompile.mExecution->mRuntime)
 		{
 			return Result;
 		}
-		for (const auto& Frame : mImpl->mRuntime->mFrames)
+		for (const auto& Frame : mImpl->mCompile.mExecution->mRuntime->mFrames)
 		{
 			for (const auto& Entry : Frame->mCudaCaches)
 			{

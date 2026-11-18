@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Graph/Resources/ArdaDependencyResource.h"
+#include "Graph/Node/ArdaNodeDeclaration.h"
 #include "RHI/Resources/ArdaRHISampler.h"
 #include "RHI/Shaders/ArdaShaderParameters.h"
 #include "RHI/Shaders/ArdaRHIShaderTable.h"
@@ -48,6 +49,7 @@ namespace arda
 		eastl::string mPipelineSlot = "default";
 		eastl::vector<FArdaDependencyShaderResource> mResources;
 		eastl::vector<FArdaDependencyShaderValue> mValues;
+		FArdaNodeDeclarationOrigin mDeclaration;
 	};
 
 	/** A populated descriptor and its complete possible data access. Indices do not establish hazards. */
@@ -74,6 +76,7 @@ namespace arda
 		/** Zero selects one past the greatest supplied index. Must fit mLayout.mMaxCapacity. */
 		uint32_t mCapacity = 0;
 		eastl::vector<FArdaDependencyBindlessEntry> mEntries;
+		FArdaNodeDeclarationOrigin mDeclaration;
 	};
 
 	/** Declarative ray record; local shader resources are resolved against the export's local layout. */
@@ -97,5 +100,6 @@ namespace arda
 	{
 		eastl::string mPipelineSlot = "default";
 		eastl::vector<FArdaDependencyShaderTableRecord> mRecords;
+		FArdaNodeDeclarationOrigin mDeclaration;
 	};
 }

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Inductor/Compiler/ArdaInductorCommandProgram.h"
+#include "RHI/Resources/ArdaRHITexture.h"
+#include "RHI/Scheduling/ArdaRHIQueueTypes.h"
 
 namespace arda
 {

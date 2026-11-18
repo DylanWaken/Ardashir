@@ -224,6 +224,35 @@ New project code must follow this document. When modifying a non-conforming
 project-owned type or source file, rename it and update its references when the
 change is reasonably contained. Do not rename third-party or generated code.
 
+## Game Engine Integrations
+
+- Keep engine adapters, plugin modules, build wrappers, and engine-specific tests
+  outside the Ardashir dependency checkout. The Unreal plugin is
+  `Integrations/Unreal/ArdashirUnreal`; its `ThirdParty/Ardashir` directory is a
+  separate Git checkout of the upstream Ardashir repository.
+- Never patch, generate source into, or maintain an uncommitted adaptation in
+  that dependency checkout. Make required library fixes in Ardashir's own
+  development repository, validate and commit them there, push them upstream,
+  and then fetch/pull the published revision into the plugin. Record the exact
+  consumed commit so the integration can be reproduced.
+- Build dependency artifacts outside the dependency source directory. Do not
+  copy source files into Unreal modules or silently substitute an unrelated
+  local checkout for the recorded dependency revision.
+- The engine owns its RHI device, queues, submission, and resource state. An
+  adapter must declare its supported capabilities, reject unsupported calls,
+  and preserve ownership and lifetime across engine/library boundaries.
+- Prefer recording Arda work into the engine's command list. Any required
+  context or queue handoff must be explicit, document why it is required, and
+  define resource state, completion, and lifetime on both sides. Do not hide a
+  device-wide idle or a CPU wait in ordinary command recording.
+- Keep the Arda backend registry in one binary module. Engine modules consuming
+  a statically linked Arda library must use that module's exported entry points
+  rather than linking a second independent registry.
+- Unreal integration test projects belong under `D:/UnrealProjects`; reuse a
+  suitable project where possible. Versioned fixture/template files may live
+  alongside the plugin, but generated projects, binaries, logs, and captures
+  are not library source.
+
 ## Reference
 
 - [Epic C++ Coding Standard for Unreal Engine](https://dev.epicgames.com/documentation/unreal-engine/epic-cplusplus-coding-standard-for-unreal-engine)

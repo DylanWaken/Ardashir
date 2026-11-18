@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CUDA texture buffers — Ardashir engineering documentation.">
+  <title>CUDA texture buffers | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick guide</a>
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="gpu-allocator.html">GPU allocator</a>
+        <a href="cuda-interop.html">CUDA operands</a>
+        <a href="cuda-sequences.html">CUDA sequences</a>
+        <a href="cuda-external-calls.html">External CUDA calls</a>
+        <a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+        <a href="validation.html">GPU validation</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaBackend</a>
+      </nav>
+      <article>
+<h1 id="cuda-texture-buffers">CUDA texture buffers</h1>
+<nav class="toc" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ul>
+        <li><a href="#allocate-and-address-the-buffer">Allocate and address the buffer</a></li>
+        <li><a href="#native-command-lists">Native command lists</a></li>
+        <li><a href="#persistent-dependency-graph">Persistent dependency graph</a></li>
+        <li><a href="#provider-contract-and-verification">Provider contract and verification</a></li>
+      </ul>
+    </nav>
+<section id="objectives"><h2>How to use this guide</h2><p>Move selected graphics texture regions through pitched CUDA buffers while preserving offsets, row layout and lifetime.</p><p>Start with the <a href="index.html">module overview</a> and follow exact declarations in the <a href="api-reference.html">canonical API reference</a>.</p></section>
+
+<p>Use a shared linear buffer to process graphics texture data with pointer-based CUDA
+kernels. This works with D3D12 and Vulkan, including their graphics-queue CUDA modes.
+It provides an explicit alternative when the device cannot expose usable CUDA
+surface objects. Existing <code>SURFACE</code> parameters and <code>surf2Dwrite</code> kernels still require
+surface support; they are not translated into pointer operations.</p>
+<p>The GPU work is ordered as follows:</p>
+<pre><code class="language-text">Graphics texture -&gt; buffer copy -&gt; complete CUDA sequence -&gt; texture copy -&gt; graphics
+</code></pre>
+<p>The two copies move texels on the GPU. There is no CPU readback and no graphics
+handoff between the sequence&#39;s operations. Copies cost GPU bandwidth, so allocate
+the buffer once, reuse it, and keep intermediate algorithm data in buffers. Skip
+the input copy when CUDA completely overwrites the selected region. Skip the output
+copy when the next consumer can use the buffer directly.</p>
+<h2 id="allocate-and-address-the-buffer">Allocate and address the buffer</h2>
+<p>Include <code>Compute/ArdaCudaTextureBuffer.h</code> and call
+<code>CreateArdaCudaTextureBuffer(Device, TextureDesc, Slice)</code>. The helper returns:</p>
+<ul>
+<li><code>mBuffer</code>: device-local storage with CUDA interop enabled.</li>
+<li><code>mLayout</code>: the copy offset and row pitch, both in bytes.</li>
+<li><code>mExtent</code>: the selected region&#39;s width, height and depth in texels.</li>
+<li><code>mSlicePitch</code>: the byte distance between successive depth slices.</li>
+</ul>
+<p>The graphics texture itself does not need <code>mbCudaInterop</code>. Supported layouts use
+uncompressed, single-sample CUDA-compatible color formats. Select one mip and array
+layer per helper/copy; a 3D region may include several depth slices. Explicit regions
+outside the selected subresource are rejected rather than clipped. The helper does
+not perform color conversion, normalization or tensor packing.</p>
+<p>Bind <code>mBuffer</code> with a <code>BUFFER</code> parameter and pass pitches and dimensions through
+<code>VALUE</code> parameters. Buffer coordinates start at zero for the copied region, even
+when its texture slice has a nonzero XYZ origin. For an <code>R32UInt</code> buffer, kernel
+addressing can use:</p>
+<pre><code class="language-cpp">// Pixels is the resolved uint32_t* BUFFER parameter. All pitches are bytes.
+if (X &lt; Width &amp;&amp; Y &lt; Height &amp;&amp; Z &lt; Depth)
+{
+    auto* Row = reinterpret_cast&lt;uint32_t*&gt;(
+        reinterpret_cast&lt;uint8_t*&gt;(Pixels) + Z * SlicePitch + uint64_t(Y) * RowPitch);
+    Row[X] += Bias;
+}
+</code></pre>
+<p>Use 64-bit arithmetic for slice offsets. Row padding is not texture data and is not
+initialized by the copies. Kernels should only read valid texels; initialize padding
+explicitly if an algorithm reads the entire allocation. External CUDA calls can use
+the same buffer through declared bindings, provided their tensor strides and types
+match this layout. See <a href="cuda-external-calls.html">external CUDA calls</a>.</p>
+<h2 id="native-command-lists">Native command lists</h2>
+<p>The following records into an already open graphics command list. <code>Sequence</code> has
+been prepared with operations bound to <code>Transfer.mValue.mBuffer</code> and the returned
+pitches. Allocate <code>Transfer</code> before preparing those operations, and reuse it across
+frames only after the previous use is correctly ordered or complete.</p>
+<pre><code class="language-cpp">auto Transfer = CreateArdaCudaTextureBuffer(*Device, Texture-&gt;GetDesc(), Slice);
+if (!Transfer)
+{
+    return Transfer.mStatus;
+}
+// Populate FArdaCudaSequence Sequence(Device) with this buffer and its pitches.
+
+if (auto Status = Commands.CopyTextureToBuffer(*Transfer.mValue.mBuffer,
+        Transfer.mValue.mLayout, *Texture, Slice); !Status)
+{
+    return Status;
+}
+if (auto Status = Sequence.DispatchDeferred(Commands); !Status)
+{
+    return Status;
+}
+return Commands.CopyBufferToTexture(*Texture, Slice,
+    *Transfer.mValue.mBuffer, Transfer.mValue.mLayout);
+</code></pre>
+<p>The command list retains copied resources through submission. Automatic resource
+state tracking handles the copy transitions. When automatic tracking is disabled,
+the caller must establish <code>CopySource</code> and <code>CopyDest</code> states.</p>
+<p>To request D3D12 CiG explicitly, set the backend configuration&#39;s
+<code>mCudaExecutionMode</code> to <code>EArdaCudaExecutionMode::GraphicsQueue</code>. The current
+<code>Automatic</code> policy can choose the ordinary CUDA context when native surface support
+is unavailable; using this helper does not change that policy or the device&#39;s mode.</p>
+<h2 id="persistent-dependency-graph">Persistent dependency graph</h2>
+<p>Include <code>ArdaDependencyGraph.h</code> and record <code>CopyTo</code> operations around the CUDA
+nodes. The graph does not insert texture-to-buffer copies automatically.</p>
+<pre><code class="language-cpp">// Within an FArdaGraphEdit scope:
+CopyTo(Edit, InputTexture, CudaInputBuffer, Slice, Layout);
+// Invoke CUDA operations reading CudaInputBuffer and writing CudaOutputBuffer.
+CopyTo(Edit, CudaOutputBuffer, OutputTexture, Slice, Layout);
+Edit.Keep(OutputTexture);
+return Edit.Commit();
+</code></pre>
+<p>The handles refer to resources created or imported into the current graph. The
+node classes validate native descriptors and layout during resource declaration, derive
+texture subresources and exact copied buffer rows, and retain those declarations.
+Both transfers execute on the graphics queue and unused outputs may be culled.
+Single-producer regions resolve independently of attachment order. Regions with
+multiple writer nodes order overlapping writes and reads by original successful
+attachment order; disjoint regions remain independent. Repeated writes use the
+same storage. Use separate output handles when old contents must survive an
+overwrite; duplicate imports of one native resource cannot create versions or
+hide hazards. See the <a href="../ArdaRDG/resources.html#worked-example">repeated-write example</a>.</p>
+<p>Row padding is not produced by a texture copy. A CUDA node reading the whole buffer
+must receive fully initialized storage, or declare only the texel ranges its operand
+reads. Cropped writes do not initialize surrounding texels in a new texture. Texture
+hazards are tracked at mip/layer/plane granularity. A cropped upload therefore
+declares a read/write of the selected subresource: use an imported texture whose
+surrounding texels already exist, or attach a complete subresource writer before
+the partial upload. A partial upload into an uninitialized transient texture fails
+compilation, even if a later node reads only the copied rectangle.
+Each transfer freezes its resources, copy rectangle and pitch. Describe changed
+parameters through a fresh frame construction; matching constructions reuse
+the persistent compiled revision.</p>
+<h2 id="provider-contract-and-verification">Provider contract and verification</h2>
+<p>Provider interface version <strong>8</strong> added <code>CopyTextureToBuffer</code> and
+<code>CopyBufferToTexture</code>; the current version is <strong>12</strong>, including allocation metadata,
+cached graph execution and queue-qualified timestamp capabilities. Rebuild providers
+and consumers together. Providers that do
+not implement the new optional methods return <code>Unsupported</code>.</p>
+<p>Native copies accept <code>FArdaRHITextureBufferLayout</code> for caller-managed buffers too.
+Portable layouts require a 256-byte-aligned row pitch no greater than <code>INT32_MAX</code>,
+a 512-byte-aligned buffer offset, whole-format-element alignment and enough storage
+through the final copied texel. <code>ValidateArdaRHITextureBufferCopy</code> checks these rules
+before recording. Depth/stencil, compressed, typeless and multisampled copies are
+outside this API&#39;s contract.</p>
+<p>The GPU tests exercise D3D12/Vulkan ordinary CUDA and CiG modes with native validation
+and numerical readback. Coverage includes two consecutive kernels, cropped regions,
+mips, array layers, 3D depth slices, surrounding texels and resource lifetime after
+recording. Render graph tests also check producer dependencies, layout rejection
+and culling. See <a href="cuda-sequences.html">CUDA sequences</a> for batching and library-call
+requirements.</p>
+<section id="summary"><h2>Review and next steps</h2><p>Account for both copy directions and the pitched footprint. Texture-buffer interoperability is an explicit transfer path with validated resource ownership.</p><p>Continue with the <a href="index.html">module guides</a> and <a href="api-reference.html">API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend · Ardashir engineering documentation</p></footer>
+</body>
+</html>

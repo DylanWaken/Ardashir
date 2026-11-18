@@ -103,14 +103,14 @@ namespace arda
 		{
 			return {{}, MakeArdaInductorRuntimeError("Submit requires a successfully compiled graph outside an edit.")};
 		}
-		if (Graph.mPendingMemoryPlan)
+		if (!Graph.mCompile.mExecution->mRuntime && Graph.mCompile.mMemoryPlan)
 		{
-			if (auto Status = MaterializePendingPlan(Graph); !Status)
+			if (auto Status = MaterializePlan(Graph); !Status)
 			{
 				return {{}, Status};
 			}
 		}
-		if (!Graph.mRuntime || Graph.mRuntime->mFrames.empty())
+		if (!Graph.mCompile.mExecution->mRuntime || Graph.mCompile.mExecution->mRuntime->mFrames.empty())
 		{
 			return {{}, MakeArdaInductorRuntimeError("Submit requires a successfully compiled graph outside an edit.")};
 		}
@@ -133,7 +133,7 @@ namespace arda
 			}
 		} Guard(Graph.mbExecuting);
 
-		auto& Runtime = *Graph.mRuntime;
+		auto& Runtime = *Graph.mCompile.mExecution->mRuntime;
 		auto& Frame = *Runtime.mFrames[Runtime.mNextSlot];
 		if (Frame.mActive)
 		{
@@ -148,10 +148,10 @@ namespace arda
 			return {{}, MakeArdaInductorRuntimeError("Repair or recompile the graph after a failed frame submission.")};
 		}
 		auto State = eastl::make_shared<FArdaDependencyFrameTicket::FArdaState>();
-		State->mDevice = Graph.mDevice;
+		State->mDevice = Graph.mCompile.mExecution->mDevice;
 		State->mGraphIdentity = Graph.mIdentity;
-		State->mSequence = Graph.mNextFrameSequence++;
-		State->mTiming = Graph.mTiming;
+		State->mSequence = Graph.mCompile.mExecution->mNextFrameSequence++;
+		State->mTiming = Graph.mCompile.mExecution->mTiming;
 		State->mbSampleTiming =
 		    Graph.mOptions.mbEnableGpuTiming && (State->mSequence - 1) % Graph.mOptions.mGpuTimingSampleInterval == 0;
 		if (State->mbSampleTiming && Frame.mTimingState)
@@ -160,13 +160,15 @@ namespace arda
 			State->mbSampleTiming =
 			    Lock.owns_lock() && Frame.mTimingState->mTimers.empty() && Frame.mTimingState->mCudaTimers.empty();
 		}
-		State->mTimingEpoch = State->mbSampleTiming ? Graph.mTiming->GetEpoch() : 0;
+		State->mTimingEpoch = State->mbSampleTiming ? Graph.mCompile.mExecution->mTiming->GetEpoch() : 0;
 		if (State->mbSampleTiming)
 		{
 			State->mTimers = Frame.mTimers;
 			State->mCudaTimers = Frame.mCudaTimers;
 			Frame.mTimingState = State;
 		}
+		Frame.mRecordedGraphicsDrawCount = 0;
+		Frame.mMergedGraphicsDrawCount = 0;
 		Frame.mActive = State;
 		FArdaDependencyFrameTicket Ticket;
 		Ticket.mState = State;
@@ -175,7 +177,7 @@ namespace arda
 		{
 			for (const auto& Timer : State->mTimers)
 			{
-				if (!Graph.mDevice->ResetTimerQuery(Timer.mQuery))
+				if (!Graph.mCompile.mExecution->mDevice->ResetTimerQuery(Timer.mQuery))
 				{
 					State->mbSampleTiming = false;
 					break;
@@ -209,9 +211,10 @@ namespace arda
 						{
 							continue;
 						}
-						State->mExecution.mStatus = Graph.mDevice->QueueWait(static_cast<EArdaRHIQueueType>(Consumer),
-						    static_cast<EArdaRHIQueueType>(Producer),
-						    Instance);
+						State->mExecution.mStatus =
+						    Graph.mCompile.mExecution->mDevice->QueueWait(static_cast<EArdaRHIQueueType>(Consumer),
+						        static_cast<EArdaRHIQueueType>(Producer),
+						        Instance);
 						if (!State->mExecution.mStatus)
 						{
 							break;
@@ -236,15 +239,18 @@ namespace arda
 			State->mExecution.mStatus = FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
 			    "Graph recording or submission threw an exception.");
 		}
+		State->mReadbackCompletions.SetSubmissions(Frame.mLowered->mImpl->mPassSubmissions, State->mDevice);
 		State->mExecution.mQueueWaitCount += InterFrameWaits;
+		State->mExecution.mRecordedGraphicsDrawCount = Frame.mRecordedGraphicsDrawCount.load();
+		State->mExecution.mMergedGraphicsDrawCount = Frame.mMergedGraphicsDrawCount.load();
 		// If a provider throws after accepting work without returning a token, mark
 		// only that queue's current tail. Never turn graph retirement into device idle.
 		if (Frame.mLowered->mImpl->mSubmittingQueue >= 0)
 		{
-			auto Fence = Graph.mDevice->CreateGpuFence();
+			auto Fence = Graph.mCompile.mExecution->mDevice->CreateGpuFence();
 			if (Fence)
 			{
-				const auto Status = Graph.mDevice->SignalGpuFence(Fence.mValue,
+				const auto Status = Graph.mCompile.mExecution->mDevice->SignalGpuFence(Fence.mValue,
 				    static_cast<EArdaRHIQueueType>(Frame.mLowered->mImpl->mSubmittingQueue));
 				if (Status)
 				{
@@ -268,7 +274,20 @@ namespace arda
 	FArdaGraphExecutionResult FArdaInductorRuntime::Wait(FArdaDependencyGraph::FArdaImpl& Graph,
 	    const FArdaDependencyFrameTicket& Ticket)
 	{
-		if (Graph.mbExecuting || !Ticket.mState || Ticket.mState->mGraphIdentity != Graph.mIdentity)
+		if (Graph.mbExecuting)
+		{
+			FArdaGraphExecutionResult Result;
+			Result.mStatus =
+			    MakeArdaInductorRuntimeError("Wait requires this graph's frame ticket outside a callback.");
+			return Result;
+		}
+		return Wait(Graph.mIdentity, Ticket);
+	}
+
+	FArdaGraphExecutionResult FArdaInductorRuntime::Wait(uint64_t GraphIdentity,
+	    const FArdaDependencyFrameTicket& Ticket)
+	{
+		if (!Ticket.mState || Ticket.mState->mGraphIdentity != GraphIdentity)
 		{
 			FArdaGraphExecutionResult Result;
 			Result.mStatus =
@@ -281,11 +300,23 @@ namespace arda
 	TArdaRHIResult<bool> FArdaInductorRuntime::IsComplete(FArdaDependencyGraph::FArdaImpl& Graph,
 	    const FArdaDependencyFrameTicket& Ticket)
 	{
-		if (Graph.mbExecuting || !Ticket.mState || Ticket.mState->mGraphIdentity != Graph.mIdentity)
+		if (Graph.mbExecuting)
 		{
 			return {false,
 			    MakeArdaInductorRuntimeError("IsComplete requires this graph's frame ticket outside a callback.")};
 		}
+		return IsComplete(Graph.mIdentity, Ticket);
+	}
+
+	TArdaRHIResult<bool> FArdaInductorRuntime::IsComplete(uint64_t GraphIdentity,
+	    const FArdaDependencyFrameTicket& Ticket)
+	{
+		if (!Ticket.mState || Ticket.mState->mGraphIdentity != GraphIdentity)
+		{
+			return {false,
+			    MakeArdaInductorRuntimeError("IsComplete requires this graph's frame ticket outside a callback.")};
+		}
+
 		auto& State = *Ticket.mState;
 		std::unique_lock<std::mutex> Lock(State.mMutex, std::try_to_lock);
 		if (!Lock.owns_lock())
@@ -317,18 +348,5 @@ namespace arda
 			}
 		}
 		return {State.mReadbackCompletions.IsReady(), {}};
-	}
-
-	FArdaGraphExecutionResult FArdaInductorRuntime::Execute(FArdaDependencyGraph::FArdaImpl& Graph,
-	    const FArdaGraphExecuteOptions& Options)
-	{
-		auto Submitted = Submit(Graph, Options);
-		if (Submitted.mValue)
-		{
-			return Wait(Graph, Submitted.mValue);
-		}
-		FArdaGraphExecutionResult Result;
-		Result.mStatus = Submitted.mStatus;
-		return Result;
 	}
 }

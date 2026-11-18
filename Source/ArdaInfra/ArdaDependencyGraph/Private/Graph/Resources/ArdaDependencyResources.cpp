@@ -2,6 +2,7 @@
 #include "Graph/Node/ArdaDependencyGraphImpl.h"
 #include "Graph/Node/ArdaDependencyGraphStatus.h"
 #include "Graph/Resources/ArdaGraphResourceValidation.h"
+#include "Graph/Resources/ArdaGraphResourceIdentity.h"
 #include <EASTL/algorithm.h>
 
 namespace arda
@@ -9,7 +10,7 @@ namespace arda
 	TArdaRHIResult<FArdaDependencyResourceHandle> FArdaDependencyGraph::CreateResource(FArdaDependencyResourceDesc D)
 	{
 		auto& G = *mImpl;
-		if (G.mbCompiling)
+		if (G.mbCompiling || (G.mbPreprocessing && !G.mbPreprocessEditing))
 		{
 			return {{}, GraphCompiling()};
 		}
@@ -21,6 +22,24 @@ namespace arda
 		{
 			return {{}, GraphInvalid("Resource versions require unique nonempty names.")};
 		}
+		const auto BoundKind = D.mExternalBuffer ? EArdaGraphExternalResourceKind::Buffer
+		    : D.mExternalTexture                 ? EArdaGraphExternalResourceKind::Texture
+		    : D.mExternalAccelerationStructure   ? EArdaGraphExternalResourceKind::AccelerationStructure
+		                                         : EArdaGraphExternalResourceKind::None;
+		if (D.mExternalKind == EArdaGraphExternalResourceKind::None)
+		{
+			D.mExternalKind = BoundKind;
+		}
+		if (D.mExternalKind > EArdaGraphExternalResourceKind::AccelerationStructure ||
+		    (BoundKind != EArdaGraphExternalResourceKind::None && BoundKind != D.mExternalKind) ||
+		    (D.IsExternal() && D.mbTexture != (D.mExternalKind == EArdaGraphExternalResourceKind::Texture)))
+		{
+			return {{}, GraphInvalid("External resource slot kind does not match its declaration or binding.")};
+		}
+		if (D.mExternalAccelerationStructure)
+		{
+			D.mAccelerationStructure = ArdaGraphAccelerationStructureShape(D.mExternalAccelerationStructure->GetDesc());
+		}
 		if ((D.mExternalBuffer && (D.mbTexture || D.mExternalTexture || D.mExternalAccelerationStructure)) ||
 		    (D.mExternalAccelerationStructure && (D.mbTexture || D.mExternalTexture)))
 		{
@@ -31,11 +50,11 @@ namespace arda
 			return {{}, GraphInvalid("External texture kind mismatch.")};
 		}
 		// Only the resource's active descriptor participates in usage deduction.
-		if (D.mbTexture || D.mExternalAccelerationStructure)
+		if (D.mbTexture || D.mExternalKind == EArdaGraphExternalResourceKind::AccelerationStructure)
 		{
 			D.mBuffer.mUsage = EArdaRHIBufferUsage::None;
 		}
-		if (!D.mbTexture || D.mExternalAccelerationStructure)
+		if (!D.mbTexture || D.mExternalKind == EArdaGraphExternalResourceKind::AccelerationStructure)
 		{
 			D.mTexture.mUsage = EArdaRHITextureUsage::None;
 		}
@@ -49,29 +68,16 @@ namespace arda
 		}
 
 		// One native allocation has one imported logical identity, so aliases cannot hide hazards.
-		const auto PhysicalIdentity = [](const auto& Resource) -> const void*
+		const auto BufferIdentity = GetArdaGraphPhysicalIdentity(D.mExternalBuffer);
+		const auto TextureIdentity = GetArdaGraphPhysicalIdentity(D.mExternalTexture);
+		const auto StructureIdentity = GetArdaGraphPhysicalIdentity(D.mExternalAccelerationStructure);
+		if ((BufferIdentity && G.mImportedBuffers.count(BufferIdentity)) ||
+		    (TextureIdentity && G.mImportedTextures.count(TextureIdentity)) ||
+		    (StructureIdentity && G.mImportedAccelerationStructures.count(StructureIdentity)))
 		{
-			if (!Resource)
-			{
-				return nullptr;
-			}
-			const void* Identity = Resource->GetPhysicalIdentity();
-			return Identity ? Identity : Resource.Get();
-		};
-		for (const auto& Existing : G.mResources)
-		{
-			if ((D.mExternalBuffer &&
-			        PhysicalIdentity(D.mExternalBuffer) == PhysicalIdentity(Existing.mExternalBuffer)) ||
-			    (D.mExternalTexture &&
-			        PhysicalIdentity(D.mExternalTexture) == PhysicalIdentity(Existing.mExternalTexture)) ||
-			    (D.mExternalAccelerationStructure &&
-			        PhysicalIdentity(D.mExternalAccelerationStructure) ==
-			            PhysicalIdentity(Existing.mExternalAccelerationStructure)))
-			{
-				return {{},
-				    GraphInvalid(
-				        "External storage is already imported. Reuse its logical handle so resource hazards cannot be hidden by another name.")};
-			}
+			return {{},
+			    GraphInvalid(
+			        "External storage is already imported. Reuse its logical handle so resource hazards cannot be hidden by another name.")};
 		}
 		if (auto S = ValidateArdaGraphResourceDescription(D); !S)
 		{
@@ -86,7 +92,22 @@ namespace arda
 		const uint32_t I = static_cast<uint32_t>(G.mResources.size());
 		G.mResourceNames.emplace(D.mName, I);
 		G.mResources.push_back(eastl::move(D));
-		G.mResourceGenerations.push_back(G.mNextResourceGeneration++);
+		if (BufferIdentity)
+		{
+			G.mImportedBuffers.insert(BufferIdentity);
+		}
+		if (TextureIdentity)
+		{
+			G.mImportedTextures.insert(TextureIdentity);
+		}
+		if (StructureIdentity)
+		{
+			G.mImportedAccelerationStructures.insert(StructureIdentity);
+		}
+		G.mResourceGenerations.push_back(G.mResourceGenerationSource
+		        ? G.mResourceGenerationSource->fetch_add(1, std::memory_order_relaxed)
+		        : G.mNextResourceGeneration++);
+		G.mNextResourceGeneration = eastl::max(G.mNextResourceGeneration, G.mResourceGenerations.back() + 1);
 		return {{G.mIdentity, I, G.mResourceGenerations.back()}, {}};
 	}
 
@@ -151,7 +172,7 @@ namespace arda
 
 	FArdaRHIStatus FArdaDependencyGraph::MarkOutput(FArdaDependencyResourceHandle H, bool Output)
 	{
-		if (mImpl->mbCompiling)
+		if (mImpl->mbCompiling || (mImpl->mbPreprocessing && !mImpl->mbPreprocessEditing))
 		{
 			return GraphCompiling();
 		}
@@ -163,13 +184,28 @@ namespace arda
 		{
 			return GraphInvalid("Unknown resource version.");
 		}
+		H = mImpl->ResolveResource(H);
 		mImpl->mResources[H.mIndex].mbOutput = Output;
 		return {};
 	}
 
+	FArdaDependencyResourceHandle FArdaDependencyGraph::FindResource(const eastl::string& Name) const
+	{
+		const auto& Graph = GetReadImpl();
+		const auto Found = Graph.mResourceNames.find(Name);
+		if (Found == Graph.mResourceNames.end())
+		{
+			return {};
+		}
+		const auto Index = Found->second;
+		return Graph.ResolveResource({Graph.mIdentity, Index, Graph.mResourceGenerations[Index]});
+	}
+
 	const FArdaDependencyResourceDesc* FArdaDependencyGraph::FindResource(FArdaDependencyResourceHandle H) const
 	{
-		return mImpl->HasResource(H) ? &mImpl->mResources[H.mIndex] : nullptr;
+		const auto& Graph = GetReadImpl();
+		H = Graph.ResolveResource(H);
+		return Graph.HasResource(H) ? &Graph.mResources[H.mIndex] : nullptr;
 	}
 
 	FArdaDependencyResourceContext::FArdaDependencyResourceContext(FArdaDependencyGraph& Graph,
@@ -270,8 +306,10 @@ namespace arda
 		}
 		if (Output)
 		{
+			Output = mGraph.mImpl->ResolveResource(Output);
 			const auto* E = Find(Output);
-			if (!E || E->mbTexture != D.mbTexture || E->mExternalAccelerationStructure)
+			if (!E || E->mbTexture != D.mbTexture ||
+			    E->mExternalKind == EArdaGraphExternalResourceKind::AccelerationStructure)
 			{
 				return GraphInvalid("Supplied node output has an invalid resource kind or identity.");
 			}

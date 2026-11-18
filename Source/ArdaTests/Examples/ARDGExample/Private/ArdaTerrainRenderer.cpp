@@ -58,6 +58,11 @@ namespace arda
 		FArdaRHITextureRef mColor;
 		FArdaDependencyGraph mGraph;
 		eastl::shared_ptr<FArdaTerrainFrameInputs> mInputs = eastl::make_shared<FArdaTerrainFrameInputs>();
+		eastl::shared_ptr<eastl::vector<uint8_t>> mColorReadback;
+		eastl::shared_ptr<eastl::vector<uint8_t>> mSettingsUploadReadback;
+		eastl::shared_ptr<eastl::vector<uint8_t>> mSettingsCopyReadback;
+		eastl::shared_ptr<eastl::vector<uint8_t>> mRawHeightmapReadback;
+		eastl::shared_ptr<eastl::vector<uint8_t>> mErodedHeightmapReadback;
 
 		explicit FArdaFrameGraph(FArdaRHIDeviceRef Device)
 		    : mGraph(eastl::move(Device))
@@ -73,7 +78,10 @@ namespace arda
 		mFrameGraphs.clear();
 	}
 
-	bool FArdaTerrainRenderer::CreateFrameGraph(const FArdaRHITextureRef& Color, uint32_t Width, uint32_t Height)
+	bool FArdaTerrainRenderer::CreateFrameGraph(const FArdaRHITextureRef& Color,
+	    uint32_t Width,
+	    uint32_t Height,
+	    bool bCaptureStages)
 	{
 		const auto Existing = std::find_if(mFrameGraphs.begin(),
 		    mFrameGraphs.end(),
@@ -121,13 +129,21 @@ namespace arda
 		{
 			ReadbackNode(Edit, {Vertices, Frame->mInputs->mVertexReadback}, "Validate vertices");
 			ReadbackNode(Edit, {Indices, Frame->mInputs->mIndexReadback}, "Validate indices");
+			Frame->mColorReadback = Readback(Edit, Scene.GetTexture("Color"));
+		}
+		if (bCaptureStages)
+		{
+			Frame->mSettingsUploadReadback = Readback(Edit, SettingsUpload);
+			Frame->mSettingsCopyReadback = Readback(Edit, Settings);
+			Frame->mRawHeightmapReadback = Readback(Edit, RawHeightmap);
+			Frame->mErodedHeightmapReadback = Readback(Edit, Heightmap);
 		}
 
 		// Compile the completed dependency graph before publishing it in the frame cache.
 		Status = Edit.Commit();
 		if (Status)
 		{
-			Status = Graph.Compile();
+			Status = Graph.CompileAndWait();
 		}
 		if (!Status)
 		{
@@ -139,6 +155,50 @@ namespace arda
 			mFrameGraphs.push_back(std::move(Created));
 		}
 		return true;
+	}
+
+	void FArdaTerrainRenderer::DiagnoseTerrainFailure(FArdaFrameGraph& Frame, uint32_t Width, uint32_t Height)
+	{
+		const auto OriginalError = mError;
+		eastl::string Report = OriginalError;
+		if (const auto Snapshot = mDevice->CaptureDiagnosticSnapshot(); Snapshot)
+		{
+			Report += "\nBackend: " + Snapshot.mValue.mBackendName + "; GPU: " + Snapshot.mValue.mAdapterName +
+			    "; driver: " + Snapshot.mValue.mDriverVersion;
+		}
+		// Extra transfers can change aliasing and synchronization. Run them only after the
+		// original graph failed, retain that failure, and identify a passing rerun explicitly.
+		if (!CreateFrameGraph(Frame.mColor, Width, Height, true))
+		{
+			Report += "\nStage diagnostic compilation failed: " + mError;
+			mError = eastl::move(Report);
+			return;
+		}
+		if (const auto Execution = Frame.mGraph.ExecuteAndWait(); !Execution.mStatus)
+		{
+			Report += "\nStage diagnostic execution failed: " + Execution.mStatus.mMessage;
+			mError = eastl::move(Report);
+			return;
+		}
+		Report += "\nStage diagnostic rerun (additional transfers retain intermediate resources):\n";
+		Report += DescribeTerrainStageReadbacks(*Frame.mSettingsUploadReadback,
+		    *Frame.mSettingsCopyReadback,
+		    *Frame.mRawHeightmapReadback,
+		    *Frame.mErodedHeightmapReadback,
+		    *Frame.mInputs->mVertexReadback,
+		    Frame.mInputs->mSettings);
+		auto RerunError = ValidateTerrainReadback(*Frame.mInputs->mVertexReadback,
+		    *Frame.mInputs->mIndexReadback,
+		    Frame.mInputs->mSettings);
+		if (RerunError.empty())
+		{
+			RerunError =
+			    ValidateTerrainColorReadback(*Frame.mColorReadback, Width, Height, Frame.mColor->GetDesc().mFormat);
+		}
+		Report += RerunError.empty()
+		    ? "\nVerification passes only with the diagnostic transfers; investigate synchronization or resource aliasing."
+		    : "\nVerification still fails: " + RerunError;
+		mError = eastl::move(Report);
 	}
 
 	bool FArdaTerrainRenderer::RenderFrame(IArdaSwapChain& swapChain)
@@ -194,7 +254,7 @@ namespace arda
 		Frame->mInputs->mSettings.mTime = mElapsedSeconds;
 		Frame->mInputs->mCamera = cameraSettings;
 		swapChain.PrepareSubmit();
-		const auto Result = Frame->mGraph.Execute();
+		const auto Result = Frame->mGraph.ExecuteAndWait();
 		if (!Result.mStatus)
 		{
 			mError = Result.mStatus.mMessage;
@@ -207,12 +267,20 @@ namespace arda
 			    Frame->mInputs->mSettings);
 			if (!mError.empty())
 			{
+				DiagnoseTerrainFailure(*Frame, width, height);
+				return false;
+			}
+			mError = ValidateTerrainColorReadback(*Frame->mColorReadback, width, height, Color->GetDesc().mFormat);
+			if (!mError.empty())
+			{
+				DiagnoseTerrainFailure(*Frame, width, height);
 				return false;
 			}
 			mbTerrainReadbackValidated = true;
 			// The next construction omits the completed diagnostic operations.
 			Frame->mInputs->mVertexReadback->clear();
 			Frame->mInputs->mIndexReadback->clear();
+			Frame->mColorReadback.reset();
 			if (!CreateFrameGraph(Color, width, height))
 			{
 				return false;

@@ -5,6 +5,7 @@
 #include "RHI/Scheduling/ArdaSwapChain.h"
 #include "ArdaDependencyGraph.h"
 #include "Nodes/ArdaCornellBoxNodes.h"
+#include "Graph/Node/ArdaGraphPackage.h"
 
 #include <EASTL/string.h>
 #include <memory>
@@ -20,6 +21,12 @@ namespace arda
 		uint32_t mSeed = 1;
 		float mExposure = 1.0f;
 		bool mbCompactStaticBlas = true;
+		/** Optional OIDN spatial or NPPD temporal CUDA model descriptor. */
+		std::filesystem::path mDenoisingPackage;
+		/** Checkpoint for the descriptor; defaults to its sibling .ardastate file. */
+		std::filesystem::path mDenoisingStateDict;
+		/** Optional linear HDR image pair written after the finite demonstration run. */
+		std::filesystem::path mDenoisingDumpPrefix;
 	};
 
 	class FArdaCornellBoxRenderer final
@@ -36,6 +43,7 @@ namespace arda
 		void NotifyResize();
 
 		bool RenderFrame(arda::IArdaSwapChain& SwapChain);
+		bool SaveDenoisingImages();
 
 		[[nodiscard]] const eastl::string& GetError() const noexcept
 		{
@@ -55,6 +63,19 @@ namespace arda
 		bool CreateFrameTlasResource();
 		bool ExecuteGraph(arda::FArdaDependencyGraph& Graph, const char* Description);
 		void ResetAccumulation();
+		bool AppendDenoising(FArdaGraphEdit& Edit,
+		    FArdaGraphTexture Accumulation,
+		    FArdaGraphBuffer Constants,
+		    uint32_t Width,
+		    uint32_t Height,
+		    FArdaGraphTexture& OutImage);
+		bool AppendTemporalDenoising(FArdaGraphEdit& Edit,
+		    FArdaGraphBuffer Radiance,
+		    FArdaGraphBuffer Guides,
+		    FArdaGraphBuffer Constants,
+		    uint32_t Width,
+		    uint32_t Height,
+		    FArdaGraphTexture OutImage);
 
 		arda::FArdaRHIDeviceRef mDevice;
 
@@ -62,6 +83,8 @@ namespace arda
 		{
 			FArdaRHITextureRef mBackBuffer;
 			uint32_t mDispatchSamples = 0;
+			uint32_t mHistorySlot = 0;
+			bool mbResetHistory = false;
 			eastl::shared_ptr<FArdaCornellFrameInput> mInput;
 			std::unique_ptr<FArdaDependencyGraph> mGraph;
 		};
@@ -75,6 +98,21 @@ namespace arda
 		arda::FArdaRHIAccelStructRef mTlas;
 		uint64_t mTlasWorkspaceBytes = 0;
 		arda::FArdaRHITextureRef mAccumulationTexture;
+		FArdaRHITextureRef mDenoisedTexture;
+		eastl::shared_ptr<const FArdaGraphPackage> mDenoisingPackage;
+		FArdaRHITensorDesc mDenoisingTensorDesc;
+		eastl::shared_ptr<eastl::vector<uint8_t>> mNoisySnapshot;
+		eastl::shared_ptr<eastl::vector<uint8_t>> mDenoisedSnapshot;
+		FArdaRHIBufferRef mTemporalHistory[2];
+		bool mbTemporalDenoising = false;
+
+		struct FArdaTensorSnapshot
+		{
+			eastl::string mName;
+			eastl::shared_ptr<eastl::vector<uint8_t>> mBytes;
+		};
+
+		eastl::vector<FArdaTensorSnapshot> mTensorSnapshots;
 
 		FArdaCornellBoxSettings mSettings;
 		FArdaVector3f mCameraPosition = {0.0f, -2.65f, 1.0f};

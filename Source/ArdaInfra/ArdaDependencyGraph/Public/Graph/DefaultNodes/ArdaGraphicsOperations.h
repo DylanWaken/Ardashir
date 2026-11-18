@@ -1,7 +1,7 @@
 /** Reusable rasterization and explicit stage materialization operations. */
 #pragma once
 
-#include "Graph/Node/ArdaGraphicsStageNode.h"
+#include "Graph/Node/ArdaNodeDefinition.h"
 
 namespace arda
 {
@@ -24,32 +24,29 @@ namespace arda
 	/** Invocation snapshot. The normal node facade accepts (Edit, Vertices, Config) or
 	 * (Edit, Vertices, ConfigFields...) through these parameter constructors.
 	 */
-	struct FArdaRasterizeParameters
-	{
-		FArdaGraphVertices mInput;
-		FArdaRasterConfig mConfig;
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRasterizeParameters)
+		ARDA_NODE_STAGE_INPUT(FArdaGraphVertices, mInput)
+		ARDA_NODE_PARAMETER(FArdaRasterConfig, mConfig)
+	ARDA_END_NODE_PARAMETER_STRUCT(
 
-		FArdaRasterizeParameters() = default;
+	    FArdaRasterizeParameters() = default;
 
-		FArdaRasterizeParameters(FArdaGraphVertices Input, FArdaRasterConfig Config)
-		    : mInput(Input),
-		      mConfig(eastl::move(Config))
-		{
-		}
+	    FArdaRasterizeParameters(FArdaGraphVertices Input, FArdaRasterConfig Config) : mInput(Input),
+	    mConfig(eastl::move(Config)) {}
 
-		template <class... Arguments,
-		    eastl::enable_if_t<TArdaGraphPositionalArguments<FArdaRasterConfig, Arguments...>::value, int> = 0,
-		    class = decltype(FArdaRasterConfig{eastl::declval<Arguments>()...})>
-		FArdaRasterizeParameters(FArdaGraphVertices Input, Arguments&&... Values)
-		    : FArdaRasterizeParameters(Input, FArdaRasterConfig{eastl::forward<Arguments>(Values)...})
-		{
-		}
-	};
+	    template <class... Arguments,
+	        eastl::enable_if_t<TArdaGraphPositionalArguments<FArdaRasterConfig, Arguments...>::value, int> = 0,
+	        class = decltype(FArdaRasterConfig{eastl::declval<Arguments>()...})>
+	    FArdaRasterizeParameters(FArdaGraphVertices Input, Arguments&&... Values) : FArdaRasterizeParameters(Input,
+	        FArdaRasterConfig{eastl::forward<Arguments>(Values)...}){})
 
 	/** Fixed-function raster stage. Shader libraries may derive their own raster node to add a capture adapter. */
-	class FArdaRasterizeNode final : public TArdaRasterStageNode<FArdaRasterizeNode, FArdaRasterizeParameters>
+	class FArdaRasterizeNode final
+	    : public TArdaNodeDefinition<FArdaRasterizeNode, FArdaRasterizeParameters, EArdaNodeType::Raster>
 	{
 	public:
+		/** Fixed raster configuration does not depend on individual draw boundaries. */
+		static constexpr EArdaGraphicsInstancing mGraphicsInstancing = EArdaGraphicsInstancing::ContiguousInstances;
 		static FArdaDependencyNodeMetadata GetMetadata();
 		static eastl::string GetCanonicalKey(const FArdaParameters& P);
 		static FArdaRHIStatus Validate(const FArdaParameters& P);

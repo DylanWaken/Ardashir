@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Unreal RHI comparison and defect ledger — Ardashir engineering documentation.">
+  <title>Unreal RHI comparison and defect ledger | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick guide</a>
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="gpu-allocator.html">GPU allocator</a>
+        <a href="cuda-interop.html">CUDA operands</a>
+        <a href="cuda-sequences.html">CUDA sequences</a>
+        <a href="cuda-external-calls.html">External CUDA calls</a>
+        <a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+        <a href="validation.html">GPU validation</a>
+        <a href="api-reference.html">API reference</a>
+        <a href="documentation.html">Documentation maintenance</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaBackend</a>
+      </nav>
+      <article>
+<h1 id="unreal-rhi-comparison-and-defect-ledger">Unreal RHI comparison and defect ledger</h1>
+<nav class="toc" aria-label="On this page">
+      <p><strong>On this page</strong></p>
+      <ul>
+        <li><a href="#confirmed-defects-and-changes-in-this-pass">Confirmed defects and changes in this pass</a></li>
+        <li><a href="#accepted-findings-and-implemented-corrections">Accepted findings and implemented corrections</a></li>
+        <li><a href="#memory-ownership-assessment">Memory ownership assessment</a></li>
+        <li><a href="#feature-inventory-and-disposition">Feature inventory and disposition</a></li>
+        <li><a href="#validation-and-remaining-coverage">Validation and remaining coverage</a></li>
+      </ul>
+    </nav>
+<section id="objectives"><h2>How to use this guide</h2><p>Interpret the Unreal RHI comparison, separating implemented corrections, unsupported features and intentionally deferred work.</p><p>Start with the <a href="index.html">module overview</a> and follow exact declarations in the <a href="api-reference.html">canonical API reference</a>.</p></section>
+
+<p>Reviewed 2026-09-17 against the local Unreal Engine <strong>5.8.1</strong> source, commit
+<code>71fe36aac5a8df5ccd66c763ffc902b29b6a9c43</code>. Unreal RHI, RHICore, D3D12RHI and
+VulkanRHI were unmodified in that checkout. Arda was reviewed in the current
+working tree, including the preceding backend/graph simplifications.</p>
+<p>This is the current defect and feature-disposition ledger. The
+<a href="unreal-rhi-parity-plan.html">earlier parity plan</a> remains the implementation history;
+its broad support labels do not establish complete invalid-input or lifetime
+coverage. Local source was available, so the comparison did not rely on web
+summaries or assumptions about a different Unreal release.</p>
+<p><strong>Implementation scope:</strong> the accepted defects and features marked <strong>implement</strong>
+are now implemented. Deferred features retain their original rationale below.
+Arda graph still uses registered operands, automatic pipeline assignment,
+dependency analysis and scheduling; this work does not replace that model with
+Unreal RDG&#39;s authoring model. Shared validation and native feature facts protect
+the existing graph and direct-RHI paths.</p>
+<h2 id="confirmed-defects-and-changes-in-this-pass">Confirmed defects and changes in this pass</h2>
+<p>The rows below describe the original failure sequences. A fix is considered
+verified only by the validation results recorded later in this document.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Severity</th>
+<th>Original trigger and consequence</th>
+<th>Change / disposition</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RHI-01</td>
+<td>P1</td>
+<td>D3D12 <code>Open</code>/<code>Reset</code> reset the same command allocator while a submitted list could still be executing. Retaining the allocator prevents destruction, but does not make resetting its memory safe.</td>
+<td>Rotate native command-list/allocator storage when the previous fence is pending; preserve completed-storage reuse.</td>
+</tr>
+<tr>
+<td>RHI-02</td>
+<td>P1</td>
+<td>Vulkan <code>Open</code> re-began a previously submitted command buffer and retained stale recording state. <code>Reset</code> already knew how to retain old recording generations.</td>
+<td>Route reopen through the existing reset/generation path.</td>
+</tr>
+<tr>
+<td>RHI-03</td>
+<td>P1</td>
+<td>Recommitting a shader table replaced storage whose address was embedded in recorded or submitted ray dispatches. Retaining the mutable table wrapper did not retain its old contents. A failed rebuild could also invalidate the published table.</td>
+<td>Retain immutable bound storage/record generations and publish successful rebuilds transactionally on both providers.</td>
+</tr>
+<tr>
+<td>RHI-04</td>
+<td>P2</td>
+<td>Vulkan queue-signal destruction waited and destroyed its fence in the same try block. A failed wait, including device loss, skipped fence destruction.</td>
+<td>Destroy after proven completion or reported device loss. OPEN-10 now transfers recoverable failures to deferred ownership; they are not permission to destroy a pending fence.</td>
+</tr>
+<tr>
+<td>RHI-05</td>
+<td>P2</td>
+<td>Vulkan sparse mapping/commit temporary fences and newly allocated memory were raw handles; native failures bypassed cleanup, and an ignored sparse-bind error could wait indefinitely on an unsignaled fence.</td>
+<td>Check sparse-bind results and clean temporary allocations on pre-submit rejection or proven retirement. OPEN-10 now retains accepted operations until retirement proof.</td>
+</tr>
+<tr>
+<td>RHI-06</td>
+<td>P1</td>
+<td>Vulkan concurrent submissions could reserve timeline values before acquiring the queue lock, then submit higher values before lower ones.</td>
+<td>Allocate values inside the queue submission critical section.</td>
+</tr>
+<tr>
+<td>RHI-07</td>
+<td>P1</td>
+<td>A command list held a raw facade-device pointer. Dropping the last device reference or shutting down the backend when it released that last reference left <code>GetDevice</code> and recording helpers with a dangling pointer.</td>
+<td>The command list strongly retains its facade device; its native recording and retained resources are destroyed before that reference is released.</td>
+</tr>
+<tr>
+<td>RHI-08</td>
+<td>P1</td>
+<td>An in-range Indirect buffer with offset 1/2/3, or a non-DWORD draw stride, passed the facade and reached native recording.</td>
+<td>Reject misaligned direct/indexed/compute/ray indirect argument offsets and draw strides before recording.</td>
+</tr>
+<tr>
+<td>RHI-09</td>
+<td>P2</td>
+<td>Ray dimensions such as <code>(2^31, 2^31, 4)</code> wrapped the 64-bit product to zero and bypassed invocation limits.</td>
+<td>Check multiplication overflow before applying the device limit.</td>
+</tr>
+<tr>
+<td>RHI-10</td>
+<td>P1</td>
+<td>D3D12 initialization could fail after creating a queue but before its fence; destructor <code>WaitForIdle</code> then attempted to signal a null fence.</td>
+<td>Skip uninitialized queue/fence pairs during teardown. Native fence-creation failure injection verifies cleanup and successful retry.</td>
+</tr>
+<tr>
+<td>RHI-11</td>
+<td>P1</td>
+<td>D3D12 <code>WaitForIdle</code> reserved/signaled retirement fence values outside the execution critical section, allowing a concurrent submission to enqueue a newer value first.</td>
+<td>Use the same execution mutex for idle reservation/signaling and command submission. Dedicated concurrent idle/submission tests verify increasing receipts and successful retirement.</td>
+</tr>
+</tbody></table>
+<p>Unreal supplies the relevant lifetime model through deferred deletion and
+fence-qualified payload retirement: <span class="source-citation">RHI resource retirement (<code>Engine/Source/Runtime/RHI/Private/RHIResources.cpp:46</code>)</span>,
+<span class="source-citation">D3D12 allocator retirement (<code>Engine/Source/Runtime/D3D12RHI/Private/D3D12Submission.cpp:1266</code>)</span>,
+and <span class="source-citation">Vulkan deferred deletion (<code>Engine/Source/Runtime/VulkanRHI/Private/VulkanMemory.cpp:4701</code>)</span>.
+Arda&#39;s retained native submission objects can provide the same safety property;
+there is no need to duplicate Unreal&#39;s complete global deletion architecture.
+Unreal also explicitly checks <span class="source-citation">indirect alignment and dispatch limits (<code>Engine/Source/Runtime/RHI/Public/RHIValidation.h:48</code>)</span>.</p>
+<h2 id="accepted-findings-and-implemented-corrections">Accepted findings and implemented corrections</h2>
+<p>IDs are preserved from the review so existing references remain useful. The
+original <code>OPEN</code> prefix is an identifier, not the current disposition. All rows
+below are implemented; validation scope and remaining limits follow the inventory.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Original failure or gap</th>
+<th>Implemented correction and regression evidence</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>OPEN-01</td>
+<td>Direct work could reach the driver without a compatible open list, pipeline or dispatch limits.</td>
+<td>One facade gate checks recording generation, queue, pipeline kind, group limits and index binding. Invalid void calls latch errors; Close and submission reject them until Open/Reset. Zero work validates state then records nothing. Native tests exercise wrong queues, absent/stale pipelines, exact/over-limit dispatch, reset and failed submission.</td>
+</tr>
+<tr>
+<td>OPEN-02</td>
+<td>Descriptor shapes and native resource/format limits had no complete shared admission contract.</td>
+<td>Shared dimension, enum, cube, mip, sample, CPU access, usage and initial-state checks feed creation, import, memory queries and graph validation. Immutable device limits and QueryFormatSupport provide native facts. Zero means an unreported limit, not zero capacity. CPU boundary tests and native capability probes cover accepted/rejected shapes, formats and range limits.</td>
+</tr>
+<tr>
+<td>OPEN-03</td>
+<td>Graphics binding lacked central range, viewport and attachment validation.</td>
+<td>Validate vertex/index usage, slots, alignment and ranges; viewport/scissor counts and bounds; framebuffer formats/samples and read-only depth. Normalize required bindings into declared layout order, reusing one omitted push-only set per layout/recording instead of allocating per bind. Native setter failure invalidates the recording; facade rejection preserves its prior state. Dedicated framebuffer views honor mip/layer/aspect/extent or return Unsupported when the native path cannot honor them. Vulkan resumes rendering after an intervening transfer/barrier. Native negative tests, descriptor interception and selected-subresource pixel readback cover these paths.</td>
+</tr>
+<tr>
+<td>OPEN-04</td>
+<td>No structured native GPU-failure evidence.</td>
+<td>CaptureDiagnosticSnapshot returns owned, bounded adapter/driver, queue/submission, native error, submitted marker and optional DRED/Vulkan device-fault data without submitting or waiting. Injected DRED/device-fault probes validate copying, bounds and unavailable facilities. No automatic device recreation is implied.</td>
+</tr>
+<tr>
+<td>OPEN-05</td>
+<td>Short runs and source inspection left lifetime evidence incomplete.</td>
+<td>Added repeated allocate/record/submit/reopen/trim cycles with resource/descriptor/allocator baselines, D3D12 partial initialization and concurrent idle tests, native wait/bind/signal failure injection and eventual production reclamation checks. Cached memory is trimmed before asserting a leak. This is bounded evidence, not exhaustive failure-path certification.</td>
+</tr>
+<tr>
+<td>OPEN-06</td>
+<td>Append-only sparse heap history pinned replaced/unmapped heaps.</td>
+<td>A shared range-ownership helper tracks only live mappings; accepted operations separately retain previous, replacement and intermediate owners until completion. Failed pre-submit operations roll back. Tests cover partial overlap, replacement, unmap, same-batch intermediate heaps and cross-queue accepted generations. Vulkan rejects overlapping ranges in a single native bind batch.</td>
+</tr>
+<tr>
+<td>OPEN-07</td>
+<td>Vulkan multi-draw and nonzero first-instance support did not reflect enabled features.</td>
+<td>Owned devices enable supported core facts; adopted devices report actual enabled facts. Multi-draw falls back to legal single draws when needed. mbIndirectFirstInstance explicitly governs GPU-written nonzero first-instance values. Adopted-device raster readback exercises fallback output and resumed rendering.</td>
+</tr>
+<tr>
+<td>OPEN-08</td>
+<td>Vulkan mesh-only support was misreported as mesh plus amplification/task.</td>
+<td>Added a mesh-only tier with semantic requirement matching. Amplification pipelines require the full tier; mesh-only pipelines remain usable. CPU tier tests and adopted-device capability/pipeline tests cover the distinction.</td>
+</tr>
+<tr>
+<td>OPEN-09</td>
+<td>Raw facade address reuse could admit stale resources after reinitialization.</td>
+<td>Resource ownership uses the retained per-device lifetime-tracker identity, avoiding both address-reuse admission and resource/device reference cycles. A same-provider reinitialization regression checks stale-resource rejection.</td>
+</tr>
+<tr>
+<td>OPEN-10</td>
+<td>Recoverable Vulkan waits could leave accepted fences/backing unreclaimed or prematurely freed.</td>
+<td>Accepted sparse operations and queue fences transfer to deferred owners. GC/idle retry retirement only after proof; accepted sparse generations preserve both sides of a remap. D3D12 failed retirement signals follow the same ownership rule. If final shutdown cannot prove retirement, providers enter process-retained quarantine and later initialization/GC retries bounded checks. Deterministic pending-work tests verify retention and eventual cleanup after the injected fault is released.</td>
+</tr>
+<tr>
+<td>OPEN-11</td>
+<td>Same-size/growing prefix commit could discard contents; UINT64_MAX rounding could wrap to decommit.</td>
+<td>Clamp before checked rounding and change only the tail of the committed prefix. GPU readbacks preserve known bytes through same-size, growth, shrink and extreme requests. Vulkan spatial-image and opaque-prefix modes require full Commit(0) unbind before switching; native byte offsets cannot safely identify spatial tiles. Explicit mip-tail ranges and buffer mappings remain interoperable.</td>
+</tr>
+</tbody></table>
+<p>Implementation and tests: <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Pipelines/ArdaRHICommandPipelines.cpp">facade</a>, <a href="https://github.com/DylanWaken/Ardashir/tree/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Resources">descriptor admission</a>,
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackendImpls/D3D12/ArdaD3D12Backend.cpp">native D3D12</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackendImpls/Vulkan/ArdaVulkanBackend.cpp">native Vulkan</a>,
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaCommandValidationTests.cpp">command validation tests</a>,
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaD3D12LifetimeAuditTests.cpp">D3D12 lifetime tests</a>,
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaVulkanLifetimeAuditTests.cpp">Vulkan lifetime tests</a>,
+and <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaSparseMappingTests.cpp">sparse range tests</a>.</p>
+<h2 id="memory-ownership-assessment">Memory ownership assessment</h2>
+<p>The allocator uses weak backreferences from leases to allocator state and from
+provider allocation callbacks to the allocator/provider. Active placed resources
+retain their heap lease; cached placed objects retain the native heap. This avoids
+an obvious allocator/provider ownership cycle and keeps heaps alive while GPU work
+uses them. Retirement destroys native objects outside the allocator mutex.
+See <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Memory/ArdaGpuAllocatorPrivate.cpp">allocator ownership</a>
+and the <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaGpuAllocatorTests.cpp">submission-lease regression</a>.
+This is a source assessment backed by targeted tests, not a claim that all failure
+paths or driver allocations are leak-free.</p>
+<h2 id="feature-inventory-and-disposition">Feature inventory and disposition</h2>
+<p>“Present” means a public/native path and relevant authored evidence exist; it does not mean all hardware supports it or all invalid input is covered. “Partial” names the specific missing semantics. “Missing” means no equivalent portable authoring contract was found, not a claim about the GPU hardware. Implement/defer decisions are for Arda&#39;s desktop RT/ML scope, not blind Unreal parity.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Category</th>
+<th>Arda status and evidence</th>
+<th>Unreal comparison</th>
+<th>Recommendation and Arda-specific reason</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Structured feature admission</td>
+<td><strong>Present.</strong> Independent ray, descriptor, queue, residency and arithmetic facts; <code>Evaluate</code> aggregates missing abilities. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h">Arda</a></td>
+<td>Structured globals distinguish RT and shader-bundle abilities. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHIGlobals.h:424</code>)</span></td>
+<td>Keep. Prefer exact requirements to a coarse “supports RT” flag; add native limits through the same immutable device facts.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Texture/buffer creation validation</td>
+<td><strong>Present for the supported descriptor contract.</strong> Shared shape/usage/initial-state admission plus immutable native limits. <a href="https://github.com/DylanWaken/Ardashir/tree/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Resources">Arda</a></td>
+<td>Device-sized shape/sample/reserved restrictions. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Private/RHI.cpp:1510</code>)</span></td>
+<td><strong>Implemented OPEN-02.</strong> Creation, import, memory queries and graph resource validation share the contract.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Per-format support and compute limits</td>
+<td><strong>Present.</strong> QueryFormatSupport reports texture/buffer/attachment/storage/filter/sample support; device limits include dispatch groups and binding ranges. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h">Arda</a></td>
+<td>Typed UAV format queries and dispatch limits. <span class="source-citation">UE format (<code>Engine/Source/Runtime/RHI/Public/RHI.h:133</code>)</span>, <span class="source-citation">limits (<code>Engine/Source/Runtime/RHI/Public/RHIValidation.h:48</code>)</span></td>
+<td><strong>Implemented OPEN-02.</strong> Unreported limit fields remain zero. D3D12 storage-buffer capacity depends on element count/stride and does not publish a universal byte-range limit.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Buffer/texture copies and MSAA resolve</td>
+<td><strong>Present, qualified.</strong> Central texture-copy/resolve region policy; raw and pitched transfers. CPU tests cover unsupported planes, pitches, signed-row limit and bounds. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Scheduling/ArdaRHIResourceCopies.cpp">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaTextureBufferTests.cpp">tests</a></td>
+<td>Copy validation checks block/region compatibility. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHIValidationUtils.h:15</code>)</span></td>
+<td>Keep central helpers; extend negative cases rather than introduce a parallel copy API. Conversion/reallocation features can be deferred.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Readback, upload, mapped staging</td>
+<td><strong>Present.</strong> Async callback readback, pitched staging map/unmap, graph completion publication. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h">Arda</a></td>
+<td>GPU-fence-qualified staging map and copy-to-staging. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/DynamicRHI.h:591</code>)</span></td>
+<td>Keep. Further streaming/persistent-map APIs are optional until profiling shows overhead. Existing completion/failure semantics matter more.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Mip/slice/depth-stencil plane states</td>
+<td><strong>Present.</strong> Separate state cells and strict view-range validation; depth/stencil independent-state regression. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHISubresources.h">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Tests/ArdaInductorCommandProgramTests.cpp">test</a></td>
+<td>Resource/view identity includes subresources for tracker assertions. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHIValidationCommon.h:258</code>)</span></td>
+<td>Keep. Do not collapse to a single texture-state slot while simplifying.</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Explicit/split/discard transitions</td>
+<td><strong>Present for the documented state contract.</strong> Explicit before/after and begin/end flags; facade verifies before-state, updates final state after success. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Scheduling/ArdaRHICommandStates.cpp">Arda</a></td>
+<td>Transition identities enforce begin/end pipeline accounting. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHITransition.h:510</code>)</span></td>
+<td>Keep explicit before/after and split accounting; extend negative/replay coverage alongside OPEN-01. No second transition abstraction is needed.</td>
+</tr>
+<tr>
+<td>8</td>
+<td>UAV ordering and heap aliasing</td>
+<td><strong>Present.</strong> Per-resource UAV barrier control, alias barriers, graph hazard ordering. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Scheduling/ArdaRHICommandList.h">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaDependencyHazards.cpp">graph</a></td>
+<td>Explicit UAV-overlap scopes and transient allocation overlap tracking. <span class="source-citation">UE UAV (<code>Engine/Source/Runtime/RHI/Public/RHIValidationContext.h:257</code>)</span>, <span class="source-citation">allocator (<code>Engine/Source/Runtime/RHICore/Public/RHICoreTransientResourceAllocator.h:316</code>)</span></td>
+<td>Keep graph ordering authoritative. A public scoped UAV-overlap API is <strong>deferred</strong> until callers need deliberate independent accesses outside the graph.</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Graphics/compute/copy queues and GPU waits</td>
+<td><strong>Present with command-storage and timeline corrections in this pass.</strong> Queue family/timestamp metadata, per-submission tokens and queue waits. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h">Arda</a></td>
+<td>Pipeline-aware transitions and queue/pipeline execution contexts. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHITransition.h:510</code>)</span></td>
+<td>Keep the corrected reset/retirement/timeline paths and their regression coverage. Do not mistake existing API support for complete concurrency correctness.</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Direct draw/dispatch validation</td>
+<td><strong>Present.</strong> Recording/queue/pipeline/limit gate, sticky void errors, deliberate zero-work behavior. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Pipelines/ArdaRHICommandPipelines.cpp">Arda</a></td>
+<td>Pipeline, resource and work validation. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Private/RHIValidation.cpp:1413</code>)</span></td>
+<td><strong>Implemented OPEN-01.</strong> Native failure cannot leave a silently reusable partial recording.</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Indirect draw/compute/ray work</td>
+<td><strong>Present.</strong> Argument range/usage/alignment and pipeline gates; enabled-feature-based Vulkan multi-draw fallback and first-instance contract. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Pipelines/ArdaRHICommandPipelines.cpp">Arda</a></td>
+<td>Alignment and GPU-count multi-draw. <span class="source-citation">UE validation (<code>Engine/Source/Runtime/RHI/Public/RHIValidation.h:48</code>)</span>, <span class="source-citation">count variant (<code>Engine/Source/Runtime/RHI/Public/RHIValidationContext.h:971</code>)</span></td>
+<td><strong>Implemented OPEN-07.</strong> <strong>Defer</strong> GPU-count/device-generated commands until an actual workload needs them. GPU-written arguments remain the caller&#39;s responsibility.</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Vertex/geometry/tessellation/mesh pipelines</td>
+<td><strong>Present, gated.</strong> Vulkan mesh-only and mesh-plus-task facts are distinct, including adopted devices. <a href="https://github.com/DylanWaken/Ardashir/tree/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Pipelines">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp">tests</a></td>
+<td>Graphics shader frequencies and mesh/bundle support. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHIGlobals.h:424</code>)</span></td>
+<td><strong>Implemented OPEN-08.</strong> Retain existing stages; raster authoring remains narrower as described below.</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Fixed-function raster, depth/stencil and blend</td>
+<td><strong>Partial.</strong> No stencil front/back operations/masks/reference, blend operations/color write masks, or depth-bias controls; depth test/write and blend factors exist. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Pipelines/ArdaRHIFixedFunctionStates.h">Arda</a></td>
+<td>Full depth/stencil, blend-op/mask and raster depth-bias descriptors. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHI.h:271</code>)</span></td>
+<td><strong>Defer</strong> broad raster expansion for RT/ML scope. Add color write masks/depth bias/stencil only when tooling/compositing/raster shadows need them; descriptor hashing/equality/PSO keys must evolve together.</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Graphics binding/framebuffer compatibility</td>
+<td><strong>Present for supported views.</strong> Central range/viewport/PSO validation; native views honor selected subresources. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Pipelines/ArdaRHICommandPipelines.cpp">Arda</a></td>
+<td>Stream/render-pass/PSO validation. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHIValidationContext.h:761</code>)</span>, <span class="source-citation">render pass (<code>Engine/Source/Runtime/RHI/Public/RHIValidationContext.h:1150</code>)</span></td>
+<td><strong>Implemented OPEN-03.</strong> Unsupported native view shapes/aspects/reinterpretations fail explicitly instead of silently binding another view.</td>
+</tr>
+<tr>
+<td>15</td>
+<td>Render-pass load/store/resolve/subpasses</td>
+<td><strong>Missing explicit authoring contract.</strong> Framebuffer attachments and clears exist; callers cannot specify full load/store/subpass behavior. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Resources/ArdaRHIFramebuffer.h">Arda</a></td>
+<td>Explicit color/depth/stencil load/store actions and subpass hints. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHIResources.h:4098</code>)</span></td>
+<td><strong>Defer</strong> until tile-based/mobile targets or measurable desktop pass merging needs appear; current desktop scope explicitly excludes mobile. Keep clear/resolve behavior documented.</td>
+</tr>
+<tr>
+<td>16</td>
+<td>Fixed descriptor sets and typed SRV/UAV views</td>
+<td><strong>Present.</strong> Resource/ownership/range validation and typed view retention; GPU range test exists. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaRHIBindingLayout.h">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaBindingBoundaryTests.cpp">tests</a></td>
+<td>Shader resources validated against declarations and access tracking. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Private/RHIValidation.cpp:1413</code>)</span>, <span class="source-citation">views (<code>Engine/Source/Runtime/RHI/Private/RHI.cpp:1510</code>)</span></td>
+<td>Keep. Extend negative tests for native limit edge cases instead of recreating Unreal&#39;s parameter binding layer.</td>
+</tr>
+<tr>
+<td>17</td>
+<td>Bindless, variable arrays, update-after-bind</td>
+<td><strong>Present, capability-gated.</strong> Independent flags/capacities and table updates; pending descriptor versions retained. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaRHIDescriptorTable.h">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Shaders/ArdaRHIShaderCreation.cpp">write</a></td>
+<td>Bindless shader parameters/resource collections. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHIContext.h:313</code>)</span></td>
+<td>Keep actual layout distinctions. Complete in-flight mutation/reset regressions; hardware unavailability remains a legitimate skip, not proof of execution.</td>
+</tr>
+<tr>
+<td>18</td>
+<td>Uniform updates and dynamic offsets</td>
+<td><strong>Partial.</strong> Uniform buffers, buffer ranges and volatile storage exist; no portable bind-time uniform dynamic-offset command was found. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Shaders/ArdaRHIBindingLayout.h">binding schema</a></td>
+<td>Uniform update and dynamic-offset commands. <span class="source-citation">UE update (<code>Engine/Source/Runtime/RHI/Public/DynamicRHI.h:414</code>)</span>, <span class="source-citation">dynamic (<code>Engine/Source/Runtime/RHI/Public/RHIContext.h:364</code>)</span></td>
+<td><strong>Defer</strong> dynamic offsets until binding-set churn is measured. Existing per-frame graph bindings and volatile buffers cover current semantics.</td>
+</tr>
+<tr>
+<td>19</td>
+<td>Push/root constants</td>
+<td><strong>Present.</strong> Capacity/alignment validation latches void-call errors; multiple block/register-space tests. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Pipelines/ArdaRHICommandPipelines.cpp">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaBindingBoundaryTests.cpp">tests</a></td>
+<td>Root constants plus batched parameter application. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHIContext.h:313</code>)</span></td>
+<td>Keep. Reuse its error-latching model for direct work validation.</td>
+</tr>
+<tr>
+<td>20</td>
+<td>Resource collections and texture references</td>
+<td><strong>Present.</strong> Retained resource collections, descriptor-table backing and mutable texture references. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Shaders/ArdaRHIShaderCreation.cpp">Arda collections</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h">references</a></td>
+<td>Explicit collection updates and texture-reference updates. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/DynamicRHI.h:509</code>)</span>, <span class="source-citation">references (<code>Engine/Source/Runtime/RHI/Public/DynamicRHI.h:434</code>)</span></td>
+<td>Keep; ensure in-flight snapshots/lifetimes remain part of update contracts, checked by targeted generation/lifetime regressions.</td>
+</tr>
+<tr>
+<td>21</td>
+<td>BLAS/TLAS build, update and compaction</td>
+<td><strong>Present, gated.</strong> Memory sizing, build/update, GPU instance-buffer path with CPU count, compact queries/copies and lifecycle tests. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp">tests</a></td>
+<td>Batched AS building and separately bound scene storage. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHIContext.h:474</code>)</span></td>
+<td>Keep qualified scope. <strong>Defer</strong> true GPU-generated build counts/batched platform policies until needed; do not call the CPU-count instance-buffer path fully indirect building.</td>
+</tr>
+<tr>
+<td>22</td>
+<td>RT pipelines, local arguments and persistent SBT</td>
+<td><strong>Present with generation retention repaired in this audit.</strong> Explicit record updates/commit, export/hit groups, local records, direct/indirect rays. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Private/RHI/Shaders/ArdaRHIShaderCreation.cpp">Arda</a></td>
+<td>Separate shader-table creation and validation-before-dispatch. <span class="source-citation">UE creation (<code>Engine/Source/Runtime/RHI/Public/DynamicRHI.h:970</code>)</span>, <span class="source-citation">validation (<code>Engine/Source/Runtime/RHI/Private/RHIValidation.cpp:548</code>)</span></td>
+<td><strong>Validate and keep</strong> immutable generation retention added in this audit. Preserve existing local-argument breadth rather than removing it for LOC.</td>
+</tr>
+<tr>
+<td>23</td>
+<td>Work graphs and shader bundles</td>
+<td><strong>Present with deliberate limits.</strong> D3D12 CPU-input work graphs, portable prepared shader bundles; unsupported providers return <code>Unsupported</code>. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h">Arda</a></td>
+<td>Compute/graphics bundle dispatch and multiple work-graph tiers. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHIContext.h:318</code>)</span>, <span class="source-citation">tiers (<code>Engine/Source/Runtime/RHI/Public/RHIGlobals.h:424</code>)</span></td>
+<td>Keep platform gating; <strong>defer</strong> GPU-input work graphs/native device-generated-command parity until a measured workload needs it.</td>
+</tr>
+<tr>
+<td>24</td>
+<td>Sampler feedback and opacity micromaps</td>
+<td><strong>Present, platform-specific.</strong> Dedicated APIs and real output/lifecycle probes; feedback D3D12 and micromaps Vulkan. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp">tests</a></td>
+<td>Unreal&#39;s broader texture feedback/residency and RT ecosystem is not a portable guarantee of identical hardware features. <span class="source-citation">UE reserved/RT facts (<code>Engine/Source/Runtime/RHI/Public/RHIGlobals.h:424</code>)</span></td>
+<td>Keep honest per-provider gating. No fake generic “native support” emulation is needed.</td>
+</tr>
+<tr>
+<td>25</td>
+<td>VRS and conservative rasterization</td>
+<td><strong>Missing authorable native feature; placeholders only.</strong> Capability bits default false; no raster parameter/VRS binding API, and matrix intentionally fails if true. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h">Arda caps</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp">test fail</a></td>
+<td>Shading-rate command and fuller raster state. <span class="source-citation">UE VRS (<code>Engine/Source/Runtime/RHI/Public/RHIValidationContext.h:1016</code>)</span>, <span class="source-citation">raster (<code>Engine/Source/Runtime/RHI/Public/RHI.h:271</code>)</span></td>
+<td><strong>Defer</strong>, keep false. RT/ML workloads do not justify adding controls and qualification workloads merely because hardware supports them.</td>
+</tr>
+<tr>
+<td>26</td>
+<td>Timers, events, GPU fences; occlusion</td>
+<td><strong>Partial.</strong> Event/timer/fence APIs and per-queue timer reuse/wrap tests exist; no occlusion/predication API. <code>mbQueries</code> explicitly means these three families. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp">tests</a></td>
+<td>Render query type includes occlusion. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHIDefinitions.h:255</code>)</span></td>
+<td>Keep timing/fences. <strong>Defer</strong> occlusion/predication to a demonstrated visibility workload; GPU compute culling may be more useful for this renderer. Do not describe <code>mbQueries</code> as all query types.</td>
+</tr>
+<tr>
+<td>27</td>
+<td>Explicit heaps and transient memory planning</td>
+<td><strong>Present.</strong> Placed/virtual/committed resources, memory queries, graph memory plan and alias activations. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPreparation.cpp">graph</a></td>
+<td>Transient allocations track overlap/fences and heap/page strategies. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHICore/Public/RHICoreTransientResourceAllocator.h:316</code>)</span></td>
+<td>Keep and repair retirement/reset defects. <strong>Defer</strong> Unreal&#39;s numerous platform allocator strategies; Arda needs demonstrable budget/fragmentation improvements, not naming parity.</td>
+</tr>
+<tr>
+<td>28</td>
+<td>Sparse residency and budget telemetry</td>
+<td><strong>Present with shape/device qualifications.</strong> Tile maps, preserving prefix commit, range ownership and deferred retirement. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h">Arda</a></td>
+<td>Reserved-resource restrictions and globals. <span class="source-citation">UE validator (<code>Engine/Source/Runtime/RHI/Private/RHI.cpp:1510</code>)</span>, <span class="source-citation">globals (<code>Engine/Source/Runtime/RHI/Public/RHIGlobals.h:424</code>)</span></td>
+<td><strong>Implemented OPEN-06/10/11.</strong> <strong>Defer</strong> extra sparse shapes/alias mappings until streaming requires them. Vulkan spatial-image/opaque-prefix mode switches require full unbind.</td>
+</tr>
+<tr>
+<td>29</td>
+<td>Shader libraries and pipeline caches</td>
+<td><strong>Present.</strong> Retained library entry points and persistent native cache path; execution/cache probes. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Device/ArdaRHIDevice.h">Arda</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp">tests</a></td>
+<td>Shader-library/pipeline state cache infrastructure. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/PipelineFileCache.h:1</code>)</span></td>
+<td>Keep. Unreal&#39;s engine-level precache policy is <strong>unnecessary</strong> to port wholesale; build policy around Arda&#39;s actual shader/pipeline inventory.</td>
+</tr>
+<tr>
+<td>30</td>
+<td>Graph access validation and immutable node semantics</td>
+<td><strong>Present.</strong> Declared access, parameter snapshots, hazard validation, transactional edits and undeclared resource rejection. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Rules/ArdaDependencyHazards.cpp">Arda hazards</a>, <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaDependencyGraph/Private/Inductor/Runtime/ArdaInductorPreparation.cpp">context</a></td>
+<td>RDG resource/parameter/pass validation. <span class="source-citation">UE (<code>Engine/Source/Runtime/RenderCore/Private/RenderGraphValidation.cpp:218</code>)</span></td>
+<td>Keep precise ranges and immutable snapshots. Add regression coverage where native lifetime changes touch replay; no justification for deleting validations to reduce code size.</td>
+</tr>
+<tr>
+<td>31</td>
+<td>Numeric shader capability / subgroup admission</td>
+<td><strong>Present but intentionally small.</strong> FP16, packed INT8, subgroup width interval and native buffer addresses are independently reported. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h">Arda</a></td>
+<td>A larger global shader/platform capability set. <span class="source-citation">UE (<code>Engine/Source/Runtime/RHI/Public/RHIGlobals.h:424</code>)</span></td>
+<td>Keep exact facts; <strong>defer</strong> cooperative matrices/FP64/atomic breadth until a module needs them and a native known-result test exists.</td>
+</tr>
+<tr>
+<td>32</td>
+<td>Desktop presentation, multi-GPU and platform policy</td>
+<td><strong>Partial by scope.</strong> Desktop custom present exists and has tests; no multi-GPU mask, mobile/Metal/console layer, full HDR/frame-pacing policy. <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp">Arda tests</a></td>
+<td>GPU masks are embedded in buffer/texture descriptors; rich engine viewport policy. <span class="source-citation">UE masks (<code>Engine/Source/Runtime/RHI/Public/RHIResources.h:1382</code>)</span></td>
+<td><strong>Unnecessary now</strong> for multi-GPU/platform parity; <strong>defer</strong> HDR/frame-pacing to a product display requirement. Current desktop restriction is explicit and reasonable.</td>
+</tr>
+<tr>
+<td>33</td>
+<td>Device failure and GPU crash diagnostics</td>
+<td><strong>Present, optional native detail.</strong> Owned bounded snapshots include DRED or enabled Vulkan device-fault data with submitted-marker fallback.</td>
+<td><span class="source-citation">UE DRED (<code>Engine/Source/Runtime/D3D12RHI/Private/D3D12Util.cpp:224</code>)</span>, <span class="source-citation">UE Vulkan faults (<code>Engine/Source/Runtime/VulkanRHI/Private/VulkanUtil.cpp:525</code>)</span>.</td>
+<td><strong>Implemented OPEN-04.</strong> <strong>Defer</strong> automatic recovery; application resource recreation needs a separate contract. Missing native fault data does not establish device health.</td>
+</tr>
+<tr>
+<td>34</td>
+<td>Leak attribution and memory snapshots</td>
+<td><strong>Partial by deliberate scope.</strong> Resource/descriptor/pending counts, allocator/budget telemetry and repeatable baseline/failure tests; no full allocation-level GPU census.</td>
+<td><span class="source-citation">UE memory stats (<code>Engine/Source/Runtime/RHI/Public/DynamicRHI.h:536</code>)</span> and deferred deletion.</td>
+<td><strong>Implemented OPEN-05.</strong> Deeper allocation snapshots remain deferred until these counters cannot locate growth; a wholesale profiler port is unnecessary.</td>
+</tr>
+<tr>
+<td>35</td>
+<td>Query pools, RT scratch pools and allocator strategy</td>
+<td><strong>Partial policy parity, safe inspected ownership.</strong> Arda uses per-timer-query native heaps and per-build retained RT scratch; Unreal has reusable pools and caller-supplied scratch options.</td>
+<td><span class="source-citation">UE query pools (<code>Engine/Source/Runtime/D3D12RHI/Private/D3D12Device.cpp:727</code>)</span>, <span class="source-citation">UE scratch fallback (<code>Engine/Source/Runtime/D3D12RHI/Private/D3D12RayTracing.cpp:4937</code>)</span>.</td>
+<td><strong>Defer</strong> pooling/caller-scratch expansion until profiles show allocation or memory-pressure cost. Inspected timer/scratch paths retain their native allocations through submission completion; a pool is a performance policy, not a missing rendering feature.</td>
+</tr>
+</tbody></table>
+<h2 id="validation-and-remaining-coverage">Validation and remaining coverage</h2>
+<p>Validation completed on 2026-09-17 on NVIDIA RTX PRO 6000 Blackwell Workstation
+Edition, driver 610.62. GPU validation was enabled in both configurations.</p>
+<table>
+<thead>
+<tr>
+<th>Configuration</th>
+<th>Build scope</th>
+<th align="right">Cases</th>
+<th align="right">Passed</th>
+<th align="right">Skipped</th>
+<th align="right">Failed</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Debug, D3D12 + Vulkan, CUDA off</td>
+<td>Full project, examples and public-header compilation</td>
+<td align="right">945</td>
+<td align="right">799</td>
+<td align="right">146</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>Release, D3D12 + CUDA, Vulkan off</td>
+<td>ArdaBackendTests, ArdaRHITests and ArdaGraphTests</td>
+<td align="right">727</td>
+<td align="right">615</td>
+<td align="right">112</td>
+<td align="right">0</td>
+</tr>
+</tbody></table>
+<p>CUDA used toolkit 13.4.59. The Release selection contains every discovered case
+from those three rebuilt executables; stale/unbuilt example binaries were not
+part of that selection. Explicitly disabled providers are skipped or omitted by
+fixture configuration; unexpected initialization failures remain failures when
+the provider is enabled. Vulkan CUDA and a separate validation-off configuration
+were not exercised in this pass.</p>
+<p>The recorded skips have the following causes; zero reported failures does not
+mean that every path was exercised:</p>
+<table>
+<thead>
+<tr>
+<th>Skip reason</th>
+<th align="right">Debug</th>
+<th align="right">CUDA Release</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CUDA disabled / launch support unavailable in the CUDA-off build</td>
+<td align="right">126</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>Vulkan backend disabled in the Release build</td>
+<td align="right">0</td>
+<td align="right">98</td>
+</tr>
+<tr>
+<td>Backend capability unreported, unsupported or inapplicable</td>
+<td align="right">18</td>
+<td align="right">10</td>
+</tr>
+<tr>
+<td>Symlink fixture setup reported an existing destination</td>
+<td align="right">2</td>
+<td align="right">2</td>
+</tr>
+<tr>
+<td>D3D12 CUDA graphics-queue surface probe returned CUDA_ERROR_UNKNOWN</td>
+<td align="right">0</td>
+<td align="right">2</td>
+</tr>
+</tbody></table>
+<p>The symlink setup errors and two CUDA surface-probe errors are unresolved
+validation gaps, not demonstrated hardware limitations. The CUDA skips are
+<code>SurfaceConversionAndMipLifetime/2</code> and <code>SequenceMixesBufferAndSurfaceSchemas/2</code>
+in <code>Native/FArdaCudaGpu</code>; their ordinary D3D12 CUDA-context counterparts passed.
+The recorded probe error alone does not distinguish a driver issue from an
+implementation defect. The two shader-directory symlink fixtures reported
+already-existing destinations rather than missing symlink privileges.</p>
+<p>The full Debug figures describe the tested working tree, including independent
+terrain-example edits that are not part of the backend/graph commit. Both builds
+also used the existing local EASTL CMake/warning adjustments, which remain outside
+this commit; these runs are not an isolated clean-checkout certification.</p>
+<p>These are complete final runs after the implementation and fixture corrections,
+not an aggregate of earlier failed runs. The remaining source-header edits only
+clarify documentation. The Debug run includes all 11 D3D12 lifetime audit cases,
+Vulkan deferred-owner/mode-switch tests, native command/binding admission,
+selected mip/layer pixel readback, sparse prefix byte preservation, and the
+8,200-bind descriptor-reuse regression. Both configurations exercise graph
+planning, pipeline inference, scheduling, replay and completion tests.</p>
+<ul>
+<li>Formatting: <strong>44 changed C++ source/header files</strong>, zero formatting findings.</li>
+<li>Naming: <strong>1,223 declarations in 185 backend/provider/graph files</strong>, zero violations.</li>
+<li><code>git diff --check</code>: passed.</li>
+<li>Public API synchronization and recipe generation checks: passed. Backend API:
+<strong>3,046 symbols, 36/36 headers</strong>; graph API: <strong>635 symbols, 13/13 headers</strong>.
+Recipe coverage: <strong>35 resource kinds and 90 capability predicates</strong>.</li>
+<li>Documentation validation: zero errors. It checks generated inventories,
+links/fragments, SVG/XML, glossary and chapter contracts.</li>
+<li>Browser smoke checks: localhost under <code>/Docs/ArdaBackend/</code>, desktop 1280px,
+tablet 768px and mobile 390px reflow without horizontal page overflow;
+diagrams loaded and diagnostic snapshot API search returned canonical entries.
+This was not an exhaustive assistive-technology or offline-browser audit.</li>
+<li>A fresh isolated Docs-only reader explained recording recovery, sparse data
+preservation, ownership/counters, fault snapshots and graph scheduling from
+guide-to-canonical links. Earlier reader findings were corrected in source
+contracts/generation and graph-order prose. The final sampled reading passed;
+its minor Boolean-selector/void-return wording findings were also clarified.</li>
+</ul>
+<p>Evidence: <a href="https://github.com/DylanWaken/Ardashir/blob/master/build/rhi-implementation-final-build.log">Debug build</a>,
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/build/rhi-implementation-final-tests.log">Debug tests</a>,
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/build/rhi-implementation-final-results.xml">Debug XML</a>,
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/build/rhi-implementation-cuda-build.log">CUDA build</a>,
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/build/rhi-implementation-cuda-tests.log">CUDA tests</a>,
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/build/pixel-sort-parameter-validation/rhi-implementation-cuda-results.xml">CUDA XML</a>,
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/build/rhi-implementation-doc-validation.log">documentation checks</a>,
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/build/rhi-implementation-format.log">formatting</a>, and
+<a href="https://github.com/DylanWaken/Ardashir/blob/master/build/rhi-implementation-naming.log">naming</a>.
+Build artifacts are local evidence and are not required for published guides.</p>
+<p>The tests combine native GPU execution with controlled API interception. Injected
+device-loss reports follow actual completion; no physical adapter removal, real
+GPU hang, every-driver certification or exhaustive allocation-failure campaign
+was attempted. Native capability skips are not passing execution evidence.
+Snapshot availability and graceful retirement under injected faults do not imply
+automatic device recovery.</p>
+<p>If a driver permanently refuses completion/device-loss proof, exceptional
+quarantine retains its provider and pending owners until process exit. This is
+an explicit safety policy, not a claim that arbitrary driver failures reclaim
+all memory. Normal completion and released injected faults have reclamation tests.</p>
+<p>The feature inventory&#39;s deferred/unnecessary items remain outside this accepted
+implementation scope. Arda graph&#39;s operand registry, automatic pipeline selection,
+scheduling, replay and access validation remain authoritative.</p>
+<section id="summary"><h2>Review and next steps</h2><p>Capability names alone do not prove native support. Follow the recorded validation and implementation decisions for each compared feature.</p><p>Continue with the <a href="index.html">module guides</a> and <a href="api-reference.html">API reference</a>.</p></section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend · Ardashir engineering documentation</p></footer>
+</body>
+</html>

@@ -1,6 +1,7 @@
 RWStructuredBuffer<uint> mOutput : register(u0);
 
-[numthreads(64, 1, 1)] void AlternativeCS(uint3 Thread : SV_DispatchThreadID)
+[numthreads(64, 1, 1)]
+void AlternativeCS(uint3 Thread: SV_DispatchThreadID)
 {
 	uint Count, Stride;
 	mOutput.GetDimensions(Count, Stride);

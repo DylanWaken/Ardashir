@@ -248,7 +248,12 @@ button:hover {
 }
 
 .theme-toggle {
+  display: none;
   white-space: nowrap;
+}
+
+.has-js .theme-toggle {
+  display: inline-flex;
 }
 
 .site-main {
@@ -274,6 +279,25 @@ button:hover {
 
 .site-layout > main {
   min-width: 0;
+}
+
+/* Chapters imported into the site share the same bounds at every viewport width. */
+.site-layout article img,
+.page-layout article img {
+  max-width: 100%;
+  height: auto;
+}
+
+.site-layout :where(p, h1, h2, h3, h4, h5, h6, li, dt, dd),
+.page-layout :where(p, h1, h2, h3, h4, h5, h6, li, dt, dd) {
+  overflow-wrap: anywhere;
+}
+
+.site-layout article table,
+.page-layout article table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .page-content {
@@ -887,7 +911,7 @@ select {
     display: none;
   }
 
-  .nav-toggle {
+  .has-js .nav-toggle {
     display: inline-flex;
     margin-left: auto;
   }
@@ -900,21 +924,29 @@ select {
   }
 
   .site-nav {
-    display: none;
+    display: block;
     width: 100%;
     margin: 0;
     padding-bottom: 0.75rem;
   }
 
-  .site-nav[data-open="true"] {
+  .has-js .site-nav {
+    display: none;
+  }
+
+  .has-js .site-nav[data-open="true"] {
     display: block;
   }
 
   .site-header > nav.site-nav {
+    display: flex;
+  }
+
+  .has-js .site-header > nav.site-nav {
     display: none;
   }
 
-  .site-header > nav.site-nav[data-open="true"] {
+  .has-js .site-header > nav.site-nav[data-open="true"] {
     display: flex;
   }
 

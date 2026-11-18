@@ -31,15 +31,6 @@ namespace arda
 	    "RecipeRasterPS",
 	    EArdaRHIShaderStage::Pixel)
 
-	class FArdaRecipeVertexCaptureShader final : public FArdaGlobalShader
-	{
-	public:
-		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
-			ARDA_SHADER_BUFFER_UAV(mOutput, 0, 0, EArdaRHIShaderStage::Compute)
-			ARDA_SHADER_PUSH_CONSTANTS(uint32_t, mVertexCount, 0, 0, EArdaRHIShaderStage::Compute)
-		ARDA_END_SHADER_PARAMETER_STRUCT()
-		ARDA_DECLARE_GLOBAL_SHADER(FArdaRecipeVertexCaptureShader);
-	};
 	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaRecipeVertexCaptureShader,
 	    ARDA_RDG_RECIPE_SHADER_DIR "/RasterTriangle.hlsl",
 	    "RecipeVertexCapture",
@@ -91,11 +82,6 @@ namespace arda
 		return {"recipe.triangle.capture-vertices", 1};
 	}
 
-	eastl::string FArdaRecipeVertexCaptureNode::GetCanonicalKey(const FArdaParameters& P)
-	{
-		return FArdaDependencyKeyBuilder().Resource(P.mOutput).Value(P.mVertexCount).Build();
-	}
-
 	FArdaRHIStatus FArdaRecipeVertexCaptureNode::DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P)
 	{
 		FArdaRHIBufferDesc Desc;
@@ -140,7 +126,7 @@ namespace arda
 		Count.mBytes.resize(sizeof(P.mVertexCount));
 		std::memcpy(Count.mBytes.data(), &P.mVertexCount, sizeof(P.mVertexCount));
 		FArdaDependencyNodeDesc Desc;
-		Desc.BindShader<FArdaRecipeVertexCaptureShader::FArdaParameters>({{"mOutput", P.mOutput}}, "default", {Count});
+		Desc.BindShader<FArdaRecipeVertexCaptureShader::FArdaParameters>({}, "default", {Count});
 		Desc.mPipelineStages = {State.mStage};
 		Desc.mPipelines = {{"default", 0, EArdaPipelineStateKind::Compute}};
 		return Desc;

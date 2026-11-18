@@ -2,7 +2,7 @@
 #include "RHI/Pipelines/ArdaRHIComputePipeline.h"
 #include "RHI/Shaders/ArdaRHIShader.h"
 
-#include "RHI/Resources/ArdaHash.h"
+#include "RHI/Pipelines/ArdaRHIPipelineHash.h"
 
 #include <EASTL/algorithm.h>
 
@@ -12,27 +12,6 @@ namespace arda
 {
 	namespace
 	{
-		template <typename T>
-		void Combine(size_t& Seed, const T& Value) noexcept
-		{
-			ArdaHashCombine(Seed, Value);
-		}
-
-		template <typename T>
-		void CombineRef(size_t& Seed, const TArdaRHIRef<T>& Value) noexcept
-		{
-			Combine(Seed, reinterpret_cast<uintptr_t>(Value.Get()));
-		}
-
-		template <typename T>
-		void CombineRefs(size_t& Seed, const eastl::vector<TArdaRHIRef<T>>& Values) noexcept
-		{
-			Combine(Seed, Values.size());
-			for (const auto& Value : Values)
-			{
-				CombineRef(Seed, Value);
-			}
-		}
 
 		FArdaRHIStatus Invalid(const char* Message)
 		{
@@ -43,8 +22,8 @@ namespace arda
 	size_t HashValue(const FArdaRHIComputePipelineDesc& V) noexcept
 	{
 		size_t H = 0;
-		CombineRef(H, V.mComputeShader);
-		CombineRefs(H, V.mBindingLayouts);
+		HashPipelineRef(H, V.mComputeShader);
+		HashPipelineRefs(H, V.mBindingLayouts);
 		return H;
 	}
 

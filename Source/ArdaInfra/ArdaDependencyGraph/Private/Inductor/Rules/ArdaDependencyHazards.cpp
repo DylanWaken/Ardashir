@@ -41,7 +41,7 @@ namespace arda
 				Boundaries.push_back({First, Node, Reads, Writes});
 				Boundaries.push_back({First + Count, Node, -Reads, -Writes});
 			};
-			if (Desc.mExternalAccelerationStructure)
+			if ((Desc.mExternalKind == EArdaGraphExternalResourceKind::AccelerationStructure))
 			{
 				Append(0, 1);
 				return true;
@@ -105,10 +105,11 @@ namespace arda
 		    const eastl::vector<FArdaGraphNodeHandle>& Nodes,
 		    const eastl::set<uint32_t>& Writers,
 		    uint32_t ReaderIndex,
-		    bool bExternal)
+		    bool bExternal,
+		    bool bRevisionOrdered)
 		{
 			const auto Reader = Nodes[ReaderIndex];
-			if (Writers.size() <= 1)
+			if (Writers.size() <= 1 && !bRevisionOrdered)
 			{
 				// Preserve consumer-first authoring wherever this region has a unique producer.
 				const auto Writer = Writers.empty() ? FArdaGraphNodeHandle{} : Nodes[*Writers.begin()];
@@ -177,7 +178,8 @@ namespace arda
 		eastl::vector<eastl::vector<FArdaAccessBoundary>> Resources(Graph.mResources.size());
 		for (uint32_t Index = 0; Index < Nodes.size(); ++Index)
 		{
-			for (const auto& Access : Graph.mTopology.TryGetNode(Nodes[Index])->mPayload.mDesc.mAccesses)
+			for (const auto& Access :
+			    Graph.GetNodeDescription(Graph.mTopology.TryGetNode(Nodes[Index])->mPayload).mAccesses)
 			{
 				const bool bValid = Graph.HasResource(Access.mResource) &&
 				    AppendBoundaries(Resources[Access.mResource.mIndex],
@@ -201,7 +203,7 @@ namespace arda
 				    return A.mPosition < B.mPosition;
 			    });
 			const auto& Desc = Graph.mResources[Index];
-			const bool bExternal = Desc.mExternalBuffer || Desc.mExternalTexture || Desc.mExternalAccelerationStructure;
+			const bool bExternal = Desc.IsExternal();
 			FArdaActiveAccesses Active;
 			eastl::set<uint32_t> Writers;
 			eastl::set<uint32_t> Readers;
@@ -257,6 +259,10 @@ namespace arda
 				}
 
 				bool bInitialized = true;
+				// Access boundaries also delimit the full region that every active reader consumes.
+				// Only regions wholly inside the declared prefix have initial contents.
+				const bool bHasInitialContents =
+				    bExternal || (!Desc.mbTexture && Boundaries[Next].mPosition <= Desc.mBufferInitializer.GetSize());
 				if (!ChangedWriters.empty())
 				{
 					for (const auto Writer : ChangedWriters)
@@ -265,7 +271,8 @@ namespace arda
 					}
 					for (const auto Reader : Readers)
 					{
-						bInitialized &= ResolveRead(Topology, Nodes, Writers, Reader, bExternal);
+						bInitialized &=
+						    ResolveRead(Topology, Nodes, Writers, Reader, bHasInitialContents, Desc.mbRevisionOrdered);
 					}
 				}
 				else
@@ -275,14 +282,19 @@ namespace arda
 					{
 						if (Readers.count(Node))
 						{
-							bInitialized &= ResolveRead(Topology, Nodes, Writers, Node, bExternal);
+							bInitialized &= ResolveRead(Topology,
+							    Nodes,
+							    Writers,
+							    Node,
+							    bHasInitialContents,
+							    Desc.mbRevisionOrdered);
 						}
 					}
 				}
 				if (!bInitialized && bValidate)
 				{
 					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-					    "A node reads an unproduced range. Repeated writes require a preceding producer in attachment order or external initial contents.");
+					    "A node reads an unproduced range. Repeated writes require a preceding producer, external contents, or a declared initialization prefix.");
 				}
 			}
 		}

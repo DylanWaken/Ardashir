@@ -186,9 +186,9 @@ namespace arda
 			return false;
 		}
 		FArdaCornellBuildBlasParameters P;
-		P.mVertices = V.GetHandle();
-		P.mIndices = I.GetHandle();
-		P.mBlas = B.GetHandle();
+		P.mVertices = V;
+		P.mIndices = I;
+		P.mBlas = B;
 		P.mBuildFlags = Desc.mBuildFlags;
 		P.mVertexCount = ArdaCornellVertexCount;
 		P.mIndexCount = ArdaCornellIndexCount;
@@ -202,9 +202,9 @@ namespace arda
 		}
 		// Add the producer after its consumers; the compiler derives geometry -> BLAS.
 		FArdaCornellGeometryParameters Geometry;
-		Geometry.mVertices = V.GetHandle();
-		Geometry.mIndices = I.GetHandle();
-		Geometry.mMaterials = M.GetHandle();
+		Geometry.mVertices = V;
+		Geometry.mIndices = I;
+		Geometry.mMaterials = M;
 		Geometry.mGroupCountX = (ArdaCornellTriangleCount + 63) / 64;
 		auto Generate = CornellGeometry(Edit, Geometry, "GenerateCornellGeometry");
 		if (!Generate)
@@ -217,7 +217,7 @@ namespace arda
 			mError = Status.mMessage;
 			return false;
 		}
-		if (auto Status = Graph.Compile(); !Status)
+		if (auto Status = Graph.CompileAndWait(); !Status)
 		{
 			mError = Status.mMessage;
 			return false;
@@ -253,8 +253,8 @@ namespace arda
 			return false;
 		}
 		FArdaCornellCompactBlasParameters P;
-		P.mSource = Source.GetHandle();
-		P.mDestination = Destination.GetHandle();
+		P.mSource = Source;
+		P.mDestination = Destination;
 		auto Copy = CornellCompactBlas(Edit, P, "CompactCornellBLAS");
 		if (!Copy)
 		{
@@ -266,7 +266,7 @@ namespace arda
 			mError = Status.mMessage;
 			return false;
 		}
-		if (auto Status = Graph.Compile(); !Status)
+		if (auto Status = Graph.CompileAndWait(); !Status)
 		{
 			mError = Status.mMessage;
 			return false;
@@ -303,7 +303,7 @@ namespace arda
 
 	bool FArdaCornellBoxRenderer::ExecuteGraph(FArdaDependencyGraph& Graph, const char* Description)
 	{
-		const auto Result = Graph.Execute();
+		const auto Result = Graph.ExecuteAndWait();
 		if (!Result.mStatus)
 		{
 			mError = eastl::string(Description) + " failed: " + Result.mStatus.mMessage;
@@ -489,9 +489,9 @@ namespace arda
 			}
 			const auto Constants = Upload.GetBuffer("Constants");
 			FArdaCornellPresentParameters PresentParameters;
-			PresentParameters.mAccumulation = Accum.GetHandle();
+			PresentParameters.mAccumulation = Accum;
 			PresentParameters.mConstants = Constants;
-			PresentParameters.mColor = Back.GetHandle();
+			PresentParameters.mColor = Back;
 			PresentParameters.mWidth = Width;
 			PresentParameters.mHeight = Height;
 			if (!Attached(CornellPresent(Edit, PresentParameters, "ToneMapAndPresentCornellBox")))
@@ -511,12 +511,12 @@ namespace arda
 					return false;
 				}
 				FArdaCornellTraceParameters TraceParameters;
-				TraceParameters.mTlas = T.GetHandle();
-				TraceParameters.mVertices = V.GetHandle();
-				TraceParameters.mIndices = I.GetHandle();
-				TraceParameters.mMaterials = M.GetHandle();
+				TraceParameters.mTlas = T;
+				TraceParameters.mVertices = V;
+				TraceParameters.mIndices = I;
+				TraceParameters.mMaterials = M;
 				TraceParameters.mConstants = Constants;
-				TraceParameters.mBlas = B.GetHandle();
+				TraceParameters.mBlas = B;
 				TraceParameters.mWidth = Width;
 				TraceParameters.mHeight = Height;
 				TraceParameters.mSamples = DispatchSamples;
@@ -527,7 +527,7 @@ namespace arda
 				}
 				FArdaCornellAccumulateParameters AccumulateParameters;
 				AccumulateParameters.mRadiance = Trace.GetBuffer("Radiance");
-				AccumulateParameters.mAccumulation = Accum.GetHandle();
+				AccumulateParameters.mAccumulation = Accum;
 				AccumulateParameters.mConstants = Constants;
 				AccumulateParameters.mGroupCountX = (Width + 7) / 8;
 				AccumulateParameters.mGroupCountY = (Height + 7) / 8;
@@ -538,8 +538,8 @@ namespace arda
 			}
 			// A real frame operation, even after sampling finishes. The TLAS write orders all ray reads.
 			FArdaCornellBuildTlasParameters BuildTlas;
-			BuildTlas.mBlas = B.GetHandle();
-			BuildTlas.mTlas = T.GetHandle();
+			BuildTlas.mBlas = B;
+			BuildTlas.mTlas = T;
 			BuildTlas.mBuildFlags = GetStaticBuildFlags(false);
 			BuildTlas.mWorkspaceBytes = mTlasWorkspaceBytes;
 			if (!Attached(CornellBuildTlas(Edit, BuildTlas, "RebuildCornellFrameTLAS")))
@@ -551,7 +551,7 @@ namespace arda
 				mError = S.mMessage;
 				return false;
 			}
-			if (auto S = Graph.Compile(); !S)
+			if (auto S = Graph.CompileAndWait(); !S)
 			{
 				mError = S.mMessage;
 				return false;

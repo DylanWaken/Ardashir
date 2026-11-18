@@ -70,6 +70,7 @@ def signature_identity(text: str) -> str:
 
 def preserve_symbol_ids(declarations: Sequence[Dict[str, object]], api: Dict[str, object]) -> None:
     """Keep published anchors through moves and unambiguous signature changes."""
+    generated_ids = {id(item): item["id"] for item in declarations}
     existing = {
         (item["qualifiedName"], item["kind"], signature_identity(str(item.get("signature", "")))): item["id"]
         for item in api.get("symbols", [])
@@ -78,12 +79,61 @@ def preserve_symbol_ids(declarations: Sequence[Dict[str, object]], api: Dict[str
     new_counts = collections.Counter((item["qualifiedName"], item["kind"]) for item in declarations)
     unique_ids = {(item["qualifiedName"], item["kind"]): item["id"] for item in api.get("symbols", [])
         if old_counts[(item["qualifiedName"], item["kind"])] == 1}
+    retained_ids = set()
+    for item in declarations:
+        key = (item["qualifiedName"], item["kind"], signature_identity(str(item["signature"])))
+        if key in existing:
+            retained_ids.add(existing[key])
+        elif new_counts[key[:2]] == 1 and key[:2] in unique_ids:
+            retained_ids.add(unique_ids[key[:2]])
+    source_declarations = collections.defaultdict(list)
+    for item in api.get("symbols", []):
+        if item.get("sourceLine"):
+            source_key = (item.get("source"), item["sourceLine"], item["kind"],
+                signature_identity(str(item.get("signature", ""))))
+            source_declarations[source_key].append(item["id"])
     for item in declarations:
         key = (item["qualifiedName"], item["kind"], signature_identity(str(item["signature"])))
         if key in existing:
             item["id"] = existing[key]
         elif new_counts[key[:2]] == 1 and key[:2] in unique_ids:
             item["id"] = unique_ids[key[:2]]
+        else:
+            # Improving qualified ownership (for example, retaining specialization
+            # arguments) must not move an otherwise unchanged declaration's anchor.
+            source_key = (item.get("source"), item.get("sourceLine"), item["kind"], key[2])
+            candidates = source_declarations.get(source_key, [])
+            if len(candidates) == 1 and candidates[0] not in retained_ids:
+                item["id"] = candidates[0]
+    # Older extraction stopped at braced initialization inside trailing decltype.
+    # Recover those published overload anchors only when the prefix is unique.
+    corrected_returns = collections.defaultdict(list)
+    for item in declarations:
+        match = re.search(r"->\s*decltype\([^{}]*\{", str(item["signature"]))
+        if item["kind"] in CALLABLE_KINDS and match:
+            key = (item["qualifiedName"], item["kind"],
+                signature_identity(str(item["signature"])[:match.end() - 1]))
+            corrected_returns[key].append(item)
+    for key, candidates in corrected_returns.items():
+        if key in existing and len(candidates) == 1:
+            candidate = candidates[0]
+            full_key = (*key[:2], signature_identity(str(candidate["signature"])))
+            if full_key not in existing:
+                candidate["id"] = existing[key]
+    # A newly inserted declaration can occupy an old source line with an identical
+    # member signature. Never let that fallback steal an existing declaration's ID.
+    by_id = collections.defaultdict(list)
+    for item in declarations:
+        by_id[item["id"]].append(item)
+    for anchor, candidates in by_id.items():
+        if len(candidates) < 2:
+            continue
+        matching = [item for item in candidates if str(anchor).startswith(
+            "api-" + re.sub(r"[^a-z0-9]+", "-", str(item["qualifiedName"]).lower()).strip("-") + "-")]
+        keeper = matching[0] if len(matching) == 1 else candidates[0]
+        for item in candidates:
+            if item is not keeper:
+                item["id"] = generated_ids[id(item)]
 
 
 def reconcile_backend_sources(
@@ -160,8 +210,26 @@ def type_ranges(text: str) -> List[Tuple[int, int, str, str]]:
     )
     for match in pattern.finditer(text):
         opening = text.find("{", match.start(), match.end())
+        name = match.group("name")
+        argument_start = match.end("name")
+        while argument_start < opening and text[argument_start].isspace():
+            argument_start += 1
+        if argument_start < opening and text[argument_start] == "<":
+            # Member signatures can be identical across partial specializations.
+            # Their class scopes, rather than source positions or overload counts,
+            # distinguish the public declarations.
+            depth = 1
+            argument_end = argument_start + 1
+            while argument_end < opening and depth:
+                if text[argument_end] == "<":
+                    depth += 1
+                elif text[argument_end] == ">":
+                    depth -= 1
+                argument_end += 1
+            if not depth:
+                name += normalized(text[argument_start:argument_end])
         ranges.append(
-            (opening, find_matching_brace(text, opening), match.group("name"), match.group("kind"))
+            (opening, find_matching_brace(text, opening), name, match.group("kind"))
         )
     return ranges
 
@@ -214,7 +282,25 @@ def callable_signature(text: str, name: str, offset: int) -> str:
             if depth == 0:
                 break
     end = closing + 1
-    while end < len(text) and text[end] not in ";{":
+    quote = ""
+    escaped = False
+    while end < len(text):
+        char = text[end]
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = ""
+        elif char in "\"'":
+            quote = char
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        elif depth == 0 and char in ";{":
+            break
         end += 1
     boundary = max(text.rfind(token, 0, offset) for token in ";{}") + 1
     signature = text[boundary:end].strip()
@@ -278,7 +364,7 @@ def api_kind(kind: str, name: str, signature: str, owner: str) -> str:
             return "destructor"
         if name.startswith("operator"):
             return "conversion operator" if re.match(r"operator\s+[A-Za-z_]", name) else "operator"
-        if owner and name == owner:
+        if owner and name == owner.split("<", 1)[0]:
             return "constructor"
         return "method" if owner else "function"
     return {
@@ -433,8 +519,8 @@ def make_symbols(
                     "params": [],
                     "returns": "See the declared result and status contract." if kind in {"function", "method", "operator", "conversion operator"} else "",
                     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-                    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-                    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+                    "errors": "" if "/FileOperations/" in source else "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+                    "threading": "" if "/FileOperations/" in source else "Calls follow the synchronization rules of the owning provider device or command list.",
                     "related": ["::".join(item for item in (namespace, owner) if item)],
                 }
             )

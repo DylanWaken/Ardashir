@@ -1,6 +1,6 @@
+#include "ArdaGraphTestNodeTypes.h"
 #include "Graph/Node/ArdaGraphEdit.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
-#include "Graph/Node/ArdaDependencyNode.h"
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
 #include "RHI/Providers/ArdaBackendProvider.h"
@@ -9,28 +9,11 @@
 
 #include <gtest/gtest.h>
 #include <EASTL/algorithm.h>
-#include <atomic>
-#include <cstdio>
 #include <cstring>
 
 namespace arda::inductor_memory_gpu_tests
 {
 	using namespace arda;
-
-	class FArdaHeapGpuDiagnostics final : public IArdaDiagnosticCallback
-	{
-	public:
-		void Message(EArdaDiagnosticSeverity Severity, const char* Text) override
-		{
-			if (Severity == EArdaDiagnosticSeverity::Error || Severity == EArdaDiagnosticSeverity::Fatal)
-			{
-				++mErrors;
-				std::fprintf(stderr, "Inductor heap validation: %s\n", Text ? Text : "");
-			}
-		}
-
-		std::atomic<uint32_t> mErrors{0};
-	};
 
 	class FArdaInductorMemoryGpu : public testing::TestWithParam<const char*>
 	{
@@ -61,10 +44,10 @@ namespace arda::inductor_memory_gpu_tests
 				mDevice.Reset();
 			}
 			ShutdownBackend();
-			EXPECT_EQ(mDiagnostics.mErrors.load(), 0u);
+			EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
 		}
 
-		FArdaHeapGpuDiagnostics mDiagnostics;
+		FArdaTestDiagnosticCallback mDiagnostics;
 		FArdaRHIDeviceRef mDevice;
 	};
 
@@ -78,10 +61,10 @@ namespace arda::inductor_memory_gpu_tests
 		Desc.mUsage = EArdaRHIBufferUsage::UnorderedAccess;
 		const auto Buffer = AllocateBuffer(Edit, Desc, "deferred");
 		ASSERT_TRUE(Buffer) << Edit.GetStatus().mMessage.c_str();
-		ASSERT_TRUE(ClearBuffer(Edit, {Buffer.GetHandle(), 0}, "clear"));
+		ASSERT_TRUE(ClearBuffer(Edit, {Buffer, 0}, "clear"));
 		Edit.Keep(Buffer.GetHandle());
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		const auto AfterCompile = mDevice->GetResourceLifetimeStats();
 		for (const auto Kind :
@@ -90,14 +73,14 @@ namespace arda::inductor_memory_gpu_tests
 			EXPECT_EQ(AfterCompile.mLiveResources[static_cast<size_t>(Kind)],
 			    Before.mLiveResources[static_cast<size_t>(Kind)]);
 		}
-		const auto Submitted = Graph.Submit();
+		const auto Submitted = Graph.SubmitAndWait();
 		ASSERT_TRUE(Submitted) << Submitted.mStatus.mMessage.c_str();
 		const auto AfterSubmit = mDevice->GetResourceLifetimeStats();
 		EXPECT_GT(AfterSubmit.mLiveResources[static_cast<size_t>(EArdaRHIResourceType::Buffer)],
 		    Before.mLiveResources[static_cast<size_t>(EArdaRHIResourceType::Buffer)]);
 		const auto Completed = Graph.Wait(Submitted.mValue);
 		ASSERT_TRUE(Completed.mStatus) << Completed.mStatus.mMessage.c_str();
-		const auto Repeated = Graph.Execute();
+		const auto Repeated = Graph.ExecuteAndWait();
 		ASSERT_TRUE(Repeated.mStatus) << Repeated.mStatus.mMessage.c_str();
 		EXPECT_EQ(mDevice->GetResourceLifetimeStats().mLiveResources[static_cast<size_t>(EArdaRHIResourceType::Buffer)],
 		    AfterSubmit.mLiveResources[static_cast<size_t>(EArdaRHIResourceType::Buffer)]);
@@ -190,14 +173,13 @@ namespace arda::inductor_memory_gpu_tests
 		}
 	}
 
-	struct FArdaWorkspaceTestParameters
-	{
-		uint32_t mCost = 1;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaWorkspaceTestParameters)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCost, 1)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	template <EArdaDependencyNodeKind Kind>
 	struct TArdaWorkspaceTestNode
-	    : TArdaDependencyNode<TArdaWorkspaceTestNode<Kind>, FArdaWorkspaceTestParameters, Kind>
+	    : TArdaNodeDefinition<TArdaWorkspaceTestNode<Kind>, FArdaWorkspaceTestParameters, ArdaTestNodeType(Kind)>
 	{
 		using FArdaParameters = FArdaWorkspaceTestParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -255,12 +237,12 @@ namespace arda::inductor_memory_gpu_tests
 			ASSERT_TRUE(Edit.SetOptions(Options));
 			ASSERT_TRUE(GraphicsWorkspace(Edit, FArdaWorkspaceTestParameters{1}, "workspace"));
 			ASSERT_TRUE(Edit.Commit());
-			ASSERT_TRUE(Graph.Compile());
+			ASSERT_TRUE(Graph.CompileAndWait());
 			for (uint32_t Revision = 0; Revision < 3; ++Revision)
 			{
 				for (uint32_t Frame = 0; Frame < Options.mFramesInFlight; ++Frame)
 				{
-					const auto Result = Graph.Execute();
+					const auto Result = Graph.ExecuteAndWait();
 					ASSERT_TRUE(Result.mStatus) << Result.mStatus.mMessage.c_str();
 				}
 				mDevice->RunGarbageCollection();
@@ -280,7 +262,7 @@ namespace arda::inductor_memory_gpu_tests
 				}
 				if (Revision + 1 < 3)
 				{
-					ASSERT_TRUE(Graph.Compile(true));
+					ASSERT_TRUE(Graph.CompileAndWait(true));
 				}
 			}
 		}
@@ -315,7 +297,7 @@ namespace arda::inductor_memory_gpu_tests
 		ASSERT_TRUE(Graphics);
 		ASSERT_TRUE(Compute);
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		const auto& Result = Graph.GetCompileResult();
 		EXPECT_TRUE(Result.mMemoryDependencies.empty());
@@ -325,9 +307,9 @@ namespace arda::inductor_memory_gpu_tests
 		ASSERT_NE(Position, Result.mExecutionOrder.end());
 		EXPECT_EQ(Result.mQueues[size_t(Position - Result.mExecutionOrder.begin())], EArdaRHIQueueType::Compute);
 		EXPECT_EQ(Result.mWorkspaceResourceIds.size(), 2u);
-		const auto First = Graph.Submit();
+		const auto First = Graph.SubmitAndWait();
 		ASSERT_TRUE(First) << First.mStatus.mMessage.c_str();
-		const auto Second = Graph.Submit();
+		const auto Second = Graph.SubmitAndWait();
 		ASSERT_TRUE(Second) << Second.mStatus.mMessage.c_str();
 		const auto FirstDone = Graph.Wait(First.mValue), SecondDone = Graph.Wait(Second.mValue);
 		ASSERT_TRUE(FirstDone.mStatus) << FirstDone.mStatus.mMessage.c_str();

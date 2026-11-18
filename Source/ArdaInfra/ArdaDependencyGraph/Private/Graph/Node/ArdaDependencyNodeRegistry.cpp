@@ -15,7 +15,7 @@ namespace arda
 
 	FArdaRHIStatus FArdaNodeRegistry::RegisterExecutable(FArdaDependencyNodeExecutable D)
 	{
-		// The class base is the only producer of executable callbacks; validate authored metadata here.
+		// Both authoring routes lower to this immutable executable contract.
 		if (D.mName.empty() || !D.mVersion)
 		{
 			return GraphInvalid("Node metadata requires a nonempty name and a positive implementation revision.");
@@ -29,6 +29,35 @@ namespace arda
 		const auto Name = D.mName;
 		mDefinitions.emplace(Name,
 		    eastl::shared_ptr<const FArdaDependencyNodeExecutable>(new FArdaDependencyNodeExecutable(eastl::move(D))));
+		return {};
+	}
+
+	FArdaRHIStatus FArdaNodeRegistry::RegisterPortableDefinitions(
+	    const eastl::vector<eastl::shared_ptr<const FArdaDependencyNodeExecutable>>& Definitions)
+	{
+		std::lock_guard<std::mutex> Lock(mMutex);
+		eastl::unordered_map<eastl::string, eastl::shared_ptr<const FArdaDependencyNodeExecutable>> Pending;
+		for (const auto& Definition : Definitions)
+		{
+			if (!Definition || Definition->mName.empty() || Definition->mPortableDefinition.empty())
+			{
+				return GraphInvalid("Portable registration requires complete immutable definitions.");
+			}
+			const auto Existing = mDefinitions.find(Definition->mName);
+			const auto Earlier = Pending.find(Definition->mName);
+			const auto Match = Existing != mDefinitions.end() ? Existing->second
+			    : Earlier != Pending.end()                    ? Earlier->second
+			                                                  : nullptr;
+			if (Match && Match->mPortableDefinition != Definition->mPortableDefinition)
+			{
+				return GraphInvalid("Another implementation owns the portable node registry name.");
+			}
+			Pending.emplace(Definition->mName, Definition);
+		}
+		for (const auto& Definition : Pending)
+		{
+			mDefinitions.emplace(Definition.first, Definition.second);
+		}
 		return {};
 	}
 

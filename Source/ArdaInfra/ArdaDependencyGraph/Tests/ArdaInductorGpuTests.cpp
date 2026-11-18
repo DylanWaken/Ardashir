@@ -1,3 +1,4 @@
+#include "Graph/Node/ArdaNodeDefinition.h"
 #include "Graph/Node/ArdaGraphEdit.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
 #include "ArdaTestBackend.h"
@@ -5,13 +6,10 @@
 #include "RHI/Providers/ArdaBackendProvider.h"
 #include "ArdaDependencyGraph.h"
 #include "Graph/DefaultNodes/ArdaDependencyGraphNodes.h"
-#include "Graph/Node/ArdaDependencyNode.h"
 #include "RHI/Shaders/ArdaGlobalShaderMap.h"
 #include "RHI/Shaders/ArdaShaderCompiler.h"
 
 #include <gtest/gtest.h>
-#include <atomic>
-#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <string>
@@ -20,24 +18,30 @@ namespace arda::inductor_gpu_tests
 {
 	using namespace arda;
 
-	class FArdaInductorGpuDiagnostics final : public IArdaDiagnosticCallback
-	{
-	public:
-		void Message(EArdaDiagnosticSeverity Severity, const char* Text) override
-		{
-			if (Severity == EArdaDiagnosticSeverity::Error || Severity == EArdaDiagnosticSeverity::Fatal)
-			{
-				++mErrors;
-				std::fprintf(stderr, "Inductor validation: %s\n", Text ? Text : "");
-			}
-		}
-
-		std::atomic<uint32_t> mErrors{0};
-	};
-
 	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaCompiledComputeBindings)
 		ARDA_SHADER_BUFFER_UAV(mFirst, 2, 3, EArdaRHIShaderStage::Compute)
 		ARDA_SHADER_BUFFER_UAV(mSecond, 5, 0, EArdaRHIShaderStage::Compute)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaMultiWriterReadWriteBindings)
+		ARDA_SHADER_BUFFER_UAV_ACCESS(mResource,
+		    2,
+		    3,
+		    EArdaRHIShaderStage::Compute,
+		    EArdaShaderResourceAccess::ReadWrite)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+
+	struct FArdaBindlessPush
+	{
+		uint32_t mIndex = 0, mValue = 0;
+	};
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaBindlessShaderParameters)
+		ARDA_SHADER_PUSH_CONSTANTS(FArdaBindlessPush, mSelection, 0, 1, EArdaRHIShaderStage::Compute)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaLocalRayParameters)
+		ARDA_SHADER_BUFFER_UAV(mOutput, 0, 4, EArdaRHIShaderStage::RayGeneration)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaEmptyConformanceShaderParameters)
 	ARDA_END_SHADER_PARAMETER_STRUCT()
 
 	struct FArdaInductorPipelineTrace
@@ -47,20 +51,17 @@ namespace arda::inductor_gpu_tests
 		eastl::vector<eastl::vector<FArdaRHIBindingSetRef>> mBindings;
 	};
 
-	struct FArdaInductorAutoComputeParameters
-	{
-		FArdaDependencyResourceHandle mFirst;
-		FArdaDependencyResourceHandle mSecond;
-		FArdaRHIShaderRef mShader;
-		eastl::vector<FArdaRHIBindingLayoutRef> mLayouts;
-		uint32_t mCount = 16;
-		bool mbStageOnly = false;
-		eastl::shared_ptr<FArdaInductorPipelineTrace> mTrace;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaInductorAutoComputeParameters)
+		ARDA_NODE_SHADER_BUFFER(mFirst, FArdaCompiledComputeBindings, mFirst)
+		ARDA_NODE_SHADER_BUFFER(mSecond, FArdaCompiledComputeBindings, mSecond)
+		ARDA_NODE_PARAMETER(FArdaRHIShaderRef, mShader)
+		ARDA_NODE_PARAMETER(eastl::vector<FArdaRHIBindingLayoutRef>, mLayouts)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCount, 16)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<FArdaInductorPipelineTrace>, mTrace)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaAutoComputeTestNode : TArdaDependencyNode<FArdaAutoComputeTestNode,
-	                                      FArdaInductorAutoComputeParameters,
-	                                      EArdaDependencyNodeKind::Compute>
+	struct FArdaAutoComputeTestNode
+	    : TArdaNodeDefinition<FArdaAutoComputeTestNode, FArdaInductorAutoComputeParameters, EArdaNodeType::Compute>
 	{
 		using FArdaParameters = FArdaInductorAutoComputeParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -80,7 +81,6 @@ namespace arda::inductor_gpu_tests
 			    .Resource(P.mSecond)
 			    .Value(P.mShader ? P.mShader->GetPersistentCacheHash() : 0)
 			    .Value(P.mCount)
-			    .Value(P.mbStageOnly)
 			    .Value(reinterpret_cast<uintptr_t>(P.mTrace.get()));
 
 			// Shader layout semantics participate in identity independently of native object addresses.
@@ -97,7 +97,7 @@ namespace arda::inductor_gpu_tests
 		{
 			FArdaDependencyNodeDesc Desc;
 
-			// Contribute the shader independently from the node that consumes its pipeline.
+			// The executable operation owns its shader contribution and inferred pipeline.
 			if (P.mShader)
 			{
 				FArdaInductorPipelineContribution Contribution;
@@ -105,14 +105,8 @@ namespace arda::inductor_gpu_tests
 				Contribution.mBindingLayouts = P.mLayouts;
 				Desc.mPipelineStages.push_back(eastl::move(Contribution));
 			}
-			Desc.mbPipelineStageOnly = P.mbStageOnly;
-			if (P.mbStageOnly)
-			{
-				return Desc;
-			}
 
 			// Let compilation derive bindings and connect the executable node to its pipeline slot.
-			Desc.BindShader<FArdaCompiledComputeBindings>({{"mFirst", P.mFirst}, {"mSecond", P.mSecond}});
 			FArdaInductorPipelineRequest Request;
 			Request.mSlot = "default";
 			Request.mKind = EArdaPipelineStateKind::Compute;
@@ -126,11 +120,6 @@ namespace arda::inductor_gpu_tests
 		    const FArdaState&,
 		    FArdaInstanceState&)
 		{
-			if (P.mbStageOnly)
-			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
-				    "A stage-only declaration must not become a native recording pass.");
-			}
 			const auto* Pipeline = Context.GetPipeline();
 			if (!Pipeline || !Pipeline->mCompute)
 			{
@@ -185,7 +174,7 @@ namespace arda::inductor_gpu_tests
 				mDevice.Reset();
 			}
 			ShutdownBackend();
-			EXPECT_EQ(mDiagnostics.mErrors.load(), 0u);
+			EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
 		}
 
 		FArdaRHIShaderRef CreateConformanceShader(const char* Entry = "RegisteredCS",
@@ -193,7 +182,39 @@ namespace arda::inductor_gpu_tests
 		    const char* File = "ArdaGraphConformance.hlsl")
 		{
 			const auto Path = (std::filesystem::path(ARDA_RDG_TEST_SHADER_SOURCE_DIR) / File).string();
-			FArdaShaderTypeRegistration Registration(Entry, Path.c_str(), Entry, Entry, Stage, nullptr);
+			FArdaShaderType::FArdaParameterMetadataFunction Metadata = []
+			{
+				return &FArdaEmptyConformanceShaderParameters::GetStaticMetadata();
+			};
+			if (std::strcmp(Entry, "RegisteredCS") == 0)
+			{
+				Metadata = []
+				{
+					return &FArdaCompiledComputeBindings::GetStaticMetadata();
+				};
+			}
+			else if (std::strcmp(Entry, "MultiWriterReadWriteCS") == 0)
+			{
+				Metadata = []
+				{
+					return &FArdaMultiWriterReadWriteBindings::GetStaticMetadata();
+				};
+			}
+			else if (std::strcmp(Entry, "BindlessCS") == 0)
+			{
+				Metadata = []
+				{
+					return &FArdaBindlessShaderParameters::GetStaticMetadata();
+				};
+			}
+			else if (std::strcmp(Entry, "LocalRaygen") == 0)
+			{
+				Metadata = []
+				{
+					return &FArdaLocalRayParameters::GetStaticMetadata();
+				};
+			}
+			FArdaShaderTypeRegistration Registration(Entry, Path.c_str(), Entry, Entry, Stage, Metadata);
 			const auto Previous = GetShaderCompilerConfiguration();
 			auto Configuration = Previous;
 			Configuration.mbCompileMissingArtifacts = true;
@@ -223,21 +244,22 @@ namespace arda::inductor_gpu_tests
 			Desc.mEntryPoint = Entry;
 			Desc.mBytecode = Bytecode.data();
 			Desc.mBytecodeSize = Bytecode.size();
+			Desc.mParameterMetadata = Metadata();
 			auto Shader = mDevice->CreateShader(Desc);
 			EXPECT_TRUE(Shader) << Shader.mStatus.mMessage.c_str();
 			return Shader.mValue;
 		}
 
-		FArdaInductorGpuDiagnostics mDiagnostics;
+		FArdaTestDiagnosticCallback mDiagnostics;
 		FArdaRHIDeviceRef mDevice;
 	};
 
 	TEST_P(FArdaInductorGpu, CreatesComputePipelineOnFirstExecutionAndReusesItAcrossFrames)
 	{
 		uint32_t DirectSubmittedLists = 0;
-		for (bool bStageAncestry : {false, true})
+		for (bool bExplicitLayouts : {false, true})
 		{
-			SCOPED_TRACE(bStageAncestry ? "stage -> sync -> consumer" : "direct stage contribution");
+			SCOPED_TRACE(bExplicitLayouts ? "explicit layouts" : "schema-derived layouts");
 			FArdaInductorAutoComputeParameters Parameters;
 			Parameters.mShader = CreateConformanceShader();
 			ASSERT_TRUE(Parameters.mShader);
@@ -270,41 +292,25 @@ namespace arda::inductor_gpu_tests
 			const auto Second = AllocateBuffer(Edit, Desc, "Second compute output");
 			ASSERT_TRUE(First);
 			ASSERT_TRUE(Second);
-			Parameters.mFirst = First.GetHandle();
-			Parameters.mSecond = Second.GetHandle();
+			Parameters.mFirst = First;
+			Parameters.mSecond = Second;
 			// Consumers are attached before the producer; resource semantics must determine order.
 			const auto FirstRead =
-			    ReadbackNode(Edit, FArdaGraphReadbackParameters{First.GetHandle(), FirstBytes}, "Read first");
+			    ReadbackNode(Edit, FArdaGraphReadbackParameters{Edit.UseBuffer(First), FirstBytes}, "Read first");
 			const auto SecondRead =
-			    ReadbackNode(Edit, FArdaGraphReadbackParameters{Second.GetHandle(), SecondBytes}, "Read second");
+			    ReadbackNode(Edit, FArdaGraphReadbackParameters{Edit.UseBuffer(Second), SecondBytes}, "Read second");
 			ASSERT_TRUE(FirstRead);
 			ASSERT_TRUE(SecondRead);
-			auto StageParameters = Parameters;
-			StageParameters.mbStageOnly = true;
-			StageParameters.mFirst = {};
-			StageParameters.mSecond = {};
-			if (bStageAncestry)
+			if (!bExplicitLayouts)
 			{
-				Parameters.mShader.Reset();
 				Parameters.mLayouts.clear();
 			}
 			const auto Produce = RunAutoCompute(Edit, Parameters, "Run inferred compute");
 			ASSERT_TRUE(Produce);
-			FArdaGraphNodeHandle Stage, Sync;
-			if (bStageAncestry)
-			{
-				const auto SyncResult = SyncNode(Edit, FArdaGraphSyncParameters{}, "Stage ancestry join");
-				const auto StageResult = RunAutoCompute(Edit, StageParameters, "Compute stage declaration");
-				ASSERT_TRUE(SyncResult);
-				ASSERT_TRUE(StageResult);
-				Stage = StageResult.GetHandle();
-				Sync = SyncResult.GetHandle();
-				ASSERT_TRUE(Edit.Order(StageResult, SyncResult));
-				ASSERT_TRUE(Edit.Order(SyncResult, Produce));
-			}
+
 			const auto Before = Graph.GetPipelineCacheStats();
 			ASSERT_TRUE(Edit.Commit());
-			const auto Compiled = Graph.Compile();
+			const auto Compiled = Graph.CompileAndWait();
 			ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 			ASSERT_TRUE(Graph.GetCompileResult().mStatus);
 			uint64_t Revision = Graph.GetCompileResult().mRevision;
@@ -316,23 +322,14 @@ namespace arda::inductor_gpu_tests
 			EXPECT_EQ(CompiledCache.mCreateFailures, 0u);
 			EXPECT_TRUE(Parameters.mTrace->mPipelines.empty()); // Compilation publishes only the logical plan.
 			const auto& Order = Graph.GetCompileResult().mExecutionOrder;
-			ASSERT_EQ(Order.size(), bStageAncestry ? 5u : 3u);
-			if (bStageAncestry)
-			{
-				EXPECT_EQ(Order[0], Stage);
-				EXPECT_EQ(Order[1], Sync);
-				EXPECT_EQ(Order[2], Produce.GetHandle());
-			}
-			else
-			{
-				EXPECT_EQ(Order.front(), Produce.GetHandle());
-			}
+			ASSERT_EQ(Order.size(), 3u);
+			EXPECT_EQ(Order.front(), Produce.GetHandle());
 			for (uint32_t Frame = 0; Frame < 4; ++Frame)
 			{
 				SCOPED_TRACE(Frame);
 				if (Frame == 3)
 				{
-					const auto Recompiled = Graph.Compile(true);
+					const auto Recompiled = Graph.CompileAndWait(true);
 					ASSERT_TRUE(Recompiled) << Recompiled.mMessage.c_str();
 					EXPECT_GT(Graph.GetCompileResult().mRevision, Revision);
 					Revision = Graph.GetCompileResult().mRevision;
@@ -344,18 +341,18 @@ namespace arda::inductor_gpu_tests
 				}
 				FirstBytes->assign(Desc.mByteSize, 0xff);
 				SecondBytes->assign(Desc.mByteSize, 0xff);
-				const auto Execution = Graph.Execute();
+				const auto Execution = Graph.ExecuteAndWait();
 				ASSERT_TRUE(Execution.mStatus) << Execution.mStatus.mMessage.c_str();
 				ASSERT_TRUE(mDevice->WaitForIdle());
 				EXPECT_EQ(Execution.mStateConformanceFailureCount, 0u);
-				if (!bStageAncestry && Frame == 0)
+				if (!bExplicitLayouts && Frame == 0)
 				{
 					DirectSubmittedLists = Execution.mSubmittedCommandListCount;
 					EXPECT_GT(DirectSubmittedLists, 0u);
 				}
-				if (bStageAncestry)
+				if (bExplicitLayouts)
 				{
-					// Shader declarations and pure synchronization do not submit extra native lists.
+					// Explicit equivalent layouts preserve submission behavior.
 					EXPECT_EQ(Execution.mSubmittedCommandListCount, DirectSubmittedLists);
 				}
 				EXPECT_EQ(Graph.GetCompileResult().mRevision, Revision);
@@ -394,14 +391,48 @@ namespace arda::inductor_gpu_tests
 		eastl::vector<eastl::shared_ptr<eastl::vector<uint8_t>>> mOutputs;
 	};
 
-	struct FArdaInductorFrameParameters
+	TEST_P(FArdaInductorGpu, ComputeShaderCannotBeBorrowedThroughOrderOrResourceEdges)
 	{
-		FArdaDependencyResourceHandle mResource;
-		eastl::shared_ptr<FArdaInductorFrameTrace> mTrace;
-	};
+		const auto Shader = CreateConformanceShader();
+		ASSERT_TRUE(Shader);
+		for (const bool ExplicitOrder : {false, true})
+		{
+			SCOPED_TRACE(ExplicitOrder);
+			FArdaDependencyGraph Graph(mDevice);
+			FArdaGraphEdit Edit(Graph);
+			FArdaRHIBufferDesc Description;
+			Description.mByteSize = 64;
+			Description.mStructureStride = 4;
+			FArdaInductorAutoComputeParameters Parameters;
+			Parameters.mFirst = AllocateBuffer(Edit, Description);
+			Parameters.mSecond = AllocateBuffer(Edit, Description);
+			Parameters.mShader = Shader;
+			Parameters.mTrace = eastl::make_shared<FArdaInductorPipelineTrace>();
+			const auto Producer = RunAutoCompute(Edit, Parameters, "shader owner");
+			Parameters.mShader.Reset();
+			const auto MissingShader = RunAutoCompute(Edit, Parameters, "missing shader");
+			ASSERT_TRUE(Producer);
+			ASSERT_TRUE(MissingShader);
+			if (ExplicitOrder)
+			{
+				ASSERT_TRUE(Edit.Order(Producer, MissingShader));
+			}
+			Edit.Keep(Parameters.mFirst);
+			Edit.Keep(Parameters.mSecond);
+			ASSERT_TRUE(Edit.Commit());
+			const auto Status = Graph.CompileAndWait();
+			EXPECT_FALSE(Status);
+			EXPECT_TRUE(Parameters.mTrace->mPipelines.empty());
+		}
+	}
+
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaInductorFrameParameters)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mResource)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<FArdaInductorFrameTrace>, mTrace)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	struct FArdaFrameWriteNode
-	    : TArdaDependencyNode<FArdaFrameWriteNode, FArdaInductorFrameParameters, EArdaDependencyNodeKind::Compute>
+	    : TArdaNodeDefinition<FArdaFrameWriteNode, FArdaInductorFrameParameters, EArdaNodeType::Compute>
 	{
 		using FArdaParameters = FArdaInductorFrameParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -450,7 +481,7 @@ namespace arda::inductor_gpu_tests
 	ARDA_DEFINE_GRAPH_NODE(FArdaFrameWriteNode, WriteFrame);
 
 	struct FArdaFrameReadNode
-	    : TArdaDependencyNode<FArdaFrameReadNode, FArdaInductorFrameParameters, EArdaDependencyNodeKind::Copy>
+	    : TArdaNodeDefinition<FArdaFrameReadNode, FArdaInductorFrameParameters, EArdaNodeType::Copy>
 	{
 		using FArdaParameters = FArdaInductorFrameParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -533,13 +564,13 @@ namespace arda::inductor_gpu_tests
 			ASSERT_TRUE(WriteFrame(Edit, Parameters, "frame writer"));
 			ASSERT_TRUE(ReadFrame(Edit, Parameters, "frame reader"));
 			ASSERT_TRUE(Edit.Commit());
-			const auto Compiled = Graph.Compile();
+			const auto Compiled = Graph.CompileAndWait();
 			ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 			const auto Revision = Graph.GetCompileResult().mRevision;
 			eastl::vector<FArdaDependencyFrameTicket> Tickets;
 			for (uint32_t I = 0; I < 3; ++I)
 			{
-				auto Submitted = Graph.Submit();
+				auto Submitted = Graph.SubmitAndWait();
 				ASSERT_TRUE(Submitted) << Submitted.mStatus.mMessage.c_str();
 				Tickets.push_back(Submitted.mValue);
 				EXPECT_TRUE(Trace->mOutputs[I]->empty());
@@ -556,7 +587,7 @@ namespace arda::inductor_gpu_tests
 				EXPECT_NE(Trace->mBuffers[0], Trace->mBuffers[1]);
 				EXPECT_NE(Trace->mBuffers[1], Trace->mBuffers[2]);
 			}
-			auto Recycled = Graph.Submit();
+			auto Recycled = Graph.SubmitAndWait();
 			ASSERT_TRUE(Recycled) << Recycled.mStatus.mMessage.c_str();
 			Tickets.push_back(Recycled.mValue);
 			ASSERT_EQ(Trace->mSlots.back(), 0u);
@@ -592,13 +623,13 @@ namespace arda::inductor_gpu_tests
 			EXPECT_TRUE(Graph.GetAdaptiveSchedulingStats().mLastStatus);
 			EXPECT_FALSE(Graph.GetTimingProfile().empty());
 			Trace->mOutputs.push_back(eastl::make_shared<eastl::vector<uint8_t>>());
-			const auto AfterOptimization = Graph.Execute();
+			const auto AfterOptimization = Graph.ExecuteAndWait();
 			ASSERT_TRUE(AfterOptimization.mStatus) << AfterOptimization.mStatus.mMessage.c_str();
 			ASSERT_EQ(Trace->mOutputs.back()->size(), 64u);
 			uint32_t OptimizedValue = 0;
 			std::memcpy(&OptimizedValue, Trace->mOutputs.back()->data(), 4);
 			EXPECT_EQ(OptimizedValue, 5u);
-			ASSERT_TRUE(Graph.Compile(true));
+			ASSERT_TRUE(Graph.CompileAndWait(true));
 			EXPECT_TRUE(Graph.GetTimingProfile().empty());
 			EXPECT_TRUE(Graph.Wait(Tickets.front()).mStatus);
 			EXPECT_TRUE(Graph.IsComplete(Tickets.front()).mValue);
@@ -627,8 +658,8 @@ namespace arda::inductor_gpu_tests
 			ASSERT_TRUE(Resource);
 			auto BeforeBytes = eastl::make_shared<eastl::vector<uint8_t>>();
 			auto AfterBytes = eastl::make_shared<eastl::vector<uint8_t>>();
-			const auto FirstWrite = ClearNode(Edit, {Resource.GetHandle(), FirstValue}, "A first write");
-			const auto FirstRead = ReadbackNode(Edit, {Resource.GetHandle(), BeforeBytes}, "B read first contents");
+			const auto FirstWrite = ClearNode(Edit, {Edit.UseBuffer(Resource), FirstValue}, "A first write");
+			const auto FirstRead = ReadbackNode(Edit, {Edit.UseBuffer(Resource), BeforeBytes}, "B read first contents");
 			FArdaGraphUploadParameters Overwrite;
 			Overwrite.mDestination = Resource.GetHandle();
 			Overwrite.mOffset = Desc.mByteSize / 2;
@@ -639,14 +670,14 @@ namespace arda::inductor_gpu_tests
 				std::memcpy(Overwrite.mBytes.data() + Index * sizeof(Value), &Value, sizeof(Value));
 			}
 			const auto SecondWrite = UploadNode(Edit, Overwrite, "C overwrite upper half");
-			const auto SecondRead = ReadbackNode(Edit, {Resource.GetHandle(), AfterBytes}, "D read final contents");
+			const auto SecondRead = ReadbackNode(Edit, {Edit.UseBuffer(Resource), AfterBytes}, "D read final contents");
 			ASSERT_TRUE(FirstWrite);
 			ASSERT_TRUE(FirstRead);
 			ASSERT_TRUE(SecondWrite);
 			ASSERT_TRUE(SecondRead);
 			// No explicit edges: the overlapping writers select insertion order for this byte range.
 			ASSERT_TRUE(Edit.Commit());
-			const auto Compiled = Graph.Compile();
+			const auto Compiled = Graph.CompileAndWait();
 			ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 			EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder,
 			    (eastl::vector<FArdaGraphNodeHandle>{FirstWrite.GetHandle(),
@@ -658,7 +689,7 @@ namespace arda::inductor_gpu_tests
 				SCOPED_TRACE(Frame);
 				BeforeBytes->assign(Desc.mByteSize, 0xff);
 				AfterBytes->assign(Desc.mByteSize, 0xff);
-				const auto Executed = Graph.Execute();
+				const auto Executed = Graph.ExecuteAndWait();
 				ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 				EXPECT_EQ(Executed.mStateConformanceFailureCount, 0u);
 				ASSERT_EQ(BeforeBytes->size(), Desc.mByteSize);
@@ -678,19 +709,15 @@ namespace arda::inductor_gpu_tests
 		}
 	}
 
-	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaMultiWriterReadWriteBindings)
-		ARDA_SHADER_BUFFER_UAV(mResource, 2, 3, EArdaRHIShaderStage::Compute)
-	ARDA_END_SHADER_PARAMETER_STRUCT()
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaMultiWriterReadWriteParameters)
+		ARDA_NODE_SHADER_BUFFER(mResource, FArdaMultiWriterReadWriteBindings, mResource)
+		ARDA_NODE_PARAMETER(FArdaRHIShaderRef, mShader)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mWordCount, 16)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaMultiWriterReadWriteParameters
-	{
-		FArdaDependencyResourceHandle mResource;
-		FArdaRHIShaderRef mShader;
-		uint32_t mWordCount = 16;
-	};
-
-	struct FArdaMultiWriterReadWriteNode
-	    : TArdaComputeDependencyNode<FArdaMultiWriterReadWriteNode, FArdaMultiWriterReadWriteParameters>
+	struct FArdaMultiWriterReadWriteNode : TArdaNodeDefinition<FArdaMultiWriterReadWriteNode,
+	                                           FArdaMultiWriterReadWriteParameters,
+	                                           EArdaNodeType::Compute>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata()
 		{
@@ -711,11 +738,6 @@ namespace arda::inductor_gpu_tests
 			FArdaDependencyNodeDesc Desc;
 			Desc.mPipelineStages.push_back({Parameters.mShader});
 			Desc.mPipelines.push_back({"default", 0, EArdaPipelineStateKind::Compute});
-			FArdaDependencyShaderResource Binding;
-			Binding.mMember = "mResource";
-			Binding.mResource = Parameters.mResource;
-			Binding.mAccess = EArdaDependencyAccess::ReadWrite;
-			Desc.BindShader<FArdaMultiWriterReadWriteBindings>({Binding});
 			return Desc;
 		}
 
@@ -760,17 +782,16 @@ namespace arda::inductor_gpu_tests
 			ASSERT_TRUE(Resource);
 			auto BeforeBytes = eastl::make_shared<eastl::vector<uint8_t>>();
 			auto AfterBytes = eastl::make_shared<eastl::vector<uint8_t>>();
-			const auto FirstWrite = ClearNode(Edit, {Resource.GetHandle(), FirstValue}, "A first write");
-			const auto FirstRead = ReadbackNode(Edit, {Resource.GetHandle(), BeforeBytes}, "B read first contents");
-			const auto SecondWrite =
-			    UpdateMultiWriter(Edit, {Resource.GetHandle(), Shader, WordCount}, "C read-modify-write");
-			const auto SecondRead = ReadbackNode(Edit, {Resource.GetHandle(), AfterBytes}, "D read final contents");
+			const auto FirstWrite = ClearNode(Edit, {Edit.UseBuffer(Resource), FirstValue}, "A first write");
+			const auto FirstRead = ReadbackNode(Edit, {Edit.UseBuffer(Resource), BeforeBytes}, "B read first contents");
+			const auto SecondWrite = UpdateMultiWriter(Edit, {Resource, Shader, WordCount}, "C read-modify-write");
+			const auto SecondRead = ReadbackNode(Edit, {Edit.UseBuffer(Resource), AfterBytes}, "D read final contents");
 			ASSERT_TRUE(FirstWrite);
 			ASSERT_TRUE(FirstRead);
 			ASSERT_TRUE(SecondWrite);
 			ASSERT_TRUE(SecondRead);
 			ASSERT_TRUE(Edit.Commit());
-			const auto Compiled = Graph.Compile();
+			const auto Compiled = Graph.CompileAndWait();
 			ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 			EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder,
 			    (eastl::vector<FArdaGraphNodeHandle>{FirstWrite.GetHandle(),
@@ -782,7 +803,7 @@ namespace arda::inductor_gpu_tests
 				SCOPED_TRACE(Frame);
 				BeforeBytes->assign(Desc.mByteSize, 0xff);
 				AfterBytes->assign(Desc.mByteSize, 0xff);
-				const auto Executed = Graph.Execute();
+				const auto Executed = Graph.ExecuteAndWait();
 				ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 				EXPECT_EQ(Executed.mStateConformanceFailureCount, 0u);
 				ASSERT_EQ(BeforeBytes->size(), Desc.mByteSize);
@@ -820,15 +841,14 @@ namespace arda::inductor_gpu_tests
 		const auto Resource = AllocateBuffer(Edit, Desc, "consecutive UAV storage");
 		ASSERT_TRUE(Resource);
 		auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-		const auto FirstWrite = ClearNode(Edit, {Resource.GetHandle(), FirstValue}, "A first UAV write");
-		const auto Update =
-		    UpdateMultiWriter(Edit, {Resource.GetHandle(), Shader, WordCount}, "C UAV read-modify-write");
-		const auto Read = ReadbackNode(Edit, {Resource.GetHandle(), Bytes}, "D read final contents");
+		const auto FirstWrite = ClearNode(Edit, {Edit.UseBuffer(Resource), FirstValue}, "A first UAV write");
+		const auto Update = UpdateMultiWriter(Edit, {Resource, Shader, WordCount}, "C UAV read-modify-write");
+		const auto Read = ReadbackNode(Edit, {Edit.UseBuffer(Resource), Bytes}, "D read final contents");
 		ASSERT_TRUE(FirstWrite);
 		ASSERT_TRUE(Update);
 		ASSERT_TRUE(Read);
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder,
 		    (eastl::vector<FArdaGraphNodeHandle>{FirstWrite.GetHandle(), Update.GetHandle(), Read.GetHandle()}));
@@ -836,7 +856,7 @@ namespace arda::inductor_gpu_tests
 		{
 			SCOPED_TRACE(Frame);
 			Bytes->assign(Desc.mByteSize, 0xff);
-			const auto Executed = Graph.Execute();
+			const auto Executed = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 			EXPECT_EQ(Executed.mStateConformanceFailureCount, 0u);
 			// Both operations use the same queue and state, so their ordering needs a UAV barrier.
@@ -862,15 +882,14 @@ namespace arda::inductor_gpu_tests
 		}
 	}
 
-	struct FArdaInductorImageAliasParameters
-	{
-		FArdaDependencyResourceHandle mTexture, mBuffer;
-		uint32_t mValue = 0;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaInductorImageAliasParameters)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mTexture)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mBuffer)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mValue, 0)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaImageAliasClearNode : TArdaDependencyNode<FArdaImageAliasClearNode,
-	                                      FArdaInductorImageAliasParameters,
-	                                      EArdaDependencyNodeKind::Compute>
+	struct FArdaImageAliasClearNode
+	    : TArdaNodeDefinition<FArdaImageAliasClearNode, FArdaInductorImageAliasParameters, EArdaNodeType::Compute>
 	{
 		using FArdaParameters = FArdaInductorImageAliasParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -910,7 +929,7 @@ namespace arda::inductor_gpu_tests
 	ARDA_DEFINE_GRAPH_NODE(FArdaImageAliasClearNode, ClearAliasImage);
 
 	struct FArdaImageAliasCopyNode
-	    : TArdaDependencyNode<FArdaImageAliasCopyNode, FArdaInductorImageAliasParameters, EArdaDependencyNodeKind::Copy>
+	    : TArdaNodeDefinition<FArdaImageAliasCopyNode, FArdaInductorImageAliasParameters, EArdaNodeType::Copy>
 	{
 		using FArdaParameters = FArdaInductorImageAliasParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -999,16 +1018,16 @@ namespace arda::inductor_gpu_tests
 			PreviousCopy = Copied;
 			Outputs[I] = eastl::make_shared<eastl::vector<uint8_t>>();
 			ASSERT_TRUE(ReadbackNode(Edit,
-			    FArdaGraphReadbackParameters{Buffer.GetHandle(), Outputs[I]},
+			    FArdaGraphReadbackParameters{Edit.UseBuffer(Buffer), Outputs[I]},
 			    "read image " + Suffix));
 		}
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		for (uint32_t Frame = 0; Frame < 4; ++Frame)
 		{
 			SCOPED_TRACE(Frame);
-			const auto Completed = Graph.Execute();
+			const auto Completed = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Completed.mStatus) << Completed.mStatus.mMessage.c_str();
 			EXPECT_EQ(Completed.mStateConformanceFailureCount, 0u);
 			EXPECT_GE(Completed.mAliasingBarrierCount, 2u);
@@ -1035,15 +1054,14 @@ namespace arda::inductor_gpu_tests
 		}
 	}
 
-	struct FArdaInductorFailureParameters
-	{
-		FArdaDependencyResourceHandle mOutput, mUndeclared;
-		bool mbFail = false;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaInductorFailureParameters)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mOutput)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mUndeclared)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbFail, false)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaFailureRecordingNode : TArdaDependencyNode<FArdaFailureRecordingNode,
-	                                       FArdaInductorFailureParameters,
-	                                       EArdaDependencyNodeKind::Compute>
+	struct FArdaFailureRecordingNode
+	    : TArdaNodeDefinition<FArdaFailureRecordingNode, FArdaInductorFailureParameters, EArdaNodeType::Compute>
 	{
 		using FArdaParameters = FArdaInductorFailureParameters;
 		using FArdaState = FArdaEmptyDependencyNodeState;
@@ -1121,20 +1139,21 @@ namespace arda::inductor_gpu_tests
 			    "writer");
 			ASSERT_TRUE(Writer);
 			auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-			ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Output, Bytes}, "read"));
+			ASSERT_TRUE(ReadbackNode(Edit, FArdaGraphReadbackParameters{Edit.UseBuffer(Output), Bytes}, "read"));
 			ASSERT_TRUE(Edit.Commit());
-			ASSERT_TRUE(G.Compile());
-			const auto Failed = G.Execute();
+			ASSERT_TRUE(G.CompileAndWait());
+			const auto Failed = G.ExecuteAndWait();
 			EXPECT_FALSE(Failed.mStatus);
 			EXPECT_EQ(Failed.mSubmittedCommandListCount, 0u);
 			EXPECT_TRUE(Bytes->empty());
 			FArdaGraphEdit Repair(G);
 			const auto RepairedOutput = AllocateBuffer(Repair, D, "output");
 			ASSERT_TRUE(RecordFailure(Repair, FArdaInductorFailureParameters{RepairedOutput, {}, false}, "writer"));
-			ASSERT_TRUE(ReadbackNode(Repair, FArdaGraphReadbackParameters{RepairedOutput, Bytes}, "read"));
+			ASSERT_TRUE(
+			    ReadbackNode(Repair, FArdaGraphReadbackParameters{Repair.UseBuffer(RepairedOutput), Bytes}, "read"));
 			ASSERT_TRUE(Repair.Commit());
-			ASSERT_TRUE(G.Compile());
-			const auto Repaired = G.Execute();
+			ASSERT_TRUE(G.CompileAndWait());
+			const auto Repaired = G.ExecuteAndWait();
 			ASSERT_TRUE(Repaired.mStatus) << Repaired.mStatus.mMessage.c_str();
 			EXPECT_EQ(Repaired.mStateConformanceFailureCount, 0u);
 			ASSERT_EQ(Bytes->size(), 64u);
@@ -1183,11 +1202,11 @@ namespace arda::inductor_gpu_tests
 		ASSERT_TRUE(BufferToTexture(Edit, {Texture.GetHandle(), {}, Buffer.GetHandle(), {0, 256}}, "copy"));
 		Edit.Keep(Texture.GetHandle());
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = Graph.Compile();
+		const auto Compiled = Graph.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		for (uint32_t Frame = 0; Frame < 3; ++Frame)
 		{
-			const auto Executed = Graph.Execute();
+			const auto Executed = Graph.ExecuteAndWait();
 			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 			EXPECT_EQ(Executed.mStateConformanceFailureCount, 0u);
 			ASSERT_TRUE(mDevice->WaitForIdle());
@@ -1200,24 +1219,17 @@ namespace arda::inductor_gpu_tests
 		}
 	}
 
-	struct FArdaBindlessPush
-	{
-		uint32_t mIndex = 0, mValue = 0;
-	};
-	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaBindlessShaderParameters)
-		ARDA_SHADER_PUSH_CONSTANTS(FArdaBindlessPush, mSelection, 0, 1, EArdaRHIShaderStage::Compute)
-	ARDA_END_SHADER_PARAMETER_STRUCT()
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaBindlessTestParameters)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mOutput)
+		ARDA_NODE_PARAMETER(FArdaRHIShaderRef, mShader)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mIndex, 0)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mOffset, 0)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbDuplicate, false)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<eastl::vector<FArdaRHIDescriptorTableRef>>, mTables)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaBindlessTestParameters
-	{
-		FArdaDependencyResourceHandle mOutput;
-		FArdaRHIShaderRef mShader;
-		uint32_t mIndex = 0, mOffset = 0;
-		bool mbDuplicate = false;
-		eastl::shared_ptr<eastl::vector<FArdaRHIDescriptorTableRef>> mTables;
-	};
-
-	struct FArdaBindlessTestNode : TArdaComputeDependencyNode<FArdaBindlessTestNode, FArdaBindlessTestParameters>
+	struct FArdaBindlessTestNode
+	    : TArdaNodeDefinition<FArdaBindlessTestNode, FArdaBindlessTestParameters, EArdaNodeType::Compute>
 	{
 		static FArdaDependencyNodeMetadata GetMetadata()
 		{
@@ -1328,11 +1340,12 @@ namespace arda::inductor_gpu_tests
 		const auto B = DispatchBindless(Edit, P, "upper");
 		ASSERT_TRUE(B) << Edit.GetStatus().mMessage.c_str();
 		auto Bytes = eastl::make_shared<eastl::vector<uint8_t>>();
-		const auto FirstRead = ReadbackNode(Edit, FArdaGraphReadbackParameters{P.mOutput, Bytes}, "read all");
+		const auto FirstRead =
+		    ReadbackNode(Edit, FArdaGraphReadbackParameters{Edit.UseBuffer(P.mOutput), Bytes}, "read all");
 		ASSERT_TRUE(FirstRead);
 		const auto Before = G.GetPipelineCacheStats();
 		ASSERT_TRUE(Edit.Commit());
-		const auto Compiled = G.Compile();
+		const auto Compiled = G.CompileAndWait();
 		ASSERT_TRUE(Compiled) << Compiled.mMessage.c_str();
 		EXPECT_FALSE(G.GetTopology().IsReachable(A.GetHandle(), B.GetHandle()));
 		EXPECT_FALSE(G.GetTopology().IsReachable(B.GetHandle(), A.GetHandle()));
@@ -1344,7 +1357,7 @@ namespace arda::inductor_gpu_tests
 		for (uint32_t Frame = 0; Frame < 3; ++Frame)
 		{
 			SCOPED_TRACE(Frame);
-			const auto E = G.Execute();
+			const auto E = G.ExecuteAndWait();
 			ASSERT_TRUE(E.mStatus) << E.mStatus.mMessage.c_str();
 			ASSERT_TRUE(mDevice->WaitForIdle());
 			EXPECT_EQ(E.mStateConformanceFailureCount, 0u);
@@ -1379,17 +1392,19 @@ namespace arda::inductor_gpu_tests
 		P.mIndex = 1;
 		P.mOffset = 32;
 		ASSERT_TRUE(DispatchBindless(AliasEdit, P, "upper"));
-		const auto NextRead = ReadbackNode(AliasEdit, FArdaGraphReadbackParameters{P.mOutput, Bytes}, "read all");
+		const auto NextRead =
+		    ReadbackNode(AliasEdit, FArdaGraphReadbackParameters{AliasEdit.UseBuffer(P.mOutput), Bytes}, "read all");
 		ASSERT_TRUE(NextRead);
 		P.mOffset = 0;
 		const auto Alias = DispatchBindless(AliasEdit, P, "overlapping alias");
 		ASSERT_TRUE(Alias);
 		auto FinalBytes = eastl::make_shared<eastl::vector<uint8_t>>();
-		const auto FinalRead =
-		    ReadbackNode(AliasEdit, FArdaGraphReadbackParameters{P.mOutput, FinalBytes}, "read overwritten contents");
+		const auto FinalRead = ReadbackNode(AliasEdit,
+		    FArdaGraphReadbackParameters{AliasEdit.UseBuffer(P.mOutput), FinalBytes},
+		    "read overwritten contents");
 		ASSERT_TRUE(FinalRead);
 		ASSERT_TRUE(AliasEdit.Commit());
-		const auto Recompiled = G.Compile();
+		const auto Recompiled = G.CompileAndWait();
 		ASSERT_TRUE(Recompiled) << Recompiled.mMessage.c_str();
 		const auto RecompiledCache = G.GetPipelineCacheStats();
 		EXPECT_EQ(RecompiledCache.mComputeEntries, PreparedCache.mComputeEntries);
@@ -1405,7 +1420,7 @@ namespace arda::inductor_gpu_tests
 			SCOPED_TRACE(Frame);
 			Bytes->assign(64, 0xff);
 			FinalBytes->assign(64, 0xff);
-			const auto Executed = G.Execute();
+			const auto Executed = G.ExecuteAndWait();
 			ASSERT_TRUE(Executed.mStatus) << Executed.mStatus.mMessage.c_str();
 			EXPECT_EQ(Executed.mStateConformanceFailureCount, 0u);
 			const auto FrameCache = G.GetPipelineCacheStats();
@@ -1432,23 +1447,17 @@ namespace arda::inductor_gpu_tests
 		ASSERT_TRUE(InvalidEdit.Cancel());
 	}
 
-	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaLocalRayParameters)
-		ARDA_SHADER_BUFFER_UAV(mOutput, 0, 4, EArdaRHIShaderStage::RayGeneration)
-	ARDA_END_SHADER_PARAMETER_STRUCT()
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaTableTestParameters)
+		ARDA_NODE_PARAMETER(FArdaRHIShaderRef, mRaygen)
+		ARDA_NODE_STAGE_INPUTS(FArdaGraphRayShader, mShaders)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCase, 0)
+		ARDA_NODE_PARAMETER(eastl::shared_ptr<eastl::vector<FArdaRHIShaderTableRef>>, mTrace)
+		ARDA_NODE_PARAMETER(FArdaDependencyResourceHandle, mOutput)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	struct FArdaTableTestParameters
-	{
-		FArdaRHIShaderRef mRaygen;
-		eastl::vector<FArdaGraphRayShader> mShaders;
-		uint32_t mCase = 0;
-		eastl::shared_ptr<eastl::vector<FArdaRHIShaderTableRef>> mTrace;
-		FArdaDependencyResourceHandle mOutput;
-	};
-
-	struct FArdaRayMissParameters
-	{
-		FArdaRHIShaderRef mShader;
-	};
+	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaRayMissParameters)
+		ARDA_NODE_PARAMETER(FArdaRHIShaderRef, mShader)
+	ARDA_END_NODE_PARAMETER_STRUCT()
 
 	struct FArdaRayMissNode : TArdaNodeDefinition<FArdaRayMissNode, FArdaRayMissParameters, EArdaNodeType::RayMiss>
 	{
@@ -1594,13 +1603,13 @@ namespace arda::inductor_gpu_tests
 				const auto Output = AllocateBuffer(Edit, B, "local-output");
 				ASSERT_TRUE(Output);
 				P.mOutput = Output.GetHandle();
-				ASSERT_TRUE(ReadbackNode(Edit, {P.mOutput, Bytes}, "read-local"));
+				ASSERT_TRUE(ReadbackNode(Edit, {Edit.UseBuffer(P.mOutput), Bytes}, "read-local"));
 			}
 			const auto N = TraceRayTable(Edit, P, "trace");
 			ASSERT_TRUE(N);
 			const auto Before = G.GetPipelineCacheStats();
 			ASSERT_TRUE(Edit.Commit());
-			const auto Compiled = G.Compile();
+			const auto Compiled = G.CompileAndWait();
 			const auto CompiledCache = G.GetPipelineCacheStats();
 			EXPECT_EQ(CompiledCache.mRayTracingEntries, Before.mRayTracingEntries);
 			EXPECT_EQ(CompiledCache.mMisses, Before.mMisses);
@@ -1611,7 +1620,7 @@ namespace arda::inductor_gpu_tests
 			if (Case == 6 && std::string(GetParam()) == "native-vulkan")
 			{
 				// Local descriptor support is checked when resolving the native pipeline.
-				const auto Submitted = G.Submit();
+				const auto Submitted = G.SubmitAndWait();
 				ASSERT_FALSE(Submitted);
 				EXPECT_EQ(Submitted.mStatus.mCode, EArdaRHIResult::Unsupported);
 				EXPECT_FALSE(Submitted.mValue);
@@ -1625,7 +1634,7 @@ namespace arda::inductor_gpu_tests
 				for (uint32_t Attempt = 0; Attempt < 2; ++Attempt)
 				{
 					SCOPED_TRACE(Attempt);
-					const auto Submitted = G.Submit();
+					const auto Submitted = G.SubmitAndWait();
 					ASSERT_FALSE(Submitted);
 					EXPECT_FALSE(Submitted.mValue);
 					EXPECT_EQ(Submitted.mStatus.mCode, EArdaRHIResult::InvalidArgument);
@@ -1642,7 +1651,7 @@ namespace arda::inductor_gpu_tests
 			for (uint32_t Frame = 0; Frame < 3; ++Frame)
 			{
 				SCOPED_TRACE(Frame);
-				const auto E = G.Execute();
+				const auto E = G.ExecuteAndWait();
 				ASSERT_TRUE(E.mStatus) << E.mStatus.mMessage.c_str();
 				ASSERT_TRUE(mDevice->WaitForIdle());
 				ASSERT_EQ(P.mTrace->size(), Frame + 1);

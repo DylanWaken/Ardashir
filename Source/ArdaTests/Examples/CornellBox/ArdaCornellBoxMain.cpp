@@ -23,8 +23,13 @@ namespace arda
 			eastl::string mBackendName;
 			FArdaCornellBoxSettings mRenderer;
 			uint32_t mFrameLimit = 0;
+#if defined(ARDA_CORNELL_REQUIRE_DENOISING)
+			uint32_t mWindowWidth = 256;
+			uint32_t mWindowHeight = 256;
+#else
 			uint32_t mWindowWidth = 1280;
 			uint32_t mWindowHeight = 720;
+#endif
 			bool mbHidden = false;
 			bool mbValidation = false;
 			bool mbFullscreen = false;
@@ -151,6 +156,20 @@ namespace arda
 						return false;
 					}
 				}
+				else if ((Argument == "--denoise-package" || Argument == "--denoise-state-dict" ||
+				             Argument == "--denoise-dump") &&
+				    Index + 1 < ArgumentCount)
+				{
+					auto& Path = Argument == "--denoise-package" ? Options.mRenderer.mDenoisingPackage
+					    : Argument == "--denoise-state-dict"     ? Options.mRenderer.mDenoisingStateDict
+					                                             : Options.mRenderer.mDenoisingDumpPrefix;
+					Path = Arguments[++Index];
+					if (Path.empty())
+					{
+						Error = "Denoising path options require a nonempty value.";
+						return false;
+					}
+				}
 				else if (Argument == "--shader-mode" && Index + 1 < ArgumentCount)
 				{
 					const eastl::string_view Value(Arguments[++Index]);
@@ -254,6 +273,24 @@ namespace arda
 				Error = "--hidden and --fullscreen cannot be combined.";
 				return false;
 			}
+#if defined(ARDA_CORNELL_REQUIRE_DENOISING)
+			if (Options.mRenderer.mDenoisingPackage.empty())
+			{
+				Error =
+				    "CornellDenoising requires --denoise-package pointing to an exported .ardagpu model descriptor.";
+				return false;
+			}
+#endif
+			if (!Options.mRenderer.mDenoisingDumpPrefix.empty() && Options.mRenderer.mDenoisingPackage.empty())
+			{
+				Error = "--denoise-dump requires --denoise-package.";
+				return false;
+			}
+			if (!Options.mRenderer.mDenoisingStateDict.empty() && Options.mRenderer.mDenoisingPackage.empty())
+			{
+				Error = "--denoise-state-dict requires --denoise-package.";
+				return false;
+			}
 			return true;
 		}
 
@@ -294,6 +331,10 @@ namespace arda
 			Configuration.mRequiredFeatures.mbRequireHardwareRayTracing = true;
 			Configuration.mRequiredFeatures.mbRequireRayTracingPipelines = true;
 			Configuration.mRequiredFeatures.mbRequireAccelerationStructures = true;
+			if (!Options.mRenderer.mDenoisingPackage.empty())
+			{
+				Configuration.mCudaExecutionMode = EArdaCudaExecutionMode::ContextSwitch;
+			}
 
 			// Source-distributed examples retain their selected shader mode in Debug and Release.
 			ConfigureArdaExampleShaderCompiler();
@@ -371,6 +412,11 @@ namespace arda
 				}
 			}
 
+			if (!Renderer.SaveDenoisingImages())
+			{
+				ARDA_LOG(LogCornellBox, Error, "%s", Renderer.GetError().c_str());
+				return EXIT_FAILURE;
+			}
 			ARDA_LOG(LogCornellBox,
 			    Log,
 			    "CornellBox completed with %u accumulated samples per pixel.",

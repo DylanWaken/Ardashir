@@ -34,7 +34,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--frames", type=int)
     parser.add_argument("--hidden", action="store_true")
     parser.add_argument("--validation", action="store_true", help="Enable native GPU validation; requires installed debug layers.")
-    parser.add_argument("--verify", action="store_true", help="Check terrain geometry and gradients without native validation layers.")
+    parser.add_argument("--verify", action="store_true", help="Check terrain geometry, generated heights and rendered contour colors without native validation layers.")
     parser.add_argument("--fullscreen", action="store_true")
     parser.add_argument("--width", type=int, default=1920)
     parser.add_argument("--height", type=int, default=1080)

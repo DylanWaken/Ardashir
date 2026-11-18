@@ -24,6 +24,7 @@ EXTERNAL_SCHEMES = {
     "data", "ftp", "ftps", "http", "https", "irc", "javascript", "mailto",
     "news", "sms", "ssh", "tel", "urn",
 }
+MARKDOWN_SUFFIXES = {".md", ".markdown", ".mdx"}
 API_REQUIRED = {
     "id", "name", "qualifiedName", "kind", "component", "page", "signature",
     "summary", "details", "source", "params", "returns", "ownership", "errors",
@@ -267,6 +268,7 @@ class Validator:
         if not self.docs.is_dir():
             self.fail(self.docs, "Docs root does not exist or is not a directory")
             return self.report()
+        self.validate_document_formats()
         self.parse_html()
         self.parse_xml()
         glossary = self.load_js_data(
@@ -287,8 +289,15 @@ class Validator:
             self.validate_api(apis[module], module)
         return self.report()
 
+    def validate_document_formats(self) -> None:
+        """Keep authored documentation in the browsable static HTML site."""
+        for path in sorted(self.docs.rglob("*")):
+            if path.is_file() and path.suffix.lower() in MARKDOWN_SUFFIXES:
+                self.fail(path, "Markdown documentation is not allowed in Docs; migrate it to HTML")
+
     def parse_html(self) -> None:
-        paths = sorted(self.docs.rglob("*.html"))
+        paths = sorted(path for path in self.docs.rglob("*")
+                       if path.is_file() and path.suffix.lower() in {".html", ".htm"})
         if not paths:
             self.fail(self.docs, "no HTML files found")
         for path in paths:
@@ -318,8 +327,8 @@ class Validator:
     def parse_xml(self) -> None:
         paths = sorted({
             path.resolve()
-            for suffix in ("*.svg", "*.xml")
-            for path in self.docs.rglob(suffix)
+            for path in self.docs.rglob("*")
+            if path.is_file() and path.suffix.lower() in {".svg", ".xml"}
         })
         for path in paths:
             try:
@@ -412,13 +421,13 @@ class Validator:
         ] + self.xml_links
         for link in all_links:
             raw = link.value
+            if re.match(r"^(?:[a-z]:|file:)", urllib.parse.unquote(raw), re.I):
+                self.fail(link.source, "%s URL is machine-local: %s; "
+                          "use a relative Docs URL or a public source URL"
+                          % (link.attribute, raw), link.line)
+                continue
             if "\\" in raw:
                 self.fail(link.source, "%s URL uses backslashes: %s" % (
-                    link.attribute, raw
-                ), link.line)
-                continue
-            if raw.startswith("/") or raw.startswith("//"):
-                self.fail(link.source, "%s URL is root-relative: %s" % (
                     link.attribute, raw
                 ), link.line)
                 continue
@@ -427,12 +436,21 @@ class Validator:
                 continue
             if parsed.scheme:
                 continue
+            if raw.startswith("/"):
+                self.fail(link.source, "%s URL is root-relative: %s" % (
+                    link.attribute, raw
+                ), link.line)
+                continue
             decoded_path = urllib.parse.unquote(parsed.path)
             target = (link.source.parent / decoded_path).resolve() if decoded_path else link.source.resolve()
             try:
                 target.relative_to(self.docs)
             except ValueError:
                 self.fail(link.source, "relative URL escapes Docs root: %s" % raw, link.line)
+                continue
+            if target.suffix.lower() in MARKDOWN_SUFFIXES:
+                self.fail(link.source, "%s URL targets Markdown documentation in Docs: %s; "
+                          "link to its HTML page" % (link.attribute, raw), link.line)
                 continue
             if target.is_dir():
                 target = target / "index.html"

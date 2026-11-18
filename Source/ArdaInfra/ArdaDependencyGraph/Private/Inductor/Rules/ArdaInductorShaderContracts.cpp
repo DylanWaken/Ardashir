@@ -1,3 +1,4 @@
+#include "Inductor/Rules/ArdaInductorPipelineInternal.h"
 #include "Inductor/Rules/ArdaInductorShaderContracts.h"
 #include "Inductor/Rules/ArdaInductorBindingArguments.h"
 #include <EASTL/algorithm.h>
@@ -12,23 +13,6 @@ namespace arda
 			FArdaRHIBindingLayoutRef mLocalLayout;
 			eastl::string mExportName;
 		};
-
-		const eastl::vector<FArdaRHIBindingLayoutRef>& GetLayouts(const FArdaInductorPipelineConfiguration& C)
-		{
-			switch (C.mKind)
-			{
-			case EArdaPipelineStateKind::Compute:
-				return C.mCompute.mDesc.mBindingLayouts;
-			case EArdaPipelineStateKind::Graphics:
-				return C.mGraphics.mDesc.mBindingLayouts;
-			case EArdaPipelineStateKind::Meshlet:
-				return C.mMeshlet.mDesc.mBindingLayouts;
-			case EArdaPipelineStateKind::RayTracing:
-				return C.mRayTracing.mDesc.mGlobalBindingLayouts;
-			default:
-				return C.mWorkGraph.mDesc.mGlobalBindingLayouts;
-			}
-		}
 
 		eastl::vector<FArdaShaderContract> GetShaders(const FArdaInductorPipelineConfiguration& C)
 		{
@@ -144,16 +128,15 @@ namespace arda
 	FArdaRHIStatus ValidateArdaPipelineShaderContract(const FArdaInductorPipelineConfiguration& C)
 	{
 		const auto Shaders = GetShaders(C);
-		const auto& Layouts = GetLayouts(C);
+		const auto& Layouts = pipeline_detail::GlobalLayouts(C);
 		eastl::vector<FArdaRHIBindingLayoutDesc> Required;
-		EArdaRHIShaderStage UnknownStages = EArdaRHIShaderStage::None;
 		for (const auto& Shader : Shaders)
 		{
 			const auto* Metadata = Shader.mShader->GetParameterMetadata();
 			if (!Metadata)
 			{
-				UnknownStages |= Shader.mShader->GetStage();
-				continue;
+				return BindingError(
+				    "Graph shaders require registered parameter metadata, including an explicit empty schema.");
 			}
 			eastl::vector<FArdaRHIBindingLayoutDesc> Expected;
 			if (auto Status = Metadata->BuildBindingLayoutDescs(Expected); !Status)
@@ -199,7 +182,7 @@ namespace arda
 				return BindingError("Null pipeline layout in shader contract.");
 			}
 			// Bindless tables have their own explicit contract; fixed shader metadata does not describe them.
-			if (Layout->GetBindlessDesc() || HasAnyFlags(Layout->GetDesc().mVisibility, UnknownStages))
+			if (Layout->GetBindlessDesc())
 			{
 				continue;
 			}
@@ -225,13 +208,8 @@ namespace arda
 		{
 			return (B.mPipelineSlot.empty() ? eastl::string("default") : B.mPipelineSlot) == Slot;
 		};
-		if (!D.mbDeclarativeParameters && !eastl::any_of(D.mShaderBindings.begin(), D.mShaderBindings.end(), InSlot) &&
-		    !eastl::any_of(D.mBindlessTables.begin(), D.mBindlessTables.end(), InSlot) &&
-		    !eastl::any_of(D.mShaderTables.begin(), D.mShaderTables.end(), InSlot))
-		{
-			return {};
-		}
-		for (const auto& Layout : GetLayouts(C))
+
+		for (const auto& Layout : pipeline_detail::GlobalLayouts(C))
 		{
 			bool Found = false;
 			if (Layout->GetBindlessDesc())

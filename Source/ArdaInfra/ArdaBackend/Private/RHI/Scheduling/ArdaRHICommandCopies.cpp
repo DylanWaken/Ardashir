@@ -1,3 +1,4 @@
+#include <EASTL/numeric_limits.h>
 #include "RHI/Scheduling/ArdaRHICommandListImpl.h"
 #include "RHI/Device/ArdaRHIDeviceImpl.h"
 
@@ -68,7 +69,7 @@ namespace arda::detail
 		}
 		const uint64_t ResolvedSize = Size == ArdaRHIWholeBuffer ? Native->mDesc.mByteSize - SourceOffset : Size;
 		if (ResolvedSize == 0 || ResolvedSize > Native->mDesc.mByteSize - SourceOffset ||
-		    ResolvedSize > static_cast<uint64_t>(SIZE_MAX))
+		    ResolvedSize > eastl::numeric_limits<eastl::vector<uint8_t>::size_type>::max())
 		{
 			return Invalid("Buffer readback range is invalid.");
 		}

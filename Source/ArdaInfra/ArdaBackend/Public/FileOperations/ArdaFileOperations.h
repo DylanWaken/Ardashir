@@ -26,6 +26,8 @@ namespace arda::fileops
 	bool IsDirectChildPath(const std::filesystem::path& Directory, const std::filesystem::path& Path);
 	bool IsRegularNonEmpty(const std::filesystem::path& Path);
 	EArdaFileReadResult ReadBinaryFile(const std::filesystem::path& Path, eastl::vector<uint8_t>& Contents);
+	/** Read at most MaximumBytes from the open file. Reject oversized input before allocating output storage. */
+	EArdaFileReadResult ReadBinaryFile(const std::filesystem::path& Path, eastl::string& Contents, size_t MaximumBytes);
 	eastl::string ReadText(const std::filesystem::path& Path);
 
 	// Produces a process-unique sibling name; it does not create or reserve a file.

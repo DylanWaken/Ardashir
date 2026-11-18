@@ -41,7 +41,6 @@ namespace arda
 	{
 		FArdaDependencyNodeDesc D;
 		D.mWorkspaceBytes = P.mWorkspaceBytes;
-		D.mAccesses = {{P.mConstants, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest}};
 
 		return D;
 	}

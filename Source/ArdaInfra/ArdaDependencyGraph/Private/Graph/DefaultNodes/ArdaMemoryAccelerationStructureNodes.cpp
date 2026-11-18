@@ -15,14 +15,16 @@ namespace arda
 		{
 			const auto* Source = Context.Find(SourceHandle);
 			const auto* Destination = Context.Find(DestinationHandle);
-			if (!Source || !Destination || !Source->mExternalAccelerationStructure ||
-			    !Destination->mExternalAccelerationStructure || SourceHandle == DestinationHandle)
+			if (!Source || !Destination ||
+			    Source->mExternalKind != EArdaGraphExternalResourceKind::AccelerationStructure ||
+			    Destination->mExternalKind != EArdaGraphExternalResourceKind::AccelerationStructure ||
+			    SourceHandle == DestinationHandle)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 				    "Acceleration-structure memory operations require two distinct imported BLAS or TLAS objects.");
 			}
-			const auto& SourceDesc = Source->mExternalAccelerationStructure->GetDesc();
-			const auto& DestinationDesc = Destination->mExternalAccelerationStructure->GetDesc();
+			const auto& SourceDesc = Source->mAccelerationStructure;
+			const auto& DestinationDesc = Destination->mAccelerationStructure;
 			if (SourceDesc.mbTopLevel != DestinationDesc.mbTopLevel ||
 			    SourceDesc.mBuildFlags != DestinationDesc.mBuildFlags)
 			{
@@ -32,14 +34,6 @@ namespace arda
 			return {};
 		}
 
-		FArdaDependencyNodeDesc DescribeAccelerationStructureCopy(FArdaDependencyResourceHandle Source,
-		    FArdaDependencyResourceHandle Destination)
-		{
-			FArdaDependencyNodeDesc Description;
-			Description.mAccesses = {{Source, EArdaDependencyAccess::Read, EArdaRHIResourceState::AccelStructRead},
-			    {Destination, EArdaDependencyAccess::Write, EArdaRHIResourceState::AccelStructWrite}};
-			return Description;
-		}
 	}
 
 	FArdaDependencyNodeMetadata FArdaMemoryCopyAccelerationStructureNode::GetMetadata()
@@ -63,12 +57,6 @@ namespace arda
 	eastl::string FArdaMemoryCopyAccelerationStructureNode::GetCanonicalKey(const FArdaParameters& Parameters)
 	{
 		return FArdaDependencyKeyBuilder().Resource(Parameters.mSource).Resource(Parameters.mDestination).Build();
-	}
-
-	FArdaDependencyNodeDesc FArdaMemoryCopyAccelerationStructureNode::Describe(const FArdaParameters& Parameters,
-	    const FArdaState&)
-	{
-		return DescribeAccelerationStructureCopy(Parameters.mSource, Parameters.mDestination);
 	}
 
 	FArdaRHIStatus FArdaMemoryCopyAccelerationStructureNode::Record(FArdaDependencyExecutionContext& Context,
@@ -101,15 +89,16 @@ namespace arda
 		{
 			return Status;
 		}
-		const auto& Source = Context.Find(Parameters.mSource)->mExternalAccelerationStructure;
-		const auto& Destination = Context.Find(Parameters.mDestination)->mExternalAccelerationStructure;
-		if (!HasAnyFlags(Source->GetDesc().mBuildFlags, EArdaRHIAccelStructBuildFlags::AllowCompaction) ||
-		    !Destination->GetDesc().mResultSizeOverride)
+		const auto& Source = *Context.Find(Parameters.mSource);
+		const auto& Destination = *Context.Find(Parameters.mDestination);
+		if (!HasAnyFlags(Source.mAccelerationStructure.mBuildFlags, EArdaRHIAccelStructBuildFlags::AllowCompaction) ||
+		    !Destination.mAccelerationStructure.mResultSizeOverride)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 			    "Compaction requires AllowCompaction and a destination with an explicit compact result size.");
 		}
-		if (Source->GetBuildState() == EArdaRHIAccelStructBuildState::Unbuilt)
+		if (Source.mExternalAccelerationStructure &&
+		    Source.mExternalAccelerationStructure->GetBuildState() == EArdaRHIAccelStructBuildState::Unbuilt)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 			    "Compaction requires a previously submitted source build and completed-size query.");
@@ -120,12 +109,6 @@ namespace arda
 	eastl::string FArdaMemoryCompactAccelerationStructureNode::GetCanonicalKey(const FArdaParameters& Parameters)
 	{
 		return FArdaDependencyKeyBuilder().Resource(Parameters.mSource).Resource(Parameters.mDestination).Build();
-	}
-
-	FArdaDependencyNodeDesc FArdaMemoryCompactAccelerationStructureNode::Describe(const FArdaParameters& Parameters,
-	    const FArdaState&)
-	{
-		return DescribeAccelerationStructureCopy(Parameters.mSource, Parameters.mDestination);
 	}
 
 	FArdaRHIStatus FArdaMemoryCompactAccelerationStructureNode::Record(FArdaDependencyExecutionContext& Context,

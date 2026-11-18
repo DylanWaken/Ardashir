@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
-<title id="title">Two rule lists, one publication boundary</title>
-<desc id="desc">Preprocess rules change a private graph snapshot. Compile rules transform a result: changing node order invalidates the allocation and dispatch products that follow it. Validation publishes only complete, consistent output. Native allocation and timeline values are deferred to submission.</desc>
+<title id="title">Preprocess into a graph; compile into a plan</title>
+<desc id="desc">Preprocess rules publish an editable normal graph. Const compilation reads that graph and transforms a separate result: changing node order invalidates the allocation and dispatch products that follow it. Validation publishes only complete, consistent output. Native allocation and timeline values are deferred to submission.</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker></defs>
 <rect width="1200" height="630" rx="20" fill="#0b1424"/>
 <g font-family="system-ui,sans-serif" fill="#eef6ff">
-<text x="36" y="48" font-size="28" font-weight="700">Two rule lists, one publication boundary</text>
+<text x="36" y="48" font-size="28" font-weight="700">Preprocess into a graph; compile into a plan</text>
 <text x="36" y="82" font-size="17" fill="#b7cbe1">Each arrow carries graph or result data. Dashed arrow means downstream data must be rebuilt.</text>
 <g fill="#172a43" stroke="#5cb8df" stroke-width="2">
 <rect x="36" y="116" width="240" height="135" rx="12"/>
@@ -17,13 +17,13 @@
 <rect x="926" y="319" width="238" height="128" rx="12"/>
 </g>
 <g font-size="19" font-weight="700">
-<text x="54" y="151">Authored construction</text><text x="344" y="151">Preprocess rule instances</text><text x="824" y="151">Read-only working graph</text>
+<text x="54" y="151">Authored construction</text><text x="344" y="151">Preprocess rule instances</text><text x="824" y="151">Normal preprocessed graph</text>
 <text x="54" y="353">Flatten / refine order</text><text x="334" y="353">Allocation plan</text><text x="614" y="353">Dispatches / fences</text><text x="944" y="353">Validate and publish</text>
 </g>
 <g font-size="16" fill="#c4d3e5">
-<text x="54" y="184">Saved before preprocessing</text><text x="54" y="214">Reused by forced compile</text>
+<text x="54" y="184">Source remains unchanged</text><text x="54" y="214">Can retain nested templates</text>
 <text x="344" y="184">Apply mutable graph transformations in order</text><text x="344" y="214">Example: accesses → hazards → cycle check</text>
-<text x="824" y="184">No publication of partial edits</text><text x="824" y="214">Input shared by every compile rule</text>
+<text x="824" y="184">Editable and serializable</text><text x="824" y="214">Const input to compilation</text>
 <text x="54" y="388">A B read-A read-B</text><text x="54" y="418">→ A read-A B read-B</text>
 <text x="334" y="388">Reuse compatible bytes</text><text x="334" y="418">Add alias ordering edges</text>
 <text x="614" y="388">Per-queue / stream order</text><text x="614" y="418">Cross-domain waits</text>
@@ -38,5 +38,5 @@
 <text x="316" y="306" font-size="17" fill="#7dd3fc">Compile rule instances refine one result; the sequence below illustrates data dependencies.</text>
 <text x="36" y="522" font-size="17" fill="#f7d794">Reorder again? Rebuild allocation, queue assignment, batches, dispatches and synchronization.</text>
 <rect x="36" y="546" width="1128" height="58" rx="10" fill="#152637"/>
-<text x="54" y="581" font-size="17">First Submit creates native resources and timeline values. Later frames reuse the accepted execution plan.</text>
+<text x="54" y="581" font-size="17">Executor retains the plan after source graphs are destroyed. First Submit creates native resources.</text>
 </g></svg>

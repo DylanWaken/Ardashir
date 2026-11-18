@@ -104,7 +104,7 @@ namespace
 		Edit.Keep(FirstBuffer);
 		Edit.Keep(SecondBuffer);
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), 2u);
 	}
 
@@ -176,7 +176,7 @@ namespace
 		Edit.Keep(Later.GetBuffer());
 		ASSERT_TRUE(Edit.Order(Later, Earlier));
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		const auto& Order = Graph.GetCompileResult().mExecutionOrder;
 		ASSERT_EQ(Order.size(), 2u);
 		EXPECT_EQ(Order[0], Later.GetHandle());
@@ -213,8 +213,8 @@ namespace
 			Edit.Keep(Old.GetBuffer());
 			ASSERT_TRUE(Edit.Commit());
 		}
-		ASSERT_TRUE(Graph.Compile());
-		EXPECT_FALSE(Graph.Execute().mStatus);
+		ASSERT_TRUE(Graph.CompileAndWait());
+		EXPECT_FALSE(Graph.ExecuteAndWait().mStatus);
 		FArdaGraphEdit Edit(Graph);
 		const auto Current = UploadBuffer(Edit, {{}, eastl::vector<uint8_t>(16, 23)});
 		ASSERT_TRUE(Current);
@@ -250,7 +250,7 @@ namespace
 		ASSERT_TRUE(Upload(Edit, Retained, eastl::vector<uint8_t>(16, 41)));
 		Edit.Keep(Retained);
 		ASSERT_TRUE(Edit.Commit());
-		ASSERT_TRUE(Graph.Compile());
+		ASSERT_TRUE(Graph.CompileAndWait());
 		EXPECT_EQ(Graph.GetCompileResult().mExecutionOrder.size(), 1u);
 	}
 }

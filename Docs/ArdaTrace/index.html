@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ArdaTrace Guide — Ardashir engineering documentation.">
+  <title>ArdaTrace Guide | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="../ArdaBackend/index.html">ArdaBackend</a>
+      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaTrace pages">
+      <h2>ArdaTrace</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="instrumentation.html">Instrumentation</a>
+        <a href="viewer-and-format.html">Viewer and capture format</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> / <a href="index.html">ArdaTrace</a>
+      </nav>
+      <article>
+<h1 id="ardatrace-guide">ArdaTrace Guide</h1>
+<p>ArdaTrace records CPU scope durations, numeric counters, and instantaneous
+markers from C++ code into a versioned <code>.ardatrace</code> capture. A local Flask
+server parses the capture and serves an offline browser viewer with thread
+lanes, nested scopes, counter plots, markers, filters, and aggregate timing
+statistics.</p>
+<p><img src="assets/architecture.svg" alt="ArdaTrace architecture" /></p>
+<h2 id="recommended-learning-path">Recommended learning path</h2>
+<ol>
+<li><a href="getting-started.html">Getting started</a> — link the module, record a
+capture, and launch the viewer.</li>
+<li><a href="instrumentation.html">Instrumentation</a> — name threads, create automatic
+and named scopes, sample counters, emit markers, and understand hierarchy.</li>
+<li><a href="viewer-and-format.html">Viewer, capture format, and practices</a> — inspect
+captures, understand the binary pipeline, control overhead, and diagnose
+invalid captures.</li>
+</ol>
+<h2 id="what-ardatrace-records">What ArdaTrace records</h2>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>C++ entry point</th>
+<th>Viewer representation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CPU scope</td>
+<td><code>ARDA_SCOPE_TIMER()</code></td>
+<td>A named interval on its thread lane</td>
+</tr>
+<tr>
+<td>Named CPU scope</td>
+<td><code>ARDA_NAMED_SCOPE_TIMER(&quot;Name&quot;)</code></td>
+<td>A named interval with an explicit parent</td>
+</tr>
+<tr>
+<td>Counter sample</td>
+<td><code>ARDA_TRACE_COUNTER(&quot;Name&quot;, Value)</code></td>
+<td>A numeric series on the shared timeline</td>
+</tr>
+<tr>
+<td>Marker</td>
+<td><code>ARDA_TRACE_MARKER(&quot;Name&quot;)</code></td>
+<td>A vertical instantaneous event</td>
+</tr>
+<tr>
+<td>Thread metadata</td>
+<td><code>SetCurrentTraceThreadName(&quot;Name&quot;)</code></td>
+<td>A readable thread-lane label</td>
+</tr>
+</tbody>
+</table>
+<p>Scope timers use <code>std::chrono::steady_clock</code>. Durations are recorded in
+nanoseconds and displayed with an appropriate unit by the viewer.</p>
+<h2 id="system-boundaries">System boundaries</h2>
+<p>ArdaTrace deliberately separates recording from analysis:</p>
+<ul>
+<li>instrumented C++ code writes compact binary records;</li>
+<li>completed per-thread event chunks are streamed to the capture file;</li>
+<li>labels are registered once and referenced by integer identifiers;</li>
+<li>no formatting or web work occurs on the timed path;</li>
+<li>the Flask viewer reads completed files and binds to loopback by default.</li>
+</ul>
+<p>ArdaTrace currently records CPU-side activity. It does not yet collect GPU
+timestamp queries, allocation events, call stacks, or live network streams.</p>
+<h2 id="main-locations">Main locations</h2>
+<ul>
+<li>Runtime API: <a href="https://github.com/DylanWaken/Ardashir/tree/main/Source/ArdaTrace/Public"><code>Source/ArdaTrace/Public</code></a></li>
+<li>Runtime implementation:
+<a href="https://github.com/DylanWaken/Ardashir/tree/main/Source/ArdaTrace/Private"><code>Source/ArdaTrace/Private</code></a></li>
+<li>Runtime tests: <a href="https://github.com/DylanWaken/Ardashir/tree/main/Source/ArdaTrace/Tests"><code>Source/ArdaTrace/Tests</code></a></li>
+<li>Web viewer: <a href="https://github.com/DylanWaken/Ardashir/tree/main/Tools/ArdaTraceViewer"><code>Tools/ArdaTraceViewer</code></a></li>
+<li>Viewer launcher:
+<a href="https://github.com/DylanWaken/Ardashir/blob/main/Scripts/RunTraceViewer.py"><code>Scripts/RunTraceViewer.py</code></a></li>
+</ul>
+<h2 id="critical-lifecycle-rule">Critical lifecycle rule</h2>
+<p><code>StartTraceCapture()</code> and <code>StopTraceCapture()</code> are process-wide lifecycle
+operations. Start before instrumented worker threads begin and stop only after
+those threads have finished or reached a known quiescent point. Do not start or
+stop a capture concurrently with scope, counter, marker, or thread-name calls.</p>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaTrace · Ardashir engineering documentation</p></footer>
+</body>
+</html>

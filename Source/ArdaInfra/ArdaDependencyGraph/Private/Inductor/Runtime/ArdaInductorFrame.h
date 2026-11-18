@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 
 #include "RHI/Memory/ArdaMemoryPlanner.h"
 #include "Inductor/Compiler/ArdaInductorCommandProgram.h"
@@ -10,6 +11,9 @@ namespace arda
 	/** One independently reusable physical pool and cached native lowering. */
 	struct FArdaInductorFrame
 	{
+		/** Compiler instancing candidate group for each eligible draw. */
+		eastl::unordered_map<uint32_t, uint32_t> mInstancingGroups;
+		std::atomic<uint32_t> mRecordedGraphicsDrawCount{0}, mMergedGraphicsDrawCount{0};
 		FArdaMemoryResources mMemory;
 		eastl::unique_ptr<FArdaInductorCommandProgram> mLowered;
 		eastl::vector<FArdaInductorBuffer*> mBuffers;

@@ -152,7 +152,24 @@ namespace arda::pipeline_detail
 	bool SameShader(const FArdaRHIShaderRef&, const FArdaRHIShaderRef&);
 	bool SameLayout(const FArdaRHIBindingLayoutRef&, const FArdaRHIBindingLayoutRef&);
 	bool Matches(EArdaPipelineStateKind Kind, EArdaRHIShaderStage Stage);
-	eastl::vector<FArdaRHIBindingLayoutRef>& GlobalLayouts(FArdaInductorPipelineConfiguration&);
+
+	template <class Configuration>
+	auto& GlobalLayouts(Configuration& C)
+	{
+		switch (C.mKind)
+		{
+		case EArdaPipelineStateKind::Compute:
+			return C.mCompute.mDesc.mBindingLayouts;
+		case EArdaPipelineStateKind::Graphics:
+			return C.mGraphics.mDesc.mBindingLayouts;
+		case EArdaPipelineStateKind::Meshlet:
+			return C.mMeshlet.mDesc.mBindingLayouts;
+		case EArdaPipelineStateKind::RayTracing:
+			return C.mRayTracing.mDesc.mGlobalBindingLayouts;
+		default:
+			return C.mWorkGraph.mDesc.mGlobalBindingLayouts;
+		}
+	}
 	FArdaRHIStatus MergeLayouts(eastl::vector<FArdaRHIBindingLayoutRef>&,
 	    const eastl::vector<FArdaRHIBindingLayoutRef>&);
 	FArdaRHIStatus MergeLocalLayout(FArdaRHIBindingLayoutRef&, const FArdaRHIBindingLayoutRef&);
