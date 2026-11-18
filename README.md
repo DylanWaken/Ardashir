@@ -38,6 +38,10 @@ Source/
   providers implement the RHI device and command interfaces. The CUDA interop
   code connects GPU work to those providers.
 
+- **[ArdashirUnreal](Integrations/Unreal/ArdashirUnreal/README.md)** implements the
+  RHI on Unreal's existing device. A graph submitted in an Unreal render pass
+  records onto the command list owned by the engine.
+
 - **[ArdaGraph](Source/ArdaInfra/ArdaGraph)** — Generic directed graph storage with indexed
   adjacency, generational handles, traversal, and graph algorithms.
 

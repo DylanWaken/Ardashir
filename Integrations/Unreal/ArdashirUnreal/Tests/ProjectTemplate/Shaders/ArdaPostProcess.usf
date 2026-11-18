@@ -1,0 +1,33 @@
+#include "/Engine/Public/Platform.ush"
+
+Texture2D<float4> ArdaInput;
+RWTexture2D<float4> ArdaOutput;
+uint2 ArdaExtent;
+uint2 ArdaOrigin;
+uint ArdaValidation;
+
+[numthreads(8, 8, 1)]
+void ArdaComputeMain(uint3 DispatchId : SV_DispatchThreadID)
+{
+	if (any(DispatchId.xy >= ArdaExtent))
+	{
+		return;
+	}
+	float4 Color = ArdaInput.Load(int3(DispatchId.xy + ArdaOrigin, 0));
+	if (ArdaValidation != 0 && all(DispatchId.xy < 8))
+	{
+		Color = float4(0.125, 0.25, 0.375, 1.0);
+	}
+	ArdaOutput[DispatchId.xy] = Color * float4(0.5, 1.0, 1.0, 1.0);
+}
+
+[numthreads(8, 8, 1)]
+void ArdaUnrealFinishMain(uint3 DispatchId : SV_DispatchThreadID)
+{
+	if (any(DispatchId.xy >= ArdaExtent))
+	{
+		return;
+	}
+	float4 Color = ArdaInput.Load(int3(DispatchId.xy, 0));
+	ArdaOutput[DispatchId.xy] = Color * float4(2.0, 1.0, 1.0, 1.0) + float4(0.0, 0.125, 0.0, 0.0);
+}

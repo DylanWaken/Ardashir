@@ -1,0 +1,33 @@
+using UnrealBuildTool;
+using System;
+using System.IO;
+
+public class ArdashirUnrealTest : ModuleRules
+{
+    public ArdashirUnrealTest(ReadOnlyTargetRules Target) : base(Target)
+    {
+        PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        CppStandard = CppStandardVersion.Cpp20;
+        bEnableExceptions = true;
+        bUseRTTI = false;
+        bUseUnity = false;
+        PrivateDependencyModuleNames.AddRange(new[] {
+            "Core", "CoreUObject", "Engine", "Projects", "RenderCore", "RHI",
+            "Renderer", "D3D12RHI", "ArdaUnrealRuntime", "ArdaExternal", "ArdaHeaders"
+        });
+        if (Target.Platform != UnrealTargetPlatform.Win64)
+            throw new BuildException("The Arda CUDA handoff fixture requires Windows D3D12.");
+        string CudaPath = Environment.GetEnvironmentVariable("CUDA_PATH");
+        if (String.IsNullOrEmpty(CudaPath) || !File.Exists(Path.Combine(CudaPath, "include", "cuda.h")))
+            throw new BuildException("Set CUDA_PATH to a CUDA toolkit, then run Tests/ArdaSetupUnrealTest.ps1.");
+        PublicSystemIncludePaths.Add(Path.Combine(CudaPath, "include"));
+        PublicAdditionalLibraries.Add(Path.Combine(CudaPath, "lib", "x64", "cuda.lib"));
+        PublicSystemLibraries.AddRange(new[] { "d3d12.lib", "dxgi.lib" });
+        string ArchitecturePath = Path.Combine(Target.ProjectFile.Directory.FullName, "Content", "ArdaCuda", "Architecture.txt");
+        if (!File.Exists(ArchitecturePath))
+            throw new BuildException("Run Tests/ArdaSetupUnrealTest.ps1 to compile the native CUDA fixture first.");
+        int Architecture = Int32.Parse(File.ReadAllText(ArchitecturePath).Trim());
+        PublicDefinitions.Add("ARDA_TEST_CUDA_ARCH=" + Architecture);
+        RuntimeDependencies.Add("$(ProjectDir)/Content/ArdaCuda/ArdaPostProcess.cubin", StagedFileType.NonUFS);
+    }
+}

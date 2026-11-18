@@ -1,0 +1,10 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "",
+  "Category": "Rendering",
+  "Description": "Unreal to Arda compute to CUDA to Unreal handoff validation.",
+  "Modules": [
+    { "Name": "ArdashirUnrealTest", "Type": "Runtime", "LoadingPhase": "PostConfigInit" }
+  ],
+  "Plugins": [ { "Name": "ArdashirUnreal", "Enabled": true } ]
+}

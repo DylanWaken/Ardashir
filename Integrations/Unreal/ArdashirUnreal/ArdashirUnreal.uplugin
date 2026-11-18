@@ -1,0 +1,26 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "Ardashir Unreal",
+	"Description": "Ardashir backend integration with Unreal's RHI and future editor tools.",
+	"Category": "Rendering",
+	"CreatedBy": "Ardashir",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"SupportedTargetPlatforms": ["Win64"],
+	"Modules": [
+		{
+			"Name": "ArdaUnrealRuntime",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit",
+			"PlatformAllowList": ["Win64"]
+		},
+		{
+			"Name": "ArdaUnrealEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": ["Win64"]
+		}
+	]
+}
