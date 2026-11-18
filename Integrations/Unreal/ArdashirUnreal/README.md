@@ -45,7 +45,7 @@ python Integrations/Unreal/ArdashirUnreal/Scripts/ArdaBuild.py
 The script clones the upstream repository when needed, checks that the checkout
 is clean, and builds the library with native D3D12 and Vulkan providers
 disabled. The default build uses the revision in `ArdaRevision.json`.
-`--update` advances to the latest published commit on the configured `main` branch; `--ref COMMIT` selects
+`--update` advances to the latest published commit on the branch configured in `ArdaRevision.json`; `--ref COMMIT` selects
 a particular published revision. Unreal remains the owner of the graphics API.
 For a local dependency download cache, add
 `--dependency-cache D:/Projects/Ardashader/build/_deps`.
