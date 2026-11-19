@@ -1,11 +1,26 @@
 #include "RHI/Scheduling/ArdaRHICommandListImpl.h"
 #include "RHI/Resources/ArdaRHISubresources.h"
 #include "RHI/Scheduling/ArdaRHITextureStates.h"
+#include <exception>
 #include <mutex>
 #include "RHI/Device/ArdaRHIDeviceImpl.h"
 
 namespace arda::detail
 {
+	namespace
+	{
+		struct FArdaRetainedNativeOperation
+		{
+			eastl::vector<FArdaRHIResourceRef> mResources;
+			FArdaProviderNativeOperation mPacket;
+		};
+
+		bool IsNativeSubresourceRangeValid(uint32_t Base, uint32_t Count, uint32_t Limit)
+		{
+			return Base < Limit && Count && (Count == ArdaRHIAllSubresources || Count <= Limit - Base);
+		}
+	}
+
 	FArdaCommandList::FArdaCommandList(FArdaRHIDeviceImpl* Device,
 	    EArdaRHIQueueType Queue,
 	    eastl::unique_ptr<IArdaProviderCommandList> Native,
@@ -20,6 +35,105 @@ namespace arda::detail
 	IArdaRHIDevice* FArdaCommandList::GetDevice() const noexcept
 	{
 		return mDevice.Get();
+	}
+
+	FArdaRHIStatus FArdaCommandList::RecordNativeOperation(const FArdaRHINativeOperationDesc& Desc)
+	try
+	{
+		if (!mbRecordingOpen)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+			    "Open the command list before recording a native operation.");
+		}
+		if (!mRecordingStatus)
+		{
+			return mRecordingStatus;
+		}
+		if (mQueue != EArdaRHIQueueType::Graphics && mQueue != EArdaRHIQueueType::Compute)
+		{
+			return LatchError(Unsupported("Native operations require a graphics or compute queue."));
+		}
+		const char* Id = Desc.mOperation ? Desc.mOperation->GetId() : nullptr;
+		if (!Id || !*Id)
+		{
+			return LatchError(Invalid("A native operation requires a nonempty identifier."));
+		}
+		if (!mDevice->SupportsNativeOperation(Id))
+		{
+			return LatchError(Unsupported("This device does not implement the native operation."));
+		}
+
+		auto Retained = eastl::make_shared<FArdaRetainedNativeOperation>();
+		Retained->mPacket.mOperation = Desc.mOperation;
+		Retained->mResources.reserve(Desc.mBindings.size());
+		Retained->mPacket.mBindings.reserve(Desc.mBindings.size());
+		for (const auto& Binding : Desc.mBindings)
+		{
+			if (!Binding.mResource || Binding.mAccess > EArdaComputeAccess::ReadWrite)
+			{
+				return LatchError(Invalid("A native operation binding requires a resource and valid access."));
+			}
+			const auto* Resource = Cast<FArdaResource>(Binding.mResource.Get());
+			if (!Resource || Resource->GetOwner() != GetOwner())
+			{
+				return LatchError(WrongDevice());
+			}
+
+			FArdaProviderNativeOperationBinding Resolved;
+			Resolved.mType = Resource->GetResourceType();
+			Resolved.mAccess = Binding.mAccess;
+			if (const auto* Buffer = Cast<FArdaBuffer>(Binding.mResource.Get()))
+			{
+				const auto& Range = Binding.mBufferRange;
+				const auto Size = Buffer->GetDesc().mByteSize;
+				if (Range.mByteOffset >= Size || !Range.mByteSize ||
+				    (Range.mByteSize != ArdaRHIWholeBuffer && Range.mByteSize > Size - Range.mByteOffset))
+				{
+					return LatchError(Invalid("A native operation buffer range is outside the resource."));
+				}
+				Resolved.mBufferRange = Range.Resolve(Buffer->GetDesc());
+			}
+			else if (const auto* Texture = Cast<FArdaTexture>(Binding.mResource.Get()))
+			{
+				const auto& Range = Binding.mTextureRange;
+				const auto& TextureDesc = Texture->GetDesc();
+				if (!IsNativeSubresourceRangeValid(Range.mBaseMipLevel, Range.mMipLevelCount, TextureDesc.mMipLevels) ||
+				    !IsNativeSubresourceRangeValid(Range.mBaseArraySlice,
+				        Range.mArraySliceCount,
+				        TextureDesc.mArraySize) ||
+				    !IsNativeSubresourceRangeValid(Range.mBasePlane,
+				        Range.mPlaneCount,
+				        GetArdaRHIFormatPlaneCount(TextureDesc.mFormat)))
+				{
+					return LatchError(Invalid("A native operation texture range is outside the resource."));
+				}
+				Resolved.mTextureRange = Range.Resolve(TextureDesc);
+			}
+			else
+			{
+				return LatchError(Invalid("Native operations require buffer or texture bindings."));
+			}
+			Resolved.mObject = GetNativeObject(Binding.mResource.Get());
+			if (!Resolved.mObject)
+			{
+				return LatchError(FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "A native operation binding has no backend object."));
+			}
+			Retained->mResources.push_back(Binding.mResource);
+			Retained->mPacket.mBindings.push_back(eastl::move(Resolved));
+		}
+
+		const eastl::shared_ptr<const FArdaProviderNativeOperation> Packet(Retained, &Retained->mPacket);
+		return LatchError(mNative->RecordNativeOperation(Packet));
+	}
+	catch (const std::exception& Error)
+	{
+		return LatchError(FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what()));
+	}
+	catch (...)
+	{
+		return LatchError(FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+		    "The backend threw while recording a native operation."));
 	}
 
 	bool FArdaCommandList::RetainOwned(const FArdaResource* Resource) const

@@ -3,6 +3,7 @@
  */
 #pragma once
 
+#include "RHI/Resources/ArdaComputeAccess.h"
 #include "RHI/Resources/ArdaRHIBuffer.h"
 #include "RHI/Resources/ArdaRHITensor.h"
 #include "RHI/Resources/ArdaRHITexture.h"
@@ -16,16 +17,6 @@ namespace arda
 {
 	class FArdaCudaModule;
 	struct FArdaCudaModuleKernelDesc;
-	/** Declared resource access used to order a CUDA dispatch with graphics work. */
-	enum class EArdaComputeAccess : uint8_t
-	{
-		/** The kernel only loads from the binding. */
-		Read,
-		/** The kernel stores to the binding without consuming its previous contents. */
-		Write,
-		/** The kernel may both load and store, including in-place updates. */
-		ReadWrite
-	};
 	/** Shader-independent kind of a CUDA resource binding. */
 	enum class EArdaComputeBindingType : uint8_t
 	{

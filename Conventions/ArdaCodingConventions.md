@@ -73,7 +73,7 @@ copies are refreshed from their canonical sources instead of audited separately.
 
 Module conventions supplement this rule; they must retain the `Arda` stem:
 
-- [ArdaRenderGraph Coding Conventions](Modules/ArdaRenderGraph.md)
+- [ArdaDependencyGraph coding conventions](Modules/ArdaRenderGraph.md)
 
 ## Files
 

@@ -15,14 +15,14 @@
     theme.textContent = value === 'dark' ? 'Light' : 'Dark';
     theme.setAttribute('aria-label', `Switch to ${value === 'dark' ? 'light' : 'dark'} appearance`);
   }
-  let preference = 'light';
-  try { preference = localStorage.getItem('arda-essay-theme') || 'light'; } catch (_) { /* Storage can be disabled. */ }
+  let preference = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  try { preference = localStorage.getItem('arda-theme') || preference; } catch (_) { /* Storage can be disabled. */ }
   applyTheme(preference);
   theme.hidden = false;
   theme.addEventListener('click', () => {
     const value = root.dataset.theme === 'dark' ? 'light' : 'dark';
     applyTheme(value);
-    try { localStorage.setItem('arda-essay-theme', value); } catch (_) { /* Reading still works. */ }
+    try { localStorage.setItem('arda-theme', value); } catch (_) { /* Reading still works. */ }
   });
   links.forEach(link => link.addEventListener('click', () => {
     contents.open = false;

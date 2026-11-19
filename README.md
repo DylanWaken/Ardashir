@@ -2,25 +2,25 @@
 
 *ARithmetic and DAta-driven SHading and Inferencing Runtime*
 
-Ardashir is a modular C++ runtime for graphics and GPU compute infrastructure,
-dependency-graph scheduling, and tracing. Its GPU-facing modules use
-ArdaBackend's provider-neutral RHI. Native
-Vulkan 1.4 and Direct3D 12 Agility SDK providers are shipped as separate,
-linkable backend libraries; an engine RHI provider can replace them without
-changing renderer code.
+Ardashir is a C++ runtime for graphics, GPU compute, and tracing. Record GPU
+commands through ArdaBackend's rendering hardware interface (RHI), or describe
+operations and let ArdaInductor schedule them from their resource dependencies.
+Link the Vulkan 1.4 or Direct3D 12 Agility SDK provider, or integrate an engine RHI
+provider through the same interface.
 
-**Documentation:** [Canonical GitHub Pages URL](https://dylanwaken.github.io/Ardashir/) · [Documentation source](Docs/index.html)
+Read the [Ardashir documentation](https://dylanwaken.github.io/Ardashir/) or
+browse the [documentation source](Docs/index.html).
 
 ## Modules
 
 GPU infrastructure lives under [Source/ArdaInfra](Source/ArdaInfra), grouping the
-CPU math library, backend, native provider implementations, generic graph, and render graph. Each
-module remains a separate CMake library with its existing public include names.
+CPU math library, backend, native providers, native compute registry, generic graph,
+and GPU dependency graph. Each module has its own CMake library and public headers.
 The source tree has three top-level groups:
 
 ```text
 Source/
-  ArdaInfra/   CPU math, backend, native providers, graph storage and render graph
+  ArdaInfra/   CPU math, backend, native providers, native compute, and graph libraries
   ArdaTests/   Example applications and shared TestSupport
   ArdaTrace/   CPU tracing runtime and its tests
 ```
@@ -45,6 +45,12 @@ Source/
 - **[ArdaGraph](Source/ArdaInfra/ArdaGraph)** — Generic directed graph storage with indexed
   adjacency, generational handles, traversal, and graph algorithms.
 
+- **[ArdaNativeCompute](Docs/ArdaNativeCompute/index.html)** — Registers native
+  kernels and equivalent shaders under one resource contract. Choose the CUDA,
+  CUDA in Graphics, or D3D12 NVAPI provider. The CUDA providers accept linked
+  kernels, prebuilt PTX or cubin, and CUDA C++ through optional NVRTC compilation.
+  [Provider guide](Docs/ArdaNativeCompute/providers.html)
+
 - **[ArdaDependencyGraph](Source/ArdaInfra/ArdaDependencyGraph)** — Persistent graphics and CUDA
   dependency graphs compiled by ArdaInductor. Typed registered nodes declare
   resources; compilation resolves dependencies, pipelines, CUDA batches, queue
@@ -64,30 +70,23 @@ Source/
 - **[ArdaTests](Source/ArdaTests)** — Runnable infrastructure examples and
   shared [backend test support](Source/ArdaTests/TestSupport).
 
-Scene, global-illumination, physics, deep-learning and standalone interop module
-scaffolding has been removed. Native device and resource
-interop is implemented within ArdaBackend.
+## Get started
 
-## Quick user guides
+- [Set up a GPU backend](Docs/ArdaBackend/quick-guide.html)
+- [Run your first dependency graph](Docs/ArdaRDG/getting-started.html)
+- [Write a native compute node](Docs/ArdaRDG/native-compute.html)
+- [Compose a renderer from graph nodes](Docs/ArdaRDG/quick-guide.html)
 
-- **[ArdaBackend quick user's guide](Docs/ArdaBackend/quick-guide.html)**
-- **[ArdaDependencyGraph quick user's guide](Docs/ArdaRDG/quick-guide.html)**
-
-The guides cover startup, compute, raster, submission, and presentation.
 The [Cornell Box example](Source/ArdaTests/Examples/CornellBox/README.md) demonstrates
 hardware ray tracing through persistent typed graph nodes and automatic pipelines.
 
 ## Public API naming
 
-Public APIs share one `arda` namespace: use `arda::FArdaBackendConfiguration`,
-`arda::FArdaRHIDeviceRef`, and `arda::FArdaDependencyGraph`, or place `using namespace arda;`
-in application code. Module names remain in descriptive type/function names,
-following Unreal's RHI/RenderGraph convention. This is a source/ABI change: remove
-the former `backend`, `rhi`, `render_graph`, and `trace` namespace qualifiers and
-rebuild consumers. Provider APIs, shared implementation helpers, tests, samples, and
-generated-source templates now follow the same flat namespace. Provider types use descriptive names such as
-`arda::IArdaRHIProviderDevice`; pipeline-cache helpers include
-`arda::ReadArdaPipelineCacheBlob`.
+Public APIs use the `arda` namespace, for example
+`arda::FArdaBackendConfiguration`, `arda::FArdaRHIDeviceRef`, and
+`arda::FArdaDependencyGraph`. When migrating code that uses the old
+`backend`, `rhi`, `render_graph`, or `trace` qualifiers, remove those
+qualifiers and rebuild consumers.
 
 Graph programs are authored exclusively through `FArdaGraphEdit` and typed resource
 operations or named global node callables: `MyOperation(Edit, Parameters)` also
@@ -107,7 +106,7 @@ independently to keep execution internals private.
 Host-owned Vulkan devices are supported by `native-vulkan`; see the
 [enabled-feature and lifetime contract](Docs/ArdaBackend/external-interop.html#vulkan).
 CUDA supports automatic fallback to serialized ordinary-context execution; see
-[execution modes and qualification limits](Docs/ArdaBackend/cuda-interop.html#context-switch).
+[execution modes and qualification limits](Docs/ArdaBackend/cuda-graphics.html#modes).
 Read [How CUDA works with graphics](Docs/ArdaBackend/cuda-graphics.html) for the
 general memory and synchronization model, and compare
 [registered native kernels and ordinary CUDA C++ launches](Docs/ArdaBackend/cuda-interop.html#launch-methods)
@@ -125,12 +124,11 @@ and a Windows SDK, plus **C++ CMake tools for Windows** if CMake/Ninja are not
 already on `PATH`. New Windows build directories default to Ninja; existing
 generators and an explicit `CMAKE_GENERATOR` are retained.
 
-**[Pixel Sort](Source/ArdaTests/Examples/PixelSort/README.md)** is a self-contained Windows CUDA
-example that uses ArdaDependencyGraph, ArdaBackend and its compiled kernels. An HLSL compute
-shader generates animated noise, a CUDA radix kernel sorts its pixels, and a
-fullscreen graphics pass presents the result through D3D12 or Vulkan. Resizing
-switches between row and column kernel variants. See the
-[CUDA walkthrough](Docs/ArdaBackend/cuda-interop.html#pixel-sort).
+[Pixel Sort](Source/ArdaTests/Examples/PixelSort/README.md) generates animated
+noise, sorts its pixels, and presents the result through Direct3D 12 or Vulkan.
+It selects a native CUDA radix kernel when the device supports the required
+surface access and uses an HLSL compute shader otherwise. Resizing switches
+between row and column tiles. See the [Pixel Sort walkthrough](Docs/ArdaBackend/cuda-interop.html#pixel-sort).
 
 Launch an existing Pixel Sort build with either backend:
 
@@ -355,7 +353,7 @@ ctest --test-dir build -C Debug -L gpu --output-on-failure
 ```
 
 A missing graphics backend returns CTest's skip code; rendering, presentation,
-shader, native API validation, or presentation failures fail the test.
+shader, or native API validation failures fail the test.
 
 ## Documentation deployment
 

@@ -11,6 +11,16 @@ namespace arda
 	class IArdaProviderCommandList
 	{
 	public:
+		/**
+		 * Record a supported backend-defined operation without submitting it. Check its ID,
+		 * payload type, resource states, and representation before recording. Keep a copy of
+		 * the packet for the recording and through each successful submission's retirement.
+		 */
+		virtual FArdaRHIStatus RecordNativeOperation(const eastl::shared_ptr<const FArdaProviderNativeOperation>&)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Native operation recording is unavailable.");
+		}
+
 		/** Records a nonempty CUDA batch on one stream, with one graphics handoff/capture.
          * Bindings contain all views used by the ordered kernels and external calls. Each
          * operation's patches reference this table. Validate and prepare every operation

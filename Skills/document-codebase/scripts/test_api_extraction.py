@@ -116,6 +116,18 @@ class MacroExtractionTest(unittest.TestCase):
             self.assertEqual(by_name["mShaders"]["qualifiedName"], "arda::FArdaRayParameters::mShaders")
             self.assertEqual(by_name["FArdaAfter"]["qualifiedName"], "arda::FArdaAfter")
 
+    def test_constexpr_provider_id_array_is_indexed_by_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Provider.h").write_text(
+                'namespace arda {\n/** Registry ID. */\n'
+                'inline constexpr char ArdaNativeNvapiProviderId[] = "nvapi";\n}\n',
+                encoding="utf-8",
+            )
+            symbols = make_symbols(root, [("Provider.h", "arda", "nvapi")], "native-compute")
+            self.assertEqual([(s["qualifiedName"], s["kind"]) for s in symbols],
+                             [("arda::ArdaNativeNvapiProviderId", "constant")])
+
     def test_named_node_callable_is_a_constant_with_its_own_contract(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

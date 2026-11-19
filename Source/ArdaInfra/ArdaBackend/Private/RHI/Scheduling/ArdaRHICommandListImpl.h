@@ -21,6 +21,20 @@ namespace arda::detail
 	class FArdaCommandList final : public FArdaResource, public IArdaRHICommandList
 	{
 	public:
+		FArdaRHIStatus RecordNativeCompute(const IArdaRHIComputeCommand& Command) override
+		{
+			if (!mbRecordingOpen)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Open the command list before recording native compute.");
+			}
+			if (mRecordingStatus)
+			{
+				LatchError(Command.RecordOn(*this));
+			}
+			return mRecordingStatus;
+		}
+
+		FArdaRHIStatus RecordNativeOperation(const FArdaRHINativeOperationDesc&) override;
 		FArdaRHIStatus DispatchCuda(const FArdaCudaDispatch&) override;
 		FArdaRHIStatus DispatchCudaSequence(const eastl::vector<FArdaCudaDispatch>&) override;
 		FArdaRHIStatus RecordCudaBatch(const eastl::vector<FArdaCudaBinding>&,
@@ -246,12 +260,13 @@ namespace arda::detail
 		FArdaRHIStatus ValidateWork(EArdaPipelineKind Kind) const;
 		FArdaRHIStatus ValidateDraw(const FArdaRHIDrawArguments& Arguments, bool bIndexed) const;
 
-		void LatchError(const FArdaRHIStatus& Status)
+		const FArdaRHIStatus& LatchError(const FArdaRHIStatus& Status)
 		{
 			if (mRecordingStatus && !Status)
 			{
 				mRecordingStatus = Status;
 			}
+			return mRecordingStatus;
 		}
 
 		FArdaRHIStatus QueueBufferReadback(IArdaRHIBuffer& Source,

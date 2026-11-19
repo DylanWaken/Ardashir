@@ -135,6 +135,13 @@ MODULES = (
             "Source/ArdaInfra/ArdaDependencyGraph/Public/ArdaDependencyGraph.h",
         ),
     ),
+    ModuleConfig(
+        name="ArdaNativeCompute",
+        source_public_root="Source/ArdaInfra/ArdaNativeCompute/Public",
+        docs_root="ArdaNativeCompute",
+        api_js_path="assets/native-compute-api.js",
+        api_global="ArdaNativeComputeApi",
+    ),
 )
 
 
@@ -591,7 +598,7 @@ class Validator:
                 ))
         try:
             text = path.read_text(encoding="utf-8-sig")
-            if global_name in {"ArdaBackendApi", "ArdaRDGApi"}:
+            if any(global_name == module.api_global for module in MODULES):
                 return json.loads(self.balanced(text, fallback_marker, "{"))
             rows = json.loads(self.balanced(text, fallback_marker, "["))
             glossary: Dict[str, Dict[str, Any]] = {}
@@ -1267,7 +1274,7 @@ class Validator:
                     ))
             for match in re.finditer(
                 r"\b(?:inline\s+)?(?:static\s+)?constexpr\b[^;{}]*?"
-                r"\b([A-Za-z_]\w*)\s*(?==|;)", text
+                r"\b([A-Za-z_]\w*)\s*(?:\[[^\[\];{}]*\]\s*)*(?==|;)", text
             ):
                 records.append((
                     match.group(1), header,

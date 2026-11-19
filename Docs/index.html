@@ -3,129 +3,149 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Engineering documentation for Ardashir graphics and GPU compute infrastructure, dependency graphs, tests and tracing.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Build C++ graphics and GPU compute workloads with Ardashir&#x27;s rendering hardware interface and persistent dependency graphs.">
   <title>Ardashir Documentation</title>
+  <script>
+    (() => {
+      let preference = "dark";
+      try {
+        preference = localStorage.getItem("arda-theme") || preference;
+      } catch {
+        // Local files and privacy settings can disable storage.
+      }
+      const systemLight = preference === "system" && !matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = preference === "light" || systemLight ? "light" : "dark";
+    })();
+  </script>
   <link rel="stylesheet" href="assets/site.css">
   <script src="assets/glossary-data.js" defer></script>
+  <script src="assets/doc-search-index.js" defer></script>
   <script src="assets/site.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Skip to main content</a>
-  <header class="site-header">
-    <div class="site-header__inner">
-      <a class="site-brand" href="index.html">Ardashir</a>
-      <button class="nav-toggle" type="button" data-nav-toggle aria-controls="site-navigation" aria-expanded="false">Menu</button>
-      <nav class="site-nav" id="site-navigation" data-site-nav aria-label="Primary">
-        <ul>
-          <li><a href="index.html">Overview</a></li>
-          <li><a href="ArdaBackend/index.html">ArdaBackend</a></li>
-          <li><a href="ArdaRDG/index.html">ArdaRDG</a></li>
-          <li><a href="glossary.html">Glossary</a></li>
-        </ul>
-      </nav>
-      <button class="theme-toggle" type="button" data-theme-toggle>Dark theme</button>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header" id="top">
+  <a class="announcement" href="ArdaRDG/native-compute.html"><span aria-hidden="true">//</span> Write a native compute node <svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+  <div class="site-header__bar"><div class="site-header__inner">
+    <a class="site-brand" href="index.html" aria-label="Ardashir home">Ardashir</a>
+    <nav class="site-nav" aria-label="Primary"><a href="index.html">Docs</a><a href="Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="ArdaBackend/index.html">GPU backend</a><a href="ArdaRDG/index.html">Dependency graph</a><a href="ArdaNativeCompute/index.html">Native compute</a><a href="ArdaTrace/index.html">ArdaTrace</a><a href="ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="ArdaBackend/api-reference.html">GPU backend</a><a href="ArdaRDG/api-reference.html">Dependency graph</a><a href="ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="glossary.html">Glossary</a></nav>
+    <div class="header-tools"><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="ArdaBackend/index.html">GPU backend</a>
+<a href="ArdaRDG/index.html">Dependency graph</a>
+<a href="ArdaNativeCompute/index.html">Native compute</a>
+<a href="index.html#module-ardagraph">ArdaGraph</a>
+<a href="index.html#module-ardatests">ArdaTests</a>
+<a href="ArdaTrace/index.html">ArdaTrace</a>
+<a href="ArdaScene/index.html">ArdaScene</a></nav></details><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button><div class="theme-control" hidden><button type="button" class="theme-toggle" data-theme-toggle aria-label="Change theme" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg></button><div class="theme-menu" id="theme-menu" role="menu" aria-label="Theme" hidden><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="dark"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg>Dark</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="light"><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Light</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="system"><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg>System</button></div></div>
+      <details class="mobile-nav"><summary aria-label="Navigation menu"><svg class="icon icon-menu" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></summary>
+        <div class="mobile-nav-panel"><nav aria-label="Primary navigation"><a href="index.html">Docs</a><a href="Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="ArdaBackend/index.html">GPU backend</a><a href="ArdaRDG/index.html">Dependency graph</a><a href="ArdaNativeCompute/index.html">Native compute</a><a href="ArdaTrace/index.html">ArdaTrace</a><a href="ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="ArdaBackend/api-reference.html">GPU backend</a><a href="ArdaRDG/api-reference.html">Dependency graph</a><a href="ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="glossary.html">Glossary</a></nav><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button></div>
+      </details>
     </div>
-  </header>
-
-  <main class="site-main" id="main-content">
-    <section class="hero" aria-labelledby="hero-title">
-      <p class="eyebrow">Rendering systems documentation</p>
-      <h1 id="hero-title">Understand and build with Ardashir.</h1>
-      <p class="lede">Ardashir provides C++ graphics and GPU compute infrastructure: backend and RHI contracts, native providers, dependency graphs, runnable examples and tracing. These pages document the supported modules and their practical use.</p>
+  </div></div>
+</header>
+<nav class="mobile-docs" aria-label="Docs menu"><details class="docs-menu"><summary><svg class="icon icon-list" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zm5 0v16"/></svg><span>Docs menu</span><span aria-hidden="true">/</span><span class="current-title">Ardashir documentation</span><svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+  <div class="mobile-docs-panel"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="index.html" aria-current="page"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="ArdaRDG/getting-started.html"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html" aria-current="page">Overview</a>
+<a href="ArdaRDG/getting-started.html">Run your first graph</a>
+<a href="ArdaBackend/quick-guide.html">Set up a GPU backend</a>
+<a href="glossary.html">Glossary</a></div></details></nav><details class="sidebar-group mobile-outline"><summary>On this page<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="#quick-guides-heading">Build a GPU workload</a><a href="#arda-essays-heading">How the graph compiler works</a><a href="#start-heading">Graphics backend</a><a href="#modules-heading">Project modules</a><a href="#reading-heading">Reference</a></div></details></div>
+</details><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="ArdaBackend/index.html">GPU backend</a>
+<a href="ArdaRDG/index.html">Dependency graph</a>
+<a href="ArdaNativeCompute/index.html">Native compute</a>
+<a href="index.html#module-ardagraph">ArdaGraph</a>
+<a href="index.html#module-ardatests">ArdaTests</a>
+<a href="ArdaTrace/index.html">ArdaTrace</a>
+<a href="ArdaScene/index.html">ArdaScene</a></nav></details></nav>
+<div class="site-layout">
+  <aside class="sidebar" aria-label="Docs sidebar"><div class="sidebar-inner"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="index.html" aria-current="page"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="ArdaRDG/getting-started.html"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html" aria-current="page">Overview</a>
+<a href="ArdaRDG/getting-started.html">Run your first graph</a>
+<a href="ArdaBackend/quick-guide.html">Set up a GPU backend</a>
+<a href="glossary.html">Glossary</a></div></details></nav></div></aside>
+  <main id="main-content" tabindex="-1">
+    <article class="prose" data-doc-article>
+<section class="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title">Ardashir documentation</h1>
+      <p class="lede">Build graphics and GPU compute workloads in C++. Record commands against the rendering hardware interface (RHI), or describe operations and resource dependencies in a graph that you can compile and run across frames.</p>
       <div class="hero__actions">
-        <a class="button button--primary" href="ArdaBackend/quick-guide.html">ArdaBackend quick guide</a>
-        <a class="button" href="ArdaRDG/quick-guide.html">ArdaDependencyGraph quick guide</a>
-        <a class="button" href="glossary.html">Browse the glossary</a>
+        <a class="button button--primary" href="ArdaRDG/getting-started.html">Run your first graph</a>
+        <a class="button" href="ArdaBackend/quick-guide.html">Set up a GPU backend</a>
       </div>
     </section>
 
     <section aria-labelledby="quick-guides-heading">
-      <h2 id="quick-guides-heading">Quick user's guides</h2>
-      <p class="section-intro">Follow source-backed paths through startup, compute, raster, submission, and presentation. Both guides also map a capability-gated hardware ray-tracing path assembled from implemented and tested components, clearly distinguished from a checked-in end-to-end RT sample.</p>
+      <h2 id="quick-guides-heading">Build a GPU workload</h2>
       <div class="card-grid">
         <article class="card card--featured">
-          <p class="eyebrow">Backend workflow</p>
-          <h3><a href="ArdaBackend/quick-guide.html">ArdaBackend quick user's guide</a></h3>
-          <p>Build the device, resources, pipelines, command lists, and presented frame directly on the backend.</p>
+          <h3><a href="ArdaBackend/quick-guide.html">Record GPU commands directly</a></h3>
+          <p>Create a device, allocate resources, and record and submit a compute or graphics workload. Follow the presentation path if your workload draws to a window.</p>
         </article>
         <article class="card card--featured">
-          <p class="eyebrow">Render-graph workflow</p>
-          <h3><a href="ArdaRDG/quick-guide.html">ArdaDependencyGraph quick user's guide</a></h3>
-          <p>Declare frame resources and passes, compile dependencies, execute the graph, and present the result.</p>
+          <h3><a href="ArdaRDG/quick-guide.html">Compose a renderer from graph nodes</a></h3>
+          <p>Connect operations through their resource outputs, compile the graph, and run it repeatedly.</p>
+        </article>
+        <article class="card card--featured">
+          <h3><a href="ArdaRDG/native-compute.html">Write a native compute node</a></h3>
+          <p>Declare a typed compute operation, bind its resources, and run it through the graph.</p>
         </article>
       </div>
     </section>
 
     <section aria-labelledby="arda-essays-heading">
-      <h2 id="arda-essays-heading">Arda engineering essays</h2>
-      <h3><a href="Essays/arda-graph-and-inductor.html">How Arda Turns a Graph into GPU Work</a></h3>
-      <p>Follow one workload from typed resource declarations through preprocessing, Inductor scheduling, memory reuse and GPU completion. The long-form essay also traces offline model compilation into portable kernel packages, with chapter navigation, original diagrams, worked examples and tables of the essential data structures.</p>
+      <h2 id="arda-essays-heading">How the graph compiler works</h2>
+      <p>Follow a workload from resource declarations through dependency analysis, queue scheduling, memory reuse, and GPU completion. The essay also explains how the offline model frontend packages kernels for execution. <a href="Essays/arda-graph-and-inductor.html">How Arda turns a graph into GPU work</a></p>
     </section>
 
     <section aria-labelledby="start-heading">
-      <h2 id="start-heading">Start with the graphics backend</h2>
-      <p class="section-intro">ArdaBackend is the documented entry point into resource creation, shader integration, pipeline state, command recording, and native graphics interoperability.</p>
-      <article class="card card--featured">
-        <p class="eyebrow">Available now</p>
-        <h3><a href="ArdaBackend/index.html">ArdaBackend</a></h3>
-        <p>Learn how Ardashir manages shaders and pipeline state through its native D3D12 and Vulkan backend modules.</p>
-        <p><a href="ArdaBackend/index.html">Open the ArdaBackend guide</a></p>
-      </article>
+      <h2 id="start-heading">Graphics backend</h2>
+      <p>ArdaBackend defines the interfaces for devices, resources, shaders, pipelines, and command lists. The native providers implement those interfaces for Direct3D 12 and Vulkan. <a href="ArdaBackend/index.html">ArdaBackend overview</a></p>
     </section>
 
     <section aria-labelledby="modules-heading">
       <h2 id="modules-heading">Project modules</h2>
-      <p class="section-intro">The source tree contains <code>ArdaInfra</code>, <code>ArdaTests</code> and <code>ArdaTrace</code>. Infrastructure includes ArdaBackend, native backend providers, ArdaGraph and ArdaDependencyGraph.</p>
+      <p class="section-intro"><code>ArdaInfra</code> contains the backend and native providers, ArdaNativeCompute, ArdaGraph, and ArdaDependencyGraph. The source tree also contains <code>ArdaTests</code> and <code>ArdaTrace</code>.</p>
       <div class="card-grid">
         <article class="card">
-          <span class="status">Available now</span>
-          <h3><a href="ArdaRDG/index.html">ArdaDependencyGraph / ArdaRDG</a></h3>
-          <p>Declarative render passes, transient resources, dependency analysis, and execution scheduling.</p>
-          <p><a href="ArdaRDG/index.html">Open the ArdaDependencyGraph guide</a></p>
+          <h3><a href="ArdaRDG/index.html">ArdaDependencyGraph</a></h3>
+          <p>Declare operations and resource accesses. ArdaInductor derives dependencies, plans storage, and schedules work.</p>
         </article>
         <article class="card">
-          <span class="status">Available now</span>
-          <h3>ArdaGraph</h3>
+          <h3><a href="ArdaNativeCompute/index.html">ArdaNativeCompute</a></h3>
+          <p>Register native GPU kernels and shader implementations behind one operation and resource contract.</p>
+        </article>
+        <article class="card">
+          <h3 id="module-ardagraph">ArdaGraph</h3>
           <p>Generic directed graph storage, generational handles, traversal and graph algorithms used by infrastructure clients.</p>
         </article>
         <article class="card">
-          <span class="status">Available now</span>
-          <h3><a href="ArdaTrace/index.html">ArdaTrace</a></h3>
-          <p>Instrumentation, event capture, and tooling for understanding runtime behavior.</p>
-        </article>
-        <article class="card">
-          <span class="status">Available now</span>
-          <h3>ArdaTests</h3>
+          <h3 id="module-ardatests">ArdaTests</h3>
           <p>Runnable graphics and CUDA examples and shared backend test support. Start with the <a href="ArdaRDG/quick-guide.html">graphics examples</a> or <a href="ArdaBackend/cuda-interop.html#pixel-sort">Pixel Sort</a> walkthrough.</p>
         </article>
       </div>
-      <p>The <a href="ArdaScene/index.html">archived scene representation plan</a> describes possible future layers. Scene, GI, physics, deep-learning and standalone interop modules are outside the current source tree; device and resource interop remains part of ArdaBackend.</p>
+      <p id="module-ardatrace"><a href="ArdaTrace/index.html">ArdaTrace</a> records CPU scopes, counters, and markers for offline analysis.</p>
+      <p>The <a href="ArdaScene/index.html">archived scene representation plan</a> describes proposed scene layers. ArdaBackend handles native device and resource interoperability.</p>
     </section>
 
     <section aria-labelledby="reading-heading">
-      <h2 id="reading-heading">How to use these docs</h2>
-      <div class="card-grid">
-        <article class="card">
-          <h3>Learn the design</h3>
-          <p>Begin with module overviews, then follow component pages for data flow, invariants, and tradeoffs.</p>
-        </article>
-        <article class="card">
-          <h3>Find a contract</h3>
-          <p>Use each module's centralized API reference for canonical symbol contracts, then follow its chapter links for the surrounding design explanation.</p>
-        </article>
-        <article class="card">
-          <h3>Resolve terminology</h3>
-          <p>Linked technical terms work as normal glossary links. With JavaScript enabled, focus or hover also reveals a concise definition.</p>
-        </article>
-      </div>
+      <h2 id="reading-heading">Reference</h2>
+      <ul>
+        <li><a href="ArdaBackend/api-reference.html">ArdaBackend API</a></li>
+        <li><a href="ArdaRDG/api-reference.html">ArdaDependencyGraph API</a></li>
+        <li><a href="ArdaNativeCompute/api-reference.html">ArdaNativeCompute API</a></li>
+        <li><a href="glossary.html">Graphics and GPU glossary</a></li>
+      </ul>
     </section>
+    </article>
+    <nav class="page-nav" aria-label="Document navigation"><a href="ArdaRDG/getting-started.html" rel="next"><span class="page-nav-label">Next<svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="page-nav-title">Run your first graph</span></a></nav>
   </main>
-
-  <footer class="site-footer">
-    <div class="site-footer__inner">
-      <p>Ardashir engineering documentation</p>
-      <p><a href="glossary.html">Global glossary</a></p>
-    </div>
-  </footer>
+  <aside class="page-outline" aria-label="Page outline"><nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#quick-guides-heading">Build a GPU workload</a></li><li><a href="#arda-essays-heading">How the graph compiler works</a></li><li><a href="#start-heading">Graphics backend</a></li><li><a href="#modules-heading">Project modules</a></li><li><a href="#reading-heading">Reference</a></li></ul></nav></aside>
+</div>
+<footer class="site-footer"><div class="site-footer__inner"><a class="site-brand" href="index.html">Ardashir</a><div class="footer-group"><p>Documentation</p><a href="index.html">Overview</a><a href="ArdaRDG/getting-started.html">Getting started</a><a href="Essays/arda-graph-and-inductor.html">Engineering essays</a></div><div class="footer-group"><p>Modules</p><a href="ArdaBackend/index.html">GPU backend</a><a href="ArdaRDG/index.html">Dependency graph</a><a href="ArdaNativeCompute/index.html">Native compute</a><a href="index.html#module-ardagraph">ArdaGraph</a><a href="index.html#module-ardatests">ArdaTests</a><a href="ArdaTrace/index.html">ArdaTrace</a><a href="ArdaScene/index.html">ArdaScene</a></div><div class="footer-group"><p>Reference</p><a href="ArdaBackend/api-reference.html">GPU backend</a><a href="ArdaRDG/api-reference.html">Dependency graph</a><a href="ArdaNativeCompute/api-reference.html">Native compute</a><a href="glossary.html">Glossary</a></div></div></footer>
+<dialog class="doc-search" aria-label="Search documentation"><form method="dialog">
+  <div class="search-field"><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" aria-label="Search documentation" placeholder="Search documentation" autocomplete="off"><button type="submit" aria-label="Close search"><svg class="icon icon-close" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+  <div class="search-results" aria-live="polite"></div>
+</form></dialog>
 </body>
 </html>

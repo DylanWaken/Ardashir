@@ -259,8 +259,8 @@ namespace arda
 				    FArdaDependencyNodeBase::TArdaNodeComputeAlternativeHook<Derived>::value;
 			}
 
-			/** Route selection is fixed before DeclareResources/Prepare. CUDA stays preferred when available.
-			 * No fallback is attempted after recording/submission failure. Null-device analysis keeps the authored domain.
+			/** Route selection is fixed before DeclareResources/Prepare. Derived nodes can qualify
+			 * their CUDA variants here. Null-device analysis keeps the authored domain.
 			 */
 			static bool UsesComputeAlternative(const IArdaRHIDevice* Device)
 			{
@@ -283,7 +283,7 @@ namespace arda
 				FArdaRHIStatus Status;
 				try
 				{
-					const bool bAlternative = UsesComputeAlternative(Device);
+					const bool bAlternative = HasComputeAlternative() && Derived::UsesComputeAlternative(Device);
 					auto Requirements = bAlternative ? Derived::GetComputeAlternativeRequirements(Value)
 					                                 : Derived::GetRequirements(Value);
 					if (bAlternative)
@@ -671,6 +671,10 @@ namespace arda
 						    *P.mInstance);
 					};
 					Definition.mComputeAlternative = eastl::move(Alternative);
+					Definition.mSelectComputeAlternative = [](const IArdaRHIDevice* Device)
+					{
+						return Derived::UsesComputeAlternative(Device);
+					};
 				}
 				return Registry.RegisterExecutable(eastl::move(Definition));
 			}

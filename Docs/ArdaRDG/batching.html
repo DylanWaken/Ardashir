@@ -3,58 +3,103 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Batched operation authoring â€” Ardashir engineering documentation.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Record typed argument arrays, publish independent edits from worker threads, and inspect pipeline batches and draw instancing.">
   <title>Batched operation authoring | Ardashir</title>
+  <script>
+    (() => {
+      let preference = "dark";
+      try {
+        preference = localStorage.getItem("arda-theme") || preference;
+      } catch {
+        // Local files and privacy settings can disable storage.
+      }
+      const systemLight = preference === "system" && !matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = preference === "light" || systemLight ? "light" : "dark";
+    })();
+  </script>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/doc-search-index.js" defer></script>
   <script src="../assets/site.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
-  <header class="site-header">
-    <a class="site-brand" href="../index.html">Ardashir Docs</a>
-    <nav aria-label="Primary">
-      <a href="../ArdaBackend/index.html">ArdaBackend</a>
-      <a href="../ArdaRDG/index.html">ArdaDependencyGraph</a>
-      <a href="../glossary.html">Glossary</a>
-    </nav>
-  </header>
-  <div class="site-layout">
-    <aside class="sidebar" aria-label="ArdaRDG pages">
-      <h2>ArdaRDG</h2>
-      <nav>
-        <a href="index.html">Overview</a>
-        <a href="getting-started.html">Getting started</a>
-        <a href="registering-nodes.html">Registering nodes</a>
-        <a href="node-recipes.html">Node recipes</a>
-        <a href="resources.html">Resources</a>
-        <a href="inductor.html">Inductor developer guide</a>
-        <a href="inductor-pipelines.html">Pipeline assembly</a>
-        <a href="inductor-bindings.html">Binding preparation</a>
-        <a href="batching.html">Batching and parallel edits</a>
-        <a href="compilation.html">Compilation</a>
-        <a href="execution.html">Execution</a>
-        <a href="api-reference.html">API reference</a>
-        <a href="documentation.html">Documentation maintenance</a>
-      </nav>
-    </aside>
-    <main id="main-content">
-      <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href="../index.html">Docs</a> / <a href="index.html">ArdaRDG</a>
-      </nav>
-      <article>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header" id="top">
+  <a class="announcement" href="native-compute.html"><span aria-hidden="true">//</span> Write a native compute node <svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+  <div class="site-header__bar"><div class="site-header__inner">
+    <a class="site-brand" href="../index.html" aria-label="Ardashir home">Ardashir</a>
+    <nav class="site-nav" aria-label="Primary"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/index.html">GPU backend</a><a href="index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav>
+    <div class="header-tools"><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="../ArdaBackend/index.html">GPU backend</a>
+<a href="index.html">Dependency graph</a>
+<a href="../ArdaNativeCompute/index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button><div class="theme-control" hidden><button type="button" class="theme-toggle" data-theme-toggle aria-label="Change theme" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg></button><div class="theme-menu" id="theme-menu" role="menu" aria-label="Theme" hidden><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="dark"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg>Dark</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="light"><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Light</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="system"><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg>System</button></div></div>
+      <details class="mobile-nav"><summary aria-label="Navigation menu"><svg class="icon icon-menu" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></summary>
+        <div class="mobile-nav-panel"><nav aria-label="Primary navigation"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/index.html">GPU backend</a><a href="index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button></div>
+      </details>
+    </div>
+  </div></div>
+</header>
+<nav class="mobile-docs" aria-label="Docs menu"><details class="docs-menu"><summary><svg class="icon icon-list" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zm5 0v16"/></svg><span>Docs menu</span><span aria-hidden="true">/</span><span class="current-title">Batched operation authoring</span><svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+  <div class="mobile-docs-panel"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="../ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="native-compute.html">Write a native compute node</a>
+<a href="quick-guide.html">Renderer quick guide</a></div></details>
+<details class="sidebar-group" open><summary>Write graph operations<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="passes.html">Typed node definitions</a>
+<a href="registering-nodes.html">Register a graph node</a>
+<a href="node-recipes.html">Node recipes</a>
+<a href="resources.html">Resource handles and storage</a>
+<a href="feature-requirements.html">Feature requirements</a>
+<a href="batching.html" aria-current="page">Batching and parallel edits</a></div></details>
+<details class="sidebar-group"><summary>Compile and run graphs<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="architecture.html">Architecture</a>
+<a href="inductor.html">ArdaInductor developer guide</a>
+<a href="compilation.html">Compilation</a>
+<a href="inductor-pipelines.html">Pipeline assembly</a>
+<a href="inductor-bindings.html">Binding preparation</a>
+<a href="execution.html">Execution and completion</a>
+<a href="debugging.html">Validation and debugging</a></div></details>
+<details class="sidebar-group"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="api-reference.html">API reference</a>
+<a href="feature-modularity-audit.html">Native feature coverage</a>
+<a href="documentation.html">Maintain this documentation</a></div></details></nav><details class="sidebar-group mobile-outline"><summary>On this page<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="#arrays">Arrays and broadcasting</a><a href="#mesh-example">A large GBuffer construction</a><a href="#pipeline-batches">Pipeline batching</a><a href="#instancing">Automatic draw instances</a><a href="#parallel-edits">Concurrent edits</a><a href="#inspection">Inspect the plan</a></div></details></div>
+</details><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="../ArdaBackend/index.html">GPU backend</a>
+<a href="index.html">Dependency graph</a>
+<a href="../ArdaNativeCompute/index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details></nav>
+<div class="site-layout">
+  <aside class="sidebar" aria-label="Docs sidebar"><div class="sidebar-inner"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="../ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="native-compute.html">Write a native compute node</a>
+<a href="quick-guide.html">Renderer quick guide</a></div></details>
+<details class="sidebar-group" open><summary>Write graph operations<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="passes.html">Typed node definitions</a>
+<a href="registering-nodes.html">Register a graph node</a>
+<a href="node-recipes.html">Node recipes</a>
+<a href="resources.html">Resource handles and storage</a>
+<a href="feature-requirements.html">Feature requirements</a>
+<a href="batching.html" aria-current="page">Batching and parallel edits</a></div></details>
+<details class="sidebar-group"><summary>Compile and run graphs<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="architecture.html">Architecture</a>
+<a href="inductor.html">ArdaInductor developer guide</a>
+<a href="compilation.html">Compilation</a>
+<a href="inductor-pipelines.html">Pipeline assembly</a>
+<a href="inductor-bindings.html">Binding preparation</a>
+<a href="execution.html">Execution and completion</a>
+<a href="debugging.html">Validation and debugging</a></div></details>
+<details class="sidebar-group"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="api-reference.html">API reference</a>
+<a href="feature-modularity-audit.html">Native feature coverage</a>
+<a href="documentation.html">Maintain this documentation</a></div></details></nav></div></aside>
+  <main id="main-content" tabindex="-1">
+    <article class="prose" data-doc-article>
 <h1 id="batched-operation-authoring">Batched operation authoring</h1>
-<nav class="toc" aria-label="On this page">
-      <p><strong>On this page</strong></p>
-      <ul>
-        <li><a href="#arrays">Arrays and broadcasting</a></li>
-        <li><a href="#mesh-example">A large GBuffer construction</a></li>
-        <li><a href="#pipeline-batches">Pipeline batching</a></li>
-        <li><a href="#instancing">Automatic draw instances</a></li>
-        <li><a href="#parallel-edits">Concurrent edits</a></li>
-        <li><a href="#inspection">Inspect the plan</a></li>
-      </ul>
-    </nav>
+
 <section id="objectives"><h2>What this guide covers</h2><p>Record large collections with typed argument arrays, submit independent edits from worker threads, inspect compiler pipeline batches, and enable safe automatic draw instancing. The node schema and shader/CUDA resource contract remain the same for scalar and array invocation.</p></section>
 <section id="prerequisites"><h2>Prerequisites and the execution model</h2><p>Start with <a href="registering-nodes.html">node registration</a>, <a href="resources.html">resource declarations</a> and <a href="compilation.html">dependency compilation</a>. An authored operation describes work; a pipeline describes how the GPU performs it; bindings select the data for that work. Sharing a pipeline permits command recording to be grouped without requiring identical bindings.</p><p>A batch moves transition boundaries around several operations, so the compiler must prove that no required transition or visibility barrier disappears. Instancing removes draw boundaries too: it needs matching geometry and a promise that shader instance addressing and setup hooks tolerate the merge. CPU edit recording is independent of these GPU scheduling decisions.</p><figure><img src="../assets/operation-batching.svg" alt="Private edits publish atomically, compilation batches compatible work, and eligible instance ranges merge."><figcaption>Publication order defines the construction. Pipeline and resource proofs determine native batches; geometry and instance-range proofs determine draw merging.</figcaption></figure></section>
 <section id="arrays"><h2>Arrays zip; scalars broadcast</h2>
@@ -152,9 +197,15 @@ if (auto Status = Graph.CompileAndWait(); !Status) return Status;</code></pre>
 </section>
 <section id="summary"><h2>Check your understanding</h2><ul><li>Array lengths 20, 20 and 1 mismatch; use a scalar to broadcast the third argument.</li><li>Different output buffers can share a pipeline batch, but a producer/consumer UAV dependency requires a barrier and splits it.</li><li>Draws starting at instances 0 and 0 remain separate. Even contiguous ranges require every stage to permit merging.</li><li>An edit cannot consume resources published after it opened. Open a later edit after publication.</li></ul><p>Inspect compile results for grouping, execution counters for draw reduction, and readbacks for correctness. Measure recording, compilation, and GPU time separately.</p></section>
 <section id="further-reading"><h2>Further reading</h2><p>Continue with <a href="execution.html">execution and timing</a>, <a href="inductor-pipelines.html">pipeline assembly</a>, and the centralized <a href="api-reference.html">graph API reference</a>.</p></section>
-      </article>
-    </main>
-  </div>
-  <footer class="site-footer"><p>ArdaRDG Â· Ardashir engineering documentation</p></footer>
+    </article>
+    <nav class="page-nav" aria-label="Document navigation"><a href="feature-requirements.html" rel="prev"><span class="page-nav-label"><svg class="icon icon-previous" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>Previous</span><span class="page-nav-title">Feature requirements</span></a><a href="architecture.html" rel="next"><span class="page-nav-label">Next<svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="page-nav-title">Architecture</span></a></nav>
+  </main>
+  <aside class="page-outline" aria-label="Page outline"><nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#arrays">Arrays and broadcasting</a></li><li><a href="#mesh-example">A large GBuffer construction</a></li><li><a href="#pipeline-batches">Pipeline batching</a></li><li><a href="#instancing">Automatic draw instances</a></li><li><a href="#parallel-edits">Concurrent edits</a></li><li><a href="#inspection">Inspect the plan</a></li></ul></nav></aside>
+</div>
+<footer class="site-footer"><div class="site-footer__inner"><a class="site-brand" href="../index.html">Ardashir</a><div class="footer-group"><p>Documentation</p><a href="../index.html">Overview</a><a href="getting-started.html">Getting started</a><a href="../Essays/arda-graph-and-inductor.html">Engineering essays</a></div><div class="footer-group"><p>Modules</p><a href="../ArdaBackend/index.html">GPU backend</a><a href="index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../index.html#module-ardagraph">ArdaGraph</a><a href="../index.html#module-ardatests">ArdaTests</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div><div class="footer-group"><p>Reference</p><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a><a href="../glossary.html">Glossary</a></div></div></footer>
+<dialog class="doc-search" aria-label="Search documentation"><form method="dialog">
+  <div class="search-field"><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" aria-label="Search documentation" placeholder="Search documentation" autocomplete="off"><button type="submit" aria-label="Close search"><svg class="icon icon-close" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+  <div class="search-results" aria-live="polite"></div>
+</form></dialog>
 </body>
 </html>

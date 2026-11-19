@@ -1,4 +1,5 @@
 #include "ArdaBackend.h"
+#include "ArdaNativeCompute.h"
 #include "ArdaTestBackend.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
 #include "Graph/Node/ArdaNodeDefinition.h"
@@ -35,6 +36,51 @@ namespace arda
 			ARDA_NODE_CUDA_BUFFER(mOutput, FArdaGraphAlternativeCudaParameters, mOutput)
 			ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mCount, 257)
 		ARDA_END_NODE_PARAMETER_STRUCT()
+
+		class FArdaGraphStateTestSource final : public IArdaNativeKernelSource
+		{
+		public:
+			const char* GetProviderId() const noexcept override { return "test.state-check"; }
+			const char* GetFormat() const noexcept override { return "test"; }
+		};
+
+		class FArdaGraphStateTestProvider final : public IArdaNativeComputeProvider
+		{
+		public:
+			mutable uint32_t mHandoffs = 0;
+
+			const FArdaNativeProviderDesc& GetDesc() const noexcept override
+			{
+				static const FArdaNativeProviderDesc Description{
+				    "test.state-check", {"native-d3d12", "native-vulkan"}, {"test"}};
+				return Description;
+			}
+
+			FArdaRHIStatus CheckSupport(const FArdaNativeComputeContext&,
+			    const FArdaNativeOperandDesc&,
+			    const IArdaNativeKernelSource&) const override
+			{
+				return {};
+			}
+
+			TArdaRHIResult<FArdaNativeResourceHandoff> QueryHandoff(const FArdaNativeComputeContext&,
+			    const FArdaNativeResourceSlot&,
+			    const FArdaNativeResourceView&) const override
+			{
+				++mHandoffs;
+				return {{EArdaNativeHandoff::Direct, EArdaRHIResourceState::CopyDest}, {}};
+			}
+
+			TArdaRHIResult<FArdaNativeWorkRef> Prepare(const FArdaNativeComputeContext&,
+			    const FArdaNativeOperandDesc&,
+			    const IArdaNativeKernelSource&,
+			    const FArdaNativeInvocation&,
+			    const FArdaNativeLaunch&) const override
+			{
+				ADD_FAILURE() << "The graph must reject the native route before preparation.";
+				return {{}, FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, "Unexpected native preparation.")};
+			}
+		};
 
 		class FArdaGraphAlternativeNode final : public TArdaNodeDefinition<FArdaGraphAlternativeNode,
 		                                            FArdaGraphAlternativeNodeParameters,
@@ -111,12 +157,49 @@ namespace arda
 			    FArdaInstanceState&)
 			{
 				++mComputeRecordCount;
-				if (auto Status = Context.SetComputeState(); !Status)
+				FArdaNativeComputeRegistry Registry;
+				auto Provider = eastl::make_shared<FArdaGraphStateTestProvider>();
+				if (auto Status = Registry.RegisterProvider(Provider); !Status)
 				{
 					return Status;
 				}
-				Context.GetCommands().Dispatch((Parameters.mCount + 63) / 64, 1, 1);
-				return {};
+				FArdaNativeOperandDesc Operand;
+				Operand.mId = "test.graph.state-qualified-operand";
+				Operand.mResources = {{"output", EArdaRHIResourceType::Buffer, EArdaComputeAccess::Write}};
+				Operand.mVariants.push_back({"test", eastl::make_shared<FArdaGraphStateTestSource>()});
+				const auto* Pipeline = Context.GetPipeline();
+				if (!Pipeline || !Pipeline->mCompute)
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Missing test shader pipeline.");
+				}
+				FArdaRHIComputeState State{Pipeline->mCompute, Context.GetBindings()};
+				Operand.mFallback.mPrepare =
+				    [State = eastl::move(State), Groups = (Parameters.mCount + 63) / 64](const FArdaNativeComputeContext&,
+				        const FArdaNativeInvocation&) -> TArdaRHIResult<FArdaNativeWorkRef>
+				{
+					return {MakeArdaNativeWork([State, Groups](IArdaRHICommandList& Commands)
+					            {
+						            if (auto Status = Commands.SetComputeState(State); !Status)
+						            {
+							            return Status;
+						            }
+						            Commands.Dispatch(Groups, 1, 1);
+						            return FArdaRHIStatus{};
+					            }),
+					    {}};
+				};
+				if (auto Status = Registry.RegisterOperand(eastl::move(Operand)); !Status)
+				{
+					return Status;
+				}
+				FArdaNativeInvocation Invocation;
+				Invocation.mResources = {{Context.GetBuffer(Parameters.mOutput.GetHandle())}};
+				auto Status = Context.RecordNativeCompute(Registry,
+				    "test.graph.state-qualified-operand",
+				    Invocation,
+				    EArdaNativeComputePreference::PreferNative);
+				EXPECT_EQ(Provider->mHandoffs, 1u);
+				return Status;
 			}
 
 			static FArdaRHIStatus PrepareCuda(FArdaDependencyExecutionContext&,

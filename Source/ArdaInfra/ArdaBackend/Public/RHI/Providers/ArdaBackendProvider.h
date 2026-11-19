@@ -21,7 +21,7 @@ namespace arda
 	class IArdaExternalDeviceProvider;
 
 	/** C++ provider contract version required by this ArdaBackend build. */
-	inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 13;
+	inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 15;
 
 	/** Describes one backend implementation available to ArdaBackend. */
 	struct FArdaBackendModuleDescriptor

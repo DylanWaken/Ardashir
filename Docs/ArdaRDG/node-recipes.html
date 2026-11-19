@@ -3,53 +3,105 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Self-contained GPU nodes, automatic binding preparation, pipeline inference and range-aware dependencies.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Register compute, CUDA, ray-tracing, mesh, raster, and work-graph nodes and run the compiled examples.">
   <title>Self-contained node recipes | ArdaDependencyGraph | Ardashir</title>
+  <script>
+    (() => {
+      let preference = "dark";
+      try {
+        preference = localStorage.getItem("arda-theme") || preference;
+      } catch {
+        // Local files and privacy settings can disable storage.
+      }
+      const systemLight = preference === "system" && !matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = preference === "light" || systemLight ? "light" : "dark";
+    })();
+  </script>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
   <script src="../assets/arda-rdg-api.js" defer></script>
   <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/doc-search-index.js" defer></script>
   <script src="../assets/site.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
-  <header class="site-header">
-    <a class="site-brand" href="../index.html">Ardashir Docs</a>
-    <nav aria-label="Primary">
-      <a href="index.html">ArdaDependencyGraph</a>
-      <a href="architecture.html">Architecture</a>
-      <a href="quick-guide.html">Quick guide</a>
-      <a href="api-reference.html">API</a>
-      <a href="../glossary.html">Glossary</a>
-    </nav>
-  </header>
-  <div class="site-layout">
-    <aside class="sidebar" aria-label="ArdaDependencyGraph pages">
-      <h2>ArdaDependencyGraph</h2>
-      <nav>
-        <a href="index.html">Overview</a>
-        <a href="getting-started.html">Getting started</a>
-        <a href="node-recipes.html">Node recipes</a>
-        <a href="feature-requirements.html">Feature requirements</a>
-        <a href="quick-guide.html">Quick user's guide</a>
-        <a href="architecture.html">Architecture</a>
-        <a href="resources.html">Resources</a>
-        <a href="passes.html">Typed nodes</a>
-        <a href="batching.html">Batching and parallel edits</a>
-        <a href="compilation.html">Compilation</a>
-        <a href="execution.html">Execution</a>
-        <a href="debugging.html">Debugging</a>
-        <a href="api-reference.html">API reference</a>
-      </nav>
-    </aside>
-    <main id="main-content">
-      <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href="../index.html">Docs</a> /
-        <a href="index.html">ArdaDependencyGraph</a> /
-        Node recipes
-      </nav>
-      <article><header class="page-header"><p class="eyebrow">Author operations; compose graphs</p><h1>Self-contained node recipes</h1><p>Register compute, CUDA, ray tracing, mesh, rasterization and work-graph operations. Let compilation prepare their resources, bindings, descriptor indices and shader tables.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">Prerequisites</a><a href="#model">Programming model</a><a href="#compute">Compute shader</a><a href="#cuda">CUDA</a><a href="#ray">Ray tracing</a><a href="#mesh">Mesh shader</a><a href="#raster">Rasterization</a><a href="#work">Work graph</a><a href="#bindless">Bindless ranges</a><a href="#pipelines">Pipeline assignment and reuse</a><a href="#failures">Failures</a><a href="#summary">Checkpoints</a></nav>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header" id="top">
+  <a class="announcement" href="native-compute.html"><span aria-hidden="true">//</span> Write a native compute node <svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+  <div class="site-header__bar"><div class="site-header__inner">
+    <a class="site-brand" href="../index.html" aria-label="Ardashir home">Ardashir</a>
+    <nav class="site-nav" aria-label="Primary"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/index.html">GPU backend</a><a href="index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav>
+    <div class="header-tools"><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="../ArdaBackend/index.html">GPU backend</a>
+<a href="index.html">Dependency graph</a>
+<a href="../ArdaNativeCompute/index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button><div class="theme-control" hidden><button type="button" class="theme-toggle" data-theme-toggle aria-label="Change theme" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg></button><div class="theme-menu" id="theme-menu" role="menu" aria-label="Theme" hidden><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="dark"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg>Dark</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="light"><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Light</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="system"><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg>System</button></div></div>
+      <details class="mobile-nav"><summary aria-label="Navigation menu"><svg class="icon icon-menu" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></summary>
+        <div class="mobile-nav-panel"><nav aria-label="Primary navigation"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/index.html">GPU backend</a><a href="index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button></div>
+      </details>
+    </div>
+  </div></div>
+</header>
+<nav class="mobile-docs" aria-label="Docs menu"><details class="docs-menu"><summary><svg class="icon icon-list" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zm5 0v16"/></svg><span>Docs menu</span><span aria-hidden="true">/</span><span class="current-title">Self-contained node recipes</span><svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+  <div class="mobile-docs-panel"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="../ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="native-compute.html">Write a native compute node</a>
+<a href="quick-guide.html">Renderer quick guide</a></div></details>
+<details class="sidebar-group" open><summary>Write graph operations<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="passes.html">Typed node definitions</a>
+<a href="registering-nodes.html">Register a graph node</a>
+<a href="node-recipes.html" aria-current="page">Node recipes</a>
+<a href="resources.html">Resource handles and storage</a>
+<a href="feature-requirements.html">Feature requirements</a>
+<a href="batching.html">Batching and parallel edits</a></div></details>
+<details class="sidebar-group"><summary>Compile and run graphs<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="architecture.html">Architecture</a>
+<a href="inductor.html">ArdaInductor developer guide</a>
+<a href="compilation.html">Compilation</a>
+<a href="inductor-pipelines.html">Pipeline assembly</a>
+<a href="inductor-bindings.html">Binding preparation</a>
+<a href="execution.html">Execution and completion</a>
+<a href="debugging.html">Validation and debugging</a></div></details>
+<details class="sidebar-group"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="api-reference.html">API reference</a>
+<a href="feature-modularity-audit.html">Native feature coverage</a>
+<a href="documentation.html">Maintain this documentation</a></div></details></nav><details class="sidebar-group mobile-outline"><summary>On this page<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="#objectives">Prerequisites</a><a href="#model">Programming model</a><a href="#build-recipes">Build the native shader recipes</a><a href="#compute">Compute shader</a><a href="#cuda">CUDA</a><a href="#ray">Ray tracing</a><a href="#mesh">Mesh shader</a><a href="#raster">Rasterization</a><a href="#work">Work graph</a><a href="#bindless">Bindless ranges</a><a href="#pipelines">Pipeline assignment and reuse</a><a href="#failures">Failures</a><a href="#summary">Checkpoints</a></div></details></div>
+</details><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="../ArdaBackend/index.html">GPU backend</a>
+<a href="index.html">Dependency graph</a>
+<a href="../ArdaNativeCompute/index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details></nav>
+<div class="site-layout">
+  <aside class="sidebar" aria-label="Docs sidebar"><div class="sidebar-inner"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="../ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="native-compute.html">Write a native compute node</a>
+<a href="quick-guide.html">Renderer quick guide</a></div></details>
+<details class="sidebar-group" open><summary>Write graph operations<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="passes.html">Typed node definitions</a>
+<a href="registering-nodes.html">Register a graph node</a>
+<a href="node-recipes.html" aria-current="page">Node recipes</a>
+<a href="resources.html">Resource handles and storage</a>
+<a href="feature-requirements.html">Feature requirements</a>
+<a href="batching.html">Batching and parallel edits</a></div></details>
+<details class="sidebar-group"><summary>Compile and run graphs<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="architecture.html">Architecture</a>
+<a href="inductor.html">ArdaInductor developer guide</a>
+<a href="compilation.html">Compilation</a>
+<a href="inductor-pipelines.html">Pipeline assembly</a>
+<a href="inductor-bindings.html">Binding preparation</a>
+<a href="execution.html">Execution and completion</a>
+<a href="debugging.html">Validation and debugging</a></div></details>
+<details class="sidebar-group"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="api-reference.html">API reference</a>
+<a href="feature-modularity-audit.html">Native feature coverage</a>
+<a href="documentation.html">Maintain this documentation</a></div></details></nav></div></aside>
+  <main id="main-content" tabindex="-1">
+    <article class="prose" data-doc-article>
+<header class="page-header"><h1>Self-contained node recipes</h1><p>Register compute, CUDA, ray-tracing, mesh, raster, and work-graph nodes and run the compiled examples.</p></header>
+
 <section id="objectives"><h2>Learning objectives and prerequisites</h2><p>After this chapter you can write a node library, assemble its operations without native binding setup, predict when resources create dependencies, and diagnose pipeline or descriptor errors. Read <a href="getting-started.html#lifecycle">edit transactions</a>, <a href="passes.html#freezing">parameter snapshots</a> and <a href="resources.html">logical versus physical resources</a> first. The examples require an initialized RHI device, supported GPU features and shader compilation or deployed shader artifacts.</p></section>
 <section id="model"><h2>Record operations on resource variables</h2><p>Begin an <code>FArdaGraphEdit</code>, call operations on typed buffer and texture variables, then check <code>Edit.Commit()</code> and <code>Graph.CompileAndWait()</code>. Publish a named global callable after each node class with <code>ARDA_DECLARE_GRAPH_NODE(FArdaMyNode, MyOperation)</code> and define it once in the implementation with <code>ARDA_DEFINE_GRAPH_NODE(FArdaMyNode, MyOperation)</code>. Call <code>MyOperation(Edit, Parameters)</code> or <code>MyOperation(Edit, Input, Output, Value)</code>. Positional arguments initialize the node's parameter fields in declaration order. Calls return typed outputs through <code>GetBuffer</code> and <code>GetTexture</code>. Retrieve outputs before committing, retain terminal resources with <code>Edit.Keep</code>, and call <code>Readback</code> for CPU results. The facade automatically registers nodes and records their dependencies. Calls such as <code>CopyTo(Edit, Source, Destination)</code> select the appropriate node from the resource types.</p><p>The edit retains the first authoring error and stops later mutations. A failed commit leaves the transaction open for rollback; <code>Cancel()</code> or scope destruction discards it. A successful commit queues the edit. <code>Graph.CompileAndWait()</code> selects or compiles a persistent revision, and <code>Graph.ExecuteAndWait()</code> runs it. Multiple committed edits can share resource variables within one construction. The next ordinary edit after execution starts empty; describe the next frame again to reuse a matching cached revision without removing old nodes.</p><p>A shader argument is a reference to a logical value before it is a GPU descriptor. A node describes what it reads and produces; an edge constrains when a value becomes available. Separating those facts from physical addresses lets the compiler schedule work and choose allocations before building descriptors. Putting allocation or descriptor creation in every recording callback would prevent that separation and repeat CPU work during replay.</p><p>The common <a href="registering-nodes.html"><code>TArdaNodeDefinition</code></a> template supplies static invocation, registration and preparation lifetime. Its <code>EArdaNodeType</code> selector fixes the execution contract, while the compiler chooses the native queue. Declare parameters with <code>ARDA_BEGIN_NODE_PARAMETER_STRUCT</code>; field metadata supplies dependencies and canonical identity. Custom hooks add preparation, pipeline requests and recording. A class can use inherited stateless hooks when it needs no setup.</p><ol>
 <li>Override static <a href="feature-requirements.html#worked-example"><code>GetRequirements</code></a> for hardware or library prerequisites. The graph checks explicit needs before output declaration, validation and preparation, and checks recognizable descriptor needs after <code>Describe</code>. See <a href="feature-requirements.html#worked-example">the compiled hook examples</a>; unsupported attachment returns a named diagnostic without inserting the node.</li>
@@ -61,7 +113,12 @@
 <li><code>Record</code> calls the context's state helper and supplies draw or dispatch arguments. <a href="api-reference.html#api-arda-fardadependencyexecutioncontext-80b152bc"><code>FArdaDependencyExecutionContext</code></a> supplies the prepared PSO, framebuffer, bindings, parameters and shader table. Ordinary replay reuses them.</li></ol>
 <p>Publish each class with <code>ARDA_DECLARE_GRAPH_NODE(NodeClass, InvocationName);</code> immediately after its declaration, and the matching <code>ARDA_DEFINE_GRAPH_NODE</code> once in its implementation. Declaration automatically registers the type for discovery and deserialization. Call <code>InvocationName(Edit, Parameters)</code> or pass positional fields to record an operation. <code>NodeClass::Register()</code> remains idempotent. The <a href="registering-nodes.html">registration walkthrough</a> covers the complete header and implementation contract. Overloaded free functions can delegate to these callables, keeping validation and dependencies in the node definition. Registry-driven tools can use <code>Edit.Invoke(DefinitionName, Parameters)</code> after registration. Device setup occurs during invocation, not global registry discovery. Compile results retain prepared node state and descriptions; compiled frames retain physical objects until GPU retirement. Keep a graph across frames. Changing shapes, resource identities or frozen values requires an edit; changing synchronized external input contents does not.</p>
 <figure><img src="Assets/rdg-resource-materialization.svg" alt="Compilation plans logical resources; first submission acquires physical memory and prepares bindings." loading="lazy"><figcaption>Descriptors are prepared after physical addresses are known, separately for each reusable frame slot.</figcaption></figure></section>
-<section id="compute"><h2>Compute shader</h2><p>One dispatch writes the frozen value 123 to a graph-owned four-byte buffer. A separate readback node makes the result observable. The shader parameter struct declares both the push constant and UAV; the graph supplies their native bindings.</p><p>These are compiled recipe sources, built into <code>ArdaGraphTests</code>. In an application, compile all four node .cpp files and <a href="Examples/AssembleNodes.cpp">the assembly file</a> (it defines all four recipes and the shared registration function), or extract only the assembly function for your selected node, include <a href="Examples/Nodes/RecipeNodeSupport.h">the private recipe support header</a>, link <code>Ardashir::ArdaDependencyGraph</code>, and define <code>ARDA_RDG_RECIPE_SHADER_DIR</code> as an absolute path to <a href="Examples/Nodes/Shaders/ComputeWrite.hlsl">the shader directory</a>. Enable on-demand compilation for development, or deploy matching artifacts for load-only mode.</p><p>Registration: <code>FArdaComputeWriteNode::Register()</code> publishes the type; <a href="Examples/AssembleNodes.cpp">RegisterRecipeLibrary</a> registers all four native recipes together. The renderer calls named global operations, composes typed resource variables, and checks one commit result:</p><pre><code>FArdaRHIStatus RunComputeRecipe(FArdaRHIDeviceRef Device)
+<section id="build-recipes">
+  <h2>Build the native shader recipes</h2>
+  <p><code>ArdaGraphTests</code> compiles the compute, mesh, raster, and work-graph recipes. To use them in your application, link <code>Ardashir::ArdaDependencyGraph</code> and compile the four node implementation files with <a href="Examples/AssembleNodes.cpp"><code>AssembleNodes.cpp</code></a>. That assembly defines <code>RegisterRecipeLibrary</code> to register all four recipes. To use one recipe, compile its node implementation and copy the corresponding assembly function.</p>
+  <p>Make <a href="Examples/Nodes/RecipeNodeSupport.h"><code>RecipeNodeSupport.h</code></a> available to the implementation and define <code>ARDA_RDG_RECIPE_SHADER_DIR</code> as the absolute path to <code>Docs/ArdaRDG/Examples/Nodes/Shaders</code>. Turn on on-demand compilation in development or deploy matching shader artifacts for load-only mode.</p>
+</section>
+<section id="compute"><h2>Compute shader</h2><p>One dispatch writes the frozen value 123 to a graph-owned four-byte buffer. A separate readback node makes the result observable. The shader parameter struct declares both the push constant and UAV; the graph supplies their native bindings.</p><p>Call <code>FArdaComputeWriteNode::Register()</code> for explicit discovery. The assembly dispatches the shader and checks the readback after each execution. <a href="Examples/Nodes/Shaders/ComputeWrite.hlsl">ComputeWrite shader source</a></p><pre><code>FArdaRHIStatus RunComputeRecipe(FArdaRHIDeviceRef Device)
 {
 
 	// Readback retains the producer chain and publishes its result after execution.
@@ -228,7 +285,7 @@ namespace arda
 		return {};
 	}
 }</code></pre></details></section>
-<section id="mesh"><h2>Mesh shader / meshlet pipeline</h2><p>The node privately registers mesh and pixel shaders, declares an offscreen color output, supplies raster state and requests a Meshlet pipeline. Two instances retain different output textures but share one matching PSO. The GPU test checks creation and replay; it does not compare rendered pixels.</p><p>These are compiled recipe sources, built into <code>ArdaGraphTests</code>. In an application, compile all four node .cpp files and <a href="Examples/AssembleNodes.cpp">the assembly file</a> (it defines all four recipes and the shared registration function), or extract only the assembly function for your selected node, include <a href="Examples/Nodes/RecipeNodeSupport.h">the private recipe support header</a>, link <code>Ardashir::ArdaDependencyGraph</code>, and define <code>ARDA_RDG_RECIPE_SHADER_DIR</code> as an absolute path to <a href="Examples/Nodes/Shaders/MeshTriangle.hlsl">the shader directory</a>. Enable on-demand compilation for development, or deploy matching artifacts for load-only mode.</p><p>Registration: <code>FArdaMeshTriangleNode::Register()</code> publishes the type; <a href="Examples/AssembleNodes.cpp">RegisterRecipeLibrary</a> registers all four native recipes together. The renderer calls named global operations, composes typed resource variables, and checks one commit result:</p><pre><code>FArdaRHIStatus RunMeshRecipe(FArdaRHIDeviceRef Device)
+<section id="mesh"><h2>Mesh shader / meshlet pipeline</h2><p>The node privately registers mesh and pixel shaders, declares an offscreen color output, supplies raster state and requests a Meshlet pipeline. Two instances retain different output textures but share one matching PSO. The GPU test checks creation and replay; it does not compare rendered pixels.</p><p>Call <code>FArdaMeshTriangleNode::Register()</code> for explicit discovery. The assembly creates both offscreen draws in one edit. <a href="Examples/Nodes/Shaders/MeshTriangle.hlsl">MeshTriangle shader source</a></p><pre><code>FArdaRHIStatus RunMeshRecipe(FArdaRHIDeviceRef Device)
 {
 
 	// Each invocation records an operation and returns its typed resources.
@@ -445,7 +502,7 @@ namespace arda
 		return C.GetCommands().DispatchMesh(1, 1, 1);
 	}
 }</code></pre></details></section>
-<section id="raster"><h2>Rasterization</h2><p>This vertex-ID triangle uses separate vertex, raster and pixel node classes. Typed vertex and fragment variables connect the stages automatically. The same vertex result feeds two raster operations, creating two independent draws that execute the vertex shader twice and reuse one compatible graphics PSO. Geometry uploads can supply declared vertex/index reads as shown by RHITest. <code>FetchBuffer(Edit, Vertices)</code> explicitly runs a compute materializer sharing the VS position function; the recipe verifies its float4 position records by GPU readback.</p><p>These are compiled recipe sources, built into <code>ArdaGraphTests</code>. In an application, compile all four node .cpp files and <a href="Examples/AssembleNodes.cpp">the assembly file</a> (it defines all four recipes and the shared registration function), or extract only the assembly function for your selected node, include <a href="Examples/Nodes/RecipeNodeSupport.h">the private recipe support header</a>, link <code>Ardashir::ArdaDependencyGraph</code>, and define <code>ARDA_RDG_RECIPE_SHADER_DIR</code> as an absolute path to <a href="Examples/Nodes/Shaders/RasterTriangle.hlsl">the shader directory</a>. Enable on-demand compilation for development, or deploy matching artifacts for load-only mode.</p><p>Registration: the vertex, raster and pixel classes each expose <code>Register()</code>; <a href="Examples/AssembleNodes.cpp">RegisterRecipeLibrary</a> registers all four native recipes together. The renderer calls named global operations, composes typed resource variables, and checks one commit result:</p><pre><code>FArdaRHIStatus RunRasterRecipe(FArdaRHIDeviceRef Device)
+<section id="raster"><h2>Rasterization</h2><p>This vertex-ID triangle uses separate vertex, raster and pixel node classes. Typed vertex and fragment variables connect the stages automatically. The same vertex result feeds two raster operations, creating two independent draws that execute the vertex shader twice and reuse one compatible graphics PSO. Geometry uploads can supply declared vertex/index reads as shown by RHITest. <code>FetchBuffer(Edit, Vertices)</code> explicitly runs a compute materializer sharing the VS position function; the recipe verifies its float4 position records by GPU readback.</p><p>Register the vertex, raster, and pixel classes for explicit discovery. The assembly records a shared vertex stage, two raster operations, and a readback. <a href="Examples/Nodes/Shaders/RasterTriangle.hlsl">RasterTriangle shader source</a></p><pre><code>FArdaRHIStatus RunRasterRecipe(FArdaRHIDeviceRef Device)
 {
 
 	// Each invocation records an operation and returns its typed resources.
@@ -925,7 +982,7 @@ namespace arda
 		return C.GetCommands().ClearTexture(*C.GetTexture(P.mColor), {}, {0.f, 0.f, 0.f, 1.f});
 	}
 }</code></pre></details></section>
-<section id="work"><h2>Work graph</h2><p>A CPU entry record drives one work-graph node that writes 123. Global resource bindings are generated from the shader struct. The RHI creates program backing storage. Entry records supply scalar inputs: global graph push-constant arguments are rejected for work graphs. D3D12 requires work-graph support; the current Vulkan backend returns Unsupported.</p><p>These are compiled recipe sources, built into <code>ArdaGraphTests</code>. In an application, compile all four node .cpp files and <a href="Examples/AssembleNodes.cpp">the assembly file</a> (it defines all four recipes and the shared registration function), or extract only the assembly function for your selected node, include <a href="Examples/Nodes/RecipeNodeSupport.h">the private recipe support header</a>, link <code>Ardashir::ArdaDependencyGraph</code>, and define <code>ARDA_RDG_RECIPE_SHADER_DIR</code> as an absolute path to <a href="Examples/Nodes/Shaders/WorkWrite.hlsl">the shader directory</a>. Enable on-demand compilation for development, or deploy matching artifacts for load-only mode.</p><p>Registration: <code>FArdaWorkWriteNode::Register()</code> publishes the type; <a href="Examples/AssembleNodes.cpp">RegisterRecipeLibrary</a> registers all four native recipes together. The renderer calls named global operations, composes typed resource variables, and checks one commit result:</p><pre><code>FArdaRHIStatus RunWorkRecipe(FArdaRHIDeviceRef Device)
+<section id="work"><h2>Work graph</h2><p>A CPU entry record drives one work-graph node that writes 123. Global resource bindings are generated from the shader struct. The RHI creates program backing storage. Entry records supply scalar inputs: global graph push-constant arguments are rejected for work graphs. D3D12 requires work-graph support; the current Vulkan backend returns Unsupported.</p><p>Call <code>FArdaWorkWriteNode::Register()</code> for explicit discovery. The assembly supplies the entry record and checks the resulting buffer. <a href="Examples/Nodes/Shaders/WorkWrite.hlsl">WorkWrite shader source</a></p><pre><code>FArdaRHIStatus RunWorkRecipe(FArdaRHIDeviceRef Device)
 {
 
 	// Readback retains the producer chain and publishes its result after execution.
@@ -1090,7 +1147,12 @@ namespace arda
 		return C.DispatchWorkGraph(&amp;P.mValue, 1, sizeof(P.mValue));
 	}
 }</code></pre></details></section>
-<section id="cuda"><h2>CUDA operation and graphics composition</h2><p>Build the runnable example from a repository checkout with Visual Studio x64 build tools and an installed CUDA toolkit: <code>python Scripts/Examples/RunPixelSort.py vulkan --hidden --frames 3 --verify</code>. The script configures the <code>PixelSort</code> CMake target, enables CUDA kernel generation, locates the build tools and deploys shaders. Choose <code>d3d12</code> for the other backend. The command runs the complete example; the excerpts here are node-authoring references, not a separate standalone project.</p><p>For the operation's complete implementation, follow the <a href="Examples/Reference/ArdaPixelSortNodeParameters.h">graph parameters</a>, <a href="Examples/Reference/ArdaPixelSortNodeInternal.h">private helpers</a>, <a href="Examples/Reference/ArdaPixelSortOperand.cpp">operand implementation</a> and <a href="Examples/Reference/ArdaPixelSortKernels.cu">CUDA kernel registration and kernel source</a>. These are documentation snapshots of the original files. The example target's generated <code>pixel_sort</code> CUDA profile supplies the host registration symbol referenced by the operand.</p><p>CUDA launches do not use graphics PSOs or descriptor tables. A CUDA node supplies an operand to a compiler-coalesced sequence. Logical resources determine dependencies and graphics/CUDA handoffs. The operand schema resolves native CUDA buffers or surfaces; compatible adjacent nodes share an acquisition and release. This is batching of ordered calls on one stream, not kernel fusion.</p><p>The complete PixelSort node below owns operand construction, declares a CUDA-shareable output texture and contributes one radix operation. Its node parameter schema uses <code>ARDA_NODE_CUDA_TEXTURE</code> to reference the operand's texture members and inherit their required access. <code>PrepareCuda</code> fills scalar host values and calls <code>ResolveNodeCudaParameters</code> to resolve those same mappings; see <a href="inductor.html#automatic-cuda-batches">automatic CUDA batches</a>. cuBLAS/cuDNN-style calls use the <a href="../ArdaBackend/cuda-external-calls.html">external-call operand contract</a>; capture must be explicitly supported by the adapter and library configuration.</p><p>In the <a href="Examples/Reference/PixelSortRenderer.cpp">complete renderer</a>, call <code>PixelSortUploadFrame</code>, take its <code>Constants</code> output, call <code>PixelSortNoise</code> with that handle, pass its <code>Output</code> into <code>PixelSortSort</code>, and pass the sorted output into <code>PixelSortPresent</code>. Import only external targets and persistent inputs. <code>FArdaPixelSortSortNode::Register()</code> supports library discovery; named callable invocation does it automatically. The operand implementation and kernel are linked by the example's CMake target.</p><details><summary>ArdaPixelSortSortNode.h</summary><p><a href="Examples/Reference/ArdaPixelSortSortNode.h">Source file</a></p><pre><code>#pragma once
+<section id="cuda"><h2>Compose graphics and native CUDA operations</h2>
+<p>With Visual Studio x64 tools and the CUDA toolkit installed, run <code>python Scripts/Examples/RunPixelSort.py vulkan --hidden --frames 3 --verify</code>. Replace <code>vulkan</code> with <code>d3d12</code> to use Direct3D 12. The launcher builds the complete application, deploys its shaders, and verifies the output against the CPU sort. Follow the <a href="../ArdaBackend/cuda-interop.html#pixel-sort">Pixel Sort walkthrough</a> for a shader-only build or to require a native CUDA route.</p>
+<p>Connect the frame constants from <code>PixelSortUploadFrame</code> to <code>PixelSortNoise</code>, pass the noise texture to <code>PixelSortSort</code>, then pass its sorted output to <code>PixelSortPresent</code>. ArdaInductor orders those operations by their resource accesses. See the <a href="Examples/Reference/PixelSortRenderer.cpp">renderer source</a> for the edit and submission.</p>
+<p>The sort registers equivalent CUDA and HLSL implementations with the same typed parameters. Its <a href="Examples/Reference/ArdaPixelSortOperand.h">parameter schema</a> defines the resource access contract. The <a href="Examples/Reference/ArdaPixelSortOperand.cpp">registry setup</a> and <a href="Examples/Reference/ArdaPixelSortKernels.cu">kernel source</a> supply row and column variants. The graph node selects the route before allocating output. A CUDA route requests shareable textures and appends the launch to a CUDA sequence. The HLSL route uses ordinary graphics textures and records a compute dispatch.</p>
+<p>The execution context checks actual accesses against the node declarations for both routes. ArdaInductor can place compatible CUDA nodes in one batch so they share the graphics-to-CUDA acquisition and release. Calls inside the batch still launch separately in stream order. See <a href="native-compute.html">how to register and invoke native compute</a> and <a href="../ArdaBackend/cuda-external-calls.html">how to declare external CUDA calls</a>.</p>
+<details><summary>ArdaPixelSortSortNode.h</summary><p><a href="Examples/Reference/ArdaPixelSortSortNode.h">Source file</a></p><pre><code>#pragma once
 #include &quot;ArdaPixelSortNodeParameters.h&quot;
 
 namespace arda
@@ -1101,8 +1163,7 @@ namespace arda
 	public:
 		struct FArdaState;
 		static FArdaDependencyNodeMetadata GetMetadata();
-		/** Hardware admission is checked before output declaration or device preparation. */
-		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters&amp; Parameters);
+		static bool UsesComputeAlternative(const IArdaRHIDevice* Device);
 		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P);
 		static eastl::string GetCanonicalKey(const FArdaParameters&amp; Parameters);
 		static FArdaRHIStatus Validate(const FArdaParameters&amp; Parameters);
@@ -1112,12 +1173,18 @@ namespace arda
 		    const FArdaState&amp; State,
 		    FArdaInstanceState&amp; Instance,
 		    FArdaCudaSequence&amp; Sequence);
+		static FArdaRHIStatus RecordComputeAlternative(FArdaDependencyExecutionContext&amp; Context,
+		    const FArdaParameters&amp; Parameters,
+		    const FArdaState&amp; State,
+		    FArdaInstanceState&amp; Instance);
 	};
 
 	ARDA_DECLARE_GRAPH_NODE(FArdaPixelSortSortNode, PixelSortSort);
-}</code></pre></details><details><summary>ArdaPixelSortSortNode.cpp</summary><p><a href="Examples/Reference/ArdaPixelSortSortNode.cpp">Source file</a></p><pre><code>#include &quot;Nodes/ArdaPixelSortSortNode.h&quot;
+}</code></pre></details><details><summary>ArdaPixelSortSortNode.cpp</summary><p><a href="Examples/Reference/ArdaPixelSortSortNode.cpp">Source file</a></p><pre><code>#include &quot;ArdaExampleNodeState.h&quot;
+#include &quot;Nodes/ArdaPixelSortSortNode.h&quot;
 #include &quot;ArdaPixelSortNodeInternal.h&quot;
 #include &quot;Nodes/ArdaPixelSortOperand.h&quot;
+#include &quot;ArdaNativeCompute.h&quot;
 
 namespace arda
 {
@@ -1126,20 +1193,13 @@ namespace arda
 	struct FArdaPixelSortSortNode::FArdaState
 	{
 		FArdaRHIDeviceRef mDevice;
-		eastl::shared_ptr&lt;FArdaPixelSortOperand&gt; mOperand;
+		eastl::shared_ptr&lt;const FArdaNativeComputeRegistry&gt; mRegistry;
 
 		FArdaRHIStatus Initialize()
 		{
-			try
-			{
-				// The operand owns native variant registration and architecture qualification.
-				mOperand = eastl::make_shared&lt;FArdaPixelSortOperand&gt;(mDevice);
-				return mOperand-&gt;GetOperandSupport();
-			}
-			catch (const std::exception&amp; Error)
-			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, Error.what());
-			}
+			auto Registry = GetPixelSortRegistry();
+			mRegistry = eastl::move(Registry.mValue);
+			return eastl::move(Registry.mStatus);
 		}
 	};
 
@@ -1149,17 +1209,14 @@ namespace arda
 		D.mWidth = P.mWidth;
 		D.mHeight = P.mHeight;
 		D.mFormat = EArdaRHIFormat::RGBA8UInt;
-		D.mbCudaInterop = true;
+		D.mbCudaInterop = bool(CheckPixelSortNativeSupport(C.GetDevice()));
 		D.mUsage = EArdaRHITextureUsage::UnorderedAccess | EArdaRHITextureUsage::ShaderResource;
 		return C.Texture(P.mSorted, &quot;Output&quot;, D);
 	}
 
-	FArdaDependencyNodeRequirements FArdaPixelSortSortNode::GetRequirements(const FArdaParameters&amp;)
+	bool FArdaPixelSortSortNode::UsesComputeAlternative(const IArdaRHIDevice* Device)
 	{
-		FArdaDependencyNodeRequirements R;
-		R.mbRequireCuda = true;
-		R.mbRequireCudaSurfaces = true;
-		return R;
+		return Device &amp;&amp; CheckPixelSortNativeSupport(Device).mCode == EArdaRHIResult::Unsupported;
 	}
 
 	FArdaDependencyNodeMetadata FArdaPixelSortSortNode::GetMetadata()
@@ -1191,50 +1248,51 @@ namespace arda
 	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaPixelSortSortNode::FArdaState&gt;&gt; FArdaPixelSortSortNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
-		if (!Device)
+		return PrepareExampleNodeState&lt;FArdaState&gt;(eastl::move(Device));
+	}
+
+	namespace
+	{
+		TArdaRHIResult&lt;FArdaNativeInvocation&gt; MakeNodeInvocation(FArdaDependencyExecutionContext&amp; C,
+		    const FArdaPixelSortSortParameters&amp; P)
 		{
-			return {{},
-			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;This node requires an initialized device.&quot;)};
+			FArdaPixelSortParameters Host;
+			if (auto Status = ResolveNodeCudaParameters(C, P, Host); !Status)
+			{
+				return {{}, eastl::move(Status)};
+			}
+			Host.mWidth = P.mWidth;
+			Host.mHeight = P.mHeight;
+			Host.mChannel = P.mInput-&gt;mChannel;
+			Host.mThreshold = P.mInput-&gt;mThreshold;
+			return MakePixelSortInvocation(Host);
 		}
-
-		auto State = eastl::make_shared&lt;FArdaState&gt;();
-		State-&gt;mDevice = eastl::move(Device);
-
-		// Publish prepared state only after all node-owned setup succeeds.
-		auto Status = State-&gt;Initialize();
-		if (!Status)
-		{
-			return {{}, eastl::move(Status)};
-		}
-
-		return {eastl::move(State), {}};
 	}
 
 	FArdaRHIStatus FArdaPixelSortSortNode::PrepareCuda(FArdaDependencyExecutionContext&amp; C,
 	    const FArdaParameters&amp; P,
 	    const FArdaState&amp; Prepared,
-	    FArdaInstanceState&amp; InstanceState,
+	    FArdaInstanceState&amp;,
 	    FArdaCudaSequence&amp; Sequence)
 	{
-		if (Prepared.mDevice != C.GetDevice())
-		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-			    &quot;PixelSort node library belongs to another device.&quot;);
-		}
-
-		// Sample frame-varying values and resolve graph textures into the operand&#x27;s typed arguments.
-		FArdaPixelSortParameters Host;
-		if (auto Status = ResolveNodeCudaParameters(C, P, Host); !Status)
-		{
-			return Status;
-		}
-		Host.mWidth = P.mWidth;
-		Host.mHeight = P.mHeight;
-		Host.mChannel = P.mInput-&gt;mChannel;
-		Host.mThreshold = P.mInput-&gt;mThreshold;
-		return Sequence.Add(*Prepared.mOperand, Host);
+		auto Invocation = MakeNodeInvocation(C, P);
+		return Invocation ? C.AppendNativeCudaCompute(Sequence, *Prepared.mRegistry, ArdaPixelSortOperandId, Invocation.mValue)
+		                  : Invocation.mStatus;
 	}
-}</code></pre></details><p>See the <a href="Examples/Reference/ArdaPixelSortOperand.h">operand schema</a> for its surface arguments. A surface unsupported by the selected interop path returns a capability error; a required staging copy remains an explicit graph operation. CUDA single-stream execution preserves call order even when graph nodes have independent data.</p></section>
+
+	FArdaRHIStatus FArdaPixelSortSortNode::RecordComputeAlternative(FArdaDependencyExecutionContext&amp; C,
+	    const FArdaParameters&amp; P,
+	    const FArdaState&amp; Prepared,
+	    FArdaInstanceState&amp;)
+	{
+		auto Invocation = MakeNodeInvocation(C, P);
+		return Invocation ? C.RecordNativeCompute(*Prepared.mRegistry,
+		                        ArdaPixelSortOperandId,
+		                        Invocation.mValue,
+		                        EArdaNativeComputePreference::ShaderOnly)
+		                  : Invocation.mStatus;
+	}
+}</code></pre></details><p>Use the same parameter schema for both implementations so the graph can validate the texture accesses. A staging copy, when needed, is an explicit graph operation.</p></section>
 <section id="ray"><h2>Ray tracing and automatic shader tables</h2><p>Build and run from a repository checkout with Visual Studio x64 build tools: <code>python Scripts/Examples/RunCornellBox.py vulkan</code>. This configures and builds the <code>CornellBox</code> CMake target with its shared example nodes, public/private include paths, PCH, shader mappings and GLFW support. A ray-tracing-capable device is required; use <code>d3d12</code> for the other backend. The launcher runs the complete renderer. The trace excerpts alone require the surrounding example target.</p><p>Documentation snapshots provide the missing authoring context: <a href="Examples/Reference/ArdaCornellNodeParameters.h">graph parameters and frame data</a>, <a href="Examples/Reference/ArdaCornellNodeInternal.h">private node helpers</a>, <a href="Examples/Reference/ArdaCornellBoxPch.h">PCH includes</a> and <a href="Examples/Reference/CornellPathTracer.hlsl">ray shader code</a>. The target maps <code>/ArdaTests/CornellBox</code> to its node shader directory; do not treat that virtual shader path as a filesystem root.</p><p>The Cornell trace class privately registers ray generation, miss and closest-hit shaders. It names the ray exports and hit group, declares radiance output and maps shader metadata to TLAS, scene buffers and frame constants. The renderer does not allocate a shader table. With one ray-generation export, first-submission preparation creates a table containing that export followed by all miss, hit-group and callable records in the resolved pipeline's deterministic order.</p><p>Use <code>FArdaCornellTraceNode::Register()</code> for discovery or <code>CornellTrace(Edit, Parameters)</code> for automatic registration. The <a href="Examples/Reference/ArdaCornellBoxRenderer.cpp">complete Cornell renderer</a> imports persistent geometry and acceleration structures, attaches UploadFrame, BuildTLAS, Trace, Accumulate and Present, and wires their declared outputs. BuildTLAS executes every graph call. Its TLAS write orders Trace's TLAS read even if the builder is attached later. BLAS construction/compaction and geometry uploads remain separate operations with their own dependencies.</p><details><summary>ArdaCornellTraceNode.h</summary><p><a href="Examples/Reference/ArdaCornellTraceNode.h">Source file</a></p><pre><code>#pragma once
 #include &quot;RHI/Shaders/ArdaShaderType.h&quot;
 #include &quot;ArdaCornellNodeParameters.h&quot;
@@ -1248,6 +1306,7 @@ namespace arda
 		ARDA_SHADER_BUFFER_SRV(mIndices, 2, 0, arda::EArdaRHIShaderStage::AllRayTracing)                               \
 		ARDA_SHADER_BUFFER_SRV(mMaterials, 3, 0, arda::EArdaRHIShaderStage::AllRayTracing)                             \
 		ARDA_SHADER_BUFFER_UAV(mSampleRadiance, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                        \
+		ARDA_SHADER_BUFFER_UAV(mSampleGuides, 1, 0, arda::EArdaRHIShaderStage::AllRayTracing)                          \
 		ARDA_SHADER_UNIFORM_BUFFER(mFrame, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                             \
 	ARDA_END_SHADER_PARAMETER_STRUCT()
 
@@ -1286,6 +1345,8 @@ namespace arda
 		ARDA_NODE_SHADER_BUFFER(mMaterials, FArdaCornellRayGenerationShader::FArdaParameters, mMaterials)
 		/** Output sample radiance buffer; leave empty for graph allocation. */
 		ARDA_NODE_SHADER_BUFFER(mRadiance, FArdaCornellRayGenerationShader::FArdaParameters, mSampleRadiance)
+		/** Optional first-hit normal/distance and material color, two float4 records per path. */
+		ARDA_NODE_SHADER_BUFFER(mGuides, FArdaCornellRayGenerationShader::FArdaParameters, mSampleGuides)
 		/** Input frame constant buffer. */
 		ARDA_NODE_SHADER_BUFFER(mConstants, FArdaCornellRayGenerationShader::FArdaParameters, mFrame)
 		/** Input bottom-level acceleration structure referenced by the scene. */
@@ -1296,6 +1357,7 @@ namespace arda
 		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mHeight, 1)
 		/** Samples traced per pixel in this dispatch. */
 		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mSamples, 1)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbWriteGuides, false)
 		/** Scratch memory reserved while recording this node. */
 		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint64_t, mWorkspaceBytes, 0)
 	ARDA_END_NODE_PARAMETER_STRUCT()
@@ -1319,7 +1381,8 @@ namespace arda
 	};
 
 	ARDA_DECLARE_GRAPH_NODE(FArdaCornellTraceNode, CornellTrace);
-}</code></pre></details><details><summary>ArdaCornellTraceNode.cpp</summary><p><a href="Examples/Reference/ArdaCornellTraceNode.cpp">Source file</a></p><pre><code>#include &quot;ArdaCornellBoxPch.h&quot;
+}</code></pre></details><details><summary>ArdaCornellTraceNode.cpp</summary><p><a href="Examples/Reference/ArdaCornellTraceNode.cpp">Source file</a></p><pre><code>#include &quot;ArdaExampleNodeState.h&quot;
+#include &quot;ArdaCornellBoxPch.h&quot;
 #include &quot;Nodes/ArdaCornellTraceNode.h&quot;
 #include &quot;ArdaCornellNodeInternal.h&quot;
 
@@ -1388,7 +1451,7 @@ namespace arda
 
 	FArdaRHIStatus FArdaCornellTraceNode::DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P)
 	{
-		if (!P.mWidth || !P.mHeight || !P.mSamples || uint64_t(P.mWidth) * P.mHeight &gt; UINT64_MAX / 16 / P.mSamples)
+		if (!P.mWidth || !P.mHeight || !P.mSamples || uint64_t(P.mWidth) * P.mHeight &gt; UINT64_MAX / 32 / P.mSamples)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Invalid ray output extent.&quot;);
 		}
@@ -1398,7 +1461,13 @@ namespace arda
 		D.mStructureStride = 16;
 		D.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource |
 		    EArdaRHIBufferUsage::UnorderedAccess;
-		return C.Buffer(P.mRadiance, &quot;Radiance&quot;, D);
+		if (auto Status = C.Buffer(P.mRadiance, &quot;Radiance&quot;, D); !Status)
+		{
+			return Status;
+		}
+		// Keep the shader layout stable when guide generation is disabled.
+		D.mByteSize = P.mbWriteGuides ? D.mByteSize * 2 : 32;
+		return C.Buffer(P.mGuides, &quot;Guides&quot;, D);
 	}
 
 	FArdaDependencyNodeRequirements FArdaCornellTraceNode::GetRequirements(const FArdaParameters&amp;)
@@ -1412,29 +1481,13 @@ namespace arda
 
 	FArdaDependencyNodeMetadata FArdaCornellTraceNode::GetMetadata()
 	{
-		return {&quot;cornell.trace&quot;, 1};
+		return {&quot;cornell.trace&quot;, 2};
 	}
 
 	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaCornellTraceNode::FArdaState&gt;&gt; FArdaCornellTraceNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
-		if (!Device)
-		{
-			return {{},
-			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;This node requires an initialized device.&quot;)};
-		}
-
-		auto State = eastl::make_shared&lt;FArdaState&gt;();
-		State-&gt;mDevice = eastl::move(Device);
-
-		// Publish prepared state only after all node-owned setup succeeds.
-		auto Status = State-&gt;Initialize();
-		if (!Status)
-		{
-			return {{}, eastl::move(Status)};
-		}
-
-		return {eastl::move(State), {}};
+		return PrepareExampleNodeState&lt;FArdaState&gt;(eastl::move(Device));
 	}
 
 	FArdaDependencyNodeDesc FArdaCornellTraceNode::Describe(const FArdaParameters&amp; P, const FArdaState&amp; Prepared)
@@ -1499,12 +1552,19 @@ D.mBindlessTables = {T};
 <li><strong>Ambiguous pipeline or missing stage:</strong> correct the contribution dependencies, select a group or split conflicting consumers. Graphics stage templates declare resource accesses and bindings on their respective stages; preprocessing validates their typed value chain before assembling a draw.</li>
 <li><strong>Invalid ray table:</strong> supply exactly one selected raygen, known exports with the right category and dense category-relative indices. Declare required local arguments explicitly; respect backend local-binding support.</li>
 <li><strong>Duplicate operation names:</strong> explicit diagnostic names must be unique within one construction, even when parameters match. Omit the name to generate a fresh identity, or supply distinct names for repeated calls. Record changed operations in the next frame's empty construction. To replace an unfinished construction, cancel an open edit, discard pending closed edits with <code>DiscardPendingEdits()</code>, and record the corrected operations. Include resources, dimensions, shader choices and frozen parameters in canonical keys. Do not mutate an aliased configuration after attachment.</li>
-<li><strong>Unsupported hardware or artifacts:</strong> check the returned status and device capabilities. Work graphs currently require D3D12; CUDA must be enabled and its interop path supported. On-demand shader loading needs source directories; load-only needs deployed matching artifacts.</li></ul>
+<li><strong>Unsupported hardware or artifacts:</strong> check the returned status and device capabilities. Work graphs require D3D12; CUDA must be enabled and its interop path supported. On-demand shader loading needs source directories; load-only needs deployed matching artifacts.</li></ul>
 <p>A failed <code>Edit.Commit()</code> leaves that edit open for cancellation; the edit retains its first authoring error, so cancel it and record a corrected edit. A failed <code>Graph.CompileAndWait()</code> retains the queue of closed edits: add missing operations in another edit, or call <code>DiscardPendingEdits()</code> and record a corrected construction before compiling again. Inspect the graph's <a href="debugging.html">diagnostic exports</a> and enable native GPU validation while debugging descriptor or synchronization problems. A successful topology check alone does not validate shader indexing behavior.</p></section>
 <section id="summary"><h2>Summary and checkpoints</h2><p>Node classes own operation definitions; the graph owns physical preparation. Resource views determine scheduling dependencies, typed stage values determine composed pipeline membership, and normalized state determines reuse. Replay uses retained per-frame objects, while edits rebuild changed semantics.</p><ol><li>Why can descriptor indices 3 and 7 still conflict? Resolve their views before comparing ranges.</li><li>What changes when a reader covers both halves of a shared output? It joins both producers and must have complete coverage.</li><li>Why can two independent buffer ranges still wait across queues? Buffer state and ownership are native whole-object constraints.</li><li>When do two draws reuse a pipeline? Their complete normalized state and retained native shader/layout objects must be compatible.</li><li>Where is a missing ray-local resource supplied? In an explicit shader-table record declaration before compilation.</li></ol></section>
-<section id="further-reading"><h2>Further reading</h2><p>Continue with <a href="compilation.html">scheduling and memory algorithms</a>, <a href="execution.html">retirement and execution</a>, <a href="inductor-bindings.html">the binding preparation contract</a>, <a href="../ArdaBackend/cuda-sequences.html">CUDA sequences</a> and the <a href="api-reference.html">centralized graph API reference</a>. The <a href="../glossary.html#term-pso">PSO</a>, <a href="../glossary.html#term-topological-order">topological order</a> and <a href="../glossary.html#term-resource-aliasing">resource aliasing</a> glossary entries explain the underlying terms.</p></section></article>
-    </main>
-  </div>
-  <footer class="site-footer"><p>ArdaDependencyGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
+<section id="further-reading"><h2>Further reading</h2><p>Continue with <a href="compilation.html">scheduling and memory algorithms</a>, <a href="execution.html">retirement and execution</a>, <a href="inductor-bindings.html">the binding preparation contract</a>, <a href="../ArdaBackend/cuda-sequences.html">CUDA sequences</a> and the <a href="api-reference.html">centralized graph API reference</a>. The <a href="../glossary.html#term-pso">PSO</a>, <a href="../glossary.html#term-topological-order">topological order</a> and <a href="../glossary.html#term-resource-aliasing">resource aliasing</a> glossary entries explain the underlying terms.</p></section>
+    </article>
+    <nav class="page-nav" aria-label="Document navigation"><a href="registering-nodes.html" rel="prev"><span class="page-nav-label"><svg class="icon icon-previous" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>Previous</span><span class="page-nav-title">Register a graph node</span></a><a href="resources.html" rel="next"><span class="page-nav-label">Next<svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="page-nav-title">Resource handles and storage</span></a></nav>
+  </main>
+  <aside class="page-outline" aria-label="Page outline"><nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#objectives">Prerequisites</a></li><li><a href="#model">Programming model</a></li><li><a href="#build-recipes">Build the native shader recipes</a></li><li><a href="#compute">Compute shader</a></li><li><a href="#cuda">CUDA</a></li><li><a href="#ray">Ray tracing</a></li><li><a href="#mesh">Mesh shader</a></li><li><a href="#raster">Rasterization</a></li><li><a href="#work">Work graph</a></li><li><a href="#bindless">Bindless ranges</a></li><li><a href="#pipelines">Pipeline assignment and reuse</a></li><li><a href="#failures">Failures</a></li><li><a href="#summary">Checkpoints</a></li></ul></nav></aside>
+</div>
+<footer class="site-footer"><div class="site-footer__inner"><a class="site-brand" href="../index.html">Ardashir</a><div class="footer-group"><p>Documentation</p><a href="../index.html">Overview</a><a href="getting-started.html">Getting started</a><a href="../Essays/arda-graph-and-inductor.html">Engineering essays</a></div><div class="footer-group"><p>Modules</p><a href="../ArdaBackend/index.html">GPU backend</a><a href="index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../index.html#module-ardagraph">ArdaGraph</a><a href="../index.html#module-ardatests">ArdaTests</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div><div class="footer-group"><p>Reference</p><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a><a href="../glossary.html">Glossary</a></div></div></footer>
+<dialog class="doc-search" aria-label="Search documentation"><form method="dialog">
+  <div class="search-field"><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" aria-label="Search documentation" placeholder="Search documentation" autocomplete="off"><button type="submit" aria-label="Close search"><svg class="icon icon-close" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+  <div class="search-results" aria-live="polite"></div>
+</form></dialog>
 </body>
 </html>

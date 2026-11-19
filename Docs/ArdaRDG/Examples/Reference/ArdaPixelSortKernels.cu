@@ -21,7 +21,7 @@ namespace ARDA_CUDA_BUILD_NAMESPACE
 	template <int Threads, bool Vertical>
 	__global__ void RadixSort(arda::FArdaPixelSortParameters::FArdaCuda P)
 	{
-		constexpr int Items = 4, Tile = Threads * Items, Warps = Threads / 32;
+		constexpr int Items = arda::ArdaPixelSortItemsPerThread, Tile = Threads * Items, Warps = Threads / 32;
 
 		// Four stripes of Threads pixels cover the tile in linear pixel order.
 		// The key uses 9 low bits (boundary=0, bright=channel+1 in 1..256),
@@ -164,34 +164,15 @@ namespace ARDA_CUDA_BUILD_NAMESPACE
 		}
 	}
 
-	void BindPixelSort(arda::FArdaPixelSortOperand::FArdaRegistry& Registry)
+	eastl::shared_ptr<const arda::IArdaCudaKernelEntry> GetPixelSortRowEntry()
 	{
-		// This host function runs once during operand binding. integer_sequence
-		// supplies compile-time constants so nvcc instantiates both __global__
-		// specializations during the project build; this loop never compiles CUDA.
-		// Each BindArdaCudaKernel<&entry> has its own type before registry storage.
-		// The registry validates the exact parameter signature at runtime and
-		// remembers failures even when Add's return value is not inspected here.
-		arda::ForEachArdaCudaPermutation(eastl::integer_sequence<int, 128, 256>{},
-		    [&](auto Size)
-		    {
-			    constexpr int Threads = decltype(Size)::value;
-			    constexpr bool Vertical = Threads == 256;
+		return arda::BindArdaCudaKernel<&RadixSort<arda::ArdaPixelSortRowThreads, false>>("rows.128", 0, GetBuildInfo())
+		    .mEntry;
+	}
 
-			    // Payload describes selection policy; GetBuildInfo describes the actual
-			    // compiled images. Hardware/mode requirements can be supplied as the
-			    // optional fourth binding argument when an algorithm has extra limits.
-			    Registry.Add(
-			        arda::BindArdaCudaKernel<&RadixSort<Threads, Vertical>>(Vertical ? "columns.256" : "rows.128",
-			            arda::FArdaPixelSortVariant{Threads, Threads * 4, Vertical},
-			            GetBuildInfo()));
-		    });
-
-		// To grow a permutation set, nest ForEachArdaCudaPermutation and prune
-		// invalid combinations with if constexpr. Give every entry a unique name
-		// and matching payload. The current kernel's Bits calculation, selector,
-		// CPU reference and title assume these two configurations; update them too.
-		// Different ARCHITECTURES/DEFINITIONS/OPTIONS require separate CMake
-		// profiles and explicit calls to each profile's BindPixelSort export.
+	eastl::shared_ptr<const arda::IArdaCudaKernelEntry> GetPixelSortColumnEntry()
+	{
+		return arda::BindArdaCudaKernel<&RadixSort<arda::ArdaPixelSortColumnThreads, true>>("columns.256", 0, GetBuildInfo())
+		    .mEntry;
 	}
 }

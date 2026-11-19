@@ -13,6 +13,7 @@ namespace arda
 		ARDA_SHADER_BUFFER_SRV(mIndices, 2, 0, arda::EArdaRHIShaderStage::AllRayTracing)                               \
 		ARDA_SHADER_BUFFER_SRV(mMaterials, 3, 0, arda::EArdaRHIShaderStage::AllRayTracing)                             \
 		ARDA_SHADER_BUFFER_UAV(mSampleRadiance, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                        \
+		ARDA_SHADER_BUFFER_UAV(mSampleGuides, 1, 0, arda::EArdaRHIShaderStage::AllRayTracing)                          \
 		ARDA_SHADER_UNIFORM_BUFFER(mFrame, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                             \
 	ARDA_END_SHADER_PARAMETER_STRUCT()
 
@@ -51,6 +52,8 @@ namespace arda
 		ARDA_NODE_SHADER_BUFFER(mMaterials, FArdaCornellRayGenerationShader::FArdaParameters, mMaterials)
 		/** Output sample radiance buffer; leave empty for graph allocation. */
 		ARDA_NODE_SHADER_BUFFER(mRadiance, FArdaCornellRayGenerationShader::FArdaParameters, mSampleRadiance)
+		/** Optional first-hit normal/distance and material color, two float4 records per path. */
+		ARDA_NODE_SHADER_BUFFER(mGuides, FArdaCornellRayGenerationShader::FArdaParameters, mSampleGuides)
 		/** Input frame constant buffer. */
 		ARDA_NODE_SHADER_BUFFER(mConstants, FArdaCornellRayGenerationShader::FArdaParameters, mFrame)
 		/** Input bottom-level acceleration structure referenced by the scene. */
@@ -61,6 +64,7 @@ namespace arda
 		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mHeight, 1)
 		/** Samples traced per pixel in this dispatch. */
 		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mSamples, 1)
+		ARDA_NODE_PARAMETER_WITH_DEFAULT(bool, mbWriteGuides, false)
 		/** Scratch memory reserved while recording this node. */
 		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint64_t, mWorkspaceBytes, 0)
 	ARDA_END_NODE_PARAMETER_STRUCT()

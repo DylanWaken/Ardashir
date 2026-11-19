@@ -2,7 +2,7 @@ include(ArdaDependencyGraphLayout)
 ardashir_validate_dependency_graph_layout("${CMAKE_CURRENT_SOURCE_DIR}")
 ardashir_add_module(ArdaDependencyGraph Private/Inductor/Compiler/ArdaInductorPch.h)
 target_link_libraries(ArdaDependencyGraph
-    PUBLIC Ardashir::ArdaBackend Ardashir::ArdaGraph
+    PUBLIC Ardashir::ArdaBackend Ardashir::ArdaGraph Ardashir::ArdaNativeCompute
     PRIVATE Ardashir::ArdaTrace)
 # Declared node registries instantiate parameter codecs in consuming translation units.
 target_compile_options(ArdaDependencyGraph PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/bigobj>")

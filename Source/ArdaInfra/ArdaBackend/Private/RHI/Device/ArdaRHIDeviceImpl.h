@@ -71,14 +71,22 @@ namespace arda::detail
 
 	class FArdaRHIDeviceImpl final : public FArdaResource, public IArdaRHIDevice
 	{
+		const eastl::string mBackendName;
+
 	public:
+		const char* GetBackendName() const noexcept override
+		{
+			return mBackendName.c_str();
+		}
+
 		FArdaCudaCapabilities GetCudaCapabilities() const override
 		{
 			return mDevice->GetCudaCapabilities();
 		}
 
-		explicit FArdaRHIDeviceImpl(eastl::shared_ptr<IArdaRHIProviderDevice> Device)
+		explicit FArdaRHIDeviceImpl(eastl::shared_ptr<IArdaRHIProviderDevice> Device, eastl::string BackendName = {})
 		    : FArdaResource(EArdaRHIResourceType::Device, "RHIDevice", this),
+		      mBackendName(eastl::move(BackendName)),
 		      mLifetimeTracker(eastl::make_shared<FArdaLifetimeTracker>()),
 		      mDevice(eastl::move(Device)),
 		      mAllocator(mDevice)
@@ -92,6 +100,16 @@ namespace arda::detail
 			{
 				(void)WaitForIdle();
 			}
+		}
+
+		bool SupportsNativeOperation(const char* Id) const noexcept override
+		{
+			return Id && *Id && mDevice->SupportsNativeOperation(Id);
+		}
+
+		FArdaRHIStatus CheckComputePipelineExtension(const FArdaRHIComputePipelineExtension& Extension) const override
+		{
+			return mDevice->CheckComputePipelineExtension(Extension);
 		}
 
 		const FArdaRHICapabilities& GetCapabilities() const noexcept override

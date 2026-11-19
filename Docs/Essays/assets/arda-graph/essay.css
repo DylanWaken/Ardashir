@@ -1,14 +1,23 @@
-/* Additional reading styles for the Arda graph essay; shared essay styles are reused. */
-.prose table { min-width: 40rem; }
-.prose caption { text-align: left; font-weight: 600; margin-bottom: .7rem; }
-.data-table-details { margin: 2rem 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
-.data-table-details > summary { padding: .85rem .3rem; font: 600 .88rem/1.65 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-.data-table-details > summary::marker { color: var(--accent); }
-.data-table-details > summary:hover { color: var(--accent); }
+/* The long-form graph chapter uses the shared site typography and reading grid. */
+.chapter-number {
+  display: block;
+  color: var(--muted);
+  font: 500 .75rem/1.5 var(--font-jetbrains-mono);
+  letter-spacing: .05em;
+  margin-bottom: .5rem;
+}
+.figure-scroll img { width: 100%; min-width: 38rem; }
+.prose .table-wrap table { display: table; min-width: 40rem; width: 100%; margin: 0; }
+.data-table-details { margin: 2rem 0; border-block: 1px solid var(--border); }
+.data-table-details > summary { padding: .85rem .3rem; color: var(--text); font-size: .875rem; font-weight: 600; }
+.data-table-details > summary::before { content: "+"; display: inline-block; width: 1.4em; color: var(--muted); }
+.data-table-details[open] > summary::before { content: "−"; }
 .data-table-details > .table-wrap { margin: 0 0 1rem; }
-.source-note { scroll-margin-top: 6rem; border-bottom: 1px solid var(--rule); font: .8rem/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-.source-note code { font-size: .9em; }
+.source-note { border-bottom: 1px solid var(--border); font-size: .875rem; line-height: 1.65; }
 .source-note small { color: var(--muted); }
 .source-note:target { background: var(--wash); }
-.prose .snapshot-note { border-left: 2px solid var(--accent); padding-left: 1rem; font-size: .88em; color: var(--muted); }
-@media print { .prose table { min-width: 0; } .source-note { break-inside: avoid; } }
+.prose .snapshot-note { border-left: 2px solid var(--border); padding-left: 1rem; font-size: .875rem; color: var(--muted); }
+@media print {
+  .figure-scroll img, .prose .table-wrap table { min-width: 0; }
+  .source-note { break-inside: avoid; }
+}

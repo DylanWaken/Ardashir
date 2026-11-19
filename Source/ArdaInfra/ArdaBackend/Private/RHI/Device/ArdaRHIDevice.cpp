@@ -59,8 +59,9 @@ namespace arda::detail
 
 namespace arda
 {
-	FArdaRHIDeviceRef CreateArdaRHIDevice(eastl::shared_ptr<IArdaRHIProviderDevice> Device)
+	FArdaRHIDeviceRef CreateArdaRHIDevice(eastl::shared_ptr<IArdaRHIProviderDevice> Device, eastl::string BackendName)
 	{
-		return Device ? FArdaRHIDeviceRef(new detail::FArdaRHIDeviceImpl(eastl::move(Device))) : FArdaRHIDeviceRef{};
+		return Device ? FArdaRHIDeviceRef(new detail::FArdaRHIDeviceImpl(eastl::move(Device), eastl::move(BackendName)))
+		              : FArdaRHIDeviceRef{};
 	}
 }

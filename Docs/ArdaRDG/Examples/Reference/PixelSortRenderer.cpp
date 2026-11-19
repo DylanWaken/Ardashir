@@ -22,7 +22,7 @@ namespace arda
 		}
 
 		// Validation-only oracle: use std::stable_sort on each bright run instead
-		// of reproducing the CUDA radix algorithm. Comparing complete pixels checks
+		// of reproducing GPU sort internals. Comparing complete pixels checks
 		// stable equal-key ordering, dark boundaries, alpha and channel preservation.
 		void VerifySort(const std::vector<uint32_t>& Input,
 		    const std::vector<uint32_t>& Output,
@@ -35,7 +35,9 @@ namespace arda
 
 			// Match the sample's public selection/tile policy. Sorting is bounded
 			// by both dark pixels and tile edges; a global row sort would differ.
-			const uint32_t Tile = Vertical ? 1024 : 512, Length = Vertical ? Height : Width,
+			const uint32_t Tile = ArdaPixelSortItemsPerThread *
+			        (Vertical ? ArdaPixelSortColumnThreads : ArdaPixelSortRowThreads),
+			               Length = Vertical ? Height : Width,
 			               Lines = Vertical ? Width : Height;
 			auto Expected = Input;
 			for (uint32_t Line = 0; Line < Lines; ++Line)
@@ -80,7 +82,7 @@ namespace arda
 			const auto Mismatch = std::mismatch(Expected.begin(), Expected.end(), Output.begin());
 			if (Mismatch.first != Expected.end())
 			{
-				throw std::runtime_error("CUDA radix output differs from the CPU stable-sort reference at pixel " +
+				throw std::runtime_error("GPU sort output differs from the CPU stable-sort reference at pixel " +
 				    std::to_string(Mismatch.first - Expected.begin()));
 			}
 			if (std::all_of(Input.begin(),
@@ -92,12 +94,11 @@ namespace arda
 			{
 				throw std::runtime_error("Noise compute shader produced a uniform image.");
 			}
-			std::printf("Verified %ux%u, %s, channel %u, %u threads, tile %u: exact RGBA match.\n",
+			std::printf("Verified %ux%u, %s, channel %u, tile %u: exact RGBA match.\n",
 			    Width,
 			    Height,
 			    Vertical ? "columns" : "rows",
 			    Channel,
-			    Vertical ? 256 : 128,
 			    Tile);
 		}
 
@@ -207,7 +208,7 @@ namespace arda
 			return **Found;
 		}
 
-		// Assemble the upload, graphics noise, CUDA sort, and presentation dependency chain.
+		// Assemble the upload, noise, sort, and presentation dependency chain.
 		auto Frame = std::make_unique<FArdaFrameGraph>(mDevice);
 		Frame->mColor = Color;
 		Frame->mbVerify = bVerify;

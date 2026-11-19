@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Register a native kernel, bind RHI resources, select a shader fallback and record the operation from a graph.">
+  <title>Write a native compute node | ArdaDependencyGraph | Ardashir</title>
+  <script>
+    (() => {
+      let preference = "dark";
+      try {
+        preference = localStorage.getItem("arda-theme") || preference;
+      } catch {
+        // Local files and privacy settings can disable storage.
+      }
+      const systemLight = preference === "system" && !matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = preference === "light" || systemLight ? "light" : "dark";
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/arda-rdg-api.js" defer></script>
+  <script src="../assets/doc-search-index.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header" id="top">
+  <a class="announcement" href="native-compute.html"><span aria-hidden="true">//</span> Write a native compute node <svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+  <div class="site-header__bar"><div class="site-header__inner">
+    <a class="site-brand" href="../index.html" aria-label="Ardashir home">Ardashir</a>
+    <nav class="site-nav" aria-label="Primary"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/index.html">GPU backend</a><a href="index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav>
+    <div class="header-tools"><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="../ArdaBackend/index.html">GPU backend</a>
+<a href="index.html">Dependency graph</a>
+<a href="../ArdaNativeCompute/index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button><div class="theme-control" hidden><button type="button" class="theme-toggle" data-theme-toggle aria-label="Change theme" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg></button><div class="theme-menu" id="theme-menu" role="menu" aria-label="Theme" hidden><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="dark"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg>Dark</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="light"><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Light</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="system"><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg>System</button></div></div>
+      <details class="mobile-nav"><summary aria-label="Navigation menu"><svg class="icon icon-menu" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></summary>
+        <div class="mobile-nav-panel"><nav aria-label="Primary navigation"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/index.html">GPU backend</a><a href="index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button></div>
+      </details>
+    </div>
+  </div></div>
+</header>
+<nav class="mobile-docs" aria-label="Docs menu"><details class="docs-menu"><summary><svg class="icon icon-list" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zm5 0v16"/></svg><span>Docs menu</span><span aria-hidden="true">/</span><span class="current-title">Write a native compute node</span><svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+  <div class="mobile-docs-panel"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="../ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="native-compute.html" aria-current="page">Write a native compute node</a>
+<a href="quick-guide.html">Renderer quick guide</a></div></details>
+<details class="sidebar-group" open><summary>Write graph operations<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="passes.html">Typed node definitions</a>
+<a href="registering-nodes.html">Register a graph node</a>
+<a href="node-recipes.html">Node recipes</a>
+<a href="resources.html">Resource handles and storage</a>
+<a href="feature-requirements.html">Feature requirements</a>
+<a href="batching.html">Batching and parallel edits</a></div></details>
+<details class="sidebar-group"><summary>Compile and run graphs<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="architecture.html">Architecture</a>
+<a href="inductor.html">ArdaInductor developer guide</a>
+<a href="compilation.html">Compilation</a>
+<a href="inductor-pipelines.html">Pipeline assembly</a>
+<a href="inductor-bindings.html">Binding preparation</a>
+<a href="execution.html">Execution and completion</a>
+<a href="debugging.html">Validation and debugging</a></div></details>
+<details class="sidebar-group"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="api-reference.html">API reference</a>
+<a href="feature-modularity-audit.html">Native feature coverage</a>
+<a href="documentation.html">Maintain this documentation</a></div></details></nav><details class="sidebar-group mobile-outline"><summary>On this page<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="#objectives">What the caller owns</a><a href="#register">Register a buffer fill</a><a href="#record">Record and submit</a><a href="#sources">Choose a CUDA source</a><a href="#fallback">Select a variant or a shader</a><a href="#graph">Call the operand from a graph</a><a href="#provider">Add a compute provider</a><a href="#verify">Verify a launch</a></div></details></div>
+</details><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="../ArdaBackend/index.html">GPU backend</a>
+<a href="index.html">Dependency graph</a>
+<a href="../ArdaNativeCompute/index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details></nav>
+<div class="site-layout">
+  <aside class="sidebar" aria-label="Docs sidebar"><div class="sidebar-inner"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="../ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="native-compute.html" aria-current="page">Write a native compute node</a>
+<a href="quick-guide.html">Renderer quick guide</a></div></details>
+<details class="sidebar-group" open><summary>Write graph operations<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="passes.html">Typed node definitions</a>
+<a href="registering-nodes.html">Register a graph node</a>
+<a href="node-recipes.html">Node recipes</a>
+<a href="resources.html">Resource handles and storage</a>
+<a href="feature-requirements.html">Feature requirements</a>
+<a href="batching.html">Batching and parallel edits</a></div></details>
+<details class="sidebar-group"><summary>Compile and run graphs<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="architecture.html">Architecture</a>
+<a href="inductor.html">ArdaInductor developer guide</a>
+<a href="compilation.html">Compilation</a>
+<a href="inductor-pipelines.html">Pipeline assembly</a>
+<a href="inductor-bindings.html">Binding preparation</a>
+<a href="execution.html">Execution and completion</a>
+<a href="debugging.html">Validation and debugging</a></div></details>
+<details class="sidebar-group"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="api-reference.html">API reference</a>
+<a href="feature-modularity-audit.html">Native feature coverage</a>
+<a href="documentation.html">Maintain this documentation</a></div></details></nav></div></aside>
+  <main id="main-content" tabindex="-1">
+    <article class="prose" data-doc-article>
+<header class="page-header">
+  <h1>Write a native compute node</h1>
+  <p>Give an operation one ID, one resource contract and one list of implementations. A renderer or graph node can then run it on the current device without choosing a kernel itself.</p>
+</header>
+
+<section id="objectives">
+  <h2>What the caller owns</h2>
+  <p>The caller supplies the resources and scalar values for an invocation. The operand defines what the operation does. The provider owns the compiler, argument ABI and handoff to its execution queue. Keep the registry for as long as you need to prepare new invocations.</p>
+</section>
+<section id="register">
+  <h2>Register a buffer fill</h2>
+  <p>This example writes the numbers 0 through 15 into a 64-byte buffer. Link <code>Ardashir::ArdaNativeCompute</code> to your application. For this CUDA C++ implementation, build with <code>ARDASHIR_ENABLE_CUDA=ON</code> and an NVRTC-enabled CUDA Toolkit. Initialize the graphics device with an available CUDA execution mode.</p>
+  <p>At startup, register <code>CreateArdaNativeCudaInGraphicsProvider()</code> and <code>CreateArdaNativeCudaProvider()</code> with <code>registry.RegisterProvider</code>. Check each status. The example shares one source between the CiG and general CUDA variants. Each operand declares its views in the order callers must bind them. For this kernel the pointer occupies eight bytes in the argument block. The patch tells CUDA to put the address of resource slot 0 at byte offset 0.</p>
+  <pre><code class="language-cpp">#include "ArdaNativeCompute.h"
+#include "CUDA/ArdaNativeCudaProvider.h"
+using namespace arda;
+
+FArdaRHIStatus RegisterFill(FArdaNativeComputeRegistry&amp; registry,
+    FArdaNativeShaderFallback fallback = {})
+{
+    FArdaNativeCudaSourceDesc source;
+    source.mCudaCpp = R"(
+        extern "C" __global__ void fill(unsigned int* output) {
+            output[threadIdx.x] = threadIdx.x;
+        }
+    )";
+    source.mModuleKernel.mEntryPoint = "fill";
+    source.mModuleKernel.mParameterSize = 8;
+    source.mModuleKernel.mParameterAlignment = 8;
+    source.mModuleKernel.mArguments = {{0, 8, 8, EArdaCudaModuleArgumentKind::Buffer}};
+    source.mPatches = {{0, 0, alignof(uint32_t)}};
+    auto kernel = CreateArdaNativeCudaSource(eastl::move(source));
+    if (!kernel) return kernel.mStatus;
+
+    FArdaNativeOperandDesc fill;
+    fill.mId = "example.fill16";
+    fill.mResources = {{"output", EArdaRHIResourceType::Buffer, EArdaComputeAccess::Write}};
+    fill.mParameterSize = 8;
+    fill.mFallback = eastl::move(fallback);
+    fill.mValidate = [](const FArdaNativeInvocation&amp; call) {
+        const auto&amp; range = call.mResources[0].mBufferRange;
+        const auto&amp; buffer = dynamic_cast&lt;const IArdaRHIBuffer&amp;&gt;(*call.mResources[0].mResource);
+        if (range.Resolve(buffer.GetDesc()).mByteSize &lt; 16 * sizeof(uint32_t))
+            return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "fill16 needs 64 bytes.");
+        return FArdaRHIStatus{};
+    };
+    AddArdaNativeCudaVariants(fill, {"fill16", kernel.mValue,
+        [](const FArdaNativeComputeContext&amp;, const FArdaNativeInvocation&amp;) {
+            FArdaNativeLaunch launch;
+            launch.mBlockSize[0] = 16;
+            return TArdaRHIResult&lt;FArdaNativeLaunch&gt;{launch, {}};
+        }});
+    return registry.RegisterOperand(eastl::move(fill));
+}</code></pre>
+  <p><a href="../ArdaNativeCompute/api-reference.html#api-arda-fardanativeoperanddesc-f82ee605">Operand fields</a> · <a href="../ArdaNativeCompute/api-reference.html#api-arda-fardanativecudasourcedesc-249e3e98">CUDA source and argument layout</a></p>
+</section>
+<section id="record">
+  <h2>Record and submit</h2>
+  <p>Pass a device-local buffer created with <code>mbCudaInterop = true</code> and concrete usage flags such as <code>UnorderedAccess</code>. Prepare the operand with the device and queue of the command list that will record it. The plan owns the selected work. The RHI keeps its submitted resources alive until the GPU finishes.</p>
+  <pre><code class="language-cpp">TArdaRHIResult&lt;uint64_t&gt; RunFill(const FArdaNativeComputeRegistry&amp; registry,
+    FArdaRHIDeviceRef device, FArdaRHIBufferRef output)
+{
+    FArdaNativeComputeContext context{device, EArdaRHIQueueType::Graphics};
+    FArdaNativeInvocation call;
+    call.mResources.push_back({output, {0, 64}});
+    call.mParameters.resize(8, 0);
+
+    auto plan = registry.Prepare("example.fill16", context, call);
+    if (!plan) return {{}, plan.mStatus};
+    auto list = device-&gt;CreateCommandList(context.mQueue);
+    if (!list) return {{}, list.mStatus};
+    if (auto s = list.mValue-&gt;Open(); !s) return {{}, s};
+    if (auto s = list.mValue-&gt;RecordNativeCompute(plan.mValue); !s) return {{}, s};
+    if (auto s = list.mValue-&gt;Close(); !s) return {{}, s};
+    return device-&gt;ExecuteCommandList(list.mValue);
+}</code></pre>
+  <p>The return value identifies the submission. To inspect the values on the CPU, record <code>CopyBufferDeviceToHost</code> after the dispatch and before closing the list. This synchronous copy fills the destination byte vector before <code>ExecuteCommandList</code> returns. For a submission without a synchronous readback, <code>WaitForSubmission(token)</code> waits for completion. CUDA orders its access to the buffer with the surrounding graphics commands. D3D12 Compute in Graphics requires a graphics queue. <a href="../ArdaBackend/cuda-interop.html">CUDA synchronization and allocation</a></p>
+</section>
+<section id="sources">
+  <h2>Choose a CUDA source</h2>
+  <p>Set one source on <code>FArdaNativeCudaSourceDesc</code>. A module entry needs the exported symbol, ordered arguments, storage size and alignment. Resource patches map those arguments to operand slots. Keep these declarations beside the kernel or generate them from the same parameter schema used to build it.</p>
+  <table>
+    <thead><tr><th>Source</th><th>How to supply it</th><th>When it becomes executable</th></tr></thead>
+    <tbody>
+      <tr><td>CUDA C++ text</td><td>Put one self-contained translation unit in <code>mCudaCpp</code>. Use C linkage for the entry point.</td><td>On the first prepare for a target, NVRTC compiles a native cubin. Later prepares reuse the compiled entry on the source object.</td></tr>
+      <tr><td>PTX</td><td>Load text bytes into <code>mModule.mImage</code>, select <code>Ptx</code> and provide a build identity and architecture manifest.</td><td>The CUDA driver loads the module for the execution context. It must understand the PTX ISA version.</td></tr>
+      <tr><td>Cubin</td><td>Load the binary bytes into the module image and select <code>Cubin</code>. Use the targets emitted by the build.</td><td>The GPU must support a listed native target.</td></tr>
+      <tr><td>Linked CUDA C++</td><td>Compile <code>.cu</code> files with <code>ardashir_add_cuda_kernels</code>. Link the generated target and call its exported host factory to populate <code>mEntry</code>.</td><td>nvcc builds native kernels ahead of time. The linked entry supplies its build manifest.</td></tr>
+      <tr><td>Library call</td><td>Set <code>mExternalCall</code> to a shared reference to an <code>IArdaCudaExternalCall</code> implementation. Link the external library in the adapter target.</td><td>The adapter prepares context-specific state and enqueues on the borrowed stream.</td></tr>
+    </tbody>
+  </table>
+  <p>For a linked C++ kernel, you can derive the slots, ABI and resource patches from a single <code>ARDA_CUDA_PARAMETER_STRUCT</code>. Start with <code>DescribeArdaNativeCudaOperand</code>, bind each compiled entry with <code>CreateArdaNativeCudaLinkedSource</code>, then call <code>MakeArdaNativeCudaInvocation</code> with the typed host arguments. PixelSort uses these helpers for its row and column kernels. <a href="../ArdaNativeCompute/api-reference.html#api-arda-describeardanativecudaoperand-10b4efd6">Describe an operand from its schema</a> · <a href="../ArdaNativeCompute/api-reference.html#api-arda-makeardanativecudainvocation-131fabec">Pack typed arguments</a></p>
+</section>
+<section id="fallback">
+  <h2>Select a variant or a shader</h2>
+  <p>Put the most specialized kernel first. The registry checks the device, graphics API, provider, source format and architecture. The variant's <code>mSelect</code> callback can use input shape or layout to choose launch dimensions. Return <code>Unsupported</code> when another variant should handle the input. Use the operand's <code>mValidate</code> for input errors common to every implementation.</p>
+  <p>A nonshared texture has two common routes. A shader can use the original allocation if it has the required view and usage flags. For a CUDA surface kernel, allocate a compatible shareable texture and bind that mip. Copy into it before a read, copy back after a write if the original texture needs the result, and do both for an in-place update. A kernel that accepts a buffer pointer can instead use pitched texture-to-buffer copies. The kernel and operand must agree on that representation. <a href="../ArdaBackend/cuda-texture-buffers.html#persistent-dependency-graph">Pitched copies in a graph</a></p>
+  <p>Supply a shader implementation on the same operand. For the buffer fill, create a compute pipeline for the shader below with one raw buffer UAV at slot 0. Create the buffer with <code>Raw | UnorderedAccess</code> usage to support the shader route. The shader writes the same 16 values as the CUDA kernel.</p>
+  <pre><code class="language-hlsl">RWByteAddressBuffer output : register(u0);
+[numthreads(16, 1, 1)]
+void FillCS(uint lane : SV_GroupIndex)
+{
+    output.Store(lane * 4, lane);
+}</code></pre>
+  <p>Once you have the pipeline and its owning device, pass this fallback to <code>RegisterFill</code>. The binding set uses the caller's exact buffer range. The returned work captures the pipeline and set so they survive preparation.</p>
+  <pre><code class="language-cpp">FArdaNativeShaderFallback MakeFillFallback(FArdaRHIDeviceRef device,
+    FArdaRHIComputePipelineRef pipeline)
+{
+    FArdaNativeShaderFallback fallback;
+    fallback.mPrepare = [device, pipeline](const FArdaNativeComputeContext&amp; ctx,
+        const FArdaNativeInvocation&amp; call) -&gt; TArdaRHIResult&lt;FArdaNativeWorkRef&gt; {
+        if (ctx.mDevice != device)
+            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice, "Fill pipeline belongs to another device.")};
+        FArdaRHIBindingSetDesc desc;
+        desc.mLayout = pipeline-&gt;GetDesc().mBindingLayouts.front();
+        desc.mItems.push_back({0, 0, EArdaRHIBindingType::RawBufferUAV, call.mResources[0].mResource});
+        desc.mItems[0].mView.mBufferRange = call.mResources[0].mBufferRange;
+        auto set = device-&gt;CreateBindingSet(desc);
+        if (!set) return {{}, set.mStatus};
+        FArdaRHIComputeState state{pipeline, {set.mValue}};
+        return {MakeArdaNativeWork([state](IArdaRHICommandList&amp; list) {
+            if (auto s = list.SetComputeState(state); !s) return s;
+            list.Dispatch(1, 1, 1);
+            return FArdaRHIStatus{};
+        }), {}};
+    };
+    return fallback;
+}</code></pre>
+  <p>For a raster implementation, set the route to <code>GraphicsShader</code>, declare its required features and return work that sets graphics state and draws. PixelSort shows input-dependent selection in a full application. It picks a column kernel for portrait images and a row kernel otherwise. Its shader sorts the same tiles. <a href="Examples/Reference/ArdaPixelSortOperand.cpp">PixelSort registration and shader fallback</a> · <a href="node-recipes.html#cuda">Node recipe</a></p>
+  <p><code>CheckSupport</code> can rule out unavailable routes before creating resources. <code>Prepare</code> also checks the actual views and inputs and can try another variant after a compilation failure. The plan fixes the route before the first command. A recording or submission error returns to the caller so a partially recorded operation cannot execute twice. <a href="../ArdaNativeCompute/api-reference.html#api-arda-fardanativecomputeregistry-checksupport-d8bb205b">Support query</a> · <a href="../ArdaNativeCompute/api-reference.html#api-arda-fardanativecomputeregistry-prepare-35172c0f">Preparation</a></p>
+</section>
+<section id="graph">
+  <h2>Call the operand from a graph</h2>
+  <p>Declare the node's resource access so the graph can schedule the producers and consumers. In the recording callback, resolve those handles to RHI views in operand slot order and pass the invocation to the execution context. The context checks the requested views against the node's declarations. It records into the graph's command list and leaves submission to the graph.</p>
+  <pre><code class="language-cpp">FArdaNativeInvocation call;
+call.mResources.push_back({context.GetBuffer(outputHandle), {0, 64}});
+call.mParameters.resize(8, 0);
+return context.RecordNativeCompute(registry, "example.fill16", call,
+    EArdaNativeComputePreference::PreferNative);</code></pre>
+  <p>The graph checks the pass declarations before the registry prepares each candidate. For example, CUDA needs unordered-access state for a shared buffer. A pass that declares a shader-resource read can use a compute fallback that reads through an SRV. Every route still needs permission to access the full bound range.</p>
+  <p>A CUDA sequence can share one graphics-to-CUDA handoff across several nodes. In a <code>PrepareCuda</code> callback, append with <code>AppendNativeCudaCompute</code>. An explicitly batched CUDA pass accepts only CUDA work. Before building that pass or allocating shared textures, call <code>CheckSupport</code> with <code>mPreference = NativeOnly</code> and <code>mAllowedProviderIds = {ArdaNativeCudaInGraphicsProviderId, ArdaNativeCudaProviderId}</code>. To require CiG, set <code>mRequiredProviderId = ArdaNativeCudaInGraphicsProviderId</code>. Frame inputs must still satisfy the chosen kernel. <a href="Examples/Reference/ArdaPixelSortSortNode.cpp">PixelSort graph callbacks</a> · <a href="api-reference.html#api-arda-fardadependencyexecutioncontext-recordnativecompute-3b06b366">Record a graph operation</a> · <a href="api-reference.html#api-arda-fardadependencyexecutioncontext-appendnativecudacompute-b9fb69c1">Append to a CUDA batch</a></p>
+</section>
+<section id="provider">
+  <h2>Add a compute provider</h2>
+  <p>Implement <code>IArdaNativeComputeProvider</code> in a target that links <code>Ardashir::ArdaNativeCompute</code>. Keep SDK headers, compiler options, source layout and native synchronization in the provider or its graphics backend integration. An application registers the provider and can add one of its sources to any compatible operand.</p>
+  <ol>
+    <li>Return a stable provider ID, supported graphics module names and loadable source formats from <code>GetDesc</code>. Give each source an owning <code>IArdaNativeKernelSource</code> with the same provider ID and a format from that list.</li>
+    <li>Use <code>CheckSupport</code> to qualify the device, queue, architecture and operand schema. The registry calls it during preflight, before there are any frame resources.</li>
+    <li>In <code>QueryHandoff</code>, inspect the allocation and view. For direct access, return <code>Direct</code> and the RHI state the view must have on entry. Return <code>ConversionRequired</code> when a different representation can satisfy the kernel, or an error explaining why the provider cannot use it.</li>
+    <li>Implement <code>Prepare</code> to resolve the source and freeze argument values and resource references. Return a work object whose <code>Record</code> appends commands to the caller's list.</li>
+  </ol>
+  <p>If your compute library needs a new native command, define an <code>IArdaRHINativeOperation</code> payload. In each supported graphics backend, advertise the operation ID through <code>SupportsNativeOperation</code> and implement <code>IArdaProviderCommandList::RecordNativeOperation</code>. Check the device for that ID during preflight so a device without the integration can select a fallback.</p>
+  <p>Inside your prepared work, call <code>commands.RecordNativeOperation(desc)</code> with the payload and its ordered views. The backend receives the native buffer or texture objects and resolved ranges. It owns synchronization with the external queue and retains the packet until execution retires. <a href="../ArdaBackend/api-reference.html#api-arda-iardarhicommandlist-recordnativeoperation-3e30fe95">Record an operation on the RHI list</a> · <a href="../ArdaBackend/api-reference.html#api-arda-iardaprovidercommandlist-recordnativeoperation-3e96331a">Implement a graphics backend recorder</a></p>
+  <p>Return <code>Unsupported</code> for a missing capability and <code>InvalidArgument</code> for malformed data. A compiler or backend failure during preparation can fall through to another implementation. Once recording starts, propagate the first error. <a href="../ArdaNativeCompute/api-reference.html">Provider and operand API reference</a></p>
+</section>
+<section id="summary">
+  <h2 id="verify">Verify a launch</h2>
+  <p>Build the native module tests and run the registry and CUDA cases. The GPU tests write a buffer subrange and check the sentinel on both sides after readback. They cover CUDA C++ and imported PTX on each linked graphics backend. For D3D12 vendor intrinsics or a device that requires CiG, see <a href="../ArdaNativeCompute/providers.html">Choose a GPU provider</a>. The PixelSort tests compare the sorted image with a CPU result, including partial tiles.</p>
+  <pre><code class="language-shell">cmake --build build --target ArdaNativeComputeTests
+ctest --test-dir build -R ArdaNative --output-on-failure</code></pre>
+</section>
+    </article>
+    <nav class="page-nav" aria-label="Document navigation"><a href="getting-started.html" rel="prev"><span class="page-nav-label"><svg class="icon icon-previous" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>Previous</span><span class="page-nav-title">Getting started</span></a><a href="quick-guide.html" rel="next"><span class="page-nav-label">Next<svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="page-nav-title">Renderer quick guide</span></a></nav>
+  </main>
+  <aside class="page-outline" aria-label="Page outline"><nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#objectives">What the caller owns</a></li><li><a href="#register">Register a buffer fill</a></li><li><a href="#record">Record and submit</a></li><li><a href="#sources">Choose a CUDA source</a></li><li><a href="#fallback">Select a variant or a shader</a></li><li><a href="#graph">Call the operand from a graph</a></li><li><a href="#provider">Add a compute provider</a></li><li><a href="#verify">Verify a launch</a></li></ul></nav></aside>
+</div>
+<footer class="site-footer"><div class="site-footer__inner"><a class="site-brand" href="../index.html">Ardashir</a><div class="footer-group"><p>Documentation</p><a href="../index.html">Overview</a><a href="getting-started.html">Getting started</a><a href="../Essays/arda-graph-and-inductor.html">Engineering essays</a></div><div class="footer-group"><p>Modules</p><a href="../ArdaBackend/index.html">GPU backend</a><a href="index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../index.html#module-ardagraph">ArdaGraph</a><a href="../index.html#module-ardatests">ArdaTests</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div><div class="footer-group"><p>Reference</p><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a><a href="../glossary.html">Glossary</a></div></div></footer>
+<dialog class="doc-search" aria-label="Search documentation"><form method="dialog">
+  <div class="search-field"><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" aria-label="Search documentation" placeholder="Search documentation" autocomplete="off"><button type="submit" aria-label="Close search"><svg class="icon icon-close" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+  <div class="search-results" aria-live="polite"></div>
+</form></dialog>
+</body>
+</html>

@@ -60,7 +60,7 @@ namespace arda
 				FArdaOwnedBackendDevice Device;
 				Device.mRuntime = eastl::move(Result.mBackendRuntime);
 				Device.mPublic.mAdapter = eastl::move(Result.mAdapter);
-				Device.mPublic.mDevice = CreateArdaRHIDevice(eastl::move(Result.mProviderDevice));
+				Device.mPublic.mDevice = CreateArdaRHIDevice(eastl::move(Result.mProviderDevice), Configuration.mBackendName);
 				if (!Device.mPublic.mDevice)
 				{
 					State.mError = "The backend module returned an invalid RHI provider device.";

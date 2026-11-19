@@ -9,8 +9,7 @@ namespace arda
 	public:
 		struct FArdaState;
 		static FArdaDependencyNodeMetadata GetMetadata();
-		/** Hardware admission is checked before output declaration or device preparation. */
-		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters& Parameters);
+		static bool UsesComputeAlternative(const IArdaRHIDevice* Device);
 		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P);
 		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
 		static FArdaRHIStatus Validate(const FArdaParameters& Parameters);
@@ -20,6 +19,10 @@ namespace arda
 		    const FArdaState& State,
 		    FArdaInstanceState& Instance,
 		    FArdaCudaSequence& Sequence);
+		static FArdaRHIStatus RecordComputeAlternative(FArdaDependencyExecutionContext& Context,
+		    const FArdaParameters& Parameters,
+		    const FArdaState& State,
+		    FArdaInstanceState& Instance);
 	};
 
 	ARDA_DECLARE_GRAPH_NODE(FArdaPixelSortSortNode, PixelSortSort);

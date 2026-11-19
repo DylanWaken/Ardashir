@@ -68,6 +68,7 @@ namespace arda
 		eastl::function<void(FArdaDependencyNodeRequirements&)> mAddIntrinsicRequirements;
 		/** Optional immutable compute lowering of a CUDA definition. Selected before any preparation. */
 		eastl::shared_ptr<const FArdaDependencyNodeExecutable> mComputeAlternative;
+		eastl::function<bool(const IArdaRHIDevice*)> mSelectComputeAlternative;
 		/** Resolves node-owned outputs before canonical identity and preparation. */
 		eastl::function<TArdaRHIResult<eastl::shared_ptr<const void>>(FArdaDependencyResourceContext&,
 		    eastl::shared_ptr<const void>)>

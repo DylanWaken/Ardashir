@@ -37,6 +37,7 @@ StructuredBuffer<FArdaCornellVertex> Vertices : register(t1);
 StructuredBuffer<uint> Indices : register(t2);
 StructuredBuffer<FArdaCornellMaterial> Materials : register(t3);
 RWStructuredBuffer<float4> SampleRadiance : register(u0);
+RWStructuredBuffer<float4> SampleGuides : register(u1);
 
 cbuffer FrameConstants : register(b0)
 {
@@ -257,8 +258,14 @@ bool IsVisible(float3 Origin, float3 Direction, float Distance)
 	return FArdaPayload.Hit == 0;
 }
 
-float3 TracePath(float3 Origin, float3 Direction, inout uint Rng)
+float3 TracePath(float3 Origin,
+    float3 Direction,
+    inout uint Rng,
+    out float4 FirstNormalDistance,
+    out float4 FirstDiffuse)
 {
+	FirstNormalDistance = 0.0;
+	FirstDiffuse = 0.0;
 	float3 Radiance = 0.0;
 	float3 Throughput = 1.0;
 	float LastBsdfPdf = 0.0;
@@ -288,6 +295,11 @@ float3 TracePath(float3 Origin, float3 Direction, inout uint Rng)
 		const float3 Position = Origin + Direction * FArdaPayload.T;
 		const float3 Normal = normalize(FArdaPayload.Normal);
 		const FArdaCornellMaterial Material = Materials[FArdaPayload.MaterialId];
+		if (Bounce == 0)
+		{
+			FirstNormalDistance = float4(Normal, FArdaPayload.T);
+			FirstDiffuse = float4(Material.BaseColor, 0.0);
+		}
 		const float EmissionStrength = max(Material.Emission.x, max(Material.Emission.y, Material.Emission.z));
 		if (EmissionStrength > 0.0)
 		{
@@ -377,10 +389,19 @@ void CornellRayGen()
 	const float3 RayDirection = normalize(CameraForwardAndTanHalfFovY.xyz +
 	    CameraRightAndExposure.xyz * (Ndc.x * CameraPositionAndTanHalfFovX.w) +
 	    CameraUpAndLightArea.xyz * (Ndc.y * CameraForwardAndTanHalfFovY.w));
-	const float3 Radiance = TracePath(CameraPositionAndTanHalfFovX.xyz, RayDirection, Rng);
+	float4 FirstNormalDistance;
+	float4 FirstDiffuse;
+	const float3 Radiance =
+	    TracePath(CameraPositionAndTanHalfFovX.xyz, RayDirection, Rng, FirstNormalDistance, FirstDiffuse);
 	const uint PixelIndex = Pixel.y * ImageAndSampling.x + Pixel.x;
 	const uint SampleStride = ImageAndSampling.x * ImageAndSampling.y;
 	SampleRadiance[LaunchIndex.z * SampleStride + PixelIndex] = float4(Radiance, 1.0);
+	if (PathAndSeed.w != 0)
+	{
+		const uint GuideIndex = (LaunchIndex.z * SampleStride + PixelIndex) * 2;
+		SampleGuides[GuideIndex] = FirstNormalDistance;
+		SampleGuides[GuideIndex + 1] = FirstDiffuse;
+	}
 }
 
 [shader("miss")]

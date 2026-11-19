@@ -20,6 +20,18 @@ namespace arda
 	class IArdaRHIProviderDevice
 	{
 	public:
+		/** Qualify a nonempty compute pipeline extension against the selected driver and device. */
+		virtual FArdaRHIStatus CheckComputePipelineExtension(const FArdaRHIComputePipelineExtension&) const
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Compute pipeline extension unavailable.");
+		}
+
+		/** Report whether this device's provider command lists implement the operation ID. */
+		[[nodiscard]] virtual bool SupportsNativeOperation(const char*) const noexcept
+		{
+			return false;
+		}
+
 		[[nodiscard]] virtual FArdaCudaCapabilities GetCudaCapabilities() const
 		{
 			return {};

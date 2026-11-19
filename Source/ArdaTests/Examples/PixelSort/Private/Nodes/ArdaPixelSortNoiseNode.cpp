@@ -55,7 +55,7 @@ namespace arda
 		D.mWidth = P.mWidth;
 		D.mHeight = P.mHeight;
 		D.mFormat = EArdaRHIFormat::RGBA8UInt;
-		D.mbCudaInterop = true;
+		D.mbCudaInterop = bool(CheckPixelSortNativeSupport(C.GetDevice()));
 		D.mUsage = EArdaRHITextureUsage::UnorderedAccess | EArdaRHITextureUsage::ShaderResource;
 		return C.Texture(P.mNoise, "Output", D);
 	}

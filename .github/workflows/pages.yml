@@ -10,6 +10,7 @@ on:
       - "Scripts/Docs/**"
       - "Source/ArdaInfra/ArdaBackend/Public/**"
       - "Source/ArdaInfra/ArdaDependencyGraph/Public/**"
+      - "Source/ArdaInfra/ArdaNativeCompute/Public/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -48,6 +49,9 @@ jobs:
           python3 Skills/document-codebase/scripts/sync_api_inventories.py
           --repo-root .
           --check
+
+      - name: Check documentation layout and search index
+        run: python3 Scripts/Docs/HtmlDocumentation.py --check
 
       - name: Check generated Arda graph essay
         run: python3 Scripts/Docs/arda_graph_essay/build.py --check

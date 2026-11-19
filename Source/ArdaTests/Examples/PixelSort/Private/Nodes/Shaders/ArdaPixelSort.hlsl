@@ -100,3 +100,92 @@ float4 PresentPS(float4 Position: SV_Position)
 	uint2 Pixel = min(uint2(Position.xy), uint2(Width - 1, Height - 1));
 	return float4(ShowOriginal ? Original.Load(int3(Pixel, 0)) : Sorted.Load(int3(Pixel, 0))) / 255.0;
 }
+
+struct FArdaPixelSortShaderConstants
+{
+	uint Width;
+	uint Height;
+	uint Channel;
+	uint Threshold;
+};
+#ifdef __spirv__
+[[vk::push_constant]]
+#endif
+ConstantBuffer<FArdaPixelSortShaderConstants> Sort : register(b1);
+
+#ifdef __spirv__
+[[vk::image_format("rgba8ui")]]
+#endif
+RWTexture2D<uint4> SortInput : register(u1);
+#ifdef __spirv__
+[[vk::image_format("rgba8ui")]]
+#endif
+RWTexture2D<uint4> SortOutput : register(u2);
+
+groupshared uint Pixels[1024];
+groupshared uint Keys[1024];
+
+[numthreads(128, 1, 1)]
+void SortCS(uint3 Group: SV_GroupID, uint Lane: SV_GroupIndex)
+{
+	bool Vertical = Sort.Height > Sort.Width;
+	uint Tile = Vertical ? 1024 : 512;
+	uint Length = Vertical ? Sort.Height : Sort.Width;
+	uint Begin = Group.x * Tile;
+	uint Count = min(Length - Begin, Tile);
+	for (uint Index = Lane; Index < Count; Index += 128)
+	{
+		uint2 Position = Vertical ? uint2(Group.y, Begin + Index) : uint2(Begin + Index, Group.y);
+		uint4 Color = SortInput[Position];
+		Pixels[Index] = Color.r | (Color.g << 8) | (Color.b << 16) | (Color.a << 24);
+	}
+	GroupMemoryBarrierWithGroupSync();
+
+	// Prefix-count dark boundaries in source order. The original index breaks ties
+	// in the sorting network, preserving the order of equal-channel pixels.
+	if (Lane == 0)
+	{
+		uint Run = 0;
+		for (uint Index = 0; Index < Count; ++Index)
+		{
+			uint Pixel = Pixels[Index];
+			uint Luma = (54 * (Pixel & 255) + 183 * ((Pixel >> 8) & 255) + 19 * ((Pixel >> 16) & 255)) >> 8;
+			bool Boundary = Luma < Sort.Threshold;
+			Run += Boundary ? 1 : 0;
+			uint Channel = Boundary ? 0 : 1 + ((Pixel >> (Sort.Channel * 8)) & 255);
+			Keys[Index] = (((Run << 9) | Channel) << 10) | Index;
+		}
+	}
+	for (uint Index = Count + Lane; Index < Tile; Index += 128)
+	{
+		Keys[Index] = 0xffffffff;
+	}
+	GroupMemoryBarrierWithGroupSync();
+
+	// Each lane owns a disjoint compare/exchange pair within every stage.
+	for (uint RunSize = 2; RunSize <= Tile; RunSize *= 2)
+	{
+		for (uint Stride = RunSize / 2; Stride > 0; Stride /= 2)
+		{
+			for (uint Index = Lane; Index < Tile; Index += 128)
+			{
+				uint Peer = Index ^ Stride;
+				if (Peer > Index)
+				{
+					uint A = Keys[Index], B = Keys[Peer];
+					bool Ascending = (Index & RunSize) == 0;
+					Keys[Index] = Ascending ? min(A, B) : max(A, B);
+					Keys[Peer] = Ascending ? max(A, B) : min(A, B);
+				}
+			}
+			GroupMemoryBarrierWithGroupSync();
+		}
+	}
+
+	for (uint Index = Lane; Index < Count; Index += 128)
+	{
+		uint Pixel = Pixels[Keys[Index] & 1023];
+		uint2 Position = Vertical ? uint2(Group.y, Begin + Index) : uint2(Begin + Index, Group.y);
+		SortOutput[Position] = uint4(Pixel & 255, (Pixel >> 8) & 255, (Pixel >> 16) & 255, Pixel >> 24);
+	}
+}

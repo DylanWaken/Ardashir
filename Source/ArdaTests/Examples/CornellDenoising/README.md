@@ -1,4 +1,4 @@
-# Cornell denoising through the unified graph
+# Denoise the Cornell Box
 
 This launcher reuses CornellBox's renderer. Its frame graph performs hardware ray
 tracing, progressive linear HDR accumulation, graphics NCHW packing, an imported
@@ -19,7 +19,8 @@ sibling checkpoint by default. Use `--denoise-state-dict path/to/alternative.ard
 to use another checkpoint with the same model. Names, dtypes and shapes must match.
 Legacy version-one packages still load their embedded weights.
 
-Create a 256x256 artifact with the offline tools:
+Set up the [offline export tools](../../../../Tools/ModelExport/README.md#environment),
+then export a 256×256 OIDN package from the repository root.
 
 ```powershell
 .venv/model-export/Scripts/python.exe Tools/ModelExport/ArdaOidnExport.py --download --height 256 --width 256 --output .cache/model-export/oidn/oidn_hdr_small_256.onnx
@@ -39,12 +40,12 @@ arguments after the backend select the build directory and configuration:
 `d3d12 build Release`. Pass `--denoise-state-dict` to select another checkpoint.
 The script uses one sample per dispatch and eight total samples by default.
 Building the CUDA provider requires CUDA SDK headers; use `--cuda-include-dir`
-if they are not discovered automatically. A fresh AI example build does not
-compile CUDA kernels with nvcc because the descriptor already contains them.
+to supply their location. The launcher loads the compiled kernels from the
+model descriptor.
 
-The window defaults to 256x256. Its dimensions must match the package's static
-tensor ports; export a matching package
-before using another resolution. Vulkan is selected with `--backend vulkan`.
+The window defaults to 256×256. Export a package with matching tensor dimensions
+before using another resolution. To run on Vulkan, pass `vulkan` as the first
+argument to the Python launcher.
 `--hidden` supports automated smoke runs. After the sample limit is reached, the
 renderer presents the retained result without repeating inference.
 

@@ -3,60 +3,124 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Choose and use every public RHI resource kind, with allocation, ownership and CUDA representation guidance.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Choose an RHI resource, allocate it, and manage its lifetime and CUDA representation.">
   <title>Resource recipes | ArdaBackend</title>
+  <script>
+    (() => {
+      let preference = "dark";
+      try {
+        preference = localStorage.getItem("arda-theme") || preference;
+      } catch {
+        // Local files and privacy settings can disable storage.
+      }
+      const systemLight = preference === "system" && !matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = preference === "light" || systemLight ? "light" : "dark";
+    })();
+  </script>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
   <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/doc-search-index.js" defer></script>
   <script src="../assets/site.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
-  <header class="site-header">
-    <a class="site-brand" href="../index.html">Ardashir Docs</a>
-    <nav aria-label="Primary">
-      <a href="index.html">ArdaBackend</a>
-      <a href="architecture.html">Architecture</a>
-      <a href="quick-guide.html">Quick guide</a>
-      <a href="getting-started.html">Get started</a>
-      <a href="api-reference.html">API</a>
-      <a href="../glossary.html">Glossary</a>
-    </nav>
-  </header>
-  <div class="site-layout">
-    <aside class="sidebar" aria-label="ArdaBackend pages">
-      <h2>ArdaBackend</h2>
-      <nav>
-        <a href="index.html">Overview</a>
-        <a href="quick-guide.html">Quick user's guide</a>
-        <a href="getting-started.html">Getting started</a>
-        <a href="architecture.html">Architecture</a>
-        <a href="backend-modules.html">Backend modules</a>
-        <a href="external-interop.html">External interop</a>
-        <a href="shaders.html">Shaders</a>
-        <a href="pipelines.html">Pipeline states</a>
-        <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header" id="top">
+  <a class="announcement" href="../ArdaRDG/native-compute.html"><span aria-hidden="true">//</span> Write a native compute node <svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+  <div class="site-header__bar"><div class="site-header__inner">
+    <a class="site-brand" href="../index.html" aria-label="Ardashir home">Ardashir</a>
+    <nav class="site-nav" aria-label="Primary"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav>
+    <div class="header-tools"><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="index.html">GPU backend</a>
+<a href="../ArdaRDG/index.html">Dependency graph</a>
+<a href="../ArdaNativeCompute/index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button><div class="theme-control" hidden><button type="button" class="theme-toggle" data-theme-toggle aria-label="Change theme" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg></button><div class="theme-menu" id="theme-menu" role="menu" aria-label="Theme" hidden><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="dark"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg>Dark</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="light"><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Light</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="system"><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg>System</button></div></div>
+      <details class="mobile-nav"><summary aria-label="Navigation menu"><svg class="icon icon-menu" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></summary>
+        <div class="mobile-nav-panel"><nav aria-label="Primary navigation"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button></div>
+      </details>
+    </div>
+  </div></div>
+</header>
+<nav class="mobile-docs" aria-label="Docs menu"><details class="docs-menu"><summary><svg class="icon icon-list" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zm5 0v16"/></svg><span>Docs menu</span><span aria-hidden="true">/</span><span class="current-title">Resource recipes</span><svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+  <div class="mobile-docs-panel"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="../ArdaRDG/getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="../ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="quick-guide.html">Quick guide</a>
+<a href="architecture.html">Architecture</a></div></details>
+<details class="sidebar-group" open><summary>Rendering hardware interface<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="backend-modules.html">Backend modules</a>
+<a href="rhi.html">Resources and memory</a>
+<a href="resource-recipes.html" aria-current="page">Resource recipes</a>
+<a href="gpu-allocator.html">GPU allocator</a>
+<a href="commands.html">Commands and submission</a>
+<a href="external-interop.html">External devices and resources</a>
+<a href="shaders.html">Shaders</a>
+<a href="pipelines.html">Pipeline states</a>
+<a href="presentation.html">Presentation</a>
+<a href="diagnostics.html">Diagnostics</a></div></details>
+<details class="sidebar-group"><summary>CUDA interoperability<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="cuda-graphics.html">How CUDA works with graphics</a>
+<a href="cuda-interop.html">Precompiled CUDA operands</a>
+<a href="cuda-sequences.html">CUDA sequences</a>
+<a href="cuda-external-calls.html">External CUDA calls</a>
+<a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+<a href="cuda-backend-plan.html">CUDA implementation record</a></div></details>
+<details class="sidebar-group"><summary>Reference and testing<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="api-reference.html">API reference</a>
+<a href="rhi-feature-guide.html">RHI feature guide</a>
+<a href="capability-recipes.html">Capability recipes</a>
+<a href="gpu-examples.html">Complete GPU examples</a>
+<a href="validation.html">GPU validation setup</a>
+<a href="validation-tests.html">Validation test suites</a>
+<a href="unreal-rhi-audit.html">Unreal RHI comparison</a>
+<a href="unreal-rhi-parity-plan.html">Unreal RHI parity review</a>
+<a href="simplification-review.html">Backend and graph review</a>
+<a href="documentation.html">Maintain this documentation</a></div></details></nav><details class="sidebar-group mobile-outline"><summary>On this page<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="#objectives">How to use these examples</a><a href="#resource-device">Device: Factory and submission authority</a><a href="#resource-texture">Texture: Allocate shaped image storage</a><a href="#resource-texturereference">TextureReference: Keep a stable texture identity</a><a href="#resource-buffer">Buffer: Store linear and structured data</a><a href="#resource-uniformbuffer">UniformBuffer: Upload shader constants</a><a href="#resource-heap">Heap: Place resources in explicit memory</a><a href="#resource-stagingtexture">StagingTexture: Move image data between CPU and GPU</a><a href="#resource-eventquery">EventQuery: Observe a queue completion point</a><a href="#resource-timerquery">TimerQuery: Measure GPU elapsed time</a><a href="#resource-gpufence">GpuFence: Retire CPU-owned frame data</a><a href="#resource-shaderresourceview">ShaderResourceView: Read a selected resource interpretation</a><a href="#resource-unorderedaccessview">UnorderedAccessView: Expose writable shader storage</a><a href="#resource-sampler">Sampler: Select texture filtering and addressing</a><a href="#resource-shader">Shader: Create a shader from backend bytecode</a><a href="#resource-shaderlibrary">ShaderLibrary: Share a compiled shader library</a><a href="#resource-inputlayout">InputLayout: Describe vertex memory</a><a href="#resource-bindinglayout">BindingLayout: Declare shader-visible slots</a><a href="#resource-bindingset">BindingSet: Populate a declared layout</a><a href="#resource-descriptortable">DescriptorTable: Index an extensible descriptor collection</a><a href="#resource-resourcecollection">ResourceCollection: Maintain an indexed set of resources</a><a href="#resource-framebuffer">Framebuffer: Select raster attachments</a><a href="#resource-graphicspipeline">GraphicsPipeline: Combine raster shaders and fixed state</a><a href="#resource-computepipeline">ComputePipeline: Bind a compute shader interface</a><a href="#resource-meshletpipeline">MeshletPipeline: Generate raster geometry on the GPU</a><a href="#resource-accelstruct">AccelStruct: Build ray-tracing geometry and instances</a><a href="#resource-raytracingpipeline">RayTracingPipeline: Link ray stages and hit groups</a><a href="#resource-shadertable">ShaderTable: Connect rays to shader records</a><a href="#resource-workgraphpipeline">WorkGraphPipeline: Launch a native work graph</a><a href="#resource-shaderbundle">ShaderBundle: Batch shader dispatch records</a><a href="#resource-samplerfeedbacktexture">SamplerFeedbackTexture: Record texture streaming demand</a><a href="#resource-opacitymicromap">OpacityMicromap: Attach per-microtriangle opacity</a><a href="#resource-rasterstate">RasterState: Reuse rasterization policy</a><a href="#resource-blendstate">BlendState: Describe attachment blending</a><a href="#resource-depthstencilstate">DepthStencilState: Control depth and stencil tests</a><a href="#resource-commandlist">CommandList: Record and submit ordered work</a><a href="#summary">Checkpoints</a></div></details></div>
+</details><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="index.html">GPU backend</a>
+<a href="../ArdaRDG/index.html">Dependency graph</a>
+<a href="../ArdaNativeCompute/index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details></nav>
+<div class="site-layout">
+  <aside class="sidebar" aria-label="Docs sidebar"><div class="sidebar-inner"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="../ArdaRDG/getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="../ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="quick-guide.html">Quick guide</a>
+<a href="architecture.html">Architecture</a></div></details>
+<details class="sidebar-group" open><summary>Rendering hardware interface<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="backend-modules.html">Backend modules</a>
+<a href="rhi.html">Resources and memory</a>
+<a href="resource-recipes.html" aria-current="page">Resource recipes</a>
+<a href="gpu-allocator.html">GPU allocator</a>
+<a href="commands.html">Commands and submission</a>
+<a href="external-interop.html">External devices and resources</a>
+<a href="shaders.html">Shaders</a>
+<a href="pipelines.html">Pipeline states</a>
+<a href="presentation.html">Presentation</a>
+<a href="diagnostics.html">Diagnostics</a></div></details>
+<details class="sidebar-group"><summary>CUDA interoperability<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="cuda-graphics.html">How CUDA works with graphics</a>
+<a href="cuda-interop.html">Precompiled CUDA operands</a>
+<a href="cuda-sequences.html">CUDA sequences</a>
+<a href="cuda-external-calls.html">External CUDA calls</a>
+<a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+<a href="cuda-backend-plan.html">CUDA implementation record</a></div></details>
+<details class="sidebar-group"><summary>Reference and testing<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="api-reference.html">API reference</a>
+<a href="rhi-feature-guide.html">RHI feature guide</a>
+<a href="capability-recipes.html">Capability recipes</a>
+<a href="gpu-examples.html">Complete GPU examples</a>
+<a href="validation.html">GPU validation setup</a>
+<a href="validation-tests.html">Validation test suites</a>
+<a href="unreal-rhi-audit.html">Unreal RHI comparison</a>
+<a href="unreal-rhi-parity-plan.html">Unreal RHI parity review</a>
+<a href="simplification-review.html">Backend and graph review</a>
+<a href="documentation.html">Maintain this documentation</a></div></details></nav></div></aside>
+  <main id="main-content" tabindex="-1">
+    <article class="prose" data-doc-article>
+<header class="page-header"><h1>Resource recipes</h1><p>Choose an RHI resource, allocate it, and manage its lifetime and CUDA representation.</p></header>
 
-        <a href="resource-recipes.html">Resource recipes</a>
-        <a href="gpu-allocator.html">GPU allocator</a>
-        <a href="capability-recipes.html">Capability recipes</a>
-        <a href="cuda-interop.html">CUDA and graphics</a>
-        <a href="cuda-graphics.html">CUDA in graphics fundamentals</a>
-        <a href="validation.html">GPU validation setup</a>
-        <a href="commands.html">Commands</a>
-        <a href="presentation.html">Presentation</a>
-        <a href="diagnostics.html">Diagnostics</a>
-        <a href="api-reference.html">API reference</a>
-      </nav>
-    </aside>
-    <main id="main-content" tabindex="-1">
-      <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href="../index.html">Docs</a>
-        <span aria-hidden="true">/</span>
-        ArdaBackend
-      </nav>
-      <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>Resource recipes</h1><p>Choose and use every public RHI resource kind, with allocation, ownership and CUDA representation guidance.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#resource-device">Device: Factory and submission authority</a><a href="#resource-texture">Texture: Allocate shaped image storage</a><a href="#resource-texturereference">TextureReference: Keep a stable texture identity</a><a href="#resource-buffer">Buffer: Store linear and structured data</a><a href="#resource-uniformbuffer">UniformBuffer: Upload shader constants</a><a href="#resource-heap">Heap: Place resources in explicit memory</a><a href="#resource-stagingtexture">StagingTexture: Move image data between CPU and GPU</a><a href="#resource-eventquery">EventQuery: Observe a queue completion point</a><a href="#resource-timerquery">TimerQuery: Measure GPU elapsed time</a><a href="#resource-gpufence">GpuFence: Retire CPU-owned frame data</a><a href="#resource-shaderresourceview">ShaderResourceView: Read a selected resource interpretation</a><a href="#resource-unorderedaccessview">UnorderedAccessView: Expose writable shader storage</a><a href="#resource-sampler">Sampler: Select texture filtering and addressing</a><a href="#resource-shader">Shader: Create a shader from backend bytecode</a><a href="#resource-shaderlibrary">ShaderLibrary: Share a compiled shader library</a><a href="#resource-inputlayout">InputLayout: Describe vertex memory</a><a href="#resource-bindinglayout">BindingLayout: Declare shader-visible slots</a><a href="#resource-bindingset">BindingSet: Populate a declared layout</a><a href="#resource-descriptortable">DescriptorTable: Index an extensible descriptor collection</a><a href="#resource-resourcecollection">ResourceCollection: Maintain an indexed set of resources</a><a href="#resource-framebuffer">Framebuffer: Select raster attachments</a><a href="#resource-graphicspipeline">GraphicsPipeline: Combine raster shaders and fixed state</a><a href="#resource-computepipeline">ComputePipeline: Bind a compute shader interface</a><a href="#resource-meshletpipeline">MeshletPipeline: Generate raster geometry on the GPU</a><a href="#resource-accelstruct">AccelStruct: Build ray-tracing geometry and instances</a><a href="#resource-raytracingpipeline">RayTracingPipeline: Link ray stages and hit groups</a><a href="#resource-shadertable">ShaderTable: Connect rays to shader records</a><a href="#resource-workgraphpipeline">WorkGraphPipeline: Launch a native work graph</a><a href="#resource-shaderbundle">ShaderBundle: Batch shader dispatch records</a><a href="#resource-samplerfeedbacktexture">SamplerFeedbackTexture: Record texture streaming demand</a><a href="#resource-opacitymicromap">OpacityMicromap: Attach per-microtriangle opacity</a><a href="#resource-rasterstate">RasterState: Reuse rasterization policy</a><a href="#resource-blendstate">BlendState: Describe attachment blending</a><a href="#resource-depthstencilstate">DepthStencilState: Control depth and stencil tests</a><a href="#resource-commandlist">CommandList: Record and submit ordered work</a><a href="#summary">Checkpoints</a></nav>
 <section id="objectives"><h2>How to use these examples</h2>
 <p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
 <p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
@@ -675,9 +739,16 @@ ASSERT_TRUE(Commands);</code></pre><p>This object is not a CUDA buffer pointer o
 	ASSERT_TRUE(Device-&gt;ResetGpuFence(Fence.mValue));
 	EXPECT_FALSE(Device-&gt;PollGpuFence(Fence.mValue).mValue);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
-}</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyQueryExecution">Complete example: VerifyQueryExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section><section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>
-</main>
-  </div>
-  <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaInfra/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>
+}</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyQueryExecution">Complete example: VerifyQueryExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section><section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section>
+    </article>
+    <nav class="page-nav" aria-label="Document navigation"><a href="rhi.html" rel="prev"><span class="page-nav-label"><svg class="icon icon-previous" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>Previous</span><span class="page-nav-title">Resources and memory</span></a><a href="gpu-allocator.html" rel="next"><span class="page-nav-label">Next<svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="page-nav-title">GPU allocator</span></a></nav>
+  </main>
+  <aside class="page-outline" aria-label="Page outline"><nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#objectives">How to use these examples</a></li><li><a href="#resource-device">Device: Factory and submission authority</a></li><li><a href="#resource-texture">Texture: Allocate shaped image storage</a></li><li><a href="#resource-texturereference">TextureReference: Keep a stable texture identity</a></li><li><a href="#resource-buffer">Buffer: Store linear and structured data</a></li><li><a href="#resource-uniformbuffer">UniformBuffer: Upload shader constants</a></li><li><a href="#resource-heap">Heap: Place resources in explicit memory</a></li><li><a href="#resource-stagingtexture">StagingTexture: Move image data between CPU and GPU</a></li><li><a href="#resource-eventquery">EventQuery: Observe a queue completion point</a></li><li><a href="#resource-timerquery">TimerQuery: Measure GPU elapsed time</a></li><li><a href="#resource-gpufence">GpuFence: Retire CPU-owned frame data</a></li><li><a href="#resource-shaderresourceview">ShaderResourceView: Read a selected resource interpretation</a></li><li><a href="#resource-unorderedaccessview">UnorderedAccessView: Expose writable shader storage</a></li><li><a href="#resource-sampler">Sampler: Select texture filtering and addressing</a></li><li><a href="#resource-shader">Shader: Create a shader from backend bytecode</a></li><li><a href="#resource-shaderlibrary">ShaderLibrary: Share a compiled shader library</a></li><li><a href="#resource-inputlayout">InputLayout: Describe vertex memory</a></li><li><a href="#resource-bindinglayout">BindingLayout: Declare shader-visible slots</a></li><li><a href="#resource-bindingset">BindingSet: Populate a declared layout</a></li><li><a href="#resource-descriptortable">DescriptorTable: Index an extensible descriptor collection</a></li><li><a href="#resource-resourcecollection">ResourceCollection: Maintain an indexed set of resources</a></li><li><a href="#resource-framebuffer">Framebuffer: Select raster attachments</a></li><li><a href="#resource-graphicspipeline">GraphicsPipeline: Combine raster shaders and fixed state</a></li><li><a href="#resource-computepipeline">ComputePipeline: Bind a compute shader interface</a></li><li><a href="#resource-meshletpipeline">MeshletPipeline: Generate raster geometry on the GPU</a></li><li><a href="#resource-accelstruct">AccelStruct: Build ray-tracing geometry and instances</a></li><li><a href="#resource-raytracingpipeline">RayTracingPipeline: Link ray stages and hit groups</a></li><li><a href="#resource-shadertable">ShaderTable: Connect rays to shader records</a></li><li><a href="#resource-workgraphpipeline">WorkGraphPipeline: Launch a native work graph</a></li><li><a href="#resource-shaderbundle">ShaderBundle: Batch shader dispatch records</a></li><li><a href="#resource-samplerfeedbacktexture">SamplerFeedbackTexture: Record texture streaming demand</a></li><li><a href="#resource-opacitymicromap">OpacityMicromap: Attach per-microtriangle opacity</a></li><li><a href="#resource-rasterstate">RasterState: Reuse rasterization policy</a></li><li><a href="#resource-blendstate">BlendState: Describe attachment blending</a></li><li><a href="#resource-depthstencilstate">DepthStencilState: Control depth and stencil tests</a></li><li><a href="#resource-commandlist">CommandList: Record and submit ordered work</a></li><li><a href="#summary">Checkpoints</a></li></ul></nav></aside>
+</div>
+<footer class="site-footer"><div class="site-footer__inner"><a class="site-brand" href="../index.html">Ardashir</a><div class="footer-group"><p>Documentation</p><a href="../index.html">Overview</a><a href="../ArdaRDG/getting-started.html">Getting started</a><a href="../Essays/arda-graph-and-inductor.html">Engineering essays</a></div><div class="footer-group"><p>Modules</p><a href="index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../index.html#module-ardagraph">ArdaGraph</a><a href="../index.html#module-ardatests">ArdaTests</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div><div class="footer-group"><p>Reference</p><a href="api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a><a href="../glossary.html">Glossary</a></div></div></footer>
+<dialog class="doc-search" aria-label="Search documentation"><form method="dialog">
+  <div class="search-field"><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" aria-label="Search documentation" placeholder="Search documentation" autocomplete="off"><button type="submit" aria-label="Close search"><svg class="icon icon-close" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+  <div class="search-results" aria-live="polite"></div>
+</form></dialog>
 </body>
 </html>

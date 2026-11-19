@@ -68,6 +68,9 @@ namespace arda
 	[[nodiscard]] TArdaRHIResult<eastl::shared_ptr<const FArdaCudaModule>> CreateArdaCudaModule(
 	    FArdaCudaModuleDesc Desc);
 
+	/** Validates the native parameter layout before an image has been compiled or loaded. */
+	[[nodiscard]] FArdaRHIStatus ValidateArdaCudaModuleKernelDesc(const FArdaCudaModuleKernelDesc& Desc);
+
 	/** Registers a host-only entry. Native loading and ABI verification occur before recording work. */
 	[[nodiscard]] TArdaRHIResult<eastl::shared_ptr<const IArdaCudaKernelEntry>> CreateArdaCudaModuleKernel(
 	    eastl::shared_ptr<const FArdaCudaModule> Module,

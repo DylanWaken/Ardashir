@@ -405,7 +405,7 @@ with 38 channels: previous color3, previous output3, features32.
 Outputs are `denoised_hdr` and `next_temporal`. Feed the next state into the next frame;
 reset it on scene cuts. The reference includes nonzero history and subpixel motion.
 The caller must supply the actual per-sample renderer features; noisy RGB alone is
-insufficient. The static adapter requires dimensions at least64 and multiples of32.
+insufficient. The static adapter requires dimensions of at least 64 and multiples of 32.
 See `ArdaNppd.LICENSE.txt` and the generated provenance JSON.
 The camera reprojection helpers follow Noisebase; its license is preserved in
 `ArdaNoisebase.LICENSE.txt`.

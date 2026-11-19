@@ -3,8 +3,9 @@
  */
 #pragma once
 #include <EASTL/type_traits.h>
-#include "RHI/CUDA/ArdaRHICuda.h"
+#include "RHI/Resources/ArdaComputeAccess.h"
 #include "RHI/Resources/ArdaRHITensor.h"
+#include "RHI/Resources/ArdaRHITexture.h"
 #include <EASTL/array.h>
 #include <EASTL/functional.h>
 #include <cstddef>

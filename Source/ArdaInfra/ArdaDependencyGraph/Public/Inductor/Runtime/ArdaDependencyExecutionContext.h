@@ -7,6 +7,11 @@
 namespace arda
 {
 	class FArdaInductorPassContext;
+	class FArdaNativeComputePlan;
+	class FArdaNativeComputeRegistry;
+	enum class EArdaNativeComputePreference : uint8_t;
+	struct FArdaNativeInvocation;
+	struct FArdaInductorNativeResourceAccess;
 
 	/** Typed callbacks resolve only their declared resources and automatically assigned pipeline slots. */
 	class FArdaDependencyExecutionContext
@@ -14,6 +19,18 @@ namespace arda
 	public:
 		IArdaRHICommandList& GetCommands() const;
 		FArdaRHIDeviceRef GetDevice() const;
+
+		/** Selects an implementation compatible with the node's declared accesses and records on its command list. */
+		FArdaRHIStatus RecordNativeCompute(const FArdaNativeComputeRegistry& Registry,
+		    const char* OperandId,
+		    const FArdaNativeInvocation& Invocation,
+		    EArdaNativeComputePreference Preference) const;
+
+		/** Prepares a CUDA variant on this node's queue and appends it to the graph's CUDA batch. */
+		FArdaRHIStatus AppendNativeCudaCompute(FArdaCudaSequence& Sequence,
+		    const FArdaNativeComputeRegistry& Registry,
+		    const char* OperandId,
+		    const FArdaNativeInvocation& Invocation) const;
 
 		/** Resolve an explicitly declared application-owned value retained by this compiled execution. */
 		template <class T>
@@ -76,6 +93,12 @@ namespace arda
 		FArdaGraphNodeHandle GetNode() const;
 
 	private:
+		TArdaRHIResult<FArdaNativeComputePlan> PrepareNativeCompute(const FArdaNativeComputeRegistry& Registry,
+		    const char* OperandId,
+		    const FArdaNativeInvocation& Invocation,
+		    EArdaNativeComputePreference Preference,
+		    bool bCudaBatch) const;
+		eastl::vector<FArdaInductorNativeResourceAccess> GetNativeResourceAccesses() const;
 		TArdaRHIResult<eastl::shared_ptr<const void>> ResolveExternalValue(const eastl::string& Name,
 		    const void* Type) const;
 		friend class FArdaInductor;

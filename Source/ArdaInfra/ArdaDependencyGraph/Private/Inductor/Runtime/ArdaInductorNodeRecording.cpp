@@ -79,23 +79,7 @@ namespace arda
 					}
 					if (PassContext.GetStatus() && Sequence.GetOperationCount() > FirstOperation)
 					{
-						eastl::vector<FArdaInductorCudaResourceAccess> Declared;
-						for (const auto& Access : GraphPtr->GetNodeDescription(Node).mAccesses)
-						{
-							const auto& Resource = GraphPtr->mResources[Access.mResource.mIndex];
-							FArdaRHIResourceRef Native = Resource.mbTexture
-							    ? FArdaRHIResourceRef(Context.GetTexture(Access.mResource))
-							    : FArdaRHIResourceRef(Context.GetBuffer(Access.mResource));
-							Declared.push_back({eastl::move(Native), Access});
-						}
-						if (GraphPtr->GetNodeDescription(Node).mTransientWorkspaceBytes)
-						{
-							FArdaDependencyAccess Workspace;
-							Workspace.mAccess = EArdaDependencyAccess::ReadWrite;
-							Workspace.mState = EArdaRHIResourceState::UnorderedAccess;
-							Workspace.mBufferRange = {0, GraphPtr->GetNodeDescription(Node).mTransientWorkspaceBytes};
-							Declared.push_back({Context.GetWorkspaceBuffer(), Workspace});
-						}
+						const auto Declared = Context.GetNativeResourceAccesses();
 						for (size_t Operation = FirstOperation;
 						    PassContext.GetStatus() && Operation < Sequence.GetOperationCount();
 						    ++Operation)

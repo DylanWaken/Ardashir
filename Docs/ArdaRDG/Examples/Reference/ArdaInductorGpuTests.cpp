@@ -12,8 +12,6 @@
 #include "RHI/Shaders/ArdaShaderCompiler.h"
 
 #include <gtest/gtest.h>
-#include <atomic>
-#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <string>
@@ -21,21 +19,6 @@
 namespace arda::inductor_gpu_tests
 {
 	using namespace arda;
-
-	class FArdaInductorGpuDiagnostics final : public IArdaDiagnosticCallback
-	{
-	public:
-		void Message(EArdaDiagnosticSeverity Severity, const char* Text) override
-		{
-			if (Severity == EArdaDiagnosticSeverity::Error || Severity == EArdaDiagnosticSeverity::Fatal)
-			{
-				++mErrors;
-				std::fprintf(stderr, "Inductor validation: %s\n", Text ? Text : "");
-			}
-		}
-
-		std::atomic<uint32_t> mErrors{0};
-	};
 
 	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaCompiledComputeBindings)
 		ARDA_SHADER_BUFFER_UAV(mFirst, 2, 3, EArdaRHIShaderStage::Compute)
@@ -193,7 +176,7 @@ namespace arda::inductor_gpu_tests
 				mDevice.Reset();
 			}
 			ShutdownBackend();
-			EXPECT_EQ(mDiagnostics.mErrors.load(), 0u);
+			EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
 		}
 
 		FArdaRHIShaderRef CreateConformanceShader(const char* Entry = "RegisteredCS",
@@ -269,7 +252,7 @@ namespace arda::inductor_gpu_tests
 			return Shader.mValue;
 		}
 
-		FArdaInductorGpuDiagnostics mDiagnostics;
+		FArdaTestDiagnosticCallback mDiagnostics;
 		FArdaRHIDeviceRef mDevice;
 	};
 

@@ -55,6 +55,7 @@ namespace arda
 		eastl::array<float, 4> mCameraRightAndExposure{};
 		eastl::array<float, 4> mCameraUpAndLightArea{};
 		eastl::array<uint32_t, 4> mImageAndSampling{};
+		/** Maximum bounces, seed, frame index, and whether to write per-sample denoising guides. */
 		eastl::array<uint32_t, 4> mPathAndSeed{};
 	};
 

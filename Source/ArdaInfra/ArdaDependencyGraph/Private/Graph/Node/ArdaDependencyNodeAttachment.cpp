@@ -84,8 +84,10 @@ namespace arda
 			return TArdaRHIResult<FArdaGraphNodeHandle>{{}, eastl::move(Status)};
 		};
 		// Lower an optional CUDA alternative before resource declarations, state caching and scheduling.
-		if (D->mKind == EArdaDependencyNodeKind::Cuda && G.mCompile.mExecution->mDevice &&
-		    !G.mCompile.mExecution->mDevice->GetCudaCapabilities())
+		const auto& Device = G.mCompile.mExecution->mDevice;
+		if (D->mKind == EArdaDependencyNodeKind::Cuda && Device &&
+		    (!Device->GetCudaCapabilities() ||
+		        (D->mSelectComputeAlternative && D->mSelectComputeAlternative(Device.Get()))))
 		{
 			if (!D->mComputeAlternative)
 			{

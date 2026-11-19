@@ -8,6 +8,7 @@
 // This file connects those pieces, selects the backend/mode, and owns their lifetime.
 #include "PixelSortWindow.h"
 #include "PixelSortRenderer.h"
+#include "Nodes/ArdaPixelSortOperand.h"
 #include "ArdaExamplePaths.h"
 #include "ArdaExampleShaders.h"
 #include <atomic>
@@ -32,6 +33,7 @@ namespace arda
 			uint32_t mFrames = 0, mWidth = 960, mHeight = 1200, mChannel = 0, mThreshold = 48;
 			float mTime = 0;
 			bool mbHidden = false, mbVerify = false, mbResizeTest = false, mbFixedTime = false, mbValidation = false;
+			bool mbRequireCuda = false;
 			std::filesystem::path mCapture;
 		};
 
@@ -166,6 +168,10 @@ namespace arda
 					}
 					O.mBackend = V == "d3d12" ? "native-d3d12" : "native-vulkan";
 				}
+				else if (A == "--require-cuda")
+				{
+					O.mbRequireCuda = true;
+				}
 				else if (A == "--cuda-mode")
 				{
 					const auto V = Next();
@@ -189,7 +195,8 @@ namespace arda
 				else if (A == "--help")
 				{
 					std::puts(
-					    "PixelSort [--backend d3d12|vulkan] [--cuda-mode auto|context|graphics] [--width N --height N]\n"
+					    "PixelSort [--backend d3d12|vulkan] [--cuda-mode auto|context|graphics] [--require-cuda]\n"
+					    "          [--width N --height N]\n"
 					    "  [--frames N --hidden --verify --resize-test --validation] [--channel 0|1|2 --threshold 0..255] [--time T --capture image.png]\n"
 					    "--verify compares pixels with the CPU reference without native validation layers.\n"
 					    "--validation explicitly enables native GPU validation and requires its debug layers.\n"
@@ -252,24 +259,29 @@ namespace arda
 					    ? 77
 					    : 1;
 				}
-				const auto Caps = GetDevice()->GetCudaCapabilities();
-
-				// CUDA availability alone is insufficient for a surface-based kernel.
-				// Qualify texture/surface access before allocating shared images. Exit 77
-				// marks an unavailable test configuration, while workload failures are 1.
-				if (!Caps || !Caps.mbSurfaceAccess)
+				const auto Device = GetDevice();
+				const auto NativeSort = CheckPixelSortNativeSupport(Device.Get());
+				if (!NativeSort && (NativeSort.mCode != EArdaRHIResult::Unsupported || O.mbRequireCuda ||
+				        O.mMode != EArdaCudaExecutionMode::Automatic))
 				{
-					std::fprintf(stderr,
-					    "%s\n",
-					    (Caps ? Caps.mSurfaceUnavailableReason : Caps.mUnavailableReason).c_str());
-					return 77;
+					std::fprintf(stderr, "%s\n", NativeSort.mMessage.c_str());
+					return NativeSort.mCode == EArdaRHIResult::Unsupported ? 77 : 1;
 				}
 
-				FArdaPixelSortRenderer Renderer(GetDevice());
-				const char* Mode = Caps.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG ? "D3D12 CiG"
-				    : Caps.mLaunchMode == EArdaCudaLaunchMode::VulkanCiG             ? "Vulkan CiG"
-				                                                                     : "CUDA context";
-				std::printf("PixelSort: %s, %s, SM %u\n", O.mBackend.c_str(), Mode, Caps.mComputeCapability);
+				FArdaPixelSortRenderer Renderer(Device);
+				const char* Mode = "compute shader";
+				if (NativeSort)
+				{
+					const auto Caps = Device->GetCudaCapabilities();
+					Mode = Caps.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG ? "D3D12 CiG"
+					    : Caps.mLaunchMode == EArdaCudaLaunchMode::VulkanCiG             ? "Vulkan CiG"
+					                                                                     : "CUDA context";
+					std::printf("PixelSort: %s, %s, SM %u\n", O.mBackend.c_str(), Mode, Caps.mComputeCapability);
+				}
+				else
+				{
+					std::printf("PixelSort: %s, compute shader\n", O.mBackend.c_str());
+				}
 				auto Previous = std::chrono::steady_clock::now();
 				float Time = O.mTime;
 				uint32_t Frame = 0;
@@ -330,12 +342,12 @@ namespace arda
 					    Mode,
 					    "RGB"[Window.mChannel],
 					    Vertical ? "Vertical" : "Horizontal",
-					    Vertical ? 256 : 128,
+					    NativeSort && Vertical ? ArdaPixelSortColumnThreads : ArdaPixelSortRowThreads,
 					    Window.mThreshold);
 					Window.SetTitle(Title);
 
 					// Capture once: the last bounded frame, or the first interactive
-					// frame. Tab changes presentation only; CUDA still sorts every frame.
+					// frame. Tab changes presentation only; sorting continues every frame.
 					const bool Last = O.mFrames ? Frame + 1 == O.mFrames : Frame == 0;
 					Renderer.Render(*Backend.mSwapChain,
 					    Time,

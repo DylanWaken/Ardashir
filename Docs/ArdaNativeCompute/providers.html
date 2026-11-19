@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Select an NVAPI, CUDA in Graphics, or CUDA implementation for an operand. Compile and register a D3D12 shader with NVIDIA intrinsics.">
+  <title>Choose a GPU provider | Ardashir</title>
+  <script>
+    (() => {
+      let preference = "dark";
+      try {
+        preference = localStorage.getItem("arda-theme") || preference;
+      } catch {
+        // Local files and privacy settings can disable storage.
+      }
+      const systemLight = preference === "system" && !matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = preference === "light" || systemLight ? "light" : "dark";
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/doc-search-index.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header" id="top">
+  <a class="announcement" href="../ArdaRDG/native-compute.html"><span aria-hidden="true">//</span> Write a native compute node <svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+  <div class="site-header__bar"><div class="site-header__inner">
+    <a class="site-brand" href="../index.html" aria-label="Ardashir home">Ardashir</a>
+    <nav class="site-nav" aria-label="Primary"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav>
+    <div class="header-tools"><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="../ArdaBackend/index.html">GPU backend</a>
+<a href="../ArdaRDG/index.html">Dependency graph</a>
+<a href="index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button><div class="theme-control" hidden><button type="button" class="theme-toggle" data-theme-toggle aria-label="Change theme" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg></button><div class="theme-menu" id="theme-menu" role="menu" aria-label="Theme" hidden><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="dark"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg>Dark</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="light"><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Light</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="system"><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg>System</button></div></div>
+      <details class="mobile-nav"><summary aria-label="Navigation menu"><svg class="icon icon-menu" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></summary>
+        <div class="mobile-nav-panel"><nav aria-label="Primary navigation"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button></div>
+      </details>
+    </div>
+  </div></div>
+</header>
+<nav class="mobile-docs" aria-label="Docs menu"><details class="docs-menu"><summary><svg class="icon icon-list" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zm5 0v16"/></svg><span>Docs menu</span><span aria-hidden="true">/</span><span class="current-title">Choose a GPU provider</span><svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+  <div class="mobile-docs-panel"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="../ArdaRDG/getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Native compute<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="providers.html" aria-current="page">Choose a GPU provider</a>
+<a href="../ArdaRDG/native-compute.html">Write a native compute node</a>
+<a href="api-reference.html">API reference</a></div></details></nav><details class="sidebar-group mobile-outline"><summary>On this page<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="#objectives">Match the kernel to its execution path</a><a href="#cig">Run a CUDA kernel in graphics</a><a href="#nvapi">Use an NVAPI shader intrinsic on D3D12</a><a href="#summary">Check the selected implementation</a></div></details></div>
+</details><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="../ArdaBackend/index.html">GPU backend</a>
+<a href="../ArdaRDG/index.html">Dependency graph</a>
+<a href="index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details></nav>
+<div class="site-layout">
+  <aside class="sidebar" aria-label="Docs sidebar"><div class="sidebar-inner"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="../ArdaRDG/getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Native compute<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="providers.html" aria-current="page">Choose a GPU provider</a>
+<a href="../ArdaRDG/native-compute.html">Write a native compute node</a>
+<a href="api-reference.html">API reference</a></div></details></nav></div></aside>
+  <main id="main-content" tabindex="-1">
+    <article class="prose" data-doc-article>
+<header class="page-header">
+  <h1>Choose a GPU provider</h1>
+  <p>An operand can offer several implementations of the same operation. Register the providers your application can use, then put the preferred implementation first in the operand.</p>
+</header>
+<section id="objectives">
+  <h2>Match the kernel to its execution path</h2>
+  <table><thead><tr><th scope="col">Provider</th><th scope="col">Graphics backend and queue</th><th scope="col">Kernel and resource bindings</th></tr></thead>
+  <tbody>
+    <tr><td><code>nvapi</code></td><td>D3D12 graphics or compute</td><td>DXIL compiled with NVIDIA HLSL shader intrinsics. Uses D3D12 shader views directly.</td></tr>
+    <tr><td><code>cuda-in-graphics</code></td><td>D3D12 graphics, or Vulkan graphics or compute</td><td>CUDA kernels or qualified library calls on a device initialized for CUDA in Graphics (CiG). Resources must expose the required CUDA representations.</td></tr>
+    <tr><td><code>cuda</code></td><td>Qualified D3D12 or Vulkan graphics or compute queue, subject to the device’s CUDA launch mode</td><td>Linked CUDA kernels, PTX, cubin, CUDA C++ or library calls. Accepts an ordinary CUDA context.</td></tr>
+  </tbody></table>
+  <p>Register a compute or graphics shader fallback on the same operand to run on other hardware. Source compilation and device checks happen during preparation, before commands are recorded.</p>
+</section>
+<section id="cig">
+  <h2>Run a CUDA kernel in graphics</h2>
+  <p>Include <code>CUDA/ArdaNativeCudaProvider.h</code>. Register <code>CreateArdaNativeCudaInGraphicsProvider()</code> and <code>CreateArdaNativeCudaProvider()</code>, checking each returned status. Add the kernel once with <code>AddArdaNativeCudaVariants(operand, variant)</code>. Both variants share its source, argument layout and launch policy.</p>
+  <p>To require CiG, choose the graphics-queue CUDA mode when creating the device, then set <code>context.mPreference = EArdaNativeComputePreference::NativeOnly</code> and <code>context.mRequiredProviderId = ArdaNativeCudaInGraphicsProviderId</code>. A device using an ordinary CUDA context fails this check. With automatic routing, the registry tries the next eligible variant.</p>
+  <p>D3D12 captures CUDA work on its graphics list. Vulkan uses a CiG context associated with the graphics device and orders CUDA work with graphics through semaphores. Qualify the actual buffer or texture as well as the device. A driver may support a shared linear buffer and reject a shared image. <a href="../ArdaBackend/cuda-graphics.html">CUDA queues and resource handoffs</a></p>
+</section>
+<section id="nvapi">
+  <h2>Use an NVAPI shader intrinsic on D3D12</h2>
+  <p>This shader writes the lane index of each of 32 threads into a raw buffer. Reserve the extension UAV in a separate register space. Space zero holds the output.</p>
+  <pre><code class="language-hlsl">#define NV_SHADER_EXTN_SLOT u0
+#define NV_SHADER_EXTN_REGISTER_SPACE space1
+#include "nvHLSLExtns.h"
+
+RWByteAddressBuffer Output : register(u0, space0);
+
+[numthreads(32, 1, 1)]
+void WriteLane(uint index : SV_GroupIndex)
+{
+    Output.Store(4 * index, NvGetLaneId());
+}</code></pre>
+  <p>Save the shader as <code>lane.hlsl</code> and compile it from the repository root with DXC. Ship the resulting DXIL with the application.</p>
+  <pre><code class="language-sh">dxc -T cs_6_0 -E WriteLane -I ThirdParty/NVAPI -Fo lane.dxil lane.hlsl</code></pre>
+  <p>Register <code>CreateArdaNativeNvapiProvider()</code> once. Pass the DXIL bytes to the source factory. Declare the shader’s extension UAV slot, register space, and every required opcode. The provider queries the active D3D12 device for those opcodes and builds the compute pipeline through NVAPI.</p>
+  <pre><code class="language-cpp">#include "NVAPI/ArdaNativeNvapiProvider.h"
+#include "nvShaderExtnEnums.h"  // Add ThirdParty/NVAPI to the shader author's include path.
+
+using namespace arda;
+
+FArdaRHIStatus RegisterLaneIndex(FArdaNativeComputeRegistry&amp; registry,
+    eastl::vector&lt;uint8_t&gt; dxil)
+{
+    FArdaNativeNvapiSourceDesc source;
+    source.mDxil = eastl::move(dxil);
+    source.mRequiredOpcodes = {NV_EXTN_OP_GET_LANE_ID};
+    source.mExtensionUavSlot = 0;
+    source.mExtensionRegisterSpace = 1;
+    auto shader = CreateArdaNativeNvapiSource(eastl::move(source));
+    if (!shader) return shader.mStatus;
+
+    FArdaNativeOperandDesc operand;
+    operand.mId = "example.lane-index";
+    operand.mResources = {{"Output", EArdaRHIResourceType::Buffer, EArdaComputeAccess::Write}};
+    operand.mVariants.push_back({"lane-id", shader.mValue, {}});
+    return registry.RegisterOperand(eastl::move(operand));
+}</code></pre>
+  <p>Bind a 128-byte buffer view with <code>Raw | UnorderedAccess</code> usage and prepare the operation for one group. DXIL fixes the block size and shared memory. Use <code>mGridSize</code> for group counts and leave the other launch fields at their defaults. On a raw RHI list, transition the output to <code>UnorderedAccess</code> and call <code>CommitBarriers()</code> before recording the plan. A graph pass declares the same write state so the scheduler can order the transition. Submit the recorded command list. <a href="../ArdaRDG/native-compute.html#record">Record and submit an invocation</a></p>
+  <p>For additional bindings, operand slot <em>i</em> maps to <code>t<i>i</i></code> for reads and <code>u<i>i</i></code> for writes in space zero. Buffer offsets and sizes must be multiples of four, and offsets must meet the device’s storage-buffer alignment. Texture views select a mip. The handoff state is <code>NonPixelShaderResource</code> for reads and <code>UnorderedAccess</code> for writes. Scalar parameters are packed as 32-bit constants at <code>b0</code>. The extension UAV uses one DWORD of the D3D12 root signature. The remaining 63 DWORDs cover resource tables and constants.</p>
+</section>
+<section id="summary">
+  <h2>Check the selected implementation</h2>
+  <p>Use <code>CheckSupport</code> before allocating provider-specific storage. Call <code>Prepare</code> with the final views, then inspect <code>GetRoute()</code> and <code>GetVariantName()</code>. A missing driver, opcode, or resource representation can send an operation to its shader fallback. <a href="../ArdaRDG/native-compute.html#fallback">Register a shader fallback</a></p>
+</section>
+    </article>
+    <nav class="page-nav" aria-label="Document navigation"><a href="index.html" rel="prev"><span class="page-nav-label"><svg class="icon icon-previous" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>Previous</span><span class="page-nav-title">Overview</span></a><a href="../ArdaRDG/native-compute.html" rel="next"><span class="page-nav-label">Next<svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="page-nav-title">Write a native compute node</span></a></nav>
+  </main>
+  <aside class="page-outline" aria-label="Page outline"><nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#objectives">Match the kernel to its execution path</a></li><li><a href="#cig">Run a CUDA kernel in graphics</a></li><li><a href="#nvapi">Use an NVAPI shader intrinsic on D3D12</a></li><li><a href="#summary">Check the selected implementation</a></li></ul></nav></aside>
+</div>
+<footer class="site-footer"><div class="site-footer__inner"><a class="site-brand" href="../index.html">Ardashir</a><div class="footer-group"><p>Documentation</p><a href="../index.html">Overview</a><a href="../ArdaRDG/getting-started.html">Getting started</a><a href="../Essays/arda-graph-and-inductor.html">Engineering essays</a></div><div class="footer-group"><p>Modules</p><a href="../ArdaBackend/index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="index.html">Native compute</a><a href="../index.html#module-ardagraph">ArdaGraph</a><a href="../index.html#module-ardatests">ArdaTests</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div><div class="footer-group"><p>Reference</p><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="api-reference.html">Native compute</a><a href="../glossary.html">Glossary</a></div></div></footer>
+<dialog class="doc-search" aria-label="Search documentation"><form method="dialog">
+  <div class="search-field"><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" aria-label="Search documentation" placeholder="Search documentation" autocomplete="off"><button type="submit" aria-label="Close search"><svg class="icon icon-close" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+  <div class="search-results" aria-live="polite"></div>
+</form></dialog>
+</body>
+</html>

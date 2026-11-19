@@ -1,12 +1,12 @@
 # Pixel Sort
 
-A Windows example built from registered dependency-graph nodes: HLSL compute noise → CUDA radix sort → fullscreen
-graphics draw → swap-chain presentation. The palette combines ink, indigo,
-lavender and coral. Resize the window to change sorting direction and kernel
-selection while the noise keeps evolving.
+A Windows example that generates HLSL noise, sorts pixels through a registered
+native compute operand, and draws the result to the swap chain. The sort uses a
+qualified CUDA radix kernel or an HLSL compute fallback. Resize the window to
+change sorting direction while the noise keeps evolving.
 
-The example links **ArdaBackend**, **ArdaDependencyGraph**, and its own
-**PixelSortKernels** target. It uses native Win32 for the window, WIC for optional
+The example uses **ArdaBackend**, **ArdaDependencyGraph**, **ArdaNativeCompute**,
+and the optional **PixelSortKernels** target. It uses Win32 for the window, WIC for optional
 PNG captures, and Vulkan headers for surface creation. Build it through the
 repository's root CMake project.
 
@@ -20,7 +20,7 @@ repository's root CMake project.
    The base owns registration, invocation and state lifetime; each node prepares its own operation. The
    [noise node](Private/Nodes/ArdaPixelSortNoiseNode.cpp) owns its HLSL entry,
    layout and pipeline settings; the [sort node](Private/Nodes/ArdaPixelSortSortNode.cpp)
-   owns its CUDA operand. Its `ARDA_NODE_CUDA_TEXTURE` fields inherit the operand's
+   invokes the registered operand. Its `ARDA_NODE_CUDA_TEXTURE` fields inherit the shared parameter schema's
    resource access and `ResolveNodeCudaParameters` resolves the same mappings before
    dispatch. Shared shader-file loading is a private utility.
    Graph parameters retain prepared device state; the renderer needs no library
@@ -28,11 +28,12 @@ repository's root CMake project.
    Each header declares its callable with `ARDA_DECLARE_GRAPH_NODE`; its `.cpp`
    supplies the matching `ARDA_DEFINE_GRAPH_NODE` exactly once.
 3. [ArdaPixelSortOperand.h](Public/Nodes/ArdaPixelSortOperand.h) and
-   [ArdaPixelSortOperand.cpp](Private/Nodes/ArdaPixelSortOperand.cpp) define the CUDA
-   parameter schema, bind compiled entries, and select a launch configuration.
+   [ArdaPixelSortOperand.cpp](Private/Nodes/ArdaPixelSortOperand.cpp) define the shared
+   parameter schema, register both routes, and select launch geometry. Resource slot access,
+   CUDA ABI patches and marshaling come from the same schema as the node's parameter mappings.
 4. [ArdaPixelSortKernels.cu](Private/Nodes/ArdaPixelSortKernels.cu) implements the
    compiled radix variants. [ArdaPixelSort.hlsl](Private/Nodes/Shaders/ArdaPixelSort.hlsl)
-   supplies the graphics producer and presentation stages.
+   supplies the producer, compute fallback, and presentation stages.
 5. [PixelSortRenderer.cpp](PixelSortRenderer.cpp) allocates/binds typed graph resources through
    `FArdaGraphEdit`, invokes operations, updates frame inputs, submits, and presents. It also
    owns the independent CPU sort oracle and PNG output.
@@ -43,8 +44,8 @@ The [shared example layout](../README.md) explains adding more registered nodes.
 
 ## Build
 
-Use a Visual Studio developer PowerShell with CMake 3.24+, Ninja and an NVIDIA
-CUDA toolkit. Select a native architecture for the GPU that will run the
+Use a Visual Studio developer PowerShell with CMake 3.24+ and Ninja. For native
+CUDA kernels, install the NVIDIA CUDA toolkit and select an architecture for the GPU that will run the
 application; `120` below targets SM 12.0. CUDA-in-graphics needs CUDA 13.3+ headers
 and a supporting driver. Ordinary context mode uses the backend's CUDA 12+
 external-memory path. The selected nvcc must support the requested targets.
@@ -64,12 +65,12 @@ build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend d3d
 `CMAKE_CUDA_COMPILER` pins nvcc for this build directory. Alternatively set
 `CUDACXX` before the first Ninja configure, or use an installed Visual Studio
 CUDA toolset. Use a fresh build directory when changing toolchains. The root
-build finds nvcc only when `ARDASHIR_BUILD_CUDA_KERNELS` is enabled; disabling
-that option also requires `ARDASHIR_BUILD_PIXEL_SORT=OFF` in an existing cache.
+build finds nvcc when `ARDASHIR_BUILD_CUDA_KERNELS` is enabled.
 See the [compiler discovery guide](../../../../Docs/ArdaBackend/cuda-interop.html#nvcc-build).
 
-The example defaults on for Windows builds that compile CUDA kernels. Normal
-CUDA-disabled builds omit it. `ARDASHIR_BACKEND_D3D12` and
+For a shader-only executable, configure with `ARDASHIR_BUILD_PIXEL_SORT=ON`,
+`ARDASHIR_ENABLE_CUDA=OFF`, and `ARDASHIR_BUILD_CUDA_KERNELS=OFF`.
+`ARDASHIR_BACKEND_D3D12` and
 `ARDASHIR_BACKEND_VULKAN` choose which native providers to link.
 
 For several GPUs use, for example, `-DARDASHIR_CUDA_ARCHITECTURES="80;120"`.
@@ -91,6 +92,7 @@ python Scripts/Examples/RunPixelSort.py vulkan build/pixel-sort Release --genera
   --nvcc "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.3/bin/nvcc.exe" `
   --architectures "120"
 python Scripts/Examples/RunPixelSort.py vulkan build/pixel-sort Release --run-only
+python Scripts/Examples/RunPixelSort.py d3d12 build/pixel-sort-shader Release --no-cuda --verify --frames 1
 ```
 
 For a new build the launcher selects Ninja unless `--generator` or
@@ -123,7 +125,7 @@ the GPU tests. Verification does not require validation layers. Repeated
 directory when changing generators or CUDA compilers.
 
 A previous `CMAKE_CUDA_COMPILER=NOTFOUND` is retried on the next configure.
-Successful compiler selections stay cached. CMake now reports the underlying
+Successful compiler selections stay cached. CMake reports the underlying
 host compiler/toolset error directly if CUDA setup fails. Automatic provider
 header discovery selects the directory containing `cuda.h`, including toolkits
 that also report separate CCCL include directories.
@@ -146,16 +148,17 @@ build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend d3d
 - **Up / Down:** change the dark-pixel boundary threshold by eight.
 - **Esc:** close the window.
 
-The title displays the actual CUDA execution mode, direction, thread count,
+The title displays the selected route, direction, thread count,
 channel and threshold. Minimized windows stop rendering; restoring recreates
 the swap chain and size-dependent textures. Resize and shutdown wait for GPU
 completion before replacing resources. Ordinary animation uses GPU handoffs,
 with no CPU readback or device-idle wait in the rendering loop.
 
-`--cuda-mode auto` uses the backend's capability-qualified choice. `context`
-forces the ordinary CUDA context; `graphics` requires CUDA-in-graphics.
-An unavailable backend, validation layer, CUDA mode or surface capability
-returns code **77** with a reason; workload errors return **1**.
+`--cuda-mode auto` uses a qualified CUDA implementation when available and
+otherwise uses the compute shader. `context` requires ordinary CUDA, and
+`graphics` requires CUDA-in-graphics. Add `--require-cuda` to require native
+execution in automatic mode. Unavailable required capabilities return code
+**77** with a reason. Workload errors return **1**.
 
 ## One frame and two compiled variants
 
@@ -166,9 +169,10 @@ handles explicitly. Resource dependencies determine the execution order:
 
 1. `UploadFrame` writes time/extent/display constants.
 2. `Noise` reads those constants and writes an **RGBA8UInt** texture with `NoiseCS`.
-3. `Sort` reads noise and writes a separate sorted texture. Its registered CUDA
-   callback resolves logical handles and appends the retained operand to the
-   compiler-provided sequence; the renderer never launches a kernel or creates a stream.
+3. `Sort` reads noise and writes a separate sorted texture. The graph chooses
+   the route before allocating the textures. The native callback resolves graph
+   handles and adds prepared work to the compiler-provided CUDA sequence. The
+   shader fallback records on the graph's command list using ordinary textures.
 4. `Present` reads the constants and both images and draws the fullscreen triangle.
 5. Optional registered readback nodes copy source/output/captured pixels to CPU staging.
 
@@ -184,23 +188,25 @@ values without requiring a graph edit.
 Ordinary animation uses `Submit`; diagnostic readbacks use `Wait(ticket)` before
 mapping. Recycling an occupied frame slot can wait. Resize releases graphs before
 replacing the swap chain, and graph destruction retires its own outstanding work.
-[CUDA in graphics](../../../../Docs/ArdaBackend/cuda-graphics.html) explains the
-underlying CUDA-in-graphics and ordinary-context handoff contracts.
+PixelSort registers both `cuda-in-graphics` and `cuda`. For each compiled entry,
+`AddArdaNativeCudaVariants` gives both providers the same source and orientation
+check. The renderer tries CiG first. An ordinary CUDA context or the registered
+HLSL shader can run the same sort when the requested mode allows it.
+[Provider selection](../../../../Docs/ArdaNativeCompute/providers.html#cig) ·
+[Resource handoffs](../../../../Docs/ArdaBackend/cuda-graphics.html)
 
-`BindKernelVariants` calls the nvcc-built registration function. A C++ integer
-sequence instantiates two typed `__global__` entries, each taking only
-`FArdaPixelSortParameters::FArdaCuda` by value. Their host payloads describe threads,
-tile length and direction; the generated build manifest describes native
-architecture support. `SelectKernel` chooses among compatible entries:
+The nvcc translation unit exports two typed `__global__` entries, each taking
+`FArdaPixelSortParameters::FArdaCuda` by value. The generated manifest describes
+native architecture support. The registry checks support and each variant's
+selection callback accepts its orientation:
 
 - **Width ≥ height:** `RadixSort<128, false>`, 128 threads, four pixels per
   thread, 512-pixel row tiles. Grid = `(ceil(width/512), height, 1)`.
 - **Height > width:** `RadixSort<256, true>`, 256 threads, four pixels per
   thread, 1024-pixel column tiles. Grid = `(ceil(height/1024), width, 1)`.
 
-This is an explicit visual selection policy, not a claim of optimal tuning.
-Each operand dispatch launches exactly one kernel. Registration and all
-resource/schema/launch validation use the existing framework implementations.
+Each native dispatch launches one kernel. The shader fallback preserves the same
+tile boundaries and stable ordering with a group-shared sorting network.
 
 ## What the radix kernel sorts
 
@@ -245,12 +251,13 @@ build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend d3d
   --width 900 --height 1200 --time 4 --frames 1 --capture portrait.png
 ```
 
-`--verify` reads back both compute/CUDA textures after completion and compares
+`--verify` reads back the source and sorted textures after completion and compares
 **every RGBA pixel** with an independent CPU
 `std::stable_sort` reference. The six real Win32 resizes cover both variants,
 all RGB keys, multiple thresholds, partial tiles and multi-tile lines. Two additional
 `PixelSort.d3d12.Replay` and `PixelSort.vulkan.Replay` tests execute eight same-size
-frames to exercise cached graph reuse.
+frames to exercise cached graph reuse. Shader-only builds register the same
+resize and pixel comparison under `PixelSort.<backend>.Shader`.
 `--validation` independently enables native GPU validation and can be combined
 with `--verify`. It requires an `ARDASHIR_ENABLE_GPU_VALIDATION=ON` build;
 OFF builds reject the flag. Ordinary runs and `--verify` do not require development
@@ -261,11 +268,11 @@ clock for reproducible captures.
 PNG capture reads the rendered back buffer, on the final bounded frame or the
 first frame when running indefinitely; its parent directory must already exist.
 
-Local qualification: Windows, RTX PRO 6000 Blackwell (SM 120), driver 610.62,
-nvcc 13.3.73. D3D12 automatic/ordinary mode and Vulkan
-automatic/ordinary/CUDA-in-graphics pass native validation and exact CPU
-comparisons. D3D12 CUDA-in-graphics surface qualification fails on this driver;
-that forced mode skips with its capability reason. Other GPUs are unqualified.
+The Windows qualification run used an RTX PRO 6000 Blackwell (SM 120),
+driver 610.62, and nvcc 13.3.73. D3D12 automatic and ordinary modes passed
+native validation and exact CPU comparisons, as did Vulkan automatic, ordinary,
+and CUDA-in-graphics modes. On that driver, forced D3D12 CUDA-in-graphics
+skipped because the surface mapping failed qualification.
 
 ## Runtime package
 
@@ -275,10 +282,9 @@ This development example compiles/caches its **HLSL graphics shaders** on first
 use in `.arda-cache/PixelSort` beside the executable, so that directory must be
 writable. A distribution can prebuild and ship those graphics artifacts.
 
-**CUDA kernels are compiled and statically linked during the project build.**
-The runtime never searches for nvcc, loads PTX, invokes NVRTC or compiles CUDA
-source. Users need a compatible NVIDIA driver and a package containing a native
-image for their GPU; installing nvcc cannot repair missing deployed code.
+The optional CUDA kernels are compiled and statically linked during the build.
+Native execution requires a compatible NVIDIA driver and a compiled image for
+the GPU. The compute shader uses the regular shader compiler and artifact cache.
 
 For the underlying primitives see NVIDIA's
 [warp intrinsics](https://developer.nvidia.com/blog/using-cuda-warp-level-primitives/)

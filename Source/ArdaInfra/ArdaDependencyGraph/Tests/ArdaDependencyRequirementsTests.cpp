@@ -1600,6 +1600,11 @@ struct FArdaOptionalCudaNode
 		return {"test.requirements.optional-cuda", 1};
 	}
 
+	static bool UsesComputeAlternative(const IArdaRHIDevice* Device)
+	{
+		return Device && !Device->GetCudaCapabilities().mbSurfaceAccess;
+	}
+
 	static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters&)
 	{
 		FArdaDependencyNodeRequirements Requirements;
@@ -1710,6 +1715,24 @@ TEST_F(FArdaDependencyRequirementsTest, AvailableCudaKeepsCudaAndDoesNotRequireA
 	EXPECT_EQ(FArdaOptionalCudaNode::mCudaRecords, 1u);
 	ASSERT_EQ(Graph.GetCompileResult().mCudaBatches.size(), 1u);
 	EXPECT_EQ(Graph.GetCompileResult().mCudaBatches.front().size(), 1u);
+}
+
+TEST_F(FArdaDependencyRequirementsTest, QualifiedCudaWithoutSurfaceSupportUsesComputeAlternative)
+{
+	mDefinitions.push_back(FArdaOptionalCudaNode::GetMetadata().mName);
+	mProvider->mCuda.mLaunchMode = EArdaCudaLaunchMode::ContextSwitch;
+	ASSERT_TRUE(mDevice->GetCudaCapabilities());
+	ASSERT_FALSE(mDevice->GetCudaCapabilities().mbSurfaceAccess);
+	EXPECT_TRUE(FArdaOptionalCudaNode::CheckRequiredFeatures(mDevice.Get(), {7}));
+
+	FArdaDependencyGraph Graph(mDevice);
+	FArdaGraphEdit Edit(Graph);
+	const auto Operation = FArdaOptionalCudaNode{}(Edit, FArdaAdmissionValueParameters{7}, "compute alternative");
+	ASSERT_TRUE(Operation) << Edit.GetStatus().mMessage.c_str();
+	const auto& Node = Graph.GetTopology().TryGetNode(Operation.GetHandle())->mPayload;
+	EXPECT_EQ(Node.mDefinition->mKind, EArdaDependencyNodeKind::Compute);
+	EXPECT_FALSE(Graph.GetNodeDescription(Node.mHandle).mRequirements.mbRequireCuda);
+	EXPECT_TRUE(Edit.Commit());
 }
 
 TEST_F(FArdaDependencyRequirementsTest, UnavailableComputeAlternativeRejectsBeforePreparation)

@@ -10,14 +10,17 @@ from html.parser import HTMLParser
 import argparse
 import hashlib
 import json
-import math
 import re
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from HtmlDocumentation import document, shell
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 OUT = ROOT / 'Docs/Essays/arda-graph-and-inductor.html'
-TITLE = 'How Arda Turns a Graph into GPU Work'
-DECK = 'A detailed journey through ArdaGraph, typed dependency graphs, Inductor compilation, offline model export, memory planning, scheduling, and the runtime that turns a declared program into completed GPU work.'
+TITLE = 'How Arda turns a graph into GPU work'
+DECK = 'Follow a GPU workload from typed resource declarations through dependency analysis, scheduling, memory reuse, and completion.'
 
 
 class Headings(HTMLParser):
@@ -93,8 +96,8 @@ def render(verify=False):
     evidence = sources(verify)
     snapshot = json.loads((HERE / 'snapshot.json').read_text(encoding='utf-8'))
     body += '''\n<section class="chapter" id="source-notes"><h2>Reading the source behind the diagrams</h2>
-<p>The compiler and GPU-runtime source study below records the local working tree captured on 14 October 2026. The execution chapters were updated on 18 November 2026 for caller-driven recording and submission. The current canonical API reference documents those changes. They identify the inspected files and record SHA-256 hashes of their normalized lines, providing evidence for the original snapshot rather than a claim that another checkout has identical declarations.</p>
-<p>The article’s generators and evidence live under <code>Scripts/Docs/arda_graph_essay/</code>. Run <code>build.py --check --verify-source</code> against the matching working tree to verify both the authored page and its source ranges. The <a href="assets/arda-graph/source-snapshot.json">source snapshot manifest</a> records complete file hashes. All timeline costs, memory sizes and sample values in the original diagrams are teaching examples, not benchmark measurements.</p>
+<p>These notes record source ranges and SHA-256 hashes from the working tree on 14 October 2026. The execution chapters were updated on 18 November 2026 to describe caller-driven recording and submission. See the <a href="../ArdaRDG/api-reference.html">ArdaDependencyGraph API reference</a> for the current contract.</p>
+<p>Run <code>python Scripts/Docs/arda_graph_essay/build.py --check --verify-source</code> against the matching working tree to verify the page and its source ranges. The <a href="assets/arda-graph/source-snapshot.json">source snapshot manifest</a> records full file hashes. Timeline costs, memory sizes, and sample values in the diagrams are illustrative.</p>
 '''
     for record in evidence:
         body += f'''<div class="source-note" id="source-{escape(record['id'])}"><p><strong>{escape(record['id'])}.</strong> {escape(record['claim'])}<br><code>{escape(record['path'])}:{record['line']}–{record['end_line']}</code><br><small>Range SHA-256: <code>{escape(record['sha256'])}</code></small></p></div>\n'''
@@ -104,29 +107,18 @@ def render(verify=False):
     assert len(parsed.items) >= 15, 'Expected a sustained chapter-based essay'
     assert len({id for id, _ in parsed.items}) == len(parsed.items)
     count = len(re.findall(r"\b[\w’'-]+\b", ' '.join(parsed.words)))
-    nav = ''.join(f'<li><a href="#{escape(id)}"><span>{i:02}</span>{escape(label)}</a></li>'
-                  for i, (id, label) in enumerate(parsed.items, 1))
-    numbering = iter(range(1, len(parsed.items) + 1))
-    body = re.sub(r'<h2>', lambda _: f'<h2><span class="chapter-number" aria-hidden="true">{next(numbering):02}</span>', body)
     # Authored figures and tables remain readable without JavaScript.
     body = re.sub(r'(<figure[^>]*>)\s*(<img\b[^>]*src="[^"]+\.svg"[^>]*>)',
                   lambda m: m[1] + '<div class="figure-scroll" tabindex="0" role="region" aria-label="Scrollable technical diagram">' + m[2] + '</div>', body)
     body = re.sub(r'(<figure[^>]*>\s*<div class="figure-scroll"[^>]*><img\b[^>]*src="([^"]+\.svg)"[^>]*></div>\s*<figcaption>)(.*?)(</figcaption>)',
                   lambda m: m[1] + m[3] + f' <a href="{m[2]}">Open diagram at full size</a>.' + m[4], body, flags=re.S)
-    page = f'''<!doctype html>
-<!-- Generated from authored chapters by Scripts/Docs/arda_graph_essay/build.py. -->
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="{escape(DECK)}"><title>{TITLE} · Ardashir</title>
-<link rel="stylesheet" href="../assets/articles.css"><link rel="stylesheet" href="assets/arda-graph/essay.css">
-<script src="../assets/glossary-data.js" defer></script><script src="../assets/articles.js" defer></script>
-</head><body><a class="skip-link" href="#article">Skip to article</a>
-<header class="masthead" id="top"><a class="wordmark" href="../index.html">Ardashir</a><span class="publication">Technical essays</span><a class="docs-link" href="../index.html">Documentation ↗</a></header>
-<nav class="essay-links" aria-label="Related documentation"><a href="../ArdaRDG/index.html">ArdaDependencyGraph</a><a href="../ArdaBackend/index.html">GPU backend</a></nav>
-<header class="article-heading"><p class="kicker">Graph and compiler engineering</p><h1>{TITLE}</h1><p class="deck">{DECK}</p>
-<p class="byline">Current working-tree source study · <time datetime="2026-10-14">14 October 2026</time><br>{count:,} words · approximately {math.ceil(count/200)} minutes</p></header>
-<div class="reading-bar"><div class="reading-bar-inner"><details class="contents"><summary>Chapters <span aria-hidden="true">↓</span></summary><nav aria-label="Article chapters"><ol>{nav}</ol></nav></details><span class="reading-position">Arda graph and Inductor</span><a class="top-link" href="#top" aria-label="Back to the beginning">↑</a><button type="button" class="theme-button" aria-label="Switch to dark appearance" hidden>Dark</button></div><div class="progress" aria-hidden="true"><span></span></div></div>
-<main id="article" tabindex="-1"><article class="prose">{body}</article></main>
-<footer class="article-footer"><p>Source boundary: working-tree snapshot based on <code>{snapshot['base_commit'][:12]}</code>, with local graph/compiler changes recorded in the source manifest. Descriptions of behavior are source-backed; explanatory cost models are illustrative.</p><p><a href="#top">Back to the beginning</a> · <a href="../index.html">Documentation</a> · <a href="../glossary.html">Graphics glossary</a></p></footer></body></html>'''
+    body = (f'<header class="page-header" id="article"><h1>{TITLE}</h1><p>{DECK}</p>'
+            '<p class="byline">Source snapshot from <time datetime="2026-10-14">14 October 2026</time></p></header>\n'
+            + body + f'<p class="snapshot-note">Working-tree snapshot based on <code>{snapshot["base_commit"][:12]}</code>. '
+            'The source manifest records the local graph and compiler changes. Diagrams use illustrative cost models.</p>')
+    page = document(TITLE + " | Ardashir", DECK,
+                    shell("Essays", OUT.name, TITLE, body, parsed.items), "Essays",
+                    styles=("assets/arda-graph/essay.css",))
     return '\n'.join(line.rstrip() for line in page.splitlines()) + '\n', count, len(parsed.items)
 
 

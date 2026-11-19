@@ -6,5 +6,6 @@ add_subdirectory(ArdaBackend)
 add_subdirectory(ArdaBackendImpls)
 ardashir_finalize_backend_modules()
 
+add_subdirectory(ArdaNativeCompute)
 add_subdirectory(ArdaGraph)
 add_subdirectory(ArdaDependencyGraph)

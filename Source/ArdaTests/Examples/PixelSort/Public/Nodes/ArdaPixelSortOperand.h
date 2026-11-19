@@ -1,10 +1,17 @@
 #pragma once
-// Start here when writing your own CUDA operand. This header is shared by the
-// node implementation and the nvcc translation unit; CUDA SDK types stay in .cu.
-#include "RHI/Shaders/ArdaComputeOperand.h"
+#include "RHI/CUDA/ArdaCudaParameters.h"
+#include <EASTL/shared_ptr.h>
 
 namespace arda
 {
+	class FArdaNativeComputeRegistry;
+	struct FArdaNativeInvocation;
+
+	inline constexpr char ArdaPixelSortOperandId[] = "PixelSort.Radix";
+	inline constexpr uint32_t ArdaPixelSortItemsPerThread = 4;
+	inline constexpr uint32_t ArdaPixelSortRowThreads = 128;
+	inline constexpr uint32_t ArdaPixelSortColumnThreads = 256;
+
 	// Declare the physical pixel layout, not a display color type. On this x64
 	// example the kernel reads these four bytes as uint32_t: R is bits 0..7,
 	// G is 8..15, B is 16..23, and A is 24..31. Whole pixels move during sorting.
@@ -13,7 +20,7 @@ namespace arda
 		uint8_t mR, mG, mB, mA;
 	};
 
-// One field list generates both sides of the launch ABI:
+// One field list generates host storage, the CUDA ABI, and shader constants.
 //   FArdaPixelSortParameters        : retained RHI texture views + host scalar values
 //   FArdaPixelSortParameters::FArdaCuda : CUDA surface handles + copied scalar values
 // SURFACE declares the exact storage format and access used by the kernel.
@@ -31,36 +38,17 @@ namespace arda
 	VALUE(uint32_t, mThreshold)
 	ARDA_CUDA_PARAMETER_STRUCT(FArdaPixelSortParameters, ARDA_PIXEL_SORT_FIELDS)
 
-	// Per-variant host policy data. This payload is inspected by SelectKernel;
-	// it is not an extra kernel argument. The .cu template fixes these values
-	// in compiled code, so the registered payload must describe that code exactly.
-	struct FArdaPixelSortVariant
+	struct FArdaPixelSortShaderConstants
 	{
-		uint32_t mThreads, mTileSize;
-		bool mbVertical;
+#define ARDA_PIXEL_SORT_CONSTANT(T, Name) T Name;
+#define ARDA_PIXEL_SORT_SKIP_RESOURCE(...)
+		ARDA_PIXEL_SORT_FIELDS(ARDA_PIXEL_SORT_CONSTANT, ARDA_PIXEL_SORT_SKIP_RESOURCE, ARDA_PIXEL_SORT_SKIP_RESOURCE)
+#undef ARDA_PIXEL_SORT_SKIP_RESOURCE
+#undef ARDA_PIXEL_SORT_CONSTANT
 	};
+#undef ARDA_PIXEL_SORT_FIELDS
 
-	// The author supplies only binding and selection. The base owns final
-	// Dispatch/DispatchDeferred implementations, parameter freezing, validation
-	// and recording. Each successful nonempty dispatch selects one kernel.
-	class FArdaPixelSortOperand final : public TArdaComputeOperand<FArdaPixelSortParameters, FArdaPixelSortVariant>
-	{
-	public:
-		using TArdaComputeOperand::TArdaComputeOperand;
-
-		const char* GetName() const noexcept override
-		{
-			return "PixelSort.Radix";
-		}
-
-		// Called once per operand, including when GetOperandSupport is queried.
-		// Register all compiled choices here; do not inspect a frame or launch work.
-		void BindKernelVariants(FArdaRegistry&) const override;
-
-		// Called for each dispatch with compatible variants and host parameters.
-		// Return an ID and grid/block sizes; selection must have no side effects.
-		TArdaRHIResult<FArdaCudaKernelSelection> SelectKernel(const FArdaParameters&,
-		    const FArdaCudaSelectionContext&,
-		    const FArdaVariants&) const override;
-	};
+	FArdaRHIStatus CheckPixelSortNativeSupport(const IArdaRHIDevice* Device);
+	TArdaRHIResult<eastl::shared_ptr<const FArdaNativeComputeRegistry>> GetPixelSortRegistry();
+	TArdaRHIResult<FArdaNativeInvocation> MakePixelSortInvocation(const FArdaPixelSortParameters& Parameters);
 }

@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <EASTL/type_traits.h>
+#include "RHI/CUDA/ArdaRHICuda.h"
 #include "RHI/Shaders/ArdaComputeParameters.h"
 #include <cstring>
 #include <typeinfo>
@@ -114,7 +115,11 @@ namespace arda
          */
 		FArdaRHIStatus Prepare(const void* Parameters, FArdaCudaDispatch& Output) const;
 
+		/** Freeze values and views for variant selection, including resources usable by a shader fallback. */
+		FArdaRHIStatus PackArguments(const void* Parameters, FArdaCudaDispatch& Output) const;
+
 	private:
+		FArdaRHIStatus PackArguments(const void* Parameters, FArdaCudaDispatch& Output, bool bRequireCudaSharing) const;
 		FArdaCudaKernelSignature mSignature;
 		eastl::vector<FArdaCudaParameterMember> mMembers;
 		FArdaComputeParameterMetadata mHost;

@@ -8,11 +8,15 @@ import html
 import json
 import re
 import textwrap
+import sys
 from pathlib import Path
 
 from sync_api_inventories import evaluate_api
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "Scripts/Docs"))
+from HtmlDocumentation import document, shell
+
 DOCS = ROOT / "Docs/ArdaBackend"
 EXTENDED = "Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp"
 BACKEND = "Source/ArdaInfra/ArdaBackend/Tests/ArdaBackendTests.cpp"
@@ -154,14 +158,9 @@ def capabilities() -> list[dict]:
     return cases
 
 
-def page(title: str, intro: str, sections: list[tuple[str, str, str]], diagram: str, checkpoints: str = "", objectives: str = "") -> str:
-    template = (DOCS / "index.html").read_text(encoding="utf-8")
-    template = re.sub(r"<title>.*?</title>", f"<title>{html.escape(title)} | ArdaBackend</title>", template)
-    template = re.sub(r'<meta name="description" content="[^"]*">', f'<meta name="description" content="{html.escape(intro, quote=True)}">', template)
-    template = template.replace('aria-current="page" href="index.html"', 'href="index.html"')
-    links = "".join(f'<a href="#{identifier}">{html.escape(label)}</a>' for identifier, label, _body in sections)
-    article = f'''<article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>{title}</h1><p>{intro}</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a>{links}<a href="#summary">Checkpoints</a></nav>
+def page(filename: str, title: str, intro: str, sections: list[tuple[str, str, str]], diagram: str, checkpoints: str = "", objectives: str = "") -> str:
+    article = f'''<header class="page-header"><h1>{html.escape(title)}</h1><p>{intro}</p></header>
+
 <section id="objectives"><h2>How to use these examples</h2>
 <p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
 <p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
@@ -171,17 +170,20 @@ def page(title: str, intro: str, sections: list[tuple[str, str, str]], diagram: 
 ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
 <p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section>'''
     article += "\n".join(f'<section id="{identifier}"><h2>{html.escape(label)}</h2>{body}</section>' for identifier, label, body in sections)
-    article += '''<section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>'''
+    article += '''<section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section>'''
     if checkpoints:
         article = re.sub(r'<section id="summary">.*?</section>', lambda _: '<section id="summary"><h2>Checkpoints and further reading</h2>' + checkpoints + '</section>', article, flags=re.S)
     if objectives:
         article = re.sub(r'<section id="objectives">.*?</section>', lambda _: '<section id="objectives"><h2>Learning objectives and prerequisites</h2>' + objectives + '</section>', article, flags=re.S)
-        article = article.replace('href="#objectives">How to use these examples', 'href="#objectives">Learning objectives')
     if diagram == "diagnostic-escalation.svg":
         article = article.replace("Representations and references preserve access and lifetime; commands and fences establish order.",
             "Start with the initialization result and native diagnostic; escalate to the validation layer and GPU tooling for successfully initialized workloads.")
-    # A callable replacement preserves C++ escapes such as \\n in copied string literals.
-    return re.sub(r"<article>.*?</article>\s*</main>", lambda _: article + "\n</main>", template, count=1, flags=re.S)
+    toc = [("objectives", "Learning objectives" if objectives else "How to use these examples")]
+    toc.extend((identifier, name) for identifier, name, _ in sections)
+    toc.append(("summary", "Checkpoints"))
+    return document(title + " | ArdaBackend", intro, shell("ArdaBackend", filename, title, article, toc),
+                    "ArdaBackend", scripts=("backend-api.js",))
+
 
 
 def generate() -> dict[Path, str]:
@@ -262,9 +264,9 @@ def generate() -> dict[Path, str]:
         '<p>The source-backed test environment below pairs each artifact name, source, entry point and compilation hook, then calls EnsureRegisteredShaderArtifacts for each linked backend. This also supplies the resource-collection and graphics-fallback variants used above. CMake supplies the source and output directory definitions; application deployments should use their own writable compiler cache and deployable artifact directory. See <a href="shaders.html">shader registration and compilation</a> for the application workflow.</p>'
         f'<details><summary>Artifact registrations and compilation environment</summary><pre><code class="language-cpp">{html.escape(shader_setup)}</code></pre></details>'))
     outputs = {
-        DOCS / "resource-recipes.html": page("Resource recipes", "Choose and use every public RHI resource kind, with allocation, ownership and CUDA representation guidance.", resource_sections, "rhi-data-and-queues.svg"),
-        DOCS / "capability-recipes.html": page("Capability recipes", "Admit every capability in the native conformance matrix and follow its executable usage example.", feature_sections, "rt-ml-capability-admission.svg"),
-        DOCS / "gpu-examples.html": page("Complete GPU examples", "Read the source-backed workloads behind the resource and capability recipes. Code is regenerated from the compiled tests.", examples, "cpu-gpu-queue-timeline.svg"),
+        DOCS / "resource-recipes.html": page("resource-recipes.html", "Resource recipes", "Choose an RHI resource, allocate it, and manage its lifetime and CUDA representation.", resource_sections, "rhi-data-and-queues.svg"),
+        DOCS / "capability-recipes.html": page("capability-recipes.html", "Capability recipes", "Check device capabilities before running the corresponding graphics or compute recipe.", feature_sections, "rt-ml-capability-admission.svg"),
+        DOCS / "gpu-examples.html": page("gpu-examples.html", "Complete GPU examples", "Read the compiled GPU tests behind the resource and capability recipes.", examples, "cpu-gpu-queue-timeline.svg"),
         DOCS / "recipe-coverage.json": json.dumps({"resources": resource_coverage, "capabilities": feature_coverage}, indent=2) + "\n",
     }
     outputs.update(integration_chapters(api_link))
@@ -289,7 +291,7 @@ def integration_chapters(api_link) -> dict[Path, str]:
     return {
         DOCS / "cuda-interop.html": cuda_page,
         DOCS / "cuda-graphics.html": cuda_graphics_chapter(api_link, page),
-        DOCS / "validation.html": page("GPU validation setup", "Provision debug layers locally, distinguish native layer failures and keep unavailable validation from failing unrelated tests.", validation_sections, "diagnostic-escalation.svg",
+        DOCS / "validation.html": page("validation.html", "GPU validation setup", "Install GPU debug layers and verify whether each suite exercises native validation.", validation_sections, "diagnostic-escalation.svg",
             '<p>Provisioning is best effort; the native loader determines whether validation is usable. Preserve unrelated device and workload failures.</p><ol><li>Which result permits ARDA_REQUIRE_BACKEND to skip?</li><li>Why does an explicit VK_LAYER_PATH override an automatically installed layer?</li><li>Why is a manifest whose library cannot load insufficient?</li><li>Which shader, device and resource errors must remain failures?</li></ol><p>Use <a href="#discovery">discovery</a>, <a href="#results">result handling</a> and <a href="diagnostics.html">diagnostics</a> to check your answers.</p>'),
     }
 

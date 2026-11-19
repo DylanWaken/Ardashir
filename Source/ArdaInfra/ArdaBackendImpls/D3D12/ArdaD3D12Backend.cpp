@@ -19,6 +19,7 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <windows.h>
+#include "ArdaD3D12Nvapi.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/array.h>
@@ -961,6 +962,8 @@ namespace arda
 			ComPtr<ID3D12PipelineState> mPipeline;
 			ComPtr<ID3D12RootSignature> mRootSignature;
 			eastl::vector<uint32_t> mLayoutItemCounts;
+			// NVIDIA's shader intrinsics use a reserved, null UAV descriptor.
+			eastl::shared_ptr<FArdaD3D12BindingSet> mNvapiBinding;
 			// Root indices are ordered across all layouts, including multiple blocks within one layout.
 			eastl::vector<uint32_t> mPushConstantRoots;
 			D3D12_PRIMITIVE_TOPOLOGY mTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -1674,6 +1677,10 @@ namespace arda
 			FArdaD3D12ProviderDevice* mNextQuarantined = nullptr;
 			FArdaRHIStatus Initialize();
 			FArdaRHIFormatSupport QueryFormatSupport(EArdaRHIFormat Format) const noexcept override;
+			FArdaRHIStatus CheckComputePipelineExtension(const FArdaRHIComputePipelineExtension& Extension) const override
+			{
+				return FArdaD3D12Nvapi::Get().Check(mD3DDevice.Get(), Extension);
+			}
 			TArdaRHIResult<FArdaRHIDiagnosticSnapshot> CaptureDiagnosticSnapshot() const override;
 
 			FArdaCudaCapabilities GetCudaCapabilities() const override
@@ -4924,8 +4931,28 @@ namespace arda
 				    "D3D12 compute shader has the wrong implementation."));
 			}
 			auto Pipeline = eastl::make_shared<FArdaD3D12Pipeline>();
-			auto Root =
-			    CreateRootSignature(Info.mBindingLayouts, Pipeline->mLayoutItemCounts, Pipeline->mPushConstantRoots);
+			eastl::vector<FArdaProviderObjectRef> NvapiLayouts;
+			const auto& Extension = Info.mDesc.mExtension;
+			if (!Extension.mId.empty())
+			{
+				if (auto Status = CheckComputePipelineExtension(Extension); !Status)
+				{
+					return Fail<FArdaProviderObjectRef>(eastl::move(Status));
+				}
+				auto NvLayout = eastl::make_shared<FArdaD3D12BindingLayout>();
+				NvLayout->mDesc.mVisibility = EArdaRHIShaderStage::Compute;
+				NvLayout->mDesc.mRegisterSpace = Extension.mArguments[1];
+				NvLayout->mDesc.mItems.push_back({Extension.mArguments[0], 1, EArdaRHIBindingType::StructuredBufferUAV});
+				auto NvBinding = CreateBindingSet({}, NvLayout, {});
+				if (!NvBinding)
+				{
+					return NvBinding;
+				}
+				Pipeline->mNvapiBinding = eastl::static_pointer_cast<FArdaD3D12BindingSet>(NvBinding.mValue);
+				NvapiLayouts = Info.mBindingLayouts;
+				NvapiLayouts.push_back(eastl::move(NvLayout));
+			}
+			auto Root = CreateRootSignature(Extension.mId.empty() ? Info.mBindingLayouts : NvapiLayouts, Pipeline->mLayoutItemCounts, Pipeline->mPushConstantRoots);
 			if (!Root)
 			{
 				return Fail<FArdaProviderObjectRef>(eastl::move(Root.mStatus));
@@ -4934,6 +4961,12 @@ namespace arda
 			D3D12_COMPUTE_PIPELINE_STATE_DESC Desc{};
 			Desc.pRootSignature = Pipeline->mRootSignature.Get();
 			Desc.CS = {Shader->mBytecode.data(), Shader->mBytecode.size()};
+			if (!Extension.mId.empty())
+			{
+				auto Status = FArdaD3D12Nvapi::Get().Create(mD3DDevice.Get(), Extension, Desc,
+				    Pipeline->mPipeline.GetAddressOf());
+				return Status ? FArdaProviderObjectResult{Pipeline, {}} : Fail<FArdaProviderObjectRef>(eastl::move(Status));
+			}
 			HRESULT Result = E_FAIL;
 			if (mPipelineLibrary && Info.mDesc.mPersistentCacheKey != 0)
 			{
@@ -7462,7 +7495,7 @@ namespace arda
 			{
 				FArdaD3D12BindingSet* Set = LayoutIndex < Bindings.size()
 				    ? dynamic_cast<FArdaD3D12BindingSet*>(Bindings[LayoutIndex].get())
-				    : nullptr;
+				    : Pipeline.mNvapiBinding.get();
 				const uint32_t TableCount = Pipeline.mLayoutItemCounts[LayoutIndex];
 				if (Set && Set->mTables.size() < TableCount)
 				{

@@ -3,90 +3,130 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A practical guide to initializing an ArdaBackend device and context, then building headless, externally integrated, or presented compute, raster, and ray-tracing workloads.">
-  <title>Quick user's guide | Ardashir</title>
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Initialize a backend and run compute, raster, and hardware ray-tracing workloads, with optional window presentation.">
+  <title>Quick user&#x27;s guide | Ardashir</title>
+  <script>
+    (() => {
+      let preference = "dark";
+      try {
+        preference = localStorage.getItem("arda-theme") || preference;
+      } catch {
+        // Local files and privacy settings can disable storage.
+      }
+      const systemLight = preference === "system" && !matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = preference === "light" || systemLight ? "light" : "dark";
+    })();
+  </script>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
   <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/doc-search-index.js" defer></script>
   <script src="../assets/site.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
-  <header class="site-header">
-    <a class="site-brand" href="../index.html">Ardashir Docs</a>
-    <nav aria-label="Primary">
-      <a href="index.html">ArdaBackend</a>
-      <a href="architecture.html">Architecture</a>
-      <a aria-current="page" href="quick-guide.html">Quick guide</a>
-      <a href="getting-started.html">Get started</a>
-      <a href="api-reference.html">API</a>
-      <a href="../glossary.html">Glossary</a>
-    </nav>
-  </header>
-  <div class="site-layout">
-    <aside class="sidebar" aria-label="ArdaBackend pages">
-      <h2>ArdaBackend</h2>
-      <nav>
-        <a href="index.html">Overview</a>
-        <a aria-current="page" href="quick-guide.html">Quick user's guide</a>
-        <a href="getting-started.html">Getting started</a>
-        <a href="architecture.html">Architecture</a>
-        <a href="backend-modules.html">Backend modules</a>
-        <a href="external-interop.html">External interop</a>
-        <a href="shaders.html">Shaders</a>
-        <a href="pipelines.html">Pipeline states</a>
-        <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
-
-        <a href="resource-recipes.html">Resource recipes</a>
-        <a href="capability-recipes.html">Capability recipes</a>
-        <a href="cuda-interop.html">CUDA and graphics</a>
-        <a href="validation.html">GPU validation setup</a>
-        <a href="commands.html">Commands</a>
-        <a href="presentation.html">Presentation</a>
-        <a href="diagnostics.html">Diagnostics</a>
-        <a href="api-reference.html">API reference</a>
-      </nav>
-    </aside>
-    <main id="main-content" tabindex="-1">
-      <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href="../index.html">Docs</a> /
-        <a href="index.html">ArdaBackend</a> /
-        Quick user's guide
-      </nav>
-      <article>
-        <header class="page-header">
-          <p class="eyebrow">Start with a device; add only the systems you need</p>
-          <h1>ArdaBackend quick user's guide</h1>
-          <p>This is the shortest source-backed path from a CMake target to an initialized device context. From that common root, the guide branches into host-owned external resources, optional window presentation, shaders, compute, raster, and capability-gated ray tracing. A workload may write an externally owned texture or buffer and end without ever creating a window.</p>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header" id="top">
+  <a class="announcement" href="../ArdaRDG/native-compute.html"><span aria-hidden="true">//</span> Write a native compute node <svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+  <div class="site-header__bar"><div class="site-header__inner">
+    <a class="site-brand" href="../index.html" aria-label="Ardashir home">Ardashir</a>
+    <nav class="site-nav" aria-label="Primary"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav>
+    <div class="header-tools"><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="index.html">GPU backend</a>
+<a href="../ArdaRDG/index.html">Dependency graph</a>
+<a href="../ArdaNativeCompute/index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button><div class="theme-control" hidden><button type="button" class="theme-toggle" data-theme-toggle aria-label="Change theme" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg></button><div class="theme-menu" id="theme-menu" role="menu" aria-label="Theme" hidden><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="dark"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg>Dark</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="light"><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Light</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="system"><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg>System</button></div></div>
+      <details class="mobile-nav"><summary aria-label="Navigation menu"><svg class="icon icon-menu" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></summary>
+        <div class="mobile-nav-panel"><nav aria-label="Primary navigation"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button></div>
+      </details>
+    </div>
+  </div></div>
+</header>
+<nav class="mobile-docs" aria-label="Docs menu"><details class="docs-menu"><summary><svg class="icon icon-list" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zm5 0v16"/></svg><span>Docs menu</span><span aria-hidden="true">/</span><span class="current-title">Run a workload with ArdaBackend</span><svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+  <div class="mobile-docs-panel"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="../ArdaRDG/getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="../ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="quick-guide.html" aria-current="page">Quick guide</a>
+<a href="architecture.html">Architecture</a></div></details>
+<details class="sidebar-group" open><summary>Rendering hardware interface<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="backend-modules.html">Backend modules</a>
+<a href="rhi.html">Resources and memory</a>
+<a href="resource-recipes.html">Resource recipes</a>
+<a href="gpu-allocator.html">GPU allocator</a>
+<a href="commands.html">Commands and submission</a>
+<a href="external-interop.html">External devices and resources</a>
+<a href="shaders.html">Shaders</a>
+<a href="pipelines.html">Pipeline states</a>
+<a href="presentation.html">Presentation</a>
+<a href="diagnostics.html">Diagnostics</a></div></details>
+<details class="sidebar-group"><summary>CUDA interoperability<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="cuda-graphics.html">How CUDA works with graphics</a>
+<a href="cuda-interop.html">Precompiled CUDA operands</a>
+<a href="cuda-sequences.html">CUDA sequences</a>
+<a href="cuda-external-calls.html">External CUDA calls</a>
+<a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+<a href="cuda-backend-plan.html">CUDA implementation record</a></div></details>
+<details class="sidebar-group"><summary>Reference and testing<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="api-reference.html">API reference</a>
+<a href="rhi-feature-guide.html">RHI feature guide</a>
+<a href="capability-recipes.html">Capability recipes</a>
+<a href="gpu-examples.html">Complete GPU examples</a>
+<a href="validation.html">GPU validation setup</a>
+<a href="validation-tests.html">Validation test suites</a>
+<a href="unreal-rhi-audit.html">Unreal RHI comparison</a>
+<a href="unreal-rhi-parity-plan.html">Unreal RHI parity review</a>
+<a href="simplification-review.html">Backend and graph review</a>
+<a href="documentation.html">Maintain this documentation</a></div></details></nav><details class="sidebar-group mobile-outline"><summary>On this page<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="#objectives">Objectives</a><a href="#prerequisites">Prerequisites</a><a href="#build">Build and include</a><a href="#startup">Device and context setup</a><a href="#external-interop">External device and resource setup</a><a href="#window">Optional window presentation</a><a href="#shaders">Shaders</a><a href="#resources">Persistent resources</a><a href="#pipelines">Pipeline cache</a><a href="#frame">Presented frame order</a><a href="#compute">Compute recipe</a><a href="#raster">Raster recipe</a><a href="#ray-tracing">Ray tracing recipe</a><a href="#resize">Resize</a><a href="#errors">Diagnostics and status</a><a href="#lifetime">Lifetime and shutdown</a><a href="#api-paths">Curated API paths</a><a href="#summary">Summary</a><a href="#next-steps">Next steps</a></div></details></div>
+</details><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="index.html">GPU backend</a>
+<a href="../ArdaRDG/index.html">Dependency graph</a>
+<a href="../ArdaNativeCompute/index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details></nav>
+<div class="site-layout">
+  <aside class="sidebar" aria-label="Docs sidebar"><div class="sidebar-inner"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="../ArdaRDG/getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="../ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="quick-guide.html" aria-current="page">Quick guide</a>
+<a href="architecture.html">Architecture</a></div></details>
+<details class="sidebar-group" open><summary>Rendering hardware interface<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="backend-modules.html">Backend modules</a>
+<a href="rhi.html">Resources and memory</a>
+<a href="resource-recipes.html">Resource recipes</a>
+<a href="gpu-allocator.html">GPU allocator</a>
+<a href="commands.html">Commands and submission</a>
+<a href="external-interop.html">External devices and resources</a>
+<a href="shaders.html">Shaders</a>
+<a href="pipelines.html">Pipeline states</a>
+<a href="presentation.html">Presentation</a>
+<a href="diagnostics.html">Diagnostics</a></div></details>
+<details class="sidebar-group"><summary>CUDA interoperability<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="cuda-graphics.html">How CUDA works with graphics</a>
+<a href="cuda-interop.html">Precompiled CUDA operands</a>
+<a href="cuda-sequences.html">CUDA sequences</a>
+<a href="cuda-external-calls.html">External CUDA calls</a>
+<a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+<a href="cuda-backend-plan.html">CUDA implementation record</a></div></details>
+<details class="sidebar-group"><summary>Reference and testing<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="api-reference.html">API reference</a>
+<a href="rhi-feature-guide.html">RHI feature guide</a>
+<a href="capability-recipes.html">Capability recipes</a>
+<a href="gpu-examples.html">Complete GPU examples</a>
+<a href="validation.html">GPU validation setup</a>
+<a href="validation-tests.html">Validation test suites</a>
+<a href="unreal-rhi-audit.html">Unreal RHI comparison</a>
+<a href="unreal-rhi-parity-plan.html">Unreal RHI parity review</a>
+<a href="simplification-review.html">Backend and graph review</a>
+<a href="documentation.html">Maintain this documentation</a></div></details></nav></div></aside>
+  <main id="main-content" tabindex="-1">
+    <article class="prose" data-doc-article>
+<header class="page-header">
+          <h1>Run a workload with ArdaBackend</h1>
+          <p>Initialize a backend and run compute, raster, and hardware ray-tracing workloads, with optional window presentation.</p>
         </header>
 
-        <aside class="callout">
-          <h2>Evidence badges used on this page</h2>
-          <p><span class="status">DEMONSTRATED</span> means the sequence appears in <code>RHITest</code> or <code>ARDGExample</code> and is exercised by their GPU test targets. <span class="status">TESTED API PATH</span> means focused backend tests exercise the API components, but not necessarily as a complete application. <span class="status">SYNTHESIZED / NOT YET COVERED BY AN END-TO-END SAMPLE</span> means the sequence is assembled from public contracts and implemented API paths; integration remains the application's responsibility.</p>
-        </aside>
+        <p>The GPU tests for <code>RHITest</code> and <code>ARDGExample</code> exercise the presented graphics workflow. Focused backend tests cover headless initialization, external device adoption, resource creation, and supported ray-tracing operations. The external resource and ray-tracing sections describe the steps your application must integrate.</p>
 
-        <nav class="toc" aria-label="On this page">
-          <h2>On this page</h2>
-          <a href="#objectives">Objectives</a>
-          <a href="#prerequisites">Prerequisites</a>
-          <a href="#build">Build and include</a>
-          <a href="#startup">Device and context setup</a>
-          <a href="#external-interop">External device and resource setup</a>
-          <a href="#window">Optional window presentation</a>
-          <a href="#shaders">Shaders</a>
-          <a href="#resources">Persistent resources</a>
-          <a href="#pipelines">Pipeline cache</a>
-          <a href="#frame">Presented frame order</a>
-          <a href="#compute">Compute recipe</a>
-          <a href="#raster">Raster recipe</a>
-          <a href="#ray-tracing">Ray tracing recipe</a>
-          <a href="#resize">Resize</a>
-          <a href="#errors">Diagnostics and status</a>
-          <a href="#lifetime">Lifetime and shutdown</a>
-          <a href="#api-paths">Curated API paths</a>
-          <a href="#summary">Summary</a>
-          <a href="#next-steps">Next steps</a>
-        </nav>
+
 
         <section id="objectives">
           <h2>Objectives</h2>
@@ -118,8 +158,8 @@
 
         <section id="build">
           <h2>1. Link the target and include the public API</h2>
-          <p><span class="status">DEMONSTRATED</span> Start with the exported core target. The root build links and explicitly registers whichever backend-module libraries its CMake options select. Add the render graph, GLFW, or native Vulkan headers only when the selected integration uses them.</p>
-          <p>The repository currently defines these targets only from its source tree; it does not install a CMake package or provide a supported <code>find_package(Ardashir)</code> flow. Build your application from a parent project that brings this repository in with <code>add_subdirectory(path/to/Ardashir)</code>, or add the application beneath the root build. Runtime registered-shader compilation has no custom-command or per-shader CMake dependency: CMake may supply a default DXC path, but Arda discovers jobs from linked registrations.</p>
+          <p>Start with the exported core target. The root build links and explicitly registers whichever backend-module libraries its CMake options select. Add the render graph, GLFW, or native Vulkan headers only when the selected integration uses them.</p>
+          <p>The repository defines these targets only from its source tree; it does not install a CMake package or provide a supported <code>find_package(Ardashir)</code> flow. Build your application from a parent project that brings this repository in with <code>add_subdirectory(path/to/Ardashir)</code>, or add the application beneath the root build. Runtime registered-shader compilation has no custom-command or per-shader CMake dependency: CMake may supply a default DXC path, but Arda discovers jobs from linked registrations.</p>
           <pre><code>add_executable(MyGpuApp ${MY_SOURCES})
 target_compile_features(MyGpuApp PRIVATE cxx_std_17)
 target_link_libraries(MyGpuApp PRIVATE
@@ -156,7 +196,7 @@ endif()</code></pre>
           </figure>
 
           <h3>Arda-created headless device</h3>
-          <p><span class="status">TESTED API PATH</span> Use this branch for compute, offscreen rendering, resource processing, or tests that do not present. It is also the minimal setup from which the remaining non-presentation recipes operate.</p>
+          <p>Use this branch for compute, offscreen rendering, resource processing, or tests that do not present. It is also the minimal setup from which the remaining non-presentation recipes operate.</p>
           <pre><code>using namespace arda;
 
 arda::FArdaBackendConfiguration config;
@@ -195,7 +235,7 @@ if (!device || !context.mQueueCapabilities.mbGraphics)
           <p>Use this branch when an engine already owns the native device, queues, resources, and presentation. It is headless/host-presented: select the exact adapter module where possible, configure <a href="api-reference.html#api-arda-backend-eardadevicesource-3877d02f"><code>EArdaDeviceSource</code></a> for an external provider, and call <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend</code></a>, not presentation initialization. A module receives the universal external-device descriptor and performs any native translation privately. Both checked-in native D3D12 and Vulkan modules support this host-presented path. Adopted devices can also use an Arda-managed swap chain when their native presentation requirements are met. Read <a href="external-interop.html">External devices and resources</a> before integrating a production engine.</p>
 
           <h3>D3D12 provider recipe</h3>
-          <p><span class="status">TESTED API PATH</span> Focused backend tests exercise provider registration and external D3D12 initialization. Implement <a href="api-reference.html#api-arda-backend-iardaexternaldeviceprovider-f1c0d75e"><code>IArdaExternalDeviceProvider</code></a> and return a copied <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> whose <code>mNativeApi</code> is <code>d3d12</code>, with a device and graphics queue. The optional token should pin the host/plugin lifetime.</p>
+          <p>Focused backend tests exercise provider registration and external D3D12 initialization. Implement <a href="api-reference.html#api-arda-backend-iardaexternaldeviceprovider-f1c0d75e"><code>IArdaExternalDeviceProvider</code></a> and return a copied <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> whose <code>mNativeApi</code> is <code>d3d12</code>, with a device and graphics queue. The optional token should pin the host/plugin lifetime.</p>
           <pre><code>FArdaD3D12Provider provider(device, graphicsQueue, pluginLifetime);
 if (!arda::RegisterExternalDeviceProvider(provider))
     return Fail(arda::GetBackendError());
@@ -213,7 +253,7 @@ arda::FArdaRHIDeviceRef device =
           <p>The native D3D12 wrapper retains required COM references but never assumes host ownership. Establish an exclusive/coordinated host queue interval around every Arda submission, then release all copied Arda references before native/plugin teardown.</p>
 
           <h3>Vulkan provider recipe</h3>
-          <p><span class="status">TESTED API PATH</span> Fill the same <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> with the Vulkan instance, physical and logical devices, exact graphics queue family/index, optional queues, and the exact <a href="external-interop.html#vulkan">Vulkan property vocabulary</a>: <code>vulkan.api-version</code>, repeated <code>vulkan.device-extension</code> and repeated <code>vulkan.enabled-feature</code>. Vulkan 1.3 dynamic rendering, synchronization2 and timeline semaphore must be enabled. Physical-device support is validated, while enabled-feature properties remain host assertions. Validation requests also require <code>vulkan.validation=enabled</code> and host-created diagnostics.</p>
+          <p>Fill the same <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> with the Vulkan instance, physical and logical devices, exact graphics queue family/index, optional queues, and the exact <a href="external-interop.html#vulkan">Vulkan property vocabulary</a>: <code>vulkan.api-version</code>, repeated <code>vulkan.device-extension</code> and repeated <code>vulkan.enabled-feature</code>. Vulkan 1.3 dynamic rendering, synchronization2 and timeline semaphore must be enabled. Physical-device support is validated, while enabled-feature properties remain host assertions. Validation requests also require <code>vulkan.validation=enabled</code> and host-created diagnostics.</p>
           <pre><code>VulkanProvider provider(
     instance, physicalDevice, device,
     graphicsQueue, graphicsFamily, graphicsIndex,
@@ -225,7 +265,7 @@ RegisterAndInitializeExternal(
           <p>Raw Vulkan handles are not reference-counted. Host/token lifetime and Vulkan host synchronization must cover every Arda wrapper and GPU use. This recipe is assembled from implemented contracts; it is not an end-to-end Vulkan or Unreal sample.</p>
 
           <h3>Named texture and buffer recipe</h3>
-          <p><span class="status">SYNTHESIZED / CONTRACT PATH</span> Implement <a href="api-reference.html#api-arda-backend-iardaexternalresourceprovider-4c32a8df"><code>IArdaExternalResourceProvider</code></a> with a stable name and generation-aware IDs. Resolution returns a truthful complete native description and canonical <a class="term" data-term="lifetime-token" href="../glossary.html#term-lifetime-token">lifetime token</a>. Register before lookup, then call <a href="api-reference.html#api-arda-backend-importexternaltexture-6d277d20"><code>ImportExternalTexture</code></a> or <a href="api-reference.html#api-arda-backend-importexternalbuffer-13f26bef"><code>ImportExternalBuffer</code></a>.</p>
+          <p>Implement <a href="api-reference.html#api-arda-backend-iardaexternalresourceprovider-4c32a8df"><code>IArdaExternalResourceProvider</code></a> with a stable name and generation-aware IDs. Resolution returns a truthful complete native description and canonical <a class="term" data-term="lifetime-token" href="../glossary.html#term-lifetime-token">lifetime token</a>. Register before lookup, then call <a href="api-reference.html#api-arda-backend-importexternaltexture-6d277d20"><code>ImportExternalTexture</code></a> or <a href="api-reference.html#api-arda-backend-importexternalbuffer-13f26bef"><code>ImportExternalBuffer</code></a>.</p>
           <pre><code>EngineResourceProvider resources("Engine", pluginLifetime);
 if (!arda::RegisterExternalResourceProvider(resources))
     return Fail(arda::GetBackendError());
@@ -243,7 +283,7 @@ RecordSubmitAndRetireInsideHostQueueInterval(target.mValue, data.mValue);
 
         <section id="window">
           <h2>4. Optional: add Arda-owned window presentation</h2>
-          <p><span class="status">DEMONSTRATED</span> Skip this section for headless work or host-owned presentation. For an Arda-created presented device, create GLFW with <code>GLFW_CLIENT_API = GLFW_NO_API</code>. Your adapter implements three <a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a> responsibilities:</p>
+          <p>Skip this section for headless work or host-owned presentation. For an Arda-created presented device, create GLFW with <code>GLFW_CLIENT_API = GLFW_NO_API</code>. Your adapter implements three <a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a> responsibilities:</p>
           <ul>
             <li>return an encoded HWND from <code>glfwGetWin32Window</code> for D3D12 on Windows;</li>
             <li>copy the names returned by <code>glfwGetRequiredInstanceExtensions</code> for Vulkan initialization; and</li>
@@ -305,10 +345,10 @@ config.mShaderCacheDirectory =
           <p><code>LoadOnly</code> never launches DXC and eagerly loads deployed artifacts. <code>Startup</code> validates or compiles every selected active-backend permutation before creating the native device, then eagerly creates map objects. <code>OnDemand</code> defers ensure, file loading, and RHI creation until the first lookup of a slot. Non-debug builds default the two compiler switches to false, so set policy explicitly.</p>
 
           <h3>Exact ray-tracing test artifacts</h3>
-          <p><span class="status">TESTED API PATH</span> With <code>ARDASHIR_BUILD_TESTS=ON</code>, the backend test target compiles <code>ArdaRayTracingTest.hlsl</code> as a <code>lib_6_3</code> DXIL library and as Vulkan 1.2 SPIR-V with <code>SPV_KHR_ray_tracing</code>. The library exports the baseline <code>RayGen</code> entry plus <code>KnownSceneRayGen</code>, <code>KnownMiss</code>, and <code>KnownClosestHit</code> for deterministic scene traversal. The scene path declares a TLAS at <code>t0</code> and an output UAV at <code>u0</code>; Vulkan compilation applies the backend's register-shift policy, and the shader metadata and descriptor layout use the same logical slots.</p>
+          <p>With <code>ARDASHIR_BUILD_TESTS=ON</code>, the backend test target compiles <code>ArdaRayTracingTest.hlsl</code> as a <code>lib_6_3</code> DXIL library and as Vulkan 1.2 SPIR-V with <code>SPV_KHR_ray_tracing</code>. The library exports the baseline <code>RayGen</code> entry plus <code>KnownSceneRayGen</code>, <code>KnownMiss</code>, and <code>KnownClosestHit</code> for deterministic scene traversal. The scene path declares a TLAS at <code>t0</code> and an output UAV at <code>u0</code>; Vulkan compilation applies the backend's register-shift policy, and the shader metadata and descriptor layout use the same logical slots.</p>
 
           <h3>Register virtual source and use the configured global map</h3>
-          <p><span class="status">DEMONSTRATED</span> This is the <code>ARDGExample</code> path and is convenient when typed parameters and pipeline initializers should derive from registered shaders.</p>
+          <p>This is the <code>ARDGExample</code> path and is convenient when typed parameters and pipeline initializers should derive from registered shaders.</p>
           <pre><code>class FArdaMyComputeShader final : public arda::FArdaGlobalShader
 {
 public:
@@ -353,13 +393,13 @@ if (!shader)
           <p>Virtual paths must be rooted, unique, and beneath the mapped root. A shader with exactly one permutation uses the artifact stem <code>&lt;OutputStem&gt;</code>; a shader with multiple permutations uses <code>&lt;OutputStem&gt;_P&lt;PermutationId&gt;</code> for every encoded ID, including <code>_P0</code>. Append the backend extension: <code>.dxil</code> for D3D12 or <code>.spv</code> for Vulkan. The configured overload writes beneath <code>mShaderCacheDirectory</code>, and each compiled artifact receives a persistent <code>.arda-key</code> sidecar.</p>
 
           <h3>Optional explicit cook and exact example CLI</h3>
-          <p><span class="status">DEMONSTRATED</span> The example can force-cook every selected registered permutation for both backends and atomically publish <code>ArdaShaderManifest.json</code>:</p>
+          <p>The example can force-cook every selected registered permutation for both backends and atomically publish <code>ArdaShaderManifest.json</code>:</p>
           <pre><code>ARDGExample --arda-cook-shaders CookedShaders \
     --shader-source path/to/ARDGExample/Private/Nodes/Shaders</code></pre>
           <p>Normal execution accepts <code>--shader-mode startup|ondemand|load-only</code>, <code>--shader-cache &lt;directory&gt;</code>, and <code>--shader-source &lt;directory&gt;</code>. In ARDGExample, <code>--shader-source</code> selects the physical directory mapped to the example's virtual shader root; it is not <code>FArdaShaderCompilerConfiguration::mSourceRoot</code>. Cook is optional; <code>Startup</code> and <code>OnDemand</code> preserve valid sidecar hits instead of force-recompiling.</p>
 
           <h3>Path B: direct bytecode</h3>
-          <p><span class="status">DEMONSTRATED</span> <code>RHITest</code> loads files into byte vectors, fills <a href="api-reference.html#api-arda-rhi-fardarhishaderdesc-647dc39c"><code>FArdaRHIShaderDesc</code></a>, and calls <a href="api-reference.html#api-arda-rhi-iardarhidevice-createshader-d1c4d59c"><code>CreateShader</code></a>. The byte vector only needs to remain valid during creation.</p>
+          <p><code>RHITest</code> loads files into byte vectors, fills <a href="api-reference.html#api-arda-rhi-fardarhishaderdesc-647dc39c"><code>FArdaRHIShaderDesc</code></a>, and calls <a href="api-reference.html#api-arda-rhi-iardarhidevice-createshader-d1c4d59c"><code>CreateShader</code></a>. The byte vector only needs to remain valid during creation.</p>
           <pre><code>arda::FArdaRHIShaderDesc desc;
 desc.mStage = arda::EArdaRHIShaderStage::Compute;
 desc.mBytecode = bytes.data();
@@ -374,7 +414,7 @@ arda::FArdaRHIShaderRef computeShader = eastl::move(shaderResult.mValue);</code>
 
         <section id="resources">
           <h2>6. Create persistent resources, views, and bindings</h2>
-          <p><span class="status">TESTED API PATH</span> Device-created resources are intrusive references. Store persistent buffers, textures, views, layouts, sets, shaders, and pipelines in a renderer object whose device reference outlives them.</p>
+          <p>Device-created resources are intrusive references. Store persistent buffers, textures, views, layouts, sets, shaders, and pipelines in a renderer object whose device reference outlives them.</p>
           <pre><code>// Persistent structured buffer.
 arda::FArdaRHIBufferDesc bufferDesc;
 bufferDesc.mByteSize = elementCount * sizeof(Element);
@@ -418,7 +458,7 @@ if (!bindings)
 
         <section id="pipelines">
           <h2>7. Create PSO initializers and a cache</h2>
-          <p><span class="status">TESTED API PATH</span> Direct RHI clients can own a device-bound <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>FArdaPipelineStateCache</code></a> and reusable initializers, as shown below. In <code>ARDGExample</code>, each node owns its shader/layout setup and pipeline configuration; ArdaInductor creates PSOs during graph compilation and the graph retains its pipeline cache. The renderer attaches node classes without maintaining a PSO cache. See <a href="../ArdaRDG/quick-guide.html#persistent-setup">node setup ownership</a>.</p>
+          <p>Direct RHI clients can own a device-bound <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>FArdaPipelineStateCache</code></a> and reusable initializers, as shown below. In <code>ARDGExample</code>, each node owns its shader/layout setup and pipeline configuration; ArdaInductor creates PSOs during graph compilation and the graph retains its pipeline cache. The renderer attaches node classes without maintaining a PSO cache. See <a href="../ArdaRDG/quick-guide.html#persistent-setup">node setup ownership</a>.</p>
           <figure>
             <img src="Assets/persistent-pso-cache.svg" alt="In-memory descriptor LRU resolving live PSO objects above a persistent backend-native disk cache, with D3D12 and Vulkan implementations and shutdown flush.">
             <figcaption>The device-bound in-memory LRU reuses live objects; the backend-native disk blob reduces driver compilation across executions. The graph owns the former when using ArdaInductor.</figcaption>
@@ -442,10 +482,10 @@ auto graphicsInit =
 
         <section id="frame">
           <h2>8. If presenting, run the frame in the required order</h2>
-          <p><span class="status">DEMONSTRATED</span> The portable frame invariant is:</p>
+          <p>The portable frame invariant is:</p>
           <p>This section applies only to the caller-owned <code>IArdaSwapChain</code> returned by Arda-created presentation initialization. Headless workloads skip it. External integrations use the host's acquire/synchronization/present sequence described earlier.</p>
           <p><strong>AcquireFrame → PrepareSubmit → execute submitted graphics work → Present.</strong></p>
-          <p>Recording can occur after acquisition and before <code>PrepareSubmit</code>. For direct RHI, call <code>PrepareSubmit</code> immediately before <a href="api-reference.html#api-arda-rhi-iardarhidevice-executecommandlist-ad20081d"><code>ExecuteCommandList</code></a>. This is not cosmetic: the Vulkan implementation queues the image-available wait during acquisition and queues the render-finished signal in <code>PrepareSubmit</code>; the following graphics submission sits between those semaphore operations. D3D12 currently implements <code>PrepareSubmit</code> as a no-op, but portable code must still call it.</p>
+          <p>Recording can occur after acquisition and before <code>PrepareSubmit</code>. For direct RHI, call <code>PrepareSubmit</code> immediately before <a href="api-reference.html#api-arda-rhi-iardarhidevice-executecommandlist-ad20081d"><code>ExecuteCommandList</code></a>. This is not cosmetic: the Vulkan implementation queues the image-available wait during acquisition and queues the render-finished signal in <code>PrepareSubmit</code>; the following graphics submission sits between those semaphore operations. D3D12 implements <code>PrepareSubmit</code> as a no-op, but portable code must still call it.</p>
           <figure>
             <img src="Assets/swapchain-frame-timeline.svg" alt="Swap-chain frame timeline showing image acquisition, command recording, submission preparation, graphics execution, and presentation.">
             <figcaption>Prepare submission before executing the graphics command list that writes the acquired image; present only after submission succeeds.</figcaption>
@@ -477,7 +517,7 @@ if (!swapChain->Present()) return Fail(swapChain->GetError());</code></pre>
 
         <section id="compute">
           <h2>9. Record compute work</h2>
-          <p><span class="status">TESTED API PATH</span> The following direct RHI recipe binds a cached compute PSO and dispatches thread groups. In <code>ARDGExample</code>, a node callback obtains the compiled PSO from <code>Context.GetPipeline()</code>, prepares its own bindings, sets compute state and records one dispatch. ArdaInductor handles inter-node transitions and scheduling from declared resource accesses; the renderer only composes the nodes. See the <a href="../ArdaRDG/quick-guide.html#integrated-frame">terrain graph recipe</a>.</p>
+          <p>The following direct RHI recipe binds a cached compute PSO and dispatches thread groups. In <code>ARDGExample</code>, a node callback obtains the compiled PSO from <code>Context.GetPipeline()</code>, prepares its own bindings, sets compute state and records one dispatch. ArdaInductor handles inter-node transitions and scheduling from declared resource accesses; the renderer only composes the nodes. See the <a href="../ArdaRDG/quick-guide.html#integrated-frame">terrain graph recipe</a>.</p>
           <pre><code>arda::FArdaRHIComputeState computeState;
 computeState.mBindings.push_back(computeBindingSet);
 
@@ -493,7 +533,7 @@ commandList->Dispatch(groupsX, groupsY, 1);</code></pre>
 
         <section id="raster">
           <h2>10. Record raster work</h2>
-          <p><span class="status">DEMONSTRATED</span> The acquired framebuffer already identifies the swap-chain color target. Off-screen or depth attachments use a caller-created <a href="api-reference.html#api-arda-rhi-fardarhiframebufferdesc-eedce2f9"><code>FArdaRHIFramebufferDesc</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhidevice-createframebuffer-3987951d"><code>CreateFramebuffer</code></a>.</p>
+          <p>The acquired framebuffer already identifies the swap-chain color target. Off-screen or depth attachments use a caller-created <a href="api-reference.html#api-arda-rhi-fardarhiframebufferdesc-eedce2f9"><code>FArdaRHIFramebufferDesc</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhidevice-createframebuffer-3987951d"><code>CreateFramebuffer</code></a>.</p>
           <pre><code>const uint32_t width = swapChain->GetWidth();
 const uint32_t height = swapChain->GetHeight();
 
@@ -521,7 +561,7 @@ commandList->DrawIndexed({ indexCount });
 
         <div id="ray-tracing">
           <h2>11. Add capability-gated hardware ray tracing</h2>
-          <p><span class="status">TESTED API PATH</span> <code>ArdaBackendTests</code> builds and updates native BLAS/TLAS objects, queries and copies compacted structures, creates hit groups and shader-table records with local arguments, and executes direct/indirect ray dispatch on D3D12 and Vulkan when the selected adapter advertises each ability. This recipe remains an application integration checklist because the windowed examples are intentionally small.</p>
+          <p><code>ArdaBackendTests</code> builds and updates native BLAS/TLAS objects, queries and copies compacted structures, creates hit groups and shader-table records with local arguments, and executes direct/indirect ray dispatch on D3D12 and Vulkan when the selected adapter advertises each ability. This recipe remains an application integration checklist because the windowed examples are intentionally small.</p>
 
           <section id="rt-capabilities">
           <h3>11.1 Evaluate the renderer's complete profile</h3>
@@ -614,7 +654,7 @@ if (!s) return Fail(s.mMessage);</code></pre>
 
         <section id="resize">
           <h2>12. Handle resize at the frame boundary</h2>
-          <p><span class="status">DEMONSTRATED</span> GLFW callbacks record only positive framebuffer dimensions. The main loop consumes the pending size before acquiring the next frame and calls <a href="api-reference.html#api-arda-backend-iardaswapchain-resize-418d7a82"><code>IArdaSwapChain::Resize</code></a>.</p>
+          <p>GLFW callbacks record only positive framebuffer dimensions. The main loop consumes the pending size before acquiring the next frame and calls <a href="api-reference.html#api-arda-backend-iardaswapchain-resize-418d7a82"><code>IArdaSwapChain::Resize</code></a>.</p>
           <pre><code>uint32_t newWidth = 0, newHeight = 0;
 if (window.ConsumeResize(newWidth, newHeight))
 {
@@ -627,7 +667,7 @@ if (window.ConsumeResize(newWidth, newHeight))
 
         <section id="errors">
           <h2>13. Preserve diagnostics and propagate status</h2>
-          <p><span class="status">DEMONSTRATED</span> Install a long-lived <a href="api-reference.html#api-arda-backend-iardadiagnosticcallback-f00c8ba0"><code>IArdaDiagnosticCallback</code></a>, enable validation in development, and turn each failed operation into the caller's error immediately.</p>
+          <p>Install a long-lived <a href="api-reference.html#api-arda-backend-iardadiagnosticcallback-f00c8ba0"><code>IArdaDiagnosticCallback</code></a>, enable validation in development, and turn each failed operation into the caller's error immediately.</p>
           <pre><code>template&lt;class T&gt;
 bool Take(arda::TArdaRHIResult&lt;T&gt;&amp; result, T&amp; out, eastl::string&amp; error)
 {
@@ -651,7 +691,7 @@ bool Check(const arda::FArdaRHIStatus&amp; status, eastl::string&amp; error)
 
         <section id="lifetime">
           <h2>14. Shut down in reverse dependency order</h2>
-          <p><span class="status">DEMONSTRATED</span> The sample shutdown guards wait for the swap chain, destroy it, then call backend shutdown. A production renderer should release all dependent objects explicitly first.</p>
+          <p>The sample shutdown guards wait for the swap chain, destroy it, then call backend shutdown. A production renderer should release all dependent objects explicitly first.</p>
           <ol>
             <li>Stop frame production, background uploads, and pipeline/shader work.</li>
             <li>Wait for the swap chain or device to become idle.</li>
@@ -748,14 +788,15 @@ bool Check(const arda::FArdaRHIStatus&amp; status, eastl::string&amp; error)
             <li><a href="api-reference.html">Canonical API reference</a> — exact signatures and member-level contracts.</li>
           </ul>
         </section>
-
-        <nav class="page-nav" aria-label="Page navigation">
-          <a rel="prev" href="index.html">← Previous: Overview</a>
-          <a rel="next" href="getting-started.html">Next: Getting started →</a>
-        </nav>
-      </article>
-    </main>
-  </div>
-  <footer class="site-footer"><p>ArdaBackend documentation · <a href="api-reference.html">API reference</a></p></footer>
+    </article>
+    <nav class="page-nav" aria-label="Document navigation"><a href="getting-started.html" rel="prev"><span class="page-nav-label"><svg class="icon icon-previous" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>Previous</span><span class="page-nav-title">Getting started</span></a><a href="architecture.html" rel="next"><span class="page-nav-label">Next<svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="page-nav-title">Architecture</span></a></nav>
+  </main>
+  <aside class="page-outline" aria-label="Page outline"><nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#objectives">Objectives</a></li><li><a href="#prerequisites">Prerequisites</a></li><li><a href="#build">Build and include</a></li><li><a href="#startup">Device and context setup</a></li><li><a href="#external-interop">External device and resource setup</a></li><li><a href="#window">Optional window presentation</a></li><li><a href="#shaders">Shaders</a></li><li><a href="#resources">Persistent resources</a></li><li><a href="#pipelines">Pipeline cache</a></li><li><a href="#frame">Presented frame order</a></li><li><a href="#compute">Compute recipe</a></li><li><a href="#raster">Raster recipe</a></li><li><a href="#ray-tracing">Ray tracing recipe</a></li><li><a href="#resize">Resize</a></li><li><a href="#errors">Diagnostics and status</a></li><li><a href="#lifetime">Lifetime and shutdown</a></li><li><a href="#api-paths">Curated API paths</a></li><li><a href="#summary">Summary</a></li><li><a href="#next-steps">Next steps</a></li></ul></nav></aside>
+</div>
+<footer class="site-footer"><div class="site-footer__inner"><a class="site-brand" href="../index.html">Ardashir</a><div class="footer-group"><p>Documentation</p><a href="../index.html">Overview</a><a href="../ArdaRDG/getting-started.html">Getting started</a><a href="../Essays/arda-graph-and-inductor.html">Engineering essays</a></div><div class="footer-group"><p>Modules</p><a href="index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../index.html#module-ardagraph">ArdaGraph</a><a href="../index.html#module-ardatests">ArdaTests</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div><div class="footer-group"><p>Reference</p><a href="api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a><a href="../glossary.html">Glossary</a></div></div></footer>
+<dialog class="doc-search" aria-label="Search documentation"><form method="dialog">
+  <div class="search-field"><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" aria-label="Search documentation" placeholder="Search documentation" autocomplete="off"><button type="submit" aria-label="Close search"><svg class="icon icon-close" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+  <div class="search-results" aria-live="polite"></div>
+</form></dialog>
 </body>
 </html>

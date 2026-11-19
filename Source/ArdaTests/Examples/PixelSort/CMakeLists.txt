@@ -1,8 +1,8 @@
 # Build this directory through the repository root (or RunPixelSort.py). The root
 # discovers nvcc while configuring; the launcher prepares Windows developer tools.
 # This example uses a Win32 window even when its graphics backend is Vulkan.
-if(NOT WIN32 OR NOT ARDASHIR_ENABLE_CUDA OR NOT ARDASHIR_BUILD_CUDA_KERNELS)
-    message(FATAL_ERROR "PixelSort requires Windows, ARDASHIR_ENABLE_CUDA and ARDASHIR_BUILD_CUDA_KERNELS.")
+if(NOT WIN32)
+    message(FATAL_ERROR "PixelSort requires Windows.")
 endif()
 
 # Step 1: compile the .cu file into a static library of native GPU code.
@@ -15,10 +15,13 @@ endif()
 # For a different per-kernel architecture/flag policy, add another named target
 # with a UNIQUE PROFILE, e.g. ARCHITECTURES 89 120, DEFINITIONS MY_TUNING=1,
 # or OPTIONS --maxrregcount=64. Each profile gets its own namespace/manifest.
-# Link that target and call its binding export from BindKernelVariants explicitly.
-ardashir_add_cuda_kernels(PixelSortKernels PROFILE pixel_sort
-    SOURCES Private/Nodes/ArdaPixelSortKernels.cu DEPENDS Public/Nodes/ArdaPixelSortOperand.h)
-target_include_directories(PixelSortKernels PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Public")
+# Link that target and reference its entry exports explicitly.
+if(ARDASHIR_ENABLE_CUDA AND ARDASHIR_BUILD_CUDA_KERNELS)
+    ardashir_add_cuda_kernels(PixelSortKernels PROFILE pixel_sort
+        SOURCES Private/Nodes/ArdaPixelSortKernels.cu DEPENDS Public/Nodes/ArdaPixelSortOperand.h)
+    target_include_directories(PixelSortKernels PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Public")
+    set_target_properties(PixelSortKernels PROPERTIES FOLDER "Ardashir/Tests/Examples/PixelSort")
+endif()
 # Step 2: compile the renderer and node library with the host C++ compiler.
 # The graph owns GPU execution; the window uses Win32 and capture uses WIC.
 add_executable(PixelSort PixelSortMain.cpp PixelSortWindow.cpp PixelSortRenderer.cpp
@@ -33,14 +36,18 @@ target_include_directories(PixelSort PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Public
 target_compile_features(PixelSort PRIVATE cxx_std_17)
 target_compile_definitions(PixelSort PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 target_link_libraries(PixelSort PRIVATE
-    ArdaExampleNodes Ardashir::ArdaBackend Ardashir::ArdaDependencyGraph PixelSortKernels user32 ole32 windowscodecs)
+    ArdaExampleNodes Ardashir::ArdaBackend Ardashir::ArdaDependencyGraph user32 ole32 windowscodecs)
+if(TARGET PixelSortKernels)
+    target_link_libraries(PixelSort PRIVATE PixelSortKernels)
+    target_compile_definitions(PixelSort PRIVATE ARDA_PIXEL_SORT_NATIVE_KERNELS)
+endif()
 if(ARDASHIR_BACKEND_VULKAN)
     # Headers describe the Win32 surface ABI. PixelSortWindow loads the system's
     # Vulkan loader dynamically, so the application does not link a loader library.
     target_link_libraries(PixelSort PRIVATE Vulkan::Headers)
     target_compile_definitions(PixelSort PRIVATE ARDA_PIXEL_SORT_VULKAN)
 endif()
-set_target_properties(PixelSort PixelSortKernels PROPERTIES FOLDER "Ardashir/Tests/Examples/PixelSort")
+set_target_properties(PixelSort PROPERTIES FOLDER "Ardashir/Tests/Examples/PixelSort")
 # Step 3: deploy the graphics assets beside the executable, independent of cwd.
 # Keep this development example runnable outside the source/build tree. CUDA is
 # already native code; DXC is used only for the editable HLSL graphics stages.
@@ -68,15 +75,27 @@ if(ARDASHIR_BUILD_TESTS)
     foreach(Backend IN ITEMS d3d12 vulkan)
         string(TOUPPER "${Backend}" BackendOption)
         if(ARDASHIR_BACKEND_${BackendOption})
+            if(NOT TARGET PixelSortKernels)
+                add_test(NAME PixelSort.${Backend}.Shader
+                    COMMAND PixelSort --backend ${Backend} --hidden --verify --resize-test --frames 6)
+                set_tests_properties(PixelSort.${Backend}.Shader PROPERTIES
+                    LABELS "gpu;example" SKIP_RETURN_CODE 77 TIMEOUT 90 RUN_SERIAL TRUE)
+                if(Backend STREQUAL "vulkan")
+                    ardashir_example_without_validation_tests(PixelSort.vulkan.Shader)
+                endif()
+                ardashir_example_validation_test(PixelSort ${Backend} --hidden --verify --resize-test --frames 6)
+                continue()
+            endif()
             foreach(Mode IN ITEMS auto context graphics)
                 add_test(NAME PixelSort.${Backend}.${Mode}
-                    COMMAND PixelSort --backend ${Backend} --cuda-mode ${Mode} --hidden --verify --resize-test --frames 6)
+                    COMMAND PixelSort --backend ${Backend} --cuda-mode ${Mode}
+                        --require-cuda --hidden --verify --resize-test --frames 6)
                 set_tests_properties(PixelSort.${Backend}.${Mode} PROPERTIES
                     LABELS "gpu;cuda;example" SKIP_RETURN_CODE 77 TIMEOUT 90 RUN_SERIAL TRUE)
             endforeach()
             add_test(NAME PixelSort.${Backend}.Replay
                 COMMAND PixelSort --backend ${Backend} --cuda-mode auto
-                    --hidden --verify --width 197 --height 321 --frames 8)
+                    --require-cuda --hidden --verify --width 197 --height 321 --frames 8)
             set_tests_properties(PixelSort.${Backend}.Replay PROPERTIES
                 LABELS "gpu;cuda;example" SKIP_RETURN_CODE 77 TIMEOUT 90 RUN_SERIAL TRUE)
 
@@ -84,7 +103,7 @@ if(ARDASHIR_BUILD_TESTS)
             # Process shutdown retires GPU work and checks deferred validation errors.
             add_test(NAME PixelSort.${Backend}.AsyncReplay
                 COMMAND PixelSort --backend ${Backend} --cuda-mode auto
-                    --hidden --width 197 --height 321 --frames 12)
+                    --require-cuda --hidden --width 197 --height 321 --frames 12)
             set_tests_properties(PixelSort.${Backend}.AsyncReplay PROPERTIES
                 LABELS "gpu;cuda;example" SKIP_RETURN_CODE 77 TIMEOUT 90 RUN_SERIAL TRUE)
             if(Backend STREQUAL "vulkan")
@@ -92,11 +111,11 @@ if(ARDASHIR_BUILD_TESTS)
                     PixelSort.vulkan.graphics PixelSort.vulkan.Replay PixelSort.vulkan.AsyncReplay)
             endif()
             ardashir_example_validation_test(PixelSort ${Backend} --cuda-mode auto
-                --hidden --verify --resize-test --frames 6)
+                --require-cuda --hidden --verify --resize-test --frames 6)
             if(ARDASHIR_ENABLE_GPU_VALIDATION)
                 add_test(NAME PixelSort.${Backend}.AsyncReplay.Validation
                     COMMAND PixelSort --backend ${Backend} --cuda-mode auto
-                        --hidden --validation --width 197 --height 321 --frames 12)
+                        --require-cuda --hidden --validation --width 197 --height 321 --frames 12)
                 set_tests_properties(PixelSort.${Backend}.AsyncReplay.Validation PROPERTIES
                     LABELS "gpu;cuda;example;validation" SKIP_RETURN_CODE 77 TIMEOUT 90 RUN_SERIAL TRUE)
             endif()

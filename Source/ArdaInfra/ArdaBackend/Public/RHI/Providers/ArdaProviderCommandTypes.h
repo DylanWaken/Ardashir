@@ -5,10 +5,28 @@
 #include "RHI/CUDA/ArdaRHICuda.h"
 #include "RHI/Resources/ArdaRHIAccelerationStructures.h"
 #include "RHI/Scheduling/ArdaRHIDrawTypes.h"
+#include "RHI/Scheduling/ArdaRHINativeOperation.h"
 #include <EASTL/vector.h>
 
 namespace arda
 {
+	/** Backend object and resolved view of one declared native operation binding. */
+	struct FArdaProviderNativeOperationBinding
+	{
+		FArdaProviderObjectRef mObject;
+		EArdaRHIResourceType mType = EArdaRHIResourceType::Buffer;
+		EArdaComputeAccess mAccess = EArdaComputeAccess::Read;
+		FArdaRHIBufferRange mBufferRange;
+		FArdaRHITextureSubresourceRange mTextureRange;
+	};
+
+	/** Recordable operation packet. Its shared owner retains the original RHI resource references. */
+	struct FArdaProviderNativeOperation
+	{
+		eastl::shared_ptr<const IArdaRHINativeOperation> mOperation;
+		eastl::vector<FArdaProviderNativeOperationBinding> mBindings;
+	};
+
 	struct FArdaProviderCudaBinding
 	{
 		FArdaProviderObjectRef mObject;

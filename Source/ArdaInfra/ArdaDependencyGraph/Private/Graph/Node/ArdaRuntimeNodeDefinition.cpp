@@ -2,7 +2,8 @@
 
 #include "Graph/Node/ArdaDependencyKey.h"
 #include "Inductor/Runtime/ArdaDependencyExecutionContext.h"
-#include "RHI/Scheduling/ArdaCudaSequence.h"
+#include "CUDA/ArdaNativeCudaProvider.h"
+#include "RHI/Providers/ArdaBackendProvider.h"
 #include <EASTL/unordered_set.h>
 #include <cstring>
 
@@ -216,6 +217,45 @@ namespace arda
 		// Invocation hooks only require the compact ABI, not another copy of the device image.
 		InvocationSchema.mModule = {};
 		const auto Desc = eastl::make_shared<const FArdaRuntimeNodeDesc>(eastl::move(InvocationSchema));
+		auto Registry = eastl::make_shared<FArdaNativeComputeRegistry>();
+		// Runtime archives can run on custom graphics modules registered by the application.
+		// The CUDA adapter still qualifies the actual device and queue before preparing a kernel.
+		eastl::vector<eastl::string> GraphicsApis;
+		for (auto& Backend : EnumerateBackendModules())
+		{
+			GraphicsApis.push_back(eastl::move(Backend.mName));
+		}
+		if (auto Status = Registry->RegisterProvider(CreateArdaNativeCudaProvider(eastl::move(GraphicsApis))); !Status)
+		{
+			return {{}, eastl::move(Status)};
+		}
+		if (auto Status = Registry->RegisterProvider(CreateArdaNativeCudaInGraphicsProvider()); !Status)
+		{
+			return {{}, eastl::move(Status)};
+		}
+		FArdaNativeOperandDesc Operand;
+		Operand.mId = Desc->mName;
+		Operand.mParameterSize = Desc->mParameterSize;
+		FArdaNativeCudaSourceDesc Source;
+		Source.mEntry = Entry.mValue;
+		for (const auto& Argument : Desc->mArguments)
+		{
+			if (Argument.mAbi.mKind == EArdaCudaModuleArgumentKind::Buffer)
+			{
+				Source.mPatches.push_back({static_cast<uint32_t>(Operand.mResources.size()), Argument.mAbi.mOffset, 1});
+				Operand.mResources.push_back({Argument.mName, EArdaRHIResourceType::Buffer, Argument.mAccess});
+			}
+		}
+		auto NativeSource = CreateArdaNativeCudaSource(eastl::move(Source));
+		if (!NativeSource)
+		{
+			return {{}, eastl::move(NativeSource.mStatus)};
+		}
+		AddArdaNativeCudaVariants(Operand, {Desc->mEntryPoint, eastl::move(NativeSource.mValue), {}});
+		if (auto Status = Registry->RegisterOperand(eastl::move(Operand)); !Status)
+		{
+			return {{}, eastl::move(Status)};
+		}
 		auto Definition = eastl::shared_ptr<FArdaDependencyNodeExecutable>(new FArdaDependencyNodeExecutable());
 		Definition->mName = Desc->mName;
 		Definition->mVersion = Desc->mVersion;
@@ -348,22 +388,18 @@ namespace arda
 			}
 			return {eastl::move(Result), {}};
 		};
-		Definition->mPrepareCuda = [Desc, KernelEntry = Entry.mValue](FArdaDependencyExecutionContext& Context,
+		Definition->mPrepareCuda = [Desc, Registry](FArdaDependencyExecutionContext& Context,
 		                               const void* Value,
 		                               FArdaCudaSequence& Sequence)
 		{
 			const auto& Parameters = *static_cast<const FArdaRuntimeNodeParameters*>(Value);
-			auto Plan = eastl::make_shared<FArdaCudaDispatchPlan>();
-			Plan->mDevice = Context.GetDevice();
-			Plan->mQueue = Context.GetCommands().GetQueueType();
-			FArdaCudaKernel Kernel;
-			Kernel.mEntry = KernelEntry;
-			Kernel.mParameters.resize(Desc->mParameterSize, 0);
-			Kernel.mSharedMemoryBytes = Parameters.mSharedMemoryBytes;
+			FArdaNativeInvocation Invocation;
+			Invocation.mParameters.resize(Desc->mParameterSize, 0);
+			Invocation.mLaunch.mSharedMemoryBytes = Parameters.mSharedMemoryBytes;
 			for (size_t Axis = 0; Axis < 3; ++Axis)
 			{
-				Kernel.mGridSize[Axis] = Parameters.mGrid[Axis];
-				Kernel.mBlockSize[Axis] = Parameters.mBlock[Axis];
+				Invocation.mLaunch.mGridSize[Axis] = Parameters.mGrid[Axis];
+				Invocation.mLaunch.mBlockSize[Axis] = Parameters.mBlock[Axis];
 			}
 			for (size_t Index = 0; Index < Parameters.mArguments.size(); ++Index)
 			{
@@ -376,18 +412,16 @@ namespace arda
 					{
 						return RuntimeInvalid("Runtime kernel cannot resolve a declared buffer.");
 					}
-					Kernel.mPatches.push_back({uint32_t(Plan->mDispatch.mBindings.size()), Schema.mAbi.mOffset, 1});
-					Plan->mDispatch.mBindings.push_back({Buffer, Schema.mAccess, Argument.mRange});
+					Invocation.mResources.push_back({Buffer, Argument.mRange});
 				}
 				else
 				{
-					std::memcpy(Kernel.mParameters.data() + Schema.mAbi.mOffset,
+					std::memcpy(Invocation.mParameters.data() + Schema.mAbi.mOffset,
 					    Argument.mValue.data(),
 					    Argument.mValue.size());
 				}
 			}
-			Plan->mDispatch.mKernels.push_back(eastl::move(Kernel));
-			return Sequence.AddPlan(Plan);
+			return Context.AppendNativeCudaCompute(Sequence, *Registry, Desc->mName.c_str(), Invocation);
 		};
 		return {eastl::move(Definition), {}};
 	}

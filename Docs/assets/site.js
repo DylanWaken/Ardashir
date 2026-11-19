@@ -25,97 +25,185 @@
     return url;
   }
 
-  function setTheme(theme) {
-    const resolved = theme === "dark" ? "dark" : "light";
-    doc.documentElement.dataset.theme = resolved;
-    doc.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-      button.setAttribute("aria-label", "Use " + (resolved === "dark" ? "light" : "dark") + " theme");
-      button.textContent = resolved === "dark" ? "Light theme" : "Dark theme";
-    });
-  }
-
-  function prepareHeaderControls() {
-    const header = doc.querySelector(".site-header");
-    if (!header) {
-      return;
-    }
-    const directNav = Array.from(header.children).find((child) => child.tagName === "NAV");
-    if (!directNav) {
-      return;
-    }
-    directNav.classList.add("site-nav");
-    directNav.dataset.siteNav = "";
-    if (!directNav.id) {
-      directNav.id = "site-navigation";
-    }
-    if (!header.querySelector("[data-nav-toggle]")) {
-      const navToggle = doc.createElement("button");
-      navToggle.type = "button";
-      navToggle.className = "nav-toggle";
-      navToggle.dataset.navToggle = "";
-      navToggle.setAttribute("aria-controls", directNav.id);
-      navToggle.setAttribute("aria-expanded", "false");
-      navToggle.textContent = "Menu";
-      header.insertBefore(navToggle, directNav);
-    }
-    if (!header.querySelector("[data-theme-toggle]")) {
-      const themeToggle = doc.createElement("button");
-      themeToggle.type = "button";
-      themeToggle.className = "theme-toggle";
-      themeToggle.dataset.themeToggle = "";
-      themeToggle.textContent = "Dark theme";
-      header.appendChild(themeToggle);
-    }
-  }
-
   function initializeTheme() {
-    let saved = "";
-    try {
-      saved = localStorage.getItem("arda-theme") || "";
-    } catch (_error) {
-      saved = "";
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const control = doc.querySelector(".theme-control");
+    if (!control) return;
+    const toggle = control.querySelector("[data-theme-toggle]");
+    const menu = control.querySelector("[role=menu]");
+    const choices = Array.from(menu.querySelectorAll("[data-theme-choice]"));
+    let preference = "dark";
+    try { preference = localStorage.getItem("arda-theme") || preference; } catch (_error) { /* Storage is optional. */ }
+    if (!choices.some(choice => choice.dataset.themeChoice === preference)) preference = "dark";
+    function apply() {
+      const dark = preference === "dark" || (preference === "system" && media.matches);
+      doc.documentElement.dataset.theme = dark ? "dark" : "light";
+      const glyph = { dark: "moon", light: "sun", system: "system" }[preference];
+      for (const svg of toggle.querySelectorAll(".icon")) {
+        svg.style.display = svg.classList.contains("icon-" + glyph) ? "block" : "none";
+      }
+      choices.forEach(choice => choice.setAttribute("aria-checked", String(choice.dataset.themeChoice === preference)));
     }
-    const preferredDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setTheme(saved || (preferredDark ? "dark" : "light"));
-
-    doc.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const next = doc.documentElement.dataset.theme === "dark" ? "light" : "dark";
-        setTheme(next);
-        try {
-          localStorage.setItem("arda-theme", next);
-        } catch (_error) {
-          // Theme still applies when storage is unavailable.
-        }
-      });
+    function open(value, focus) {
+      menu.hidden = !value;
+      toggle.setAttribute("aria-expanded", String(value));
+      if (focus) (value ? menu.querySelector('[aria-checked="true"]') : toggle).focus();
+    }
+    apply();
+    control.hidden = false;
+    media.addEventListener("change", apply);
+    toggle.addEventListener("click", () => open(menu.hidden, true));
+    choices.forEach(choice => choice.addEventListener("click", () => {
+      preference = choice.dataset.themeChoice;
+      apply();
+      try { localStorage.setItem("arda-theme", preference); } catch (_error) { /* The current page still updates. */ }
+      open(false, true);
+    }));
+    menu.addEventListener("keydown", event => {
+      const index = choices.indexOf(doc.activeElement);
+      const steps = { ArrowDown: (index + 1) % choices.length, ArrowUp: (index + choices.length - 1) % choices.length, Home: 0, End: choices.length - 1 };
+      if (Object.hasOwn(steps, event.key)) {
+        event.preventDefault();
+        choices[steps[event.key]].focus();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        open(false, true);
+      }
+    });
+    control.addEventListener("focusout", event => {
+      if (!control.contains(event.relatedTarget)) open(false, false);
+    });
+    doc.addEventListener("click", event => {
+      if (!control.contains(event.target)) open(false, false);
     });
   }
 
   function initializeNavigation() {
-    const toggle = doc.querySelector("[data-nav-toggle]");
-    const nav = doc.querySelector("[data-site-nav]");
-    if (toggle && nav) {
-      toggle.addEventListener("click", () => {
-        const open = nav.dataset.open !== "true";
-        nav.dataset.open = String(open);
-        toggle.setAttribute("aria-expanded", String(open));
-      });
+    const menus = Array.from(doc.querySelectorAll(".nav-popover, .section-switcher, .mobile-nav, .docs-menu"));
+    function close(menu) {
+      if (!menu.open) return;
+      if (menu.contains(doc.activeElement)) menu.querySelector("summary").focus();
+      menu.open = false;
+    }
+    doc.addEventListener("click", event => {
+      for (const menu of menus) {
+        if (!menu.contains(event.target) || event.target.closest("a")) close(menu);
+      }
+    });
+    doc.addEventListener("keydown", event => {
+      const open = doc.activeElement.closest("details[open]");
+      if (event.key === "Escape" && open && menus.includes(open)) {
+        event.preventDefault();
+        close(open);
+      }
+    });
+    window.matchMedia("(min-width: 64rem)").addEventListener("change", () => menus.forEach(close));
+  }
 
-      nav.addEventListener("click", (event) => {
-        if (event.target.closest("a")) {
-          nav.dataset.open = "false";
-          toggle.setAttribute("aria-expanded", "false");
-        }
+  function initializePageOutline() {
+    const links = Array.from(doc.querySelectorAll(".page-outline .toc a"));
+    const targets = links.map(link => doc.getElementById(decodeURIComponent(link.hash.slice(1))));
+    if (!targets.length) return;
+    const header = doc.querySelector(".site-header");
+    let frame = 0;
+    function update() {
+      frame = 0;
+      const top = header.getBoundingClientRect().height + 44;
+      let active = -1;
+      for (let i = 0; i < targets.length; ++i) {
+        if (targets[i] && targets[i].getBoundingClientRect().top <= top) active = i;
+      }
+      links.forEach((link, i) => {
+        if (i === active) link.setAttribute("aria-current", "location");
+        else link.removeAttribute("aria-current");
       });
     }
+    function schedule() { if (!frame) frame = requestAnimationFrame(update); }
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    window.addEventListener("load", schedule);
+    update();
+  }
 
-    const current = new URL(window.location.href);
-    const currentPath = current.pathname.replace(/\/index\.html$/i, "/");
-    doc.querySelectorAll("[data-site-nav] a").forEach((link) => {
-      const target = new URL(link.href, current);
-      const targetPath = target.pathname.replace(/\/index\.html$/i, "/");
-      if (targetPath === currentPath) {
-        link.setAttribute("aria-current", "page");
+  function initializeDocSearch() {
+    const dialog = doc.querySelector(".doc-search");
+    const pages = window.ArdaDocPages;
+    if (!dialog || !Array.isArray(pages)) return;
+    const root = new URL(".", doc.querySelector(".site-brand").href);
+    const input = dialog.querySelector("input");
+    const results = dialog.querySelector(".search-results");
+    const triggers = doc.querySelectorAll("[data-doc-search]");
+    function render() {
+      const words = input.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+      const matches = [];
+      function rank(label, context) {
+        label = label.toLocaleLowerCase();
+        context = (label + " " + context).toLocaleLowerCase();
+        if (!words.every(word => context.includes(word))) return 0;
+        return 1 + words.filter(word => label.includes(word)).length * 2 + (label.startsWith(words.join(" ")) ? 2 : 0);
+      }
+      for (const [path, title, module, description, sections] of pages) {
+        const score = rank(title, module + " " + description);
+        if (score) matches.push({ path, title, subtitle: module, score });
+        if (words.length) {
+          for (const [id, name] of sections) {
+            const score = rank(name, title + " " + module);
+            if (score > 1) matches.push({ path: path + "#" + encodeURIComponent(id), title: name, subtitle: title, score });
+          }
+        }
+      }
+      matches.sort((a, b) => b.score - a.score);
+      const list = doc.createDocumentFragment();
+      for (const match of matches.slice(0, 16)) {
+        const link = doc.createElement("a");
+        link.href = new URL(match.path, root).href;
+        const label = doc.createElement("strong");
+        label.textContent = match.title;
+        const context = doc.createElement("small");
+        context.textContent = match.subtitle;
+        link.append(label, context);
+        link.addEventListener("click", () => dialog.close());
+        list.append(link);
+      }
+      if (!matches.length) {
+        const msg = doc.createElement("p");
+        msg.textContent = "No matching pages or headings.";
+        list.append(msg);
+      }
+      results.replaceChildren(list);
+    }
+    function show() {
+      if (!dialog.open) {
+        input.value = "";
+        render();
+        dialog.showModal();
+      }
+      input.focus();
+    }
+    triggers.forEach(button => {
+      button.hidden = false;
+      if (navigator.platform.toLowerCase().includes("mac")) button.querySelector("kbd").textContent = "⌘ K";
+      button.addEventListener("click", show);
+    });
+    input.addEventListener("input", render);
+    dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
+    dialog.addEventListener("keydown", event => {
+      const links = Array.from(results.querySelectorAll("a"));
+      if (!links.length) return;
+      const index = links.indexOf(doc.activeElement);
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const next = event.key === "ArrowDown" ? index + 1 : (index <= 0 ? links.length - 1 : index - 1);
+        links[next % links.length].focus();
+      } else if (event.key === "Enter" && doc.activeElement === input) {
+        event.preventDefault();
+        links[0].click();
+      }
+    });
+    doc.addEventListener("keydown", event => {
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        show();
       }
     });
   }
@@ -521,13 +609,12 @@
       if (!pre.hasAttribute("aria-label")) {
         pre.setAttribute("aria-label", labelText + " code example");
       }
-      if (!pre.querySelector(":scope > .code-language")) {
-        const label = doc.createElement("span");
-        label.className = "code-language";
-        label.setAttribute("aria-hidden", "true");
-        label.textContent = labelText;
-        pre.appendChild(label);
-      }
+      const gutter = doc.createElement("span");
+      gutter.className = "code-gutter";
+      gutter.setAttribute("aria-hidden", "true");
+      const lineCount = source.replace(/\n$/, "").split("\n").length;
+      gutter.textContent = Array.from({ length: lineCount }, (_, index) => index + 1).join("\n");
+      pre.insertBefore(gutter, code);
     });
   }
 
@@ -563,7 +650,7 @@
   }
 
   function currentApiData() {
-    return window.ArdaCurrentApi || window.ArdaRDGApi || window.ArdaBackendApi;
+    return window.ArdaCurrentApi || window.ArdaRDGApi || window.ArdaBackendApi || window.ArdaNativeComputeApi;
   }
 
   function apiSymbols() {
@@ -1131,8 +1218,8 @@
     form.insertAdjacentElement("afterend", callout);
   }
 
-  function suppressInitialApiFragment() {
-    if (!window.location.hash) {
+  function initialApiFragment() {
+    if (!doc.querySelector("[data-api-reference]") || !window.location.hash) {
       return null;
     }
     let id;
@@ -1141,25 +1228,15 @@
     } catch (_error) {
       id = window.location.hash.slice(1);
     }
-    if (!/^api-/.test(id)) {
-      return null;
-    }
-    try {
-      const withoutFragment = new URL(window.location.href);
-      withoutFragment.hash = "";
-      window.history.replaceState(window.history.state, "", withoutFragment.href);
-    } catch (_error) {
-      // A direct-result callout still provides navigation if history is unavailable.
-    }
-    return { id };
+    return id;
   }
 
-  function initializeApiDirectResult(symbols, state, initialFragment) {
+  function initializeApiDirectResult(symbols, state, fragment) {
     const params = new URLSearchParams(window.location.search);
     const requested = text(params.get("symbol")).trim();
     const queryMatch = exactApiSymbol(symbols, requested);
-    const fragmentMatch = !queryMatch && initialFragment
-      ? symbols.find((symbol) => text(symbol.id).replace(/^#/, "") === initialFragment.id)
+    const fragmentMatch = !queryMatch && fragment
+      ? symbols.find((symbol) => text(symbol.id).replace(/^#/, "") === fragment)
       : null;
     const match = queryMatch || fragmentMatch;
     if (match) {
@@ -1170,23 +1247,31 @@
       });
       appendApiDirectResult(match);
     }
+    if (fragment) {
+      const target = doc.getElementById(fragment);
+      if (target) {
+        // Rendering replaces the static entry after the browser's first fragment jump.
+        target.scrollIntoView({ behavior: "instant" });
+      }
+    }
   }
 
   function initialize() {
-    prepareHeaderControls();
+    initializeDocSearch();
     initializeTheme();
     initializeNavigation();
+    initializePageOutline();
     doc.documentElement.classList.add("has-js");
     initializeGlossaryTooltips();
     initializeGlossaryFilter();
     initializeCodeBlocks();
-    const initialApiFragment = suppressInitialApiFragment();
+    const fragment = initialApiFragment();
     const symbols = apiSymbols();
     const apiFilterState = createApiFilterState();
     initializeApiIndexes(symbols, apiFilterState);
     initializeAuthoredApiSearch(apiFilterState);
     initializeApiReference(symbols, apiFilterState);
-    initializeApiDirectResult(symbols, apiFilterState, initialApiFragment);
+    initializeApiDirectResult(symbols, apiFilterState, fragment);
   }
 
   if (doc.readyState === "loading") {

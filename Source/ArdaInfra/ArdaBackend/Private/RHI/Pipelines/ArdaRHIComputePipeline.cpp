@@ -24,11 +24,23 @@ namespace arda
 		size_t H = 0;
 		HashPipelineRef(H, V.mComputeShader);
 		HashPipelineRefs(H, V.mBindingLayouts);
+		if (!V.mExtension.mId.empty())
+		{
+			ArdaHashCombine(H, eastl::hash<eastl::string>{}(V.mExtension.mId));
+			for (const auto Word : V.mExtension.mArguments)
+			{
+				ArdaHashCombine(H, Word);
+			}
+		}
 		return H;
 	}
 
 	FArdaRHIStatus Validate(const FArdaRHIComputePipelineDesc& V)
 	{
+		if (V.mExtension.mId.empty() && !V.mExtension.mArguments.empty())
+		{
+			return Invalid("Compute pipeline extension arguments require an extension ID.");
+		}
 		if (!V.mComputeShader)
 		{
 			return Invalid("Compute pipeline requires a compute shader.");

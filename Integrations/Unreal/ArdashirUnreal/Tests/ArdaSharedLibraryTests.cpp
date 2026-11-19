@@ -1,5 +1,9 @@
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
 #include "Graph/Node/ArdaNodeDefinition.h"
+#if __has_include("NVAPI/ArdaNativeNvapiProvider.h")
+#include "CUDA/ArdaNativeCudaProvider.h"
+#include "NVAPI/ArdaNativeNvapiProvider.h"
+#endif
 
 #include <cstdio>
 
@@ -47,6 +51,25 @@ namespace arda
 int main()
 {
 	using namespace arda;
+#if __has_include("NVAPI/ArdaNativeNvapiProvider.h")
+	// Exercise both provider factories exported by the SDK-free DLL, including
+	// retaining their descriptors in a registry constructed by the host.
+	FArdaNativeComputeRegistry Registry;
+	if (!Registry.RegisterProvider(CreateArdaNativeCudaInGraphicsProvider()) ||
+	    !Registry.RegisterProvider(CreateArdaNativeNvapiProvider()))
+	{
+		std::fprintf(stderr, "The shared library could not register its NVIDIA compute providers.\n");
+		return 7;
+	}
+	const auto CiG = Registry.FindProvider(ArdaNativeCudaInGraphicsProviderId);
+	const auto Nvapi = Registry.FindProvider(ArdaNativeNvapiProviderId);
+	if (!CiG || !Nvapi || CiG->GetDesc().mGraphicsApis.size() != 2 ||
+	    Nvapi->GetDesc().mGraphicsApis != eastl::vector<eastl::string>{"native-d3d12"})
+	{
+		std::fprintf(stderr, "The host received incorrect NVIDIA provider descriptors from the shared library.\n");
+		return 8;
+	}
+#endif
 	const auto Supported = FArdaSharedLibraryNode::CheckRequiredFeatures(nullptr, {});
 	const auto Unsupported = FArdaSharedLibraryNode::CheckRequiredFeatures(nullptr, {{}, true});
 	if (!Supported || Unsupported.mCode != EArdaRHIResult::Unsupported)

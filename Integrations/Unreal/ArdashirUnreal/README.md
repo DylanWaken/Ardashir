@@ -1,9 +1,9 @@
 # ArdashirUnreal
 
 Unreal Engine integration for Ardashir. The plugin registers the `unreal-rhi`
-backend and runs Arda compute work on Unreal's existing device and immediate
-graphics command list. The initial integration targets Windows x64 and the
-Unreal 5.8.1 source checkout at `D:/UnrealEngine`.
+backend. Use it to record Arda command lists and dependency graphs on Unreal's
+existing device and immediate graphics command list. The initial integration
+targets Windows x64 and the Unreal 5.8.1 source checkout at `D:/UnrealEngine`.
 
 ## Layout and dependency ownership
 
@@ -47,6 +47,9 @@ is clean, and builds the library with native D3D12 and Vulkan providers
 disabled. The default build uses the revision in `ArdaRevision.json`.
 `--update` advances to the latest published commit on the branch configured in `ArdaRevision.json`; `--ref COMMIT` selects
 a particular published revision. Unreal remains the owner of the graphics API.
+The pinned revision predates ArdaNativeCompute. Use `--update` for the native
+compute registry and NVIDIA provider factories on the published branch. Hardware
+execution still depends on support from the active graphics backend.
 For a local dependency download cache, add
 `--dependency-cache D:/Projects/Ardashader/build/_deps`.
 
@@ -110,13 +113,13 @@ RDG allocation and its ownership contract until the pass has completed.
 Immediate recording has side effects when commands are recorded; a failed
 later call does not roll earlier commands back.
 
-The first provider supports compute, deferred graph command recording, imported
-and ordinary 2D single-sample color textures, whole-resource transitions, and
-qualified copies. It rejects independent queues, owned devices, presentation,
-and unimplemented graphics/ray-tracing features. sRGB imports, partial texture
-state tracking, CPU mapping, and shader buffer bindings are not qualified.
-Capability flags describe the adapter implementation, not everything the
-underlying GPU supports.
+The provider supports compute and deferred graph recording on the borrowed
+graphics queue. It handles imported and ordinary 2D single-sample color
+textures, whole-resource transitions, and qualified copies. The provider rejects
+independent queues, owned devices, presentation, and unimplemented graphics and
+ray-tracing operations. Check its capability flags before recording. Shader buffer
+bindings, CPU mapping, sRGB imports, and partial texture state tracking still
+need qualification. See the [validation limits](VALIDATION.md#qualification-limits).
 
 ## CUDA handoff
 
@@ -158,8 +161,8 @@ A CUDA node can optionally implement `RecordComputeAlternative` and declare
 bridge, Arda selects that compute route before preparation and schedules it as
 ordinary compute work. Without CUDA or an authored alternative, invocation
 returns `Unsupported`. The alternative must use shader operations supported by
-this provider. See the dependency's `Docs/ArdaRDG/feature-requirements.html` and
-`Source/ArdaInfra/ArdaBackend/README.md` for the graph and operand contracts.
+this provider. See the [graph requirements guide](../../../Docs/ArdaRDG/feature-requirements.html)
+and the [operand contract](../../../Source/ArdaInfra/ArdaBackend/README.md#optional-compute-alternatives).
 
 The external test project contains a view extension and two registered Arda
 nodes: a compute shader node and a CUDA node. Project code imports the scene and
@@ -171,8 +174,9 @@ scope ownership, deferred replay order, duplicate execution, and rejected calls.
 Unreal's shader parameter metadata owns its loose constant layout. The compute
 node uses a deferred host callback to bind those parameters between Arda's
 pipeline binding and dispatch; Arda still schedules the operation and declares
-its texture dependencies. Submit from the render-thread scope so native recording runs in that scope. Use `Submit` and poll completion; `Execute` waits for
-completion and is unsuitable inside the scope.
+its texture dependencies. Call `Submit` inside the render-thread scope and
+poll for completion later. `Execute` waits for GPU work that Unreal submits
+after leaving the scope.
 
-See `VALIDATION.md` for the exact environment, commands, results, and remaining
-limitations of the latest recorded run.
+See the [validation record](VALIDATION.md) for the tested core revision,
+environment, commands, and results.

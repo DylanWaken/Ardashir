@@ -94,6 +94,17 @@ namespace arda
 
 	FArdaRHIStatus FArdaCudaParameterMetadata::Prepare(const void* Parameters, FArdaCudaDispatch& Output) const
 	{
+		return PackArguments(Parameters, Output, true);
+	}
+
+	FArdaRHIStatus FArdaCudaParameterMetadata::PackArguments(const void* Parameters, FArdaCudaDispatch& Output) const
+	{
+		return PackArguments(Parameters, Output, false);
+	}
+
+	FArdaRHIStatus FArdaCudaParameterMetadata::PackArguments(const void* Parameters, FArdaCudaDispatch& Output,
+	    bool bRequireCudaSharing) const
+	{
 		if (!mStatus)
 		{
 			return mStatus;
@@ -164,9 +175,12 @@ namespace arda
 				{
 					return Fail("CUDA surface requires its declared format, exactly one mip and all array layers.");
 				}
-				if (auto S = ValidateArdaCudaTexture(D); !S)
+				if (bRequireCudaSharing)
 				{
-					return S;
+					if (auto S = ValidateArdaCudaTexture(D); !S)
+					{
+						return S;
+					}
 				}
 				Binding.mResource = P.mTexture;
 				Binding.mMipLevel = R.mBaseMipLevel;
@@ -177,7 +191,7 @@ namespace arda
 			}
 
 			// The RHI command list validates resource affinity before native recording.
-			if (!Binding.mResource->GetCudaResourceInfo().mbSharingEnabled)
+			if (bRequireCudaSharing && !Binding.mResource->GetCudaResourceInfo().mbSharingEnabled)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
 				    "CUDA parameter resource was not created with CUDA sharing.");

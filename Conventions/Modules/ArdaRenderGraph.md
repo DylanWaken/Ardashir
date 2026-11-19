@@ -1,4 +1,4 @@
-# ArdaRenderGraph Coding Conventions
+# ArdaDependencyGraph coding conventions
 
 These conventions apply to project-owned C++ types in `Source/ArdaInfra/ArdaDependencyGraph` and supplement the [repository conventions](../ArdaCodingConventions.md).
 
@@ -8,11 +8,20 @@ Use the project-wide `Arda` stem with the applicable category prefix: `FArda` fo
 
 ## Node authoring
 
-Make graph programs read as operations on resource variables. Begin an `FArdaGraphEdit`, obtain `FArdaGraphBuffer` / `FArdaGraphTexture` values through allocation, binding or earlier operations, then call operation functions or a node's global callable such as `CopyBuffer(Edit, Parameters)`. Retain terminal resources with `Edit.Keep()`, check `Edit.Commit()` to queue the edit, and retain the receipt from `Graph.Compile()`. Execution may be queued immediately afterward; inspect the completed results through receipt `Wait()` calls. Use `CompileAndWait()` when a blocking compile result is required. Use the default `AllocateBuffer`, `AllocateTexture`, `BindBuffer`, `BindTexture`, `Clear`, `Upload`, `CopyTo`, `Clone` and `Readback` operations where they apply; programs should not need to construct node names or discover raw output handles for ordinary composition.
+Compose operations using their resource values. Open an `FArdaGraphEdit` and obtain `FArdaGraphBuffer` or `FArdaGraphTexture` values by allocating, binding, or calling an operation that produces them. Pass those values to another operation or a node's named callable. Retain terminal resources with `Edit.Keep()`, then check the statuses from `Edit.Commit()` and `Graph.Compile()`. Call `Graph.Submit()` to record and submit work on the calling thread, then call `Graph.Wait(Ticket)` to retire it and publish readbacks.
+
+Use the built-in `AllocateBuffer`, `AllocateTexture`, `BindBuffer`, `BindTexture`, `Clear`, `Upload`, `CopyTo`, `Clone`, and `Readback` operations where they apply. Pass typed resource values between operations so callers can compose them directly.
 
 Give every node class its own parameter struct, including nodes with identical fields or no inputs. Do not reuse another node's parameter type, alias it, or pass a shared catch-all struct to multiple node classes. Include only that operation's inputs and outputs and use named fields instead of positional resource arrays. Shared immutable data may be referenced explicitly, while deliberately dynamic pointees need a documented synchronization contract. Each attached node instance retains a separate immutable parameter snapshot; edits to a caller's struct do not update attached nodes.
 
 For exported device code, register an immutable `FArdaRuntimeNodeDesc` through `FArdaRuntimeNodeDefinition`. These data-authored definitions use one explicit ABI and `FArdaRuntimeNodeParameters`; they do not require a new C++ class per kernel. They lower to the same `FArdaDependencyNodeExecutable`, registry, resource accesses, compiler and CUDA sequence as class-authored nodes. Declare each pointer argument and its accessible buffer range, each scalar's exact bytes, the PTX/cubin target, and launch dimensions. Library registration validates all entries before publishing any. A registry name may only be reused for an identical definition; exported names must identify the compiled artifact as well as its entry point.
+
+For native operations that can select a CUDA variant or an equivalent compute
+shader, register the implementations and shared resource contract through
+[ArdaNativeCompute](../../Docs/ArdaNativeCompute/index.html). Its CUDA provider
+accepts linked entries, prebuilt PTX or cubin, and CUDA C++ for optional NVRTC
+compilation during preparation. Use the graph integration to declare
+dependencies and record the selected route.
 
 Represent tensors with the Backend `FArdaRHITensorDesc` and a graph buffer in `FArdaGraphTensor`. Dimensions, element strides, dtype and byte origin are semantic identity. Use `ARDA_NODE_TENSOR` / `ARDA_COMPUTE_TENSOR` metadata for tensor parameters; resources remain ordinary buffers, and overlapping writable tensor elements are rejected. Tensor descriptors do not imply broadcasting, layout conversion or operator dispatch.
 

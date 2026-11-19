@@ -477,10 +477,21 @@ def rdg_specs(repo: Path) -> List[Tuple[str, str, str]]:
     ]
 
 
+def native_compute_specs(repo: Path) -> List[Tuple[str, str, str]]:
+    public = repo / "Source/ArdaInfra/ArdaNativeCompute/Public"
+    provider_components = {"CUDA": "cuda", "NVAPI": "nvapi"}
+    return [
+        (header.relative_to(repo).as_posix(), "arda", provider_components.get(header.parent.name, "core"))
+        for header in sorted(public.rglob("*.h"), key=lambda path: path.relative_to(public).as_posix())
+    ]
+
+
 def make_symbols(
     repo: Path,
     specs: Iterable[Tuple[str, str, str]],
     domain: str,
+    *,
+    generic_contracts: bool = True,
 ) -> List[Dict[str, object]]:
     validator = Validator(repo / "Docs", repo, False)
     symbols: List[Dict[str, object]] = []
@@ -517,13 +528,20 @@ def make_symbols(
                     "details": details,
                     "source": source,
                     "params": [],
-                    "returns": "See the declared result and status contract." if kind in {"function", "method", "operator", "conversion operator"} else "",
-                    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-                    "errors": "" if "/FileOperations/" in source else "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-                    "threading": "" if "/FileOperations/" in source else "Calls follow the synchronization rules of the owning provider device or command list.",
+                    "returns": "",
+                    "ownership": "",
+                    "errors": "",
+                    "threading": "",
                     "related": ["::".join(item for item in (namespace, owner) if item)],
                 }
             )
+            if generic_contracts:
+                if kind in {"function", "method", "operator", "conversion operator"}:
+                    symbols[-1]["returns"] = "See the declared result and status contract."
+                symbols[-1]["ownership"] = "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise."
+                if "/FileOperations/" not in source:
+                    symbols[-1]["errors"] = "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract."
+                    symbols[-1]["threading"] = "Calls follow the synchronization rules of the owning provider device or command list."
             symbols[-1].update(source_contract(raw, line))
             symbols[-1]["sourceLine"] = line
     return symbols
@@ -821,18 +839,45 @@ def main() -> int:
     rdg_reference_path = repo / "Docs/ArdaRDG/api-reference.html"
     rdg_reference_current = rdg_reference_path.read_text(encoding="utf-8")
     rdg_reference_updated = static_api_reference(rdg_reference_current, rdg_updated, "ArdaRDGApi", "ArdaDependencyGraph", "RDG")
+    native_path = repo / "Docs/assets/native-compute-api.js"
+    native_reference = repo / "Docs/ArdaNativeCompute/api-reference.html"
+    native_current = native_path.read_text(encoding="utf-8") if native_path.exists() else ""
+    native_reference_current = native_reference.read_text(encoding="utf-8")
+    native_specs = native_compute_specs(repo)
+    native_symbols = make_symbols(repo, native_specs, "native compute", generic_contracts=False)
+    if native_current:
+        preserve_symbol_ids(native_symbols, evaluate_api(native_current, "ArdaNativeComputeApi"))
+    native_inventory = {
+        "module": {"id": "arda-native-compute", "name": "ArdaNativeCompute", "namespace": "arda",
+            "summary": "Select and record native GPU kernels or equivalent shader implementations."},
+        "generatedFrom": "Source/ArdaInfra/ArdaNativeCompute/Public",
+        "headerProvenance": [header for header, _, _ in native_specs],
+        "components": [
+            {"id": "core", "name": "Registration, selection, and recording", "page": "api-reference.html",
+                "summary": "Define an operation once and prepare a route for a device and command queue."},
+            {"id": "cuda", "name": "CUDA and CUDA in Graphics providers", "page": "api-reference.html",
+                "summary": "Share a kernel source across CUDA launch modes and prepare it for a graphics or compute queue."},
+            {"id": "nvapi", "name": "NVAPI provider", "page": "api-reference.html",
+                "summary": "Register D3D12 compute shaders that call NVIDIA shader extension intrinsics."},
+        ],
+        "symbols": native_symbols,
+    }
+    native_updated = ("/* Generated public source inventory for ArdaNativeCompute. */\n"
+        + "window.ArdaNativeComputeApi = " + json.dumps(native_inventory, indent=2) + ";\n")
+    native_reference_updated = static_api_reference(
+        native_reference_current, native_updated, "ArdaNativeComputeApi", "ArdaNativeCompute", "NATIVE COMPUTE"
+    )
+    outputs = (
+        (glossary_path, glossary_current, glossary_updated),
+        (backend_path, backend_current, backend_updated),
+        (reference_path, reference_current, reference_updated),
+        (rdg_path, rdg_current, rdg_updated),
+        (rdg_reference_path, rdg_reference_current, rdg_reference_updated),
+        (native_path, native_current, native_updated),
+        (native_reference, native_reference_current, native_reference_updated),
+    )
     if args.check:
-        stale = []
-        if glossary_current != glossary_updated:
-            stale.append(glossary_path)
-        if backend_current != backend_updated:
-            stale.append(backend_path)
-        if reference_current != reference_updated:
-            stale.append(reference_path)
-        if rdg_current != rdg_updated:
-            stale.append(rdg_path)
-        if rdg_reference_current != rdg_reference_updated:
-            stale.append(rdg_reference_path)
+        stale = [path for path, current, updated in outputs if current != updated]
         if stale:
             print(
                 "%s is stale; run %s"
@@ -842,17 +887,15 @@ def main() -> int:
         print(
             "API inventories are synchronized "
             f"({len(backend_symbols)} backend additions, "
-            f"{len(rdg_symbols)} RDG additions)."
+            f"{len(rdg_symbols)} RDG symbols, {len(native_symbols)} native compute symbols)."
         )
         return 0
-    backend_path.write_text(backend_updated, encoding="utf-8", newline="\n")
-    reference_path.write_text(reference_updated, encoding="utf-8", newline="\n")
-    rdg_path.write_text(rdg_updated, encoding="utf-8", newline="\n")
-    rdg_reference_path.write_text(rdg_reference_updated, encoding="utf-8", newline="\n")
-    glossary_path.write_text(glossary_updated, encoding="utf-8", newline="\n")
+    for path, current, updated in outputs:
+        if current != updated:
+            path.write_text(updated, encoding="utf-8", newline="\n")
     print(
-        f"Updated API inventories with {len(backend_symbols)} backend additions "
-        f"and {len(rdg_symbols)} RDG additions."
+        f"Updated API inventories with {len(backend_symbols)} backend additions, "
+        f"{len(rdg_symbols)} RDG symbols, and {len(native_symbols)} native compute symbols."
     )
     return 0
 

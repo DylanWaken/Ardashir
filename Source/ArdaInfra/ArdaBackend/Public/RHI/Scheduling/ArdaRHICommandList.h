@@ -9,6 +9,7 @@
 #include "RHI/Pipelines/ArdaRHIMeshletPipeline.h"
 #include "RHI/Pipelines/ArdaRHIRayTracingPipeline.h"
 #include "RHI/Scheduling/ArdaRHIQueueTypes.h"
+#include "RHI/Scheduling/ArdaRHINativeOperation.h"
 #include "RHI/Scheduling/ArdaRHIResourceCopies.h"
 #include "RHI/Scheduling/ArdaRHITransitions.h"
 #include <EASTL/functional.h>
@@ -24,10 +25,36 @@ namespace arda
 	/** Called with owned bytes after an asynchronous device-to-host copy. */
 	using FArdaRHIDeviceToHostCopyCallback = eastl::function<void(FArdaRHIBufferReadbackResult)>;
 
+	/** Frozen native or shader command supplied by a module above the RHI. */
+	class IArdaRHIComputeCommand
+	{
+	public:
+		virtual ~IArdaRHIComputeCommand() = default;
+		virtual FArdaRHIStatus RecordOn(IArdaRHICommandList& Commands) const = 0;
+	};
+
 	/** Interface for command list. */
 	class IArdaRHICommandList : public virtual IArdaRHIResource
 	{
 	public:
+		/** Record a prepared implementation into this list. ExecuteCommandList submits it. */
+		virtual FArdaRHIStatus RecordNativeCompute(const IArdaRHIComputeCommand& Command)
+		{
+			return Command.RecordOn(*this);
+		}
+
+		/**
+		 * Append a backend-defined operation to an open graphics or compute list.
+		 * The caller declares every buffer/texture view and records any ordinary RHI state
+		 * transitions the backend's operation contract requires. The graphics backend
+		 * implements the operation's ABI, representation handoff and native synchronization.
+		 * The recording and any resulting submission retain the operation and its views.
+		 */
+		virtual FArdaRHIStatus RecordNativeOperation(const FArdaRHINativeOperationDesc&)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Native operation recording is unavailable.");
+		}
+
 		/**
          * Records one precompiled CUDA kernel on an open list; ExecuteCommandList submits the work.
          * Bindings must belong to this device and already have qualified CUDA representations.

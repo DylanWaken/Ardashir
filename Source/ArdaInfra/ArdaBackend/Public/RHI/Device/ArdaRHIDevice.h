@@ -64,6 +64,28 @@ namespace arda
 	class IArdaRHIDevice : public virtual IArdaRHIResource
 	{
 	public:
+		/** Registered graphics backend that created this device. Custom facades may return an empty name. */
+		[[nodiscard]] virtual const char* GetBackendName() const noexcept
+		{
+			return "";
+		}
+
+		/**
+		 * Report whether this graphics device implements the named native operation.
+		 * Use during preparation to select a fallback before recording. Queue, binding,
+		 * and payload compatibility remain specific to the operation.
+		 */
+		[[nodiscard]] virtual bool SupportsNativeOperation(const char*) const noexcept
+		{
+			return false;
+		}
+
+		/** Check a required compute pipeline extension before preparing a native operand. */
+		[[nodiscard]] virtual FArdaRHIStatus CheckComputePipelineExtension(const FArdaRHIComputePipelineExtension&) const
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Compute pipeline extension unavailable.");
+		}
+
 		/** Reads this device's qualified CUDA launch mode, architecture, limits and surface support.
          * @return An owned snapshot. A false boolean conversion means no CUDA launch mode;
          * mUnavailableReason explains why. Surface support and its diagnostic are independent.

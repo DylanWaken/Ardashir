@@ -164,6 +164,15 @@ namespace arda
 			Hash.Add(0x434F4D50555445ull);
 			HashShader(Hash, Desc.mComputeShader);
 			HashLayouts(Hash, Desc.mBindingLayouts);
+			if (!Desc.mExtension.mId.empty())
+			{
+				Hash.AddString(Desc.mExtension.mId);
+				Hash.Add(Desc.mExtension.mArguments.size());
+				for (const auto Word : Desc.mExtension.mArguments)
+				{
+					Hash.Add(Word);
+				}
+			}
 			return Hash.Finish();
 		}
 

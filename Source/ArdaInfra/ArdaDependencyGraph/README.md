@@ -1,12 +1,17 @@
 # ArdaDependencyGraph
 
-The graph describes resources, nodes and their dependencies. Preprocessing returns
-a normal transformed graph. ArdaInductor reads that graph and produces a separate
-schedule and memory plan; an executor owns its native resource and frame lifetime.
+Use ArdaDependencyGraph to declare GPU operations and their resource accesses.
+Preprocessing expands the declarations into a graph that ArdaInductor can
+schedule. The executor uses the resulting schedule and memory plan to manage
+native resources and track each frame. Follow the [graph quickstart](../../../Docs/ArdaRDG/getting-started.html)
+to clear a buffer and read the result from the CPU.
 
-`Compile()` returns its status on the calling thread. `Submit()` records commands and returns a GPU frame ticket.
-`Wait(ticket)` retires that frame and publishes readbacks. `Execute()` combines submission and retirement.
-The existing `CompileAndWait`, `SubmitAndWait`, and `ExecuteAndWait` names forward to those operations.
+Check the status from `Compile()` before submitting. `Submit()` records and
+submits commands on the calling thread and returns a GPU frame ticket.
+Pass the ticket to `Wait(ticket)` to retire the frame and publish readbacks,
+or use `Execute()` to submit and retire in one call. The existing
+`CompileAndWait`, `SubmitAndWait`, and `ExecuteAndWait` names forward to these
+operations.
 
 ## Runtime kernels, tensor ports and model packages
 
@@ -45,8 +50,8 @@ if (!Output)
 // Consume Output with another graph operation, or retain it as a terminal result.
 Edit.Keep(Output->mBuffer);
 if (auto Status = Edit.Commit(); !Status) return Status;
-if (auto Status = Graph.CompileAndWait(); !Status) return Status;
-return Graph.ExecuteAndWait().mStatus;
+if (auto Status = Graph.Compile(); !Status) return Status;
+return Graph.Execute().mStatus;
 ```
 
 Inspect the loaded package with `GetTensors()` before binding ports. `mDesc` includes dtype,
@@ -70,7 +75,7 @@ operations participate in normal parent-graph preprocessing and scheduling.
 | --- | --- | --- |
 | Runtime definitions | Immutable ABI-described kernels, atomic registration, driver module loading and shared native modules | More execution providers and a shared code-asset table in graph archives |
 | Tensor metadata | Backend dtype, dimensions, strides and byte offsets; graph views share buffer storage; static dense FP32/FP16/BF16/FP8/INT8/INT32 export | Dynamic dimensions, arbitrary strided exported ports and broader operator coverage |
-| Checkpoints and archives | Separate named state dicts, immutable loaded instances and portable runtime definitions; graph archive v4 reads v2 and v3 | Larger/streamed weight assets and migration tooling |
+| Checkpoints and archives | Separate named state dicts, immutable loaded instances and portable runtime definitions. Graph archive v4 reads v2 and v3 | Larger/streamed weight assets and migration tooling |
 | Offline model export | Supported static ONNX lowered to standalone CUDA kernels; pretrained OIDN and NPPD examples | Universal PyTorch/operator coverage, dynamic shapes and data-dependent host control flow |
 | Graphics integration | Cornell rendering, feature packing, CUDA inference and presentation in one graph; temporal state feedback | Moving-camera motion/reprojection in the Cornell demonstration |
 
@@ -132,8 +137,8 @@ if (!Executor.GetStatus()) return Executor.GetStatus();
 return Executor.Execute().mStatus;
 ```
 
-The persistent `Graph.CompileAndWait()` / `Graph.ExecuteAndWait()` facade remains available. It
-coordinates preprocessing, compilation, revision reuse and execution internally.
+Use `Graph.Compile()` and `Graph.Execute()` to let the graph coordinate
+preprocessing, compilation, revision reuse and execution.
 Use the standalone calls when storing optimized graphs or owning plans separately.
 
 ## Recursive subgraph nodes and archives
@@ -196,7 +201,7 @@ if (!Loaded)
 {
     return Loaded.mStatus;
 }
-return Loaded.mValue->CompileAndWait();
+return Loaded.mValue->Compile();
 ```
 
 `Graph.Serialize()` and `FArdaDependencyGraph::Deserialize(Data, Device)` provide
@@ -272,7 +277,7 @@ and type, while each compiled executor retains the binding from its own context.
 
 Use `FArdaGraphEdit` to record operations on typed buffer and texture variables.
 The scope begins a transaction, each operation adds its registered node and
-resource dependencies, and `Commit()` closes and queues the edit. `Graph.CompileAndWait()`
+resource dependencies, and `Commit()` closes and queues the edit. `Graph.Compile()`
 then selects or compiles a persistent revision. For example, this
 function records a clear followed by a copy into an existing native texture:
 
@@ -293,7 +298,7 @@ arda::FArdaRHIStatus RecordTextureCopy(arda::FArdaDependencyGraph& Graph,
     {
         return Status;
     }
-    return Graph.CompileAndWait();
+    return Graph.Compile();
 }
 ```
 
@@ -306,7 +311,7 @@ accepts `EArdaGraphResourceLifetime::Persistent` as a fourth argument when stora
 must retain contents across executions of that revision. Typed
 `FArdaGraphBuffer` and `FArdaGraphTexture` variables identify resources owned or
 retained by the graph; allocating a variable does not perform GPU work. Call
-`Graph.ExecuteAndWait()` after successful compilation, or submit and wait asynchronously.
+`Graph.Execute()` after successful compilation, or submit and wait asynchronously.
 
 `Clear`, `Upload`, `CopyTo`, `Clone`, and `Readback` compose the default nodes.
 Overloads route the same function name to different nodes according to the
@@ -388,11 +393,11 @@ remove their old nodes. The lifecycle is:
 1. Open an edit, record operations, and call `Edit.Commit()`.
    Each successful close appends its canonical key to the graph's ordered queue.
    Multiple edits may contribute resources and operations before compilation.
-2. Call `Graph.CompileAndWait()`. It combines the ordered edit hashes into a construction
+2. Call `Graph.Compile()`. It combines the ordered edit hashes into a construction
    hash and reuses a matching persistent revision, including its compilation
    results and prepared runtime. Otherwise it compiles and caches a new revision.
    Successful compilation clears the queue and locks editing.
-3. Call `Graph.ExecuteAndWait()` or `Graph.SubmitAndWait()`. Attempting execution unlocks editing.
+3. Call `Graph.Execute()` or `Graph.Submit()`. Attempting execution unlocks editing.
    The next ordinary edit begins an empty construction while cached revisions
    remain available. Switching revisions at compilation retires outstanding work
    from the outgoing runtime; reusing the same runtime preserves frame overlap.
@@ -400,7 +405,7 @@ remove their old nodes. The lifecycle is:
 The cache retains up to four revisions by default, so an A/B/A sequence can reuse
 the earlier A revision. Repeating the same edit sequence, resource identities and
 semantic parameters skips compilation. Edit boundaries and order contribute to
-the construction hash. Calling `ExecuteAndWait()` again without recording new edits
+the construction hash. Calling `Execute()` again without recording new edits
 also replays the selected revision.
 
 The graph retains the latest accumulated construction. The queue stores only the
@@ -409,7 +414,7 @@ bases until they close. Committing many edits does not retain a full graph copy
 for every earlier prefix.
 
 To submit an intentionally empty frame, close an empty edit and compile it.
-Calling `CompileAndWait()` without recording edits re-stages the selected construction.
+Calling `Compile()` without recording edits re-stages the selected construction.
 
 Native shader pipeline objects use one graph-wide PSO cache shared by all revisions.
 Each revision retains its own compiled schedule, resource placements and prepared
@@ -425,13 +430,13 @@ Clear(Edit, Image, bHighlight ? FArdaRHIColor{1, 0, 0, 1} : FArdaRHIColor{0, 0, 
 CopyTo(Edit, Image, Output);
 Edit.Keep(Output);
 Check(Edit.Commit());
-Check(Graph.CompileAndWait());
-Check(Graph.ExecuteAndWait().mStatus);
+Check(Graph.Compile());
+Check(Graph.Execute().mStatus);
 ```
 
-`Graph.CompileAndWait(true)` forces compilation even when a matching revision exists.
+`Graph.Compile(true)` forces compilation even when a matching revision exists.
 `Graph.InvalidatePersistentCache()` clears reusable cache entries while keeping the
-selected executable valid for replay. The next `CompileAndWait()` rebuilds; it can re-stage
+selected executable valid for replay. The next `Compile()` rebuilds; it can re-stage
 the selected construction without another edit. `SetRevisionCacheCapacity(Count)`
 changes the retained revision limit (at least one). `GetRevisionStats()` exposes cache and compilation
 activity; its persistent revision identity remains stable when background timing optimization
@@ -462,8 +467,8 @@ for (unsigned Frame = 0; Frame != 3; ++Frame)
     Clear(Edit, Buffer, 7);
     ReadbackBuffer(Edit, {Buffer, Bytes});
     Check(Edit.Commit());
-    Check(Graph.CompileAndWait());
-    Check(Graph.ExecuteAndWait().mStatus);
+    Check(Graph.Compile());
+    Check(Graph.Execute().mStatus);
     // Consume *Bytes here, before the next execution can replace its contents.
 }
 ```
@@ -620,9 +625,9 @@ private implementations share the following ownership boundaries:
 | `Inductor/Runtime` | Resource materialization, shader bindings, command recording, submission and retirement. |
 
 `Edit.Commit()` validates and queues an edit.
-`Graph.CompileAndWait()` publishes or reuses a pending plan. It does not allocate
-graph-owned GPU buffers or textures. The first `SubmitAndWait()` materializes that plan's
-native resources and execution state; subsequent frames reuse them. `ExecuteAndWait()`
+`Graph.Compile()` publishes or reuses a pending plan. It does not allocate
+graph-owned GPU buffers or textures. The first `Submit()` materializes that plan's
+native resources and execution state; subsequent frames reuse them. `Execute()`
 performs submission and waiting. Attachment-time node preparation can still load
 shaders or create node-owned setup objects.
 
@@ -744,8 +749,8 @@ eastl::vector<uint8_t> MemoryRoundTrip(arda::FArdaRHIDeviceRef Device)
     const auto Copied = Clone(Edit, Buffer);
     const auto Bytes = Readback(Edit, Copied, 4, 4);
     Check(Edit.Commit());
-    Check(Graph.CompileAndWait());
-    Check(Graph.ExecuteAndWait().mStatus);
+    Check(Graph.Compile());
+    Check(Graph.Execute().mStatus);
     return *Bytes;
 }
 ```
@@ -753,7 +758,7 @@ eastl::vector<uint8_t> MemoryRoundTrip(arda::FArdaRHIDeviceRef Device)
 ## Ownership and execution
 
 Record operations inside `FArdaGraphEdit`, check `Commit()`, then check
-`Graph.CompileAndWait()` before executing.
+`Graph.Compile()` before executing.
 Buffer upload and copy expose their supplied or inferred buffer through the
 `"Destination"` output slot. Texture upload, copy, and clear expose their supplied
 destination through that same slot. The facade returns typed variables directly;
@@ -771,7 +776,7 @@ rejected, even for disjoint ranges, because its native buffer state is shared.
 Texture dependencies cover mip/layer subresources; partial writes preserve
 previously initialized texels outside the selected region.
 
-`ExecuteAndWait()` submits and waits. For asynchronous execution, use `SubmitAndWait()`, keep
+`Execute()` submits and waits. For asynchronous execution, use `Submit()`, keep
 the returned ticket, and check `Graph.Wait(Ticket).mStatus` before consuming the
 readback. Buffer and texture uploads retain their host byte snapshots.
 Readback destinations remain retained through completion and are replaced only
@@ -779,7 +784,7 @@ when the frame succeeds; failed frames clear registered destinations. No extra
 device-idle wait is needed.
 
 Serialize executions that share a readback destination. Do not read or mutate
-that vector while completion may publish, including when `SubmitAndWait()` recycles a
+that vector while completion may publish, including when `Submit()` recycles a
 frame slot. Independent overlapping work should use separate destinations.
 
 Buffer upload and clear destinations require `mCpuAccess == None`. Buffer copy permits
@@ -824,7 +829,7 @@ are recomputed at attachment and should be left at their defaults.
 ### Example: packed texture round trip
 
 This function clears a 2-by-2 RGBA texture, uploads one red pixel, copies the
-texture, and returns 16 packed bytes. The top-right pixel occupies bytes 4â€“7.
+texture, and returns 16 packed bytes. The top-right pixel occupies bytes 4–7.
 
 ```cpp
 #include "ArdaDependencyGraph.h"
@@ -858,8 +863,8 @@ eastl::vector<uint8_t> TextureRoundTrip(arda::FArdaRHIDeviceRef Device)
     CopyTo(Edit, Source, Destination);
     const auto Bytes = Readback(Edit, Destination);
     Check(Edit.Commit());
-    Check(Graph.CompileAndWait());
-    Check(Graph.ExecuteAndWait().mStatus);
+    Check(Graph.Compile());
+    Check(Graph.Execute().mStatus);
     return *Bytes;
 }
 ```

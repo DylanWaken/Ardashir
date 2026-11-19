@@ -1,8 +1,9 @@
 # Arda Trace Viewer
 
-A dependency-light, offline trace viewer for ArdaTrace binary captures. Flask serves
-the local application; rendering, filtering, zooming, and panning are implemented
-with vanilla JavaScript and Canvas. No CDN or network service is used.
+Open an ArdaTrace binary capture to inspect CPU scopes and counters, filter
+events, and zoom in on part of the timeline. Flask serves the viewer locally.
+The browser draws the timeline with JavaScript and Canvas, and the viewer works
+offline.
 
 ## Setup
 

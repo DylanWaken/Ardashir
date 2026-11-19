@@ -3,60 +3,124 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Trace shared storage, native kernel launches and GPU dependencies across D3D12, Vulkan and CUDA.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Follow shared GPU allocations, kernel launches, and queue synchronization across Direct3D 12, Vulkan, and CUDA.">
   <title>How CUDA works with graphics | ArdaBackend</title>
+  <script>
+    (() => {
+      let preference = "dark";
+      try {
+        preference = localStorage.getItem("arda-theme") || preference;
+      } catch {
+        // Local files and privacy settings can disable storage.
+      }
+      const systemLight = preference === "system" && !matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = preference === "light" || systemLight ? "light" : "dark";
+    })();
+  </script>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
   <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/doc-search-index.js" defer></script>
   <script src="../assets/site.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
-  <header class="site-header">
-    <a class="site-brand" href="../index.html">Ardashir Docs</a>
-    <nav aria-label="Primary">
-      <a href="index.html">ArdaBackend</a>
-      <a href="architecture.html">Architecture</a>
-      <a href="quick-guide.html">Quick guide</a>
-      <a href="getting-started.html">Get started</a>
-      <a href="api-reference.html">API</a>
-      <a href="../glossary.html">Glossary</a>
-    </nav>
-  </header>
-  <div class="site-layout">
-    <aside class="sidebar" aria-label="ArdaBackend pages">
-      <h2>ArdaBackend</h2>
-      <nav>
-        <a href="index.html">Overview</a>
-        <a href="quick-guide.html">Quick user's guide</a>
-        <a href="getting-started.html">Getting started</a>
-        <a href="architecture.html">Architecture</a>
-        <a href="backend-modules.html">Backend modules</a>
-        <a href="external-interop.html">External interop</a>
-        <a href="shaders.html">Shaders</a>
-        <a href="pipelines.html">Pipeline states</a>
-        <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header" id="top">
+  <a class="announcement" href="../ArdaRDG/native-compute.html"><span aria-hidden="true">//</span> Write a native compute node <svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+  <div class="site-header__bar"><div class="site-header__inner">
+    <a class="site-brand" href="../index.html" aria-label="Ardashir home">Ardashir</a>
+    <nav class="site-nav" aria-label="Primary"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav>
+    <div class="header-tools"><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="index.html">GPU backend</a>
+<a href="../ArdaRDG/index.html">Dependency graph</a>
+<a href="../ArdaNativeCompute/index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button><div class="theme-control" hidden><button type="button" class="theme-toggle" data-theme-toggle aria-label="Change theme" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg></button><div class="theme-menu" id="theme-menu" role="menu" aria-label="Theme" hidden><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="dark"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg>Dark</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="light"><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Light</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="system"><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg>System</button></div></div>
+      <details class="mobile-nav"><summary aria-label="Navigation menu"><svg class="icon icon-menu" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></summary>
+        <div class="mobile-nav-panel"><nav aria-label="Primary navigation"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button></div>
+      </details>
+    </div>
+  </div></div>
+</header>
+<nav class="mobile-docs" aria-label="Docs menu"><details class="docs-menu"><summary><svg class="icon icon-list" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zm5 0v16"/></svg><span>Docs menu</span><span aria-hidden="true">/</span><span class="current-title">How CUDA works with graphics</span><svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+  <div class="mobile-docs-panel"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="../ArdaRDG/getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="../ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="quick-guide.html">Quick guide</a>
+<a href="architecture.html">Architecture</a></div></details>
+<details class="sidebar-group" open><summary>Rendering hardware interface<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="backend-modules.html">Backend modules</a>
+<a href="rhi.html">Resources and memory</a>
+<a href="resource-recipes.html">Resource recipes</a>
+<a href="gpu-allocator.html">GPU allocator</a>
+<a href="commands.html">Commands and submission</a>
+<a href="external-interop.html">External devices and resources</a>
+<a href="shaders.html">Shaders</a>
+<a href="pipelines.html">Pipeline states</a>
+<a href="presentation.html">Presentation</a>
+<a href="diagnostics.html">Diagnostics</a></div></details>
+<details class="sidebar-group" open><summary>CUDA interoperability<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="cuda-graphics.html" aria-current="page">How CUDA works with graphics</a>
+<a href="cuda-interop.html">Precompiled CUDA operands</a>
+<a href="cuda-sequences.html">CUDA sequences</a>
+<a href="cuda-external-calls.html">External CUDA calls</a>
+<a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+<a href="cuda-backend-plan.html">CUDA implementation record</a></div></details>
+<details class="sidebar-group"><summary>Reference and testing<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="api-reference.html">API reference</a>
+<a href="rhi-feature-guide.html">RHI feature guide</a>
+<a href="capability-recipes.html">Capability recipes</a>
+<a href="gpu-examples.html">Complete GPU examples</a>
+<a href="validation.html">GPU validation setup</a>
+<a href="validation-tests.html">Validation test suites</a>
+<a href="unreal-rhi-audit.html">Unreal RHI comparison</a>
+<a href="unreal-rhi-parity-plan.html">Unreal RHI parity review</a>
+<a href="simplification-review.html">Backend and graph review</a>
+<a href="documentation.html">Maintain this documentation</a></div></details></nav><details class="sidebar-group mobile-outline"><summary>On this page<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="#objectives">Learning objectives</a><a href="#fundamentals">What CUDA adds to a graphics pipeline</a><a href="#launch">Kernel launch syntax does not choose the execution mode</a><a href="#deployment">Compile at build time and deploy native images</a><a href="#memory">Share storage and preserve its interpretation</a><a href="#ordering">Establish dependencies in both directions</a><a href="#modes">Choose CiG or an ordinary CUDA context</a><a href="#worked-example">Work through a graphics producer, two CUDA passes and a consumer</a><a href="#lifetime">Retire resources after the last consumer</a><a href="#performance">Measure the whole boundary</a><a href="#failures">Diagnose the failed boundary</a><a href="#summary">Checkpoints</a></div></details></div>
+</details><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="index.html">GPU backend</a>
+<a href="../ArdaRDG/index.html">Dependency graph</a>
+<a href="../ArdaNativeCompute/index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details></nav>
+<div class="site-layout">
+  <aside class="sidebar" aria-label="Docs sidebar"><div class="sidebar-inner"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="../ArdaRDG/getting-started.html" aria-current="page"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="../ArdaNativeCompute/api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Start here<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="getting-started.html">Getting started</a>
+<a href="quick-guide.html">Quick guide</a>
+<a href="architecture.html">Architecture</a></div></details>
+<details class="sidebar-group" open><summary>Rendering hardware interface<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="backend-modules.html">Backend modules</a>
+<a href="rhi.html">Resources and memory</a>
+<a href="resource-recipes.html">Resource recipes</a>
+<a href="gpu-allocator.html">GPU allocator</a>
+<a href="commands.html">Commands and submission</a>
+<a href="external-interop.html">External devices and resources</a>
+<a href="shaders.html">Shaders</a>
+<a href="pipelines.html">Pipeline states</a>
+<a href="presentation.html">Presentation</a>
+<a href="diagnostics.html">Diagnostics</a></div></details>
+<details class="sidebar-group" open><summary>CUDA interoperability<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="cuda-graphics.html" aria-current="page">How CUDA works with graphics</a>
+<a href="cuda-interop.html">Precompiled CUDA operands</a>
+<a href="cuda-sequences.html">CUDA sequences</a>
+<a href="cuda-external-calls.html">External CUDA calls</a>
+<a href="cuda-texture-buffers.html">CUDA texture buffers</a>
+<a href="cuda-backend-plan.html">CUDA implementation record</a></div></details>
+<details class="sidebar-group"><summary>Reference and testing<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="api-reference.html">API reference</a>
+<a href="rhi-feature-guide.html">RHI feature guide</a>
+<a href="capability-recipes.html">Capability recipes</a>
+<a href="gpu-examples.html">Complete GPU examples</a>
+<a href="validation.html">GPU validation setup</a>
+<a href="validation-tests.html">Validation test suites</a>
+<a href="unreal-rhi-audit.html">Unreal RHI comparison</a>
+<a href="unreal-rhi-parity-plan.html">Unreal RHI parity review</a>
+<a href="simplification-review.html">Backend and graph review</a>
+<a href="documentation.html">Maintain this documentation</a></div></details></nav></div></aside>
+  <main id="main-content" tabindex="-1">
+    <article class="prose" data-doc-article>
+<header class="page-header"><h1>How CUDA works with graphics</h1><p>Follow shared GPU allocations, kernel launches, and queue synchronization across Direct3D 12, Vulkan, and CUDA.</p></header>
 
-        <a href="resource-recipes.html">Resource recipes</a>
-        <a href="gpu-allocator.html">GPU allocator</a>
-        <a href="capability-recipes.html">Capability recipes</a>
-        <a href="cuda-interop.html">CUDA and graphics</a>
-        <a href="cuda-graphics.html">CUDA in graphics fundamentals</a>
-        <a href="validation.html">GPU validation setup</a>
-        <a href="commands.html">Commands</a>
-        <a href="presentation.html">Presentation</a>
-        <a href="diagnostics.html">Diagnostics</a>
-        <a href="api-reference.html">API reference</a>
-      </nav>
-    </aside>
-    <main id="main-content" tabindex="-1">
-      <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href="../index.html">Docs</a>
-        <span aria-hidden="true">/</span>
-        ArdaBackend
-      </nav>
-      <article><header class="page-header"><p class="eyebrow">CUDA and graphics fundamentals</p><h1>How CUDA works with graphics</h1><p>Trace shared storage, native kernel launches and GPU dependencies across D3D12, Vulkan and CUDA.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">Learning objectives</a><a href="#fundamentals">What CUDA adds to a graphics pipeline</a><a href="#launch">Kernel launch syntax does not choose the execution mode</a><a href="#deployment">Compile at build time and deploy native images</a><a href="#memory">Share storage and preserve its interpretation</a><a href="#ordering">Establish dependencies in both directions</a><a href="#modes">Choose CiG or an ordinary CUDA context</a><a href="#worked-example">Work through a graphics producer, two CUDA passes and a consumer</a><a href="#lifetime">Retire resources after the last consumer</a><a href="#performance">Measure the whole boundary</a><a href="#failures">Diagnose the failed boundary</a><a href="#summary">Checkpoints</a></nav>
 <section id="objectives"><h2>Learning objectives and prerequisites</h2>
 <p>Learn to distinguish launch syntax from GPU scheduling, explain memory sharing, draw both handoffs and determine when data may be reused. This guide teaches the general model and maps it to current Arda behavior.</p>
 <p>Prerequisites: C++, <a class="term" data-term="resource" href="../glossary.html#term-resource">GPU resources</a>, <a class="term" data-term="queue" href="../glossary.html#term-queue">queues</a> and <a class="term" data-term="fence" href="../glossary.html#term-fence">completion fences</a>. Review <a href="commands.html">commands and synchronization</a> as needed. For code, go to <a href="cuda-interop.html#launch-methods">both native launch methods</a>.</p>
@@ -70,7 +134,8 @@
 <p>Arda hides native streams and pointer mappings inside its providers. The author binds __global__ symbols and selects launch dimensions; the framework launches them through its registered wrapper. See <a href="cuda-interop.html#launch-methods">both code spellings</a>, <a href="https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DRIVER.html">CUDA Runtime/Driver context rules</a> and <a href="https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__EXECUTION.html">kernel execution APIs</a>.</p></section>
 <section id="deployment"><h2>Compile at build time and deploy native images</h2>
 <p>nvcc compiles .cu translation units and their included .cuh device definitions during developer/CI builds. The application ships linked host entry wrappers and native GPU images. End users need the packaged runtime dependencies and a supported NVIDIA driver, not nvcc, headers or a full toolkit. A missing architecture is a package coverage error, not a request to compile on the user's machine.</p>
-<p>Arda's helper builds one native architecture/flag profile per target, generates its coverage manifest and excludes PTX and runtime source compilation. Template instantiations enumerate finite tile choices inside a profile. Separate profiles isolate options such as fast math or different architecture sets. Follow <a href="cuda-interop.html#nvcc-build">project compiler discovery</a>, <a href="cuda-interop.html#offline-ptx">profile builds</a> and <a href="cuda-interop.html#runtime-deployment">runtime packaging</a>.</p></section>
+<p>The linked-kernel helper builds one native architecture and compiler-flag profile per target and emits a coverage manifest. Template instantiations enumerate finite tile choices inside a profile. Separate profiles isolate options such as fast math or different architecture sets. Follow <a href="cuda-interop.html#nvcc-build">project compiler discovery</a>, <a href="cuda-interop.html#offline-ptx">profile builds</a> and <a href="cuda-interop.html#runtime-deployment">runtime packaging</a>.</p>
+<p>The <a href="../ArdaRDG/native-compute.html#sources">native compute registry</a> can also load PTX or cubin through the CUDA driver, or compile CUDA C++ to cubin with optional NVRTC during preparation. Both source paths use the same resource handoff and queue ordering rules.</p></section>
 <section id="memory"><h2>Share storage and preserve its interpretation</h2>
 <p>Use the same physical adapter for graphics and CUDA: Windows D3D12 identifies it by LUID/node mask, while Vulkan uses its physical-device UUID. Allocate resources with external sharing enabled, export the platform handle and import it into the selected CUDA context. Importing another device's memory is not repaired by converting the handle's type.</p>
 <p>A buffer is linear storage. Its CUDA view is the mapped base address plus the declared byte offset; the element type, alignment and range must agree with the kernel. A texture is usually tiled or otherwise opaque storage. Import it as a <a class="term" data-term="cuda-array" href="../glossary.html#term-cuda-array">CUDA array</a> with matching dimensions, channel format and mip structure, then create a <a class="term" data-term="cuda-surface" href="../glossary.html#term-cuda-surface">surface object</a>. A Vulkan buffer device address is not an ordinary CUDA pointer, and a graphics texture handle is not a surface object.</p>
@@ -83,10 +148,10 @@
 <p>Vulkan resource ownership transfers remain necessary alongside semaphore synchronization. The provider releases shared buffers/images to the external queue family and reacquires them before the graphics consumer; shared images use GENERAL layout at the boundary. D3D12 inserts UAV ordering around CUDA segments. A semaphore does not excuse an invalid image layout or undeclared cross-queue resource use.</p>
 <p>D3D12 CiG records CUDA into the D3D12 graphics list itself, using its ordered command stream plus barriers. This removes the separate segment handoff for captured work. Both designs still require lifetime through final graphics completion. See <a href="https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__STREAM.html">CiG stream capture</a>.</p></section>
 <section id="modes"><h2>Choose CiG or an ordinary CUDA context</h2><p>The configuration <a href="api-reference.html#api-arda-eardacudaexecutionmode-61683a2b"><code>EArdaCudaExecutionMode</code></a> expresses policy. The qualified result is <a href="api-reference.html#api-arda-fardacudacapabilities-2b4d1813"><code>FArdaCudaCapabilities</code></a>, including launch mode, compute capability, surface flags and reasons for fallback. Capability admission is separate from allocation success.</p>
-<p><strong>D3D12 CiG:</strong> create a CUDA context associated with the D3D12 graphics queue, begin capture to the actual native graphics command list, launch a registered compiled kernel on that stream, and end capture. The provider retains stream, entry and mappings through retirement. Its current capture gate permits one captured-but-unsubmitted list per context. RDG therefore records these passes at ordered submission, not during the earlier recording pass.</p>
+<p><strong>D3D12 CiG:</strong> create a CUDA context associated with the D3D12 graphics queue, begin capture to the actual native graphics command list, launch a registered compiled kernel on that stream, and end capture. The provider retains stream, entry and mappings through retirement. Its current capture gate permits one captured-but-unsubmitted list per context. RDG therefore records these passes at ordered submission, not in its earlier parallel recording waves.</p>
 <p><strong>Vulkan CiG:</strong> reserve external compute queue capacity while creating the Vulkan device, create a VK_NV_external_compute_queue object with the preferred graphics queue, obtain its opaque external data, and create a CUDA CiG context from that NV blob. Kernels launch on a CUDA stream in this context. External memory imports, semaphore handoffs and queue-family transfers still apply. This implementation does not use the removed VK_NV_cuda_kernel_launch module/launch path. See <a href="https://docs.vulkan.org/refpages/latest/refpages/source/VK_NV_external_compute_queue.html">Vulkan external compute queues</a> and <a href="https://docs.nvidia.com/cuda/cuda-driver-api/group__CUDA__CTX.html">CUDA CiG context creation</a>.</p>
 <p><strong>Ordinary context (ContextSwitch):</strong> create a matched CUDA context independently of the graphics queue, import shared resources into it, and enqueue stream launches between GPU handoffs. The graphics and CUDA workloads belong to different GPU contexts; the driver schedules them according to its capabilities and policy. This is not a process-global cudaSetDevice toggle, nor does it require a CPU wait after every kernel. Arda pushes/restores its context on the calling thread and uses explicit streams.</p>
-<p>Automatic prefers CiG, then ordinary CUDA if unavailable or if D3D12's surface probe fails. GraphicsQueue requires CiG; ContextSwitch forces ordinary execution. Pin the mode before creating resources. Borrowed Vulkan devices currently lack an external-queue reservation contract, so they cannot supply the Arda Vulkan CiG path; their enabled external-memory/semaphore extensions still determine ordinary-context support. Do not silently change a borrowed device's enabled extensions.</p>
+<p>Automatic prefers CiG, then ordinary CUDA if unavailable or if D3D12's surface probe fails. GraphicsQueue requires CiG; ContextSwitch forces ordinary execution. Pin the mode before creating resources. Borrowed Vulkan devices lack an external-queue reservation contract, so they cannot supply the Arda Vulkan CiG path; their enabled external-memory/semaphore extensions still determine ordinary-context support. Do not silently change a borrowed device's enabled extensions.</p>
 <p>When native CUDA surfaces are unavailable, <a href="cuda-texture-buffers.html">CUDA texture buffers</a> provide explicit GPU texture-to-buffer and buffer-to-texture copies around a pointer-based CUDA sequence. This works in D3D12 CiG while preserving the existing surface capability checks. Reuse the buffer and account for both copies when measuring frame cost.</p></section>
 <section id="worked-example"><h2>Work through a graphics producer, two CUDA passes and a consumer</h2>
 <p>Suppose a graphics pass writes 130 uint32 values Input[i] = 3i. A CUDA stage adds 7 into Middle; another adds 11 into Output; graphics then consumes Output. Register a 128-thread kernel, with two blocks for each stage. The launch creates 256 threads; 126 threads must return without accessing the array because their index is at least 130.</p>
@@ -105,9 +170,16 @@
 <dl><dt>Unsupported before launch</dt><dd>Check device match, driver/CiG support, native architecture coverage and resource sharing. Rebuild missing native profiles or select an application graphics path before writes.</dd><dt>Image mapping fails but buffers work</dt><dd>Inspect surface and layered-surface capability separately. On the tested Windows driver, D3D12 CiG image mapping fails; Automatic selects an ordinary context. Layered Vulkan imports remain excluded. Successful memory import alone is not proof of correct pixel addressing.</dd><dt>Old or flickering output</dt><dd>Check both handoffs, view offsets, queue-family ownership and reuse after the last consumer. Reduce to a known-value kernel with guards and final readback.</dd><dt>Submission never completes</dt><dd>Find the producer for every wait. Check binary semaphore consumption and fence values. A wait cannot complete if its signal is placed behind that same wait.</dd><dt>Launch succeeds but later completion fails</dt><dd>Preserve asynchronous errors, retain already queued work and discard the failed recording. Do not retry another algorithm over partial writes.</dd></dl>
 <p>Use <a href="validation.html">graphics validation</a>, <a href="diagnostics.html">diagnostics</a> and <a href="cuda-backend-plan.html">the hardware qualification record</a>. Distinguish a skipped capability from a passing GPU test. External-call operands admit library work through explicit preparation and capture contracts on the framework-owned stream.</p></section><section id="summary"><h2>Checkpoints and further reading</h2>
 <p>Compatible storage, native code and ordered access are separate requirements. Check your model:</p><ol><li>Why does importing memory not make a graphics write visible to CUDA automatically?</li><li>Why is a Vulkan buffer device address different from a CUDA pointer?</li><li>How do D3D12 CiG, Vulkan CiG and ordinary contexts submit work?</li><li>Which GPU operation makes a frame slot reusable?</li><li>For 130 elements and blocks of 128, how many threads return early and what is Output[129]?</li><li>Why can a missing architecture require a package rebuild even on a newer GPU?</li></ol>
-<p>Answers follow from <a href="#memory">memory interpretation</a>, <a href="#ordering">handoffs</a>, <a href="#modes">execution modes</a>, <a href="#worked-example">the worked example</a> and <a href="#lifetime">last-consumer lifetime</a>. Continue with <a href="cuda-interop.html">operand code and builds</a>, <a href="../ArdaRDG/index.html">RDG scheduling</a> and the <a href="api-reference.html">canonical API reference</a>. Primary NVIDIA/Khronos references appear beside the mechanisms they define.</p></section></article>
-</main>
-  </div>
-  <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaInfra/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>
+<p>Answers follow from <a href="#memory">memory interpretation</a>, <a href="#ordering">handoffs</a>, <a href="#modes">execution modes</a>, <a href="#worked-example">the worked example</a> and <a href="#lifetime">last-consumer lifetime</a>. Continue with <a href="cuda-interop.html">operand code and builds</a>, <a href="../ArdaRDG/index.html">RDG scheduling</a> and the <a href="api-reference.html">canonical API reference</a>. Primary NVIDIA/Khronos references appear beside the mechanisms they define.</p></section>
+    </article>
+    <nav class="page-nav" aria-label="Document navigation"><a href="diagnostics.html" rel="prev"><span class="page-nav-label"><svg class="icon icon-previous" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>Previous</span><span class="page-nav-title">Diagnostics</span></a><a href="cuda-interop.html" rel="next"><span class="page-nav-label">Next<svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="page-nav-title">Precompiled CUDA operands</span></a></nav>
+  </main>
+  <aside class="page-outline" aria-label="Page outline"><nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#objectives">Learning objectives</a></li><li><a href="#fundamentals">What CUDA adds to a graphics pipeline</a></li><li><a href="#launch">Kernel launch syntax does not choose the execution mode</a></li><li><a href="#deployment">Compile at build time and deploy native images</a></li><li><a href="#memory">Share storage and preserve its interpretation</a></li><li><a href="#ordering">Establish dependencies in both directions</a></li><li><a href="#modes">Choose CiG or an ordinary CUDA context</a></li><li><a href="#worked-example">Work through a graphics producer, two CUDA passes and a consumer</a></li><li><a href="#lifetime">Retire resources after the last consumer</a></li><li><a href="#performance">Measure the whole boundary</a></li><li><a href="#failures">Diagnose the failed boundary</a></li><li><a href="#summary">Checkpoints</a></li></ul></nav></aside>
+</div>
+<footer class="site-footer"><div class="site-footer__inner"><a class="site-brand" href="../index.html">Ardashir</a><div class="footer-group"><p>Documentation</p><a href="../index.html">Overview</a><a href="../ArdaRDG/getting-started.html">Getting started</a><a href="../Essays/arda-graph-and-inductor.html">Engineering essays</a></div><div class="footer-group"><p>Modules</p><a href="index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="../ArdaNativeCompute/index.html">Native compute</a><a href="../index.html#module-ardagraph">ArdaGraph</a><a href="../index.html#module-ardatests">ArdaTests</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div><div class="footer-group"><p>Reference</p><a href="api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="../ArdaNativeCompute/api-reference.html">Native compute</a><a href="../glossary.html">Glossary</a></div></div></footer>
+<dialog class="doc-search" aria-label="Search documentation"><form method="dialog">
+  <div class="search-field"><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" aria-label="Search documentation" placeholder="Search documentation" autocomplete="off"><button type="submit" aria-label="Close search"><svg class="icon icon-close" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+  <div class="search-results" aria-live="polite"></div>
+</form></dialog>
 </body>
 </html>

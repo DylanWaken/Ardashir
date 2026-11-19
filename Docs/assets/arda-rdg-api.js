@@ -7944,8 +7944,8 @@ window.ArdaRDGApi = {
       "component": "core",
       "page": "api-reference.html",
       "signature": "static bool UsesComputeAlternative(const IArdaRHIDevice* Device)",
-      "summary": "Route selection is fixed before DeclareResources/Prepare. CUDA stays preferred when available. No fallback is attempted after recording/submission failure. Null-device analysis keeps the authored domain.",
-      "details": "Route selection is fixed before DeclareResources/Prepare. CUDA stays preferred when available. No fallback is attempted after recording/submission failure. Null-device analysis keeps the authored domain.",
+      "summary": "Route selection is fixed before DeclareResources/Prepare. Derived nodes can qualify their CUDA variants here. Null-device analysis keeps the authored domain.",
+      "details": "Route selection is fixed before DeclareResources/Prepare. Derived nodes can qualify their CUDA variants here. Null-device analysis keeps the authored domain.",
       "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNode.h",
       "params": [],
       "returns": "See the declared result and status contract.",
@@ -8186,7 +8186,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaExecutionNode"
       ],
-      "sourceLine": 679
+      "sourceLine": 683
     },
     {
       "id": "api-arda-tardaexecutionnode-invoke-06531053",
@@ -8207,7 +8207,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaExecutionNode"
       ],
-      "sourceLine": 688
+      "sourceLine": 692
     },
     {
       "id": "api-arda-tardaexecutionnode-invoke-7daa585a",
@@ -8228,7 +8228,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaExecutionNode"
       ],
-      "sourceLine": 698
+      "sourceLine": 702
     },
     {
       "id": "api-arda-tardaexecutionnode-invoke-1de0e931",
@@ -8249,7 +8249,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaExecutionNode"
       ],
-      "sourceLine": 709
+      "sourceLine": 713
     },
     {
       "id": "api-arda-tardaexecutionnode-invoke-3d6b26ea",
@@ -8270,7 +8270,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaExecutionNode"
       ],
-      "sourceLine": 719
+      "sourceLine": 723
     },
     {
       "id": "api-arda-tardaexecutionnode-operator-b5631f68",
@@ -8291,7 +8291,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaExecutionNode"
       ],
-      "sourceLine": 726
+      "sourceLine": 730
     },
     {
       "id": "api-arda-tardaexecutionnode-operator-f657c44a",
@@ -8312,7 +8312,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::TArdaExecutionNode"
       ],
-      "sourceLine": 735
+      "sourceLine": 739
     },
     {
       "id": "api-arda-arda-declare-graph-node-93f04778",
@@ -8342,7 +8342,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 871
+      "sourceLine": 875
     },
     {
       "id": "api-arda-arda-define-graph-node-b5442505",
@@ -8372,7 +8372,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 883
+      "sourceLine": 887
     },
     {
       "id": "api-arda-eardadependencynodekind-ba4a2439",
@@ -9278,6 +9278,27 @@ window.ArdaRDGApi = {
       "sourceLine": 70
     },
     {
+      "id": "api-arda-fardadependencynodeexecutable-mselectcomputealternative-a1101528",
+      "name": "mSelectComputeAlternative",
+      "qualifiedName": "arda::FArdaDependencyNodeExecutable::mSelectComputeAlternative",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::function<bool(const IArdaRHIDevice*)> mSelectComputeAlternative",
+      "summary": "Stores select compute alternative in this public dependency graph value.",
+      "details": "Stores select compute alternative in this public dependency graph value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Graph/Node/ArdaDependencyNodeRegistry.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaDependencyNodeExecutable"
+      ],
+      "sourceLine": 71
+    },
+    {
       "id": "api-arda-fardadependencynodeexecutable-mresolveresources-be2db996",
       "name": "mResolveResources",
       "qualifiedName": "arda::FArdaDependencyNodeExecutable::mResolveResources",
@@ -9296,7 +9317,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 73
+      "sourceLine": 74
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mpreparedeclaration-76992ade",
@@ -9317,7 +9338,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 76
+      "sourceLine": 77
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mprepare-afe7a4dd",
@@ -9338,7 +9359,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 79
+      "sourceLine": 80
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mcanonicalkey-179c72a3",
@@ -9359,7 +9380,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 81
+      "sourceLine": 82
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mdescribe-1841ed85",
@@ -9380,7 +9401,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 82
+      "sourceLine": 83
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mrecord-81365e8d",
@@ -9401,7 +9422,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 83
+      "sourceLine": 84
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mconfiguregraphics-b46c202f",
@@ -9422,7 +9443,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 85
+      "sourceLine": 86
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mgraphicsinstancing-f039390f",
@@ -9443,7 +9464,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 88
+      "sourceLine": 89
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mclonegraphicsparameters-892d821c",
@@ -9464,7 +9485,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 90
+      "sourceLine": 91
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mfetchbuffer-1d9ca6c9",
@@ -9485,7 +9506,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 92
+      "sourceLine": 93
     },
     {
       "id": "api-arda-fardadependencynodeexecutable-mpreparecuda-0ecdd363",
@@ -9506,7 +9527,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyNodeExecutable"
       ],
-      "sourceLine": 93
+      "sourceLine": 94
     },
     {
       "id": "api-arda-fardanoderegistry-70e11d95",
@@ -9527,7 +9548,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 100
+      "sourceLine": 101
     },
     {
       "id": "api-arda-fardanoderegistry-get-2c29fe26",
@@ -9548,7 +9569,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaNodeRegistry"
       ],
-      "sourceLine": 103
+      "sourceLine": 104
     },
     {
       "id": "api-arda-fardanoderegistry-unregister-ebf9ba88",
@@ -9569,7 +9590,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaNodeRegistry"
       ],
-      "sourceLine": 105
+      "sourceLine": 106
     },
     {
       "id": "api-arda-fardanoderegistry-find-bf94f42a",
@@ -9590,7 +9611,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaNodeRegistry"
       ],
-      "sourceLine": 106
+      "sourceLine": 107
     },
     {
       "id": "api-arda-fardanoderegistry-getnames-49b01d69",
@@ -9611,7 +9632,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaNodeRegistry"
       ],
-      "sourceLine": 107
+      "sourceLine": 108
     },
     {
       "id": "api-arda-fardadependencyenvironmentrequirement-2bac463c",
@@ -29624,7 +29645,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 12
+      "sourceLine": 17
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getcommands-c6b40f2a",
@@ -29645,7 +29666,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 15
+      "sourceLine": 20
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getdevice-4dd36bf7",
@@ -29666,7 +29687,49 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 16
+      "sourceLine": 21
+    },
+    {
+      "id": "api-arda-fardadependencyexecutioncontext-recordnativecompute-3b06b366",
+      "name": "RecordNativeCompute",
+      "qualifiedName": "arda::FArdaDependencyExecutionContext::RecordNativeCompute",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus RecordNativeCompute(const FArdaNativeComputeRegistry& Registry, const char* OperandId, const FArdaNativeInvocation& Invocation, EArdaNativeComputePreference Preference) const",
+      "summary": "Selects an implementation compatible with the node's declared accesses and records on its command list.",
+      "details": "Selects an implementation compatible with the node's declared accesses and records on its command list.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Runtime/ArdaDependencyExecutionContext.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaDependencyExecutionContext"
+      ],
+      "sourceLine": 24
+    },
+    {
+      "id": "api-arda-fardadependencyexecutioncontext-appendnativecudacompute-b9fb69c1",
+      "name": "AppendNativeCudaCompute",
+      "qualifiedName": "arda::FArdaDependencyExecutionContext::AppendNativeCudaCompute",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus AppendNativeCudaCompute(FArdaCudaSequence& Sequence, const FArdaNativeComputeRegistry& Registry, const char* OperandId, const FArdaNativeInvocation& Invocation) const",
+      "summary": "Prepares a CUDA variant on this node's queue and appends it to the graph's CUDA batch.",
+      "details": "Prepares a CUDA variant on this node's queue and appends it to the graph's CUDA batch.",
+      "source": "Source/ArdaInfra/ArdaDependencyGraph/Public/Inductor/Runtime/ArdaDependencyExecutionContext.h",
+      "params": [],
+      "returns": "See the declared result and status contract.",
+      "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+      "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+      "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+      "related": [
+        "arda::FArdaDependencyExecutionContext"
+      ],
+      "sourceLine": 30
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-resolveexternal-7651b575",
@@ -29687,7 +29750,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 20
+      "sourceLine": 37
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getbuffer-dc266f6f",
@@ -29708,7 +29771,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 30
+      "sourceLine": 47
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getworkspacebuffer-0ab203af",
@@ -29729,7 +29792,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 31
+      "sourceLine": 48
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getframeindex-6c67bbed",
@@ -29750,7 +29813,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 32
+      "sourceLine": 49
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getframesequence-ed8149c5",
@@ -29771,7 +29834,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 33
+      "sourceLine": 50
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-readbackbuffer-d29a766c",
@@ -29792,7 +29855,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 38
+      "sourceLine": 55
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-readbacktexture-af44189f",
@@ -29813,7 +29876,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 50
+      "sourceLine": 67
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-gettexture-f3791576",
@@ -29834,7 +29897,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 53
+      "sourceLine": 70
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getaccelerationstructure-284d9f45",
@@ -29855,7 +29918,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 55
+      "sourceLine": 72
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getpipeline-9bb1fe89",
@@ -29876,7 +29939,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 56
+      "sourceLine": 73
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getbindings-19ae5c87",
@@ -29897,7 +29960,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 58
+      "sourceLine": 75
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getshadertable-000a38d1",
@@ -29918,7 +29981,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 61
+      "sourceLine": 78
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getdescriptortable-d5e9952c",
@@ -29939,7 +30002,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 62
+      "sourceLine": 79
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-setraytracingstate-8c99445d",
@@ -29960,7 +30023,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 63
+      "sourceLine": 80
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-dispatchworkgraph-3899a17f",
@@ -29981,7 +30044,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 64
+      "sourceLine": 81
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-applyshaderparameters-293b6616",
@@ -30002,7 +30065,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 69
+      "sourceLine": 86
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-setcomputestate-bad9bb99",
@@ -30023,7 +30086,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 70
+      "sourceLine": 87
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-setgraphicsstate-b78e4bd4",
@@ -30044,7 +30107,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 72
+      "sourceLine": 89
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-setmeshletstate-db3309aa",
@@ -30065,7 +30128,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 74
+      "sourceLine": 91
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getframebuffer-2a7958e4",
@@ -30086,7 +30149,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 75
+      "sourceLine": 92
     },
     {
       "id": "api-arda-fardadependencyexecutioncontext-getnode-fbb0cd7d",
@@ -30107,7 +30170,7 @@ window.ArdaRDGApi = {
       "related": [
         "arda::FArdaDependencyExecutionContext"
       ],
-      "sourceLine": 76
+      "sourceLine": 93
     },
     {
       "id": "api-arda-fardadependencyframeticket-31b5096f",

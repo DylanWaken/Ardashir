@@ -16,7 +16,7 @@ SOURCE_DIRECTORY = Path(__file__).resolve().parents[2]
 def parse_arguments(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Configure, build, and run Pixel Sort on D3D12 or Vulkan.",
-        epilog="Build mode locates Visual Studio x64 tools and bundled Ninja automatically; install a CUDA toolkit. --run-only needs neither CMake nor nvcc.",
+        epilog="Build mode locates Visual Studio x64 tools and bundled Ninja automatically. Use --no-cuda to build the shader route without a CUDA toolkit.",
     )
     parser.add_argument("backend", nargs="?", choices=("d3d12", "vulkan"), default="d3d12")
     parser.add_argument("build_directory", nargs="?", type=Path,
@@ -24,6 +24,7 @@ def parse_arguments(argv=None) -> argparse.Namespace:
     parser.add_argument("configuration", nargs="?", default="Release")
     parser.add_argument("--run-only", action="store_true", help="Skip configuration and compilation.")
     parser.add_argument("--generator", help="CMake generator; new builds default to Ninja unless CMAKE_GENERATOR is set.")
+    parser.add_argument("--no-cuda", action="store_true", help="Configure and build without the CUDA provider or kernels.")
     parser.add_argument("--nvcc", type=Path, help="Build-time path to nvcc.exe (Ninja/Makefiles).")
     parser.add_argument("--cuda-include-dir", type=Path, help="CUDA SDK include directory for the backend.")
     parser.add_argument("--architectures", help='Native CUDA targets, e.g. "80;120"; otherwise use CMake defaults/cache.')
@@ -34,7 +35,7 @@ def parse_arguments(argv=None) -> argparse.Namespace:
         parser.add_argument(f"--{name}", type=int)
     parser.add_argument("--time", type=float)
     parser.add_argument("--capture", type=Path)
-    for name in ("hidden", "verify", "resize-test", "validation"):
+    for name in ("hidden", "verify", "resize-test", "validation", "require-cuda"):
         parser.add_argument(f"--{name}", action="store_true")
     args = parser.parse_args(argv)
     for name, maximum in (("width", 8192), ("height", 8192), ("frames", 0xFFFFFFFF),
@@ -55,8 +56,9 @@ def main(argv=None) -> int:
     build_directory = args.build_directory.resolve()
     try:
         if not args.run_only:
+            cuda = "OFF" if args.no_cuda else "ON"
             configure = [
-                "-DARDASHIR_ENABLE_CUDA=ON", "-DARDASHIR_BUILD_CUDA_KERNELS=ON",
+                f"-DARDASHIR_ENABLE_CUDA={cuda}", f"-DARDASHIR_BUILD_CUDA_KERNELS={cuda}",
                 "-DARDASHIR_BUILD_PIXEL_SORT=ON",
                 f"-DARDASHIR_BACKEND_{args.backend.upper()}=ON",
             ]
@@ -93,7 +95,7 @@ def main(argv=None) -> int:
             value = getattr(args, name)
             if value is not None:
                 command.extend((f"--{name}", str(value)))
-        for name in ("hidden", "verify", "resize-test", "validation"):
+        for name in ("hidden", "verify", "resize-test", "validation", "require-cuda"):
             if getattr(args, name.replace("-", "_")):
                 command.append(f"--{name}")
         print(f"Running PixelSort on {args.backend} ({args.cuda_mode})...", flush=True)

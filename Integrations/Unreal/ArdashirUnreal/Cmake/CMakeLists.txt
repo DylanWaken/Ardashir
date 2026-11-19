@@ -37,7 +37,12 @@ file(WRITE "${CMAKE_BINARY_DIR}/ArdaEABaseInclude.txt" "${ARDA_EABASE_INCLUDE}")
 # Source lists and include paths come from upstream targets, without copying or
 # editing their source files or putting Ardashir implementation in UE modules.
 add_library(ArdaUnrealCore SHARED)
-foreach(ARDA_MODULE ArdaBackend ArdaMath ArdaGraph ArdaDependencyGraph ArdaTrace EASTL)
+set(ARDA_CORE_MODULES ArdaBackend ArdaMath ArdaGraph ArdaDependencyGraph)
+# Older pinned upstream revisions predate the registered native compute module.
+if(TARGET ArdaNativeCompute)
+    list(APPEND ARDA_CORE_MODULES ArdaNativeCompute)
+endif()
+foreach(ARDA_MODULE IN LISTS ARDA_CORE_MODULES ITEMS ArdaTrace EASTL)
     get_target_property(ARDA_MODULE_SOURCES ${ARDA_MODULE} SOURCES)
     get_target_property(ARDA_MODULE_SOURCE_DIR ${ARDA_MODULE} SOURCE_DIR)
     foreach(ARDA_MODULE_SOURCE IN LISTS ARDA_MODULE_SOURCES)
@@ -76,7 +81,7 @@ set_target_properties(ArdaUnrealCore PROPERTIES
 # side of the actual DLL boundary, without a GPU or Unreal editor process.
 add_executable(ArdaUnrealAbiTests EXCLUDE_FROM_ALL "../Tests/ArdaSharedLibraryTests.cpp")
 target_link_libraries(ArdaUnrealAbiTests PRIVATE ArdaUnrealCore)
-foreach(ARDA_MODULE ArdaBackend ArdaMath ArdaGraph ArdaDependencyGraph)
+foreach(ARDA_MODULE IN LISTS ARDA_CORE_MODULES)
     get_target_property(ARDA_MODULE_SOURCE_DIR ${ARDA_MODULE} SOURCE_DIR)
     target_include_directories(ArdaUnrealAbiTests PRIVATE "${ARDA_MODULE_SOURCE_DIR}/Public")
 endforeach()

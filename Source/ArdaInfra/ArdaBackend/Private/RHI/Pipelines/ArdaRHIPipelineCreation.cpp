@@ -96,6 +96,14 @@ namespace arda::detail
 			return Failure<FArdaRHIComputePipelineRef>(WrongDevice());
 		}
 		FArdaProviderComputePipelineCreateInfo Info{Desc, Shader->mNative};
+		if (!Desc.mExtension.mId.empty())
+		{
+			auto Status = CheckComputePipelineExtension(Desc.mExtension);
+			if (!Status)
+			{
+				return Failure<FArdaRHIComputePipelineRef>(eastl::move(Status));
+			}
+		}
 		if (auto Status = ResolveBindingLayouts(Desc.mBindingLayouts, Info.mBindingLayouts); !Status)
 		{
 			return Failure<FArdaRHIComputePipelineRef>(eastl::move(Status));

@@ -1,7 +1,9 @@
 # Modular graph examples
 
-Terrain (`ARDGExample`), Cornell Box, and Pixel Sort use the persistent dependency
-graph. The triangle sample in `../RHITest` follows the same layout:
+Terrain (`ARDGExample`), Cornell Box, and Pixel Sort use persistent dependency
+graphs. The [Cornell denoising example](CornellDenoising/README.md) adds model
+operations to the Cornell renderer. The triangle sample in `../RHITest` follows
+the same node layout.
 
 ```text
 Public/Nodes/       Node classes, shader contracts, and declarative node parameters
@@ -28,7 +30,7 @@ FArdaGraphEdit Edit(Graph);
 TerrainGenerate(Edit, Settings, RawHeightmap);
 TerrainErode(Edit, RawHeightmap, Heightmap);
 if (auto S = Edit.Commit(); !S) return S;
-if (auto S = Graph.CompileAndWait(); !S) return S;
+if (auto S = Graph.Compile(); !S) return S;
 ```
 
 The surrounding renderer obtains logical resources through `AllocateBuffer`,
@@ -127,9 +129,9 @@ Triangle's initial
 frame graph contains independent vertex/index uploads feeding its draw. After
 completion it records a new construction containing only the draw against the
 now-initialized geometry imports. Subsequent
-frames reuse draw-only graphs. Pixel Sort already exposes upload, noise compute,
-CUDA sort, presentation, and each optional readback as individual nodes; its radix
-kernel is one operator rather than an entire graphics/CUDA program.
+frames reuse draw-only graphs. Pixel Sort uses separate nodes for upload, noise
+generation, sorting, presentation, and each optional readback. The sort node
+selects a qualified CUDA radix kernel or an HLSL compute shader.
 
 See the [registration recipes](../../../Docs/ArdaRDG/quick-guide.html#node-registration) for native compute, indexed raster, fullscreen graphics, ray tracing and CUDA nodes, including an authored CUDA class. They show optional library discovery before devices exist and automatic registration during operation invocation.
 

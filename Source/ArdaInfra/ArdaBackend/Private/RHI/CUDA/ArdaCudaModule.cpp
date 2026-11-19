@@ -172,14 +172,12 @@ namespace arda
 		return {eastl::move(Module), {}};
 	}
 
-	TArdaRHIResult<eastl::shared_ptr<const IArdaCudaKernelEntry>> CreateArdaCudaModuleKernel(
-	    eastl::shared_ptr<const FArdaCudaModule> Module,
-	    FArdaCudaModuleKernelDesc Desc)
+	FArdaRHIStatus ValidateArdaCudaModuleKernelDesc(const FArdaCudaModuleKernelDesc& Desc)
 	{
-		if (!Module || Desc.mEntryPoint.empty() || Desc.mEntryPoint.find('\0') != eastl::string::npos ||
+		if (Desc.mEntryPoint.empty() || Desc.mEntryPoint.find('\0') != eastl::string::npos ||
 		    !Desc.mParameterSize || !IsAlignment(Desc.mParameterAlignment) || Desc.mArguments.empty())
 		{
-			return {{}, InvalidModule("CUDA module kernel requires a symbol and a nonempty parameter ABI.")};
+			return InvalidModule("CUDA module kernel requires a symbol and a nonempty parameter ABI.");
 		}
 		size_t End = 0;
 		for (const auto& Argument : Desc.mArguments)
@@ -193,11 +191,25 @@ namespace arda
 			        Argument.mKind != EArdaCudaModuleArgumentKind::Surface) ||
 			    (Argument.mKind != EArdaCudaModuleArgumentKind::Value && Argument.mSize != sizeof(uint64_t)))
 			{
-				return {{},
-				    InvalidModule(
-				        "CUDA module arguments must be ordered, aligned, nonoverlapping and within their ABI storage.")};
+				return InvalidModule(
+				    "CUDA module arguments must be ordered, aligned, nonoverlapping and within their ABI storage.");
 			}
 			End = Argument.mOffset + Argument.mSize;
+		}
+		return {};
+	}
+
+	TArdaRHIResult<eastl::shared_ptr<const IArdaCudaKernelEntry>> CreateArdaCudaModuleKernel(
+	    eastl::shared_ptr<const FArdaCudaModule> Module,
+	    FArdaCudaModuleKernelDesc Desc)
+	{
+		if (!Module)
+		{
+			return {{}, InvalidModule("CUDA module kernel requires a module image.")};
+		}
+		if (auto Status = ValidateArdaCudaModuleKernelDesc(Desc); !Status)
+		{
+			return {{}, eastl::move(Status)};
 		}
 		return {eastl::make_shared<FArdaCudaModuleEntry>(eastl::move(Module), eastl::move(Desc)), {}};
 	}

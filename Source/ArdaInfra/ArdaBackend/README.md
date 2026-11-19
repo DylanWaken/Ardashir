@@ -1,10 +1,14 @@
-# ArdaBackend modules
+# ArdaBackend
 
-Include `ArdaBackend.h` for the complete public API, or include an owning module's
-header directly when a narrower dependency is sufficient. `Public` contains only
-`ArdaBackend.h`, `RHI`, and `FileOperations`. Each RHI header lives in the category
-that owns its declarations. `Private` mirrors those categories for implementation
-files and internal state; tests and their shader fixtures live in `Tests`.
+ArdaBackend defines the rendering hardware interface used to create GPU
+resources, record commands, and submit work. Start with the
+[backend setup guide](../../../Docs/ArdaBackend/getting-started.html) to create a
+device. Include `ArdaBackend.h` for the full public API or include the header for
+the RHI feature you use.
+
+`Public` contains `ArdaBackend.h`, `RHI`, and `FileOperations`.
+`Private` mirrors the public categories for implementation and internal state.
+Find backend tests and their shader fixtures in `Tests`.
 
 Native Vulkan, D3D12 and CUDA implementations remain separate linked targets in
 `ArdaBackendImpls` and implement the contracts in `RHI/Providers`. Public contracts
@@ -12,11 +16,11 @@ do not include native provider SDKs or private implementation headers.
 
 | Directory | Responsibility |
 | --- | --- |
-| `RHI/Context` | Shared backend and registry state, resource lifetime tracking, shader compiler/registry/directory state, and CUDA execution contexts. State used by one implementation file stays local to that file. Internal process state remains private. |
+| `RHI/Context` | Shared backend and registry state, resource lifetime tracking, and shader compiler, pipeline cache, allocator and CUDA execution contexts. |
 | `RHI/Device` | Adapter identity, backend lifecycle, device interface and facade implementation, device diagnostics. |
 | `RHI/Providers` | Backend module, provider device, command list and translated provider object contracts; module registration. |
 | `RHI/Resources` | Abstract resource and reference ownership, buffer/texture/view/sampler/framebuffer/acceleration structure categories and resource creation. |
-| `RHI/CUDA` | Kernel variants and registration, launch parameters, external call preparation and CUDA command recording. |
+| `RHI/CUDA` | Kernel registration and module artifacts, launch parameters, external call preparation and CUDA command recording. |
 | `RHI/Pipelines` | Individual graphics, compute, meshlet, ray tracing and work graph pipelines; fixed function states, resolution and persistent pipeline caches. |
 | `RHI/Shaders` | Shader types and parameter structures, compiler invocation, registered shader maps/artifacts, binding layouts/sets, bindless descriptor tables and shader tables. |
 | `RHI/Memory` | GPU allocation, heaps, memory requirements/planning, residency and sparse tiling. |
@@ -31,11 +35,11 @@ There are no forwarding headers at the root of `RHI` or former category paths.
 The abstract resource contract is defined in `RHI/Resources/ArdaRHIResource.h`;
 individual resource categories own their descriptions and interfaces.
 
-Contexts own state and lifetime. Devices coordinate the facade and provider;
-resource, shader, pipeline, memory, interop and scheduling implementations own
-their corresponding operations. CUDA launch setup belongs to `RHI/CUDA`, with
-its execution contexts in `RHI/Context` and ordering, graph and timing operations
-in `RHI/Scheduling`. Shared filesystem operations belong to `FileOperations`.
+Devices coordinate the facade and provider. Find CUDA launch setup in
+`RHI/CUDA`, execution contexts in `RHI/Context`, and ordering, graph and timing
+operations in `RHI/Scheduling`. Shared filesystem operations live in `FileOperations`.
+See [native compute sources](../../../Docs/ArdaRDG/native-compute.html#sources)
+for loading PTX or cubin and compiling CUDA C++ with NVRTC during preparation.
 
 Public headers must compile independently, without private implementation or
 native provider include directories. Add dependencies to the header that uses

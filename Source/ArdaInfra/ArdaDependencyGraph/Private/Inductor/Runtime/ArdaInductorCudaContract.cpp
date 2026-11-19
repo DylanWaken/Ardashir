@@ -1,5 +1,7 @@
 #include "Inductor/Runtime/ArdaInductorCudaContract.h"
 
+#include "ArdaNativeCompute.h"
+#include "Inductor/Rules/ArdaInductorResourceStates.h"
 #include <EASTL/algorithm.h>
 
 namespace arda
@@ -12,9 +14,47 @@ namespace arda
 			    Access == (bWrite ? EArdaDependencyAccess::Write : EArdaDependencyAccess::Read);
 		}
 
+		bool AllowsState(EArdaRHIResourceState State,
+		    EArdaRHIResourceState Required,
+		    EArdaInductorNativeBindingDomain Domain,
+		    bool bWrite)
+		{
+			if (Required != EArdaRHIResourceState::Unknown)
+			{
+				if (bWrite || IsWriteState(State) || IsWriteState(Required) || Required == EArdaRHIResourceState::Common)
+				{
+					return State == Required;
+				}
+				return (State & Required) == Required;
+			}
+			if (State == EArdaRHIResourceState::UnorderedAccess)
+			{
+				return true;
+			}
+			switch (Domain)
+			{
+			case EArdaInductorNativeBindingDomain::Any:
+				return true;
+			case EArdaInductorNativeBindingDomain::Cuda:
+				return false;
+			case EArdaInductorNativeBindingDomain::ComputeShader:
+				return !bWrite &&
+				    HasAnyFlags(State, EArdaRHIResourceState::NonPixelShaderResource | EArdaRHIResourceState::ConstantBuffer);
+			case EArdaInductorNativeBindingDomain::GraphicsShader:
+				return State == EArdaRHIResourceState::RenderTarget || State == EArdaRHIResourceState::DepthWrite ||
+				    (!bWrite &&
+				        HasAnyFlags(State,
+				            EArdaRHIResourceState::ShaderResource | EArdaRHIResourceState::ConstantBuffer |
+				                EArdaRHIResourceState::DepthRead));
+			}
+			return false;
+		}
+
 		template <class GetRange>
-		bool Covers(const FArdaCudaBinding& Binding,
-		    const eastl::vector<FArdaInductorCudaResourceAccess>& Declared,
+		bool Covers(const FArdaNativeResourceView& Binding,
+		    const eastl::vector<FArdaInductorNativeResourceAccess>& Declared,
+		    EArdaInductorNativeBindingDomain Domain,
+		    EArdaRHIResourceState Required,
 		    uint64_t Begin,
 		    uint64_t End,
 		    bool bWrite,
@@ -26,7 +66,7 @@ namespace arda
 				for (const auto& Access : Declared)
 				{
 					if (Access.mResource != Binding.mResource ||
-					    Access.mAccess.mState != EArdaRHIResourceState::UnorderedAccess ||
+					    !AllowsState(Access.mAccess.mState, Required, Domain, bWrite) ||
 					    !Allows(Access.mAccess.mAccess, bWrite))
 					{
 						continue;
@@ -46,32 +86,33 @@ namespace arda
 			return true;
 		}
 
-		FArdaRHIStatus ContractError(const FArdaCudaBinding& Binding, const char* Reason)
+		FArdaRHIStatus ContractError(const FArdaNativeResourceView& Binding,
+		    EArdaInductorNativeBindingDomain Domain,
+		    const char* Reason)
 		{
-			eastl::string Message = "CUDA operand resource '";
+			eastl::string Message = Domain == EArdaInductorNativeBindingDomain::Cuda ? "CUDA" : "Native compute";
+			Message += " operand resource '";
 			const char* Name = Binding.mResource ? Binding.mResource->GetDebugName() : nullptr;
 			Message += Name ? Name : "<unnamed>";
 			Message += "' ";
 			Message += Reason;
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, Message.c_str());
 		}
-	}
-
-	FArdaRHIStatus ValidateArdaInductorCudaBindings(const eastl::vector<FArdaCudaBinding>& Bindings,
-	    const eastl::vector<FArdaInductorCudaResourceAccess>& Declared)
-	{
-		for (const auto& Binding : Bindings)
+		FArdaRHIStatus ValidateBinding(const FArdaNativeResourceView& Binding,
+		    EArdaComputeAccess Mode,
+		    const eastl::vector<FArdaInductorNativeResourceAccess>& Declared,
+		    EArdaInductorNativeBindingDomain Domain,
+		    EArdaRHIResourceState Required = EArdaRHIResourceState::Unknown)
 		{
 			if (!Binding.mResource ||
-			    (Binding.mAccess != EArdaComputeAccess::Read && Binding.mAccess != EArdaComputeAccess::Write &&
-			        Binding.mAccess != EArdaComputeAccess::ReadWrite))
+			    (Mode != EArdaComputeAccess::Read && Mode != EArdaComputeAccess::Write && Mode != EArdaComputeAccess::ReadWrite))
 			{
-				return ContractError(Binding, "has an invalid resource or access requirement.");
+				return ContractError(Binding, Domain, "has an invalid resource or access requirement.");
 			}
 			for (const bool bWrite : {false, true})
 			{
-				if ((bWrite && Binding.mAccess == EArdaComputeAccess::Read) ||
-				    (!bWrite && Binding.mAccess == EArdaComputeAccess::Write))
+				if ((bWrite && Mode == EArdaComputeAccess::Read) ||
+				    (!bWrite && Mode == EArdaComputeAccess::Write))
 				{
 					continue;
 				}
@@ -84,11 +125,13 @@ namespace arda
 					    (Requested.mByteSize != ArdaRHIWholeBuffer &&
 					        Requested.mByteSize > Desc.mByteSize - Requested.mByteOffset))
 					{
-						return ContractError(Binding, "has a byte range outside its allocation.");
+						return ContractError(Binding, Domain, "has a byte range outside its allocation.");
 					}
 					const auto Range = Requested.Resolve(Desc);
 					bCovered = Covers(Binding,
 					    Declared,
+					    Domain,
+					    Required,
 					    Range.mByteOffset,
 					    Range.mByteOffset + Range.mByteSize,
 					    bWrite,
@@ -109,11 +152,13 @@ namespace arda
 					const auto& Desc = Texture->GetDesc();
 					if (Binding.mMipLevel >= Desc.mMipLevels)
 					{
-						return ContractError(Binding, "has a mip outside its allocation.");
+						return ContractError(Binding, Domain, "has a mip outside its allocation.");
 					}
-					// CUDA surfaces expose every array layer at one mip; a cropped declaration is insufficient.
+					// Native texture arguments expose all array layers of the selected mip.
 					bCovered = Covers(Binding,
 					    Declared,
+					    Domain,
+					    Required,
 					    0,
 					    Desc.mArraySize,
 					    bWrite,
@@ -130,9 +175,52 @@ namespace arda
 				if (!bCovered)
 				{
 					return ContractError(Binding,
-					    bWrite ? "writes outside the current node's declared CUDA resource accesses."
-					           : "reads outside the current node's declared CUDA resource accesses.");
+					    Domain,
+					    bWrite ? "writes outside the current node's compatible declared accesses."
+					           : "reads outside the current node's compatible declared accesses.");
 				}
+			}
+			return {};
+		}
+	}
+
+	FArdaRHIStatus ValidateArdaInductorCudaBindings(const eastl::vector<FArdaCudaBinding>& Bindings,
+	    const eastl::vector<FArdaInductorCudaResourceAccess>& Declared)
+	{
+		for (const auto& Binding : Bindings)
+		{
+			if (auto Status = ValidateBinding({Binding.mResource, Binding.mBufferRange, Binding.mMipLevel},
+			        Binding.mAccess,
+			        Declared,
+			        EArdaInductorNativeBindingDomain::Cuda);
+			    !Status)
+			{
+				return Status;
+			}
+		}
+		return {};
+	}
+
+	FArdaRHIStatus ValidateArdaInductorNativeBindings(const FArdaNativeOperandDesc& Operand,
+	    const FArdaNativeInvocation& Invocation,
+	    const eastl::vector<FArdaInductorNativeResourceAccess>& Declared,
+	    EArdaInductorNativeBindingDomain Domain,
+	    const eastl::vector<EArdaRHIResourceState>& RequiredStates)
+	{
+		if (Operand.mResources.size() != Invocation.mResources.size() ||
+		    (!RequiredStates.empty() && RequiredStates.size() != Invocation.mResources.size()))
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			    "Native operand argument count does not match its graph resource contract.");
+		}
+		for (size_t Index = 0; Index < Invocation.mResources.size(); ++Index)
+		{
+			const auto& View = Invocation.mResources[Index];
+			const auto& Slot = Operand.mResources[Index];
+			const auto Required = RequiredStates.empty() ? EArdaRHIResourceState::Unknown : RequiredStates[Index];
+			if (auto Status = ValidateBinding(View, Slot.mAccess, Declared, Domain, Required); !Status)
+			{
+				return Status;
 			}
 		}
 		return {};

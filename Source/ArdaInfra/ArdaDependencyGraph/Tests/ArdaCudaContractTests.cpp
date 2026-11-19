@@ -1,5 +1,6 @@
 #include "Inductor/Runtime/ArdaInductorCudaContract.h"
 
+#include "ArdaNativeCompute.h"
 #include <gtest/gtest.h>
 
 namespace arda::cuda_contract_tests
@@ -176,5 +177,49 @@ namespace arda::cuda_contract_tests
 		EXPECT_TRUE(ValidateArdaInductorCudaBindings({Binding}, {Remaining, Access}));
 		Remaining.mAccess.mTextureRange.mBasePlane = 1;
 		EXPECT_FALSE(ValidateArdaInductorCudaBindings({Binding}, {Remaining, Access}));
+	}
+
+	TEST(ArdaNativeGraphContract, ShaderResourceReadsRequireDeclaredDirectionAndRange)
+	{
+		const auto Buffer = MakeBuffer();
+		auto Access = Declare(Buffer, EArdaDependencyAccess::Read);
+		Access.mAccess.mState = EArdaRHIResourceState::ShaderResource;
+		Access.mAccess.mBufferRange = {0, 128};
+		FArdaNativeOperandDesc Operand;
+		Operand.mResources = {{"input", EArdaRHIResourceType::Buffer, EArdaComputeAccess::Read}};
+		FArdaNativeInvocation Invocation;
+		Invocation.mResources = {{Buffer, {32, 64}}};
+		const auto Compute = EArdaInductorNativeBindingDomain::ComputeShader;
+		EXPECT_TRUE(ValidateArdaInductorNativeBindings(Operand, Invocation, {Access}, Compute));
+		EXPECT_FALSE(ValidateArdaInductorNativeBindings(Operand, Invocation, {}, Compute));
+		EXPECT_FALSE(ValidateArdaInductorNativeBindings(Operand,
+		    Invocation,
+		    {Access},
+		    EArdaInductorNativeBindingDomain::Cuda));
+		Invocation.mResources.front().mBufferRange = {96, 64};
+		EXPECT_FALSE(ValidateArdaInductorNativeBindings(Operand, Invocation, {Access}, Compute));
+		Invocation.mResources.front().mBufferRange = {32, 64};
+		Operand.mResources.front().mAccess = EArdaComputeAccess::Write;
+		EXPECT_FALSE(ValidateArdaInductorNativeBindings(Operand, Invocation, {Access}, Compute));
+	}
+
+	TEST(ArdaNativeGraphContract, GraphicsFallbackUsesTheDeclaredRenderTargetMip)
+	{
+		const auto Texture = MakeTexture();
+		auto Access = Declare(Texture, EArdaDependencyAccess::Write);
+		Access.mAccess.mState = EArdaRHIResourceState::RenderTarget;
+		Access.mAccess.mTextureRange = {1, 1, 0, 4};
+		FArdaNativeOperandDesc Operand;
+		Operand.mResources = {{"color", EArdaRHIResourceType::Texture, EArdaComputeAccess::Write}};
+		FArdaNativeInvocation Invocation;
+		Invocation.mResources = {{Texture, {}, 1}};
+		const auto Graphics = EArdaInductorNativeBindingDomain::GraphicsShader;
+		EXPECT_TRUE(ValidateArdaInductorNativeBindings(Operand, Invocation, {Access}, Graphics));
+		EXPECT_FALSE(ValidateArdaInductorNativeBindings(Operand,
+		    Invocation,
+		    {Access},
+		    EArdaInductorNativeBindingDomain::ComputeShader));
+		Invocation.mResources.front().mMipLevel = 0;
+		EXPECT_FALSE(ValidateArdaInductorNativeBindings(Operand, Invocation, {Access}, Graphics));
 	}
 }

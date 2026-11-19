@@ -18,6 +18,20 @@
 
 namespace arda
 {
+	/** Immutable backend extension request included in compute pipeline identity. */
+	struct FArdaRHIComputePipelineExtension
+	{
+		/** Backend-defined contract ID. An empty ID requests a standard compute pipeline. */
+		eastl::string mId;
+		/** Ordered words defined by that contract. */
+		eastl::vector<uint32_t> mArguments;
+
+		bool operator==(const FArdaRHIComputePipelineExtension& Other) const noexcept
+		{
+			return mId == Other.mId && mArguments == Other.mArguments;
+		}
+	};
+
 	/** Describes compute pipeline desc. */
 	struct FArdaRHIComputePipelineDesc
 	{
@@ -33,6 +47,8 @@ namespace arda
 		uint64_t mPersistentCacheKey = 0;
 		/** Stores the debug name. */
 		eastl::string mDebugName;
+		/** Required provider extension. The device rejects unrecognized requests. */
+		FArdaRHIComputePipelineExtension mExtension;
 
 		/**
          * Compares two values for equality.
@@ -41,7 +57,7 @@ namespace arda
          */
 		bool operator==(const FArdaRHIComputePipelineDesc& O) const noexcept
 		{
-			return mComputeShader == O.mComputeShader && mBindingLayouts == O.mBindingLayouts;
+			return mComputeShader == O.mComputeShader && mBindingLayouts == O.mBindingLayouts && mExtension == O.mExtension;
 		}
 	};
 

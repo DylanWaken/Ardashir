@@ -21,6 +21,9 @@ namespace arda::inductor_command_failure_tests
 		uint32_t mFailureCount = 0;
 		uint32_t mTimerBeginAttempts = 0;
 		uint32_t mWriteBufferAttempts = 0;
+		uint32_t mNativeOperationAttempts = 0;
+		bool mbThrowNativeOperation = false;
+		eastl::shared_ptr<const FArdaProviderNativeOperation> mRetainedNativeOperation;
 
 		FArdaRHIStatus Check(const char* Operation)
 		{
@@ -85,6 +88,22 @@ namespace arda::inductor_command_failure_tests
 					Timer->mState = FArdaRecordingTimer::EArdaState::Idle;
 				}
 			}
+		}
+
+		FArdaRHIStatus RecordNativeOperation(
+		    const eastl::shared_ptr<const FArdaProviderNativeOperation>& Packet) override
+		{
+			++mFailure.mNativeOperationAttempts;
+			if (mFailure.mbThrowNativeOperation)
+			{
+				throw std::runtime_error("Native operation recording threw.");
+			}
+			auto Status = mFailure.Check("RecordNativeOperation");
+			if (Status)
+			{
+				mFailure.mRetainedNativeOperation = Packet;
+			}
+			return Status;
 		}
 
 		FArdaRHIStatus BeginTimerQuery(const FArdaProviderObjectRef& Object) override
@@ -299,6 +318,11 @@ namespace arda::inductor_command_failure_tests
 		const FArdaRHICapabilities& GetCapabilities() const noexcept override
 		{
 			return mCapabilities;
+		}
+
+		bool SupportsNativeOperation(const char* Id) const noexcept override
+		{
+			return Id && std::strcmp(Id, "test.native.operation") == 0;
 		}
 
 		EArdaRHINativeResourceType GetTextureImportType() const noexcept override
@@ -990,6 +1014,126 @@ namespace arda
 		FArdaGraphEdit After(Graph);
 		EXPECT_TRUE(After.GetStatus());
 		EXPECT_TRUE(After.Cancel());
+	}
+
+	class FArdaTestNativeOperation final : public IArdaRHINativeOperation
+	{
+	public:
+		const char* GetId() const noexcept override
+		{
+			return "test.native.operation";
+		}
+	};
+
+	TEST(ArdaRHINativeOperation, ForwardsOwnedResolvedViewsAndRetainsPayload)
+	{
+		auto Provider = eastl::make_shared<inductor_command_failure_tests::FArdaRecordingProvider>();
+		auto Device = CreateArdaRHIDevice(Provider);
+		auto List = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+		ASSERT_TRUE(List);
+		EXPECT_TRUE(Device->SupportsNativeOperation("test.native.operation"));
+		EXPECT_FALSE(Device->SupportsNativeOperation("other.native.operation"));
+		EXPECT_FALSE(Device->SupportsNativeOperation(nullptr));
+		EXPECT_FALSE(Device->SupportsNativeOperation(""));
+		FArdaRHIBufferDesc BufferDesc;
+		BufferDesc.mByteSize = 32;
+		BufferDesc.mUsage = EArdaRHIBufferUsage::UnorderedAccess;
+		auto Buffer = Device->CreateBuffer(BufferDesc);
+		ASSERT_TRUE(Buffer);
+		FArdaRHITextureDesc TextureDesc;
+		TextureDesc.mWidth = TextureDesc.mHeight = 4;
+		TextureDesc.mMipLevels = 2;
+		TextureDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+		TextureDesc.mUsage = EArdaRHITextureUsage::ShaderResource;
+		auto Texture = Device->CreateTexture(TextureDesc);
+		ASSERT_TRUE(Texture);
+
+		FArdaRHINativeOperationDesc Desc;
+		Desc.mOperation = eastl::make_shared<FArdaTestNativeOperation>();
+		eastl::weak_ptr<const IArdaRHINativeOperation> OperationLifetime(Desc.mOperation);
+		Desc.mBindings.push_back({Buffer.mValue, EArdaComputeAccess::ReadWrite, {4, ArdaRHIWholeBuffer}, {}});
+		Desc.mBindings.push_back({Texture.mValue, EArdaComputeAccess::Read, {}, {1}});
+
+		EXPECT_EQ(List.mValue->RecordNativeOperation(Desc).mCode, EArdaRHIResult::InvalidState);
+		ASSERT_TRUE(List.mValue->Open());
+		ASSERT_TRUE(List.mValue->RecordNativeOperation(Desc));
+		const auto& Packet = Provider->mFailure.mRetainedNativeOperation;
+		ASSERT_TRUE(Packet);
+		EXPECT_STREQ(Packet->mOperation->GetId(), "test.native.operation");
+		ASSERT_EQ(Packet->mBindings.size(), 2u);
+		EXPECT_TRUE(Packet->mBindings[0].mObject);
+		EXPECT_EQ(Packet->mBindings[0].mType, EArdaRHIResourceType::Buffer);
+		EXPECT_EQ(Packet->mBindings[0].mAccess, EArdaComputeAccess::ReadWrite);
+		EXPECT_EQ(Packet->mBindings[0].mBufferRange.mByteOffset, 4u);
+		EXPECT_EQ(Packet->mBindings[0].mBufferRange.mByteSize, 28u);
+		EXPECT_TRUE(Packet->mBindings[1].mObject);
+		EXPECT_EQ(Packet->mBindings[1].mTextureRange.mBaseMipLevel, 1u);
+		EXPECT_EQ(Packet->mBindings[1].mTextureRange.mMipLevelCount, 1u);
+		ASSERT_TRUE(List.mValue->Close());
+		const auto Submitted = Device->ExecuteCommandList(List.mValue);
+		ASSERT_TRUE(Submitted);
+		Desc = {};
+		Buffer.mValue.Reset();
+		Texture.mValue.Reset();
+		List.mValue.Reset();
+		EXPECT_FALSE(OperationLifetime.expired());
+		EXPECT_EQ(Device->GetResourceLifetimeStats().GetLiveResourceCount(EArdaRHIResourceType::Buffer), 1u);
+		EXPECT_EQ(Device->GetResourceLifetimeStats().GetLiveResourceCount(EArdaRHIResourceType::Texture), 1u);
+		ASSERT_TRUE(Device->WaitForSubmission(Submitted.mValue));
+		Provider->mFailure.mRetainedNativeOperation.reset();
+		EXPECT_TRUE(OperationLifetime.expired());
+		EXPECT_EQ(Device->GetResourceLifetimeStats().GetLiveResourceCount(EArdaRHIResourceType::Buffer), 0u);
+		EXPECT_EQ(Device->GetResourceLifetimeStats().GetLiveResourceCount(EArdaRHIResourceType::Texture), 0u);
+	}
+
+	TEST(ArdaRHINativeOperation, RejectsInvalidViewsAndLatchesTheFirstRecordingError)
+	{
+		auto Provider = eastl::make_shared<inductor_command_failure_tests::FArdaRecordingProvider>();
+		auto Device = CreateArdaRHIDevice(Provider);
+		auto OtherProvider = eastl::make_shared<inductor_command_failure_tests::FArdaRecordingProvider>();
+		auto OtherDevice = CreateArdaRHIDevice(OtherProvider);
+		auto List = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+		ASSERT_TRUE(List);
+		FArdaRHIBufferDesc BufferDesc;
+		BufferDesc.mByteSize = 32;
+		BufferDesc.mUsage = EArdaRHIBufferUsage::UnorderedAccess;
+		auto Buffer = Device->CreateBuffer(BufferDesc);
+		auto OtherBuffer = OtherDevice->CreateBuffer(BufferDesc);
+		ASSERT_TRUE(Buffer);
+		ASSERT_TRUE(OtherBuffer);
+
+		FArdaRHINativeOperationDesc Desc;
+		Desc.mOperation = eastl::make_shared<FArdaTestNativeOperation>();
+		Desc.mBindings.push_back({Buffer.mValue, EArdaComputeAccess::Read, {30, 4}, {}});
+		auto CopyList = Device->CreateCommandList(EArdaRHIQueueType::Copy);
+		ASSERT_TRUE(CopyList);
+		ASSERT_TRUE(CopyList.mValue->Open());
+		EXPECT_EQ(CopyList.mValue->RecordNativeOperation(Desc).mCode, EArdaRHIResult::Unsupported);
+		EXPECT_EQ(CopyList.mValue->Close().mCode, EArdaRHIResult::Unsupported);
+		ASSERT_TRUE(List.mValue->Open());
+		EXPECT_EQ(List.mValue->RecordNativeOperation(Desc).mCode, EArdaRHIResult::InvalidArgument);
+		Desc.mBindings[0] = {OtherBuffer.mValue, EArdaComputeAccess::Read, {}, {}};
+		EXPECT_EQ(List.mValue->RecordNativeOperation(Desc).mCode, EArdaRHIResult::InvalidArgument);
+		EXPECT_EQ(List.mValue->Close().mCode, EArdaRHIResult::InvalidArgument);
+		ASSERT_TRUE(List.mValue->Open());
+		EXPECT_EQ(List.mValue->RecordNativeOperation(Desc).mCode, EArdaRHIResult::WrongDevice);
+		EXPECT_EQ(List.mValue->Close().mCode, EArdaRHIResult::WrongDevice);
+		EXPECT_EQ(Provider->mFailure.mNativeOperationAttempts, 0u);
+
+		Provider->mFailure.mOperation = "RecordNativeOperation";
+		Desc.mBindings[0].mResource = Buffer.mValue;
+		ASSERT_TRUE(List.mValue->Open());
+		EXPECT_EQ(List.mValue->RecordNativeOperation(Desc).mCode, EArdaRHIResult::BackendFailure);
+		EXPECT_EQ(List.mValue->RecordNativeOperation(Desc).mCode, EArdaRHIResult::BackendFailure);
+		EXPECT_EQ(List.mValue->Close().mCode, EArdaRHIResult::BackendFailure);
+		EXPECT_EQ(Provider->mFailure.mNativeOperationAttempts, 1u);
+
+		Provider->mFailure.mbThrowNativeOperation = true;
+		ASSERT_TRUE(List.mValue->Open());
+		EXPECT_EQ(List.mValue->RecordNativeOperation(Desc).mCode, EArdaRHIResult::BackendFailure);
+		EXPECT_EQ(List.mValue->Close().mCode, EArdaRHIResult::BackendFailure);
+		EXPECT_EQ(Device->ExecuteCommandList(List.mValue).mStatus.mCode, EArdaRHIResult::BackendFailure);
+		EXPECT_EQ(Provider->mSubmissionCount, 0u);
 	}
 
 	TEST(ArdaRHIBufferCopies, CallerProgressDeliversEachCallbackOnceAndAllowsReentry)

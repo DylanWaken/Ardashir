@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Find the ArdaNativeCompute contracts for operand registration, route selection, work preparation, and CUDA sources.">
+  <title>ArdaNativeCompute API reference | Ardashir</title>
+  <script>
+    (() => {
+      let preference = "dark";
+      try {
+        preference = localStorage.getItem("arda-theme") || preference;
+      } catch {
+        // Local files and privacy settings can disable storage.
+      }
+      const systemLight = preference === "system" && !matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = preference === "light" || systemLight ? "light" : "dark";
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/native-compute-api.js" defer></script>
+  <script src="../assets/doc-search-index.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header" id="top">
+  <a class="announcement" href="../ArdaRDG/native-compute.html"><span aria-hidden="true">//</span> Write a native compute node <svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
+  <div class="site-header__bar"><div class="site-header__inner">
+    <a class="site-brand" href="../index.html" aria-label="Ardashir home">Ardashir</a>
+    <nav class="site-nav" aria-label="Primary"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav>
+    <div class="header-tools"><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="../ArdaBackend/index.html">GPU backend</a>
+<a href="../ArdaRDG/index.html">Dependency graph</a>
+<a href="index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button><div class="theme-control" hidden><button type="button" class="theme-toggle" data-theme-toggle aria-label="Change theme" aria-haspopup="menu" aria-expanded="false" aria-controls="theme-menu"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg></button><div class="theme-menu" id="theme-menu" role="menu" aria-label="Theme" hidden><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="dark"><svg class="icon icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg>Dark</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="light"><svg class="icon icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Light</button><button type="button" role="menuitemradio" tabindex="-1" aria-checked="false" data-theme-choice="system"><svg class="icon icon-system" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4m-4 0h8"/></svg>System</button></div></div>
+      <details class="mobile-nav"><summary aria-label="Navigation menu"><svg class="icon icon-menu" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></summary>
+        <div class="mobile-nav-panel"><nav aria-label="Primary navigation"><a href="../index.html">Docs</a><a href="../Essays/arda-graph-and-inductor.html">Essays</a><details class="nav-popover"><summary>Guides<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="index.html">Native compute</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div></details><details class="nav-popover"><summary>Reference<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="api-reference.html">Native compute</a></div></details><a href="../glossary.html">Glossary</a></nav><button type="button" class="search-toggle" data-doc-search aria-label="Search documentation" hidden><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Search</span><kbd>Ctrl K</kbd></button></div>
+      </details>
+    </div>
+  </div></div>
+</header>
+<nav class="mobile-docs" aria-label="Docs menu"><details class="docs-menu"><summary><svg class="icon icon-list" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zm5 0v16"/></svg><span>Docs menu</span><span aria-hidden="true">/</span><span class="current-title">ArdaNativeCompute API reference</span><svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+  <div class="mobile-docs-panel"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="../ArdaRDG/getting-started.html"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="api-reference.html" aria-current="page"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Native compute<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="providers.html">Choose a GPU provider</a>
+<a href="../ArdaRDG/native-compute.html">Write a native compute node</a>
+<a href="api-reference.html" aria-current="page">API reference</a></div></details></nav><details class="sidebar-group mobile-outline"><summary>On this page<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="#search">Search the API</a><a href="#symbol-index">Symbol index</a><a href="#detailed-reference">Detailed reference</a></div></details></div>
+</details><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="../ArdaBackend/index.html">GPU backend</a>
+<a href="../ArdaRDG/index.html">Dependency graph</a>
+<a href="index.html">Native compute</a>
+<a href="../index.html#module-ardagraph">ArdaGraph</a>
+<a href="../index.html#module-ardatests">ArdaTests</a>
+<a href="../ArdaTrace/index.html">ArdaTrace</a>
+<a href="../ArdaScene/index.html">ArdaScene</a></nav></details></nav>
+<div class="site-layout">
+  <aside class="sidebar" aria-label="Docs sidebar"><div class="sidebar-inner"><nav class="sidebar-sections" aria-label="Documentation sections"><a href="../index.html"><svg class="icon icon-book" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H3zm18 0h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z"/></svg>Overview</a>
+<a href="../ArdaRDG/getting-started.html"><svg class="icon icon-guide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7zm-6 8v6c4 4 8 4 12 0v-6m4-3v8"/></svg>Guides</a>
+<a href="api-reference.html" aria-current="page"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Native compute<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
+<a href="providers.html">Choose a GPU provider</a>
+<a href="../ArdaRDG/native-compute.html">Write a native compute node</a>
+<a href="api-reference.html" aria-current="page">API reference</a></div></details></nav></div></aside>
+  <main id="main-content" tabindex="-1">
+    <article class="prose" data-doc-article>
+<header class="page-header">
+          <h1>ArdaNativeCompute API reference</h1>
+          <p>Find contracts for registering operations, selecting an implementation, and recording a prepared plan. Follow the <a href="../ArdaRDG/native-compute.html">native compute guide</a> for examples.</p>
+        </header>
+        <section id="search">
+          <h2>Search the API</h2>
+          <form class="api-search" role="search">
+            <label for="api-search-input">Name or keyword</label>
+            <input id="api-search-input" name="q" type="search" autocomplete="off" placeholder="For example, Prepare">
+            <button type="submit">Search</button>
+          </form>
+          <noscript><p>The complete index and contracts below work without JavaScript. Use browser Find to search; JavaScript adds synchronized filters.</p></noscript>
+        </section>
+        <section id="symbol-index">
+          <h2>Symbol index</h2>
+          <div data-api-index="ArdaNativeCompute"><!-- BEGIN STATIC NATIVE COMPUTE INDEX -->
+<ul class="api-index-list">
+<li><a href="#api-arda-fardanativeroutecheck-722cfeeb">arda::FArdaNativeRouteCheck <span class="api-kind">alias</span></a></li>
+<li><a href="#api-arda-fardanativeworkref-478ca5f0">arda::FArdaNativeWorkRef <span class="api-kind">alias</span></a></li>
+<li><a href="#api-arda-fardanativecomputeplan-e7e68aab">arda::FArdaNativeComputePlan <span class="api-kind">class</span></a></li>
+<li><a href="#api-arda-fardanativecomputeregistry-9539f736">arda::FArdaNativeComputeRegistry <span class="api-kind">class</span></a></li>
+<li><a href="#api-arda-iardanativecomputeprovider-4cfb5709">arda::IArdaNativeComputeProvider <span class="api-kind">class</span></a></li>
+<li><a href="#api-arda-iardanativekernelsource-6625cdc7">arda::IArdaNativeKernelSource <span class="api-kind">class</span></a></li>
+<li><a href="#api-arda-iardanativepreparedwork-c5301881">arda::IArdaNativePreparedWork <span class="api-kind">class</span></a></li>
+<li><a href="#api-arda-iardanativecomputeprovider-iardanativecomputeprovider-1bacca56">arda::IArdaNativeComputeProvider::~IArdaNativeComputeProvider <span class="api-kind">destructor</span></a></li>
+<li><a href="#api-arda-iardanativekernelsource-iardanativekernelsource-29c7a42c">arda::IArdaNativeKernelSource::~IArdaNativeKernelSource <span class="api-kind">destructor</span></a></li>
+<li><a href="#api-arda-iardanativepreparedwork-iardanativepreparedwork-f76c21d8">arda::IArdaNativePreparedWork::~IArdaNativePreparedWork <span class="api-kind">destructor</span></a></li>
+<li><a href="#api-arda-eardanativecomputepreference-d0128340">arda::EArdaNativeComputePreference <span class="api-kind">enum</span></a></li>
+<li><a href="#api-arda-eardanativecomputeroute-21d3c2b7">arda::EArdaNativeComputeRoute <span class="api-kind">enum</span></a></li>
+<li><a href="#api-arda-eardanativehandoff-4c69eb11">arda::EArdaNativeHandoff <span class="api-kind">enum</span></a></li>
+<li><a href="#api-arda-eardanativecomputepreference-nativeonly-1b5219dc">arda::EArdaNativeComputePreference::NativeOnly <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardanativecomputepreference-prefernative-6e8b8624">arda::EArdaNativeComputePreference::PreferNative <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardanativecomputepreference-shaderonly-709efc2b">arda::EArdaNativeComputePreference::ShaderOnly <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardanativecomputeroute-computeshader-cf52cae7">arda::EArdaNativeComputeRoute::ComputeShader <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardanativecomputeroute-graphicsshader-8972ab9a">arda::EArdaNativeComputeRoute::GraphicsShader <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardanativecomputeroute-native-54839cc2">arda::EArdaNativeComputeRoute::Native <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardanativehandoff-conversionrequired-c33bd6cf">arda::EArdaNativeHandoff::ConversionRequired <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardanativehandoff-direct-5dfa2d46">arda::EArdaNativeHandoff::Direct <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-makeardanativework-0bc256b8">arda::MakeArdaNativeWork <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-fardanativecomputecontext-mallowedproviderids-37cb8f2d">arda::FArdaNativeComputeContext::mAllowedProviderIds <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativecomputecontext-mdevice-972ba489">arda::FArdaNativeComputeContext::mDevice <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativecomputecontext-mpreference-c48cf7fc">arda::FArdaNativeComputeContext::mPreference <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativecomputecontext-mqueue-d8ab00bd">arda::FArdaNativeComputeContext::mQueue <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativecomputecontext-mrequiredproviderid-45e7d622">arda::FArdaNativeComputeContext::mRequiredProviderId <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeinvocation-mlaunch-b34f1c85">arda::FArdaNativeInvocation::mLaunch <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeinvocation-mparameters-a02d7caf">arda::FArdaNativeInvocation::mParameters <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeinvocation-mresources-9fe63af6">arda::FArdaNativeInvocation::mResources <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativekernelvariant-mname-fc7f6b40">arda::FArdaNativeKernelVariant::mName <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativekernelvariant-mproviderid-e5813250">arda::FArdaNativeKernelVariant::mProviderId <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativekernelvariant-mselect-d39fb58e">arda::FArdaNativeKernelVariant::mSelect <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativekernelvariant-msource-c8c9faac">arda::FArdaNativeKernelVariant::mSource <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativelaunch-mblocksize-25e37fbb">arda::FArdaNativeLaunch::mBlockSize <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativelaunch-mgridsize-ccf5a35c">arda::FArdaNativeLaunch::mGridSize <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativelaunch-msharedmemorybytes-872d4479">arda::FArdaNativeLaunch::mSharedMemoryBytes <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeoperanddesc-mfallback-5bfb5f82">arda::FArdaNativeOperandDesc::mFallback <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeoperanddesc-mid-fc548502">arda::FArdaNativeOperandDesc::mId <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeoperanddesc-mparametersize-ef2d0929">arda::FArdaNativeOperandDesc::mParameterSize <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeoperanddesc-mresources-365ab390">arda::FArdaNativeOperandDesc::mResources <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeoperanddesc-mvalidate-7130ac45">arda::FArdaNativeOperandDesc::mValidate <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeoperanddesc-mvariants-0db21388">arda::FArdaNativeOperandDesc::mVariants <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeproviderdesc-mgraphicsapis-61073541">arda::FArdaNativeProviderDesc::mGraphicsApis <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeproviderdesc-mid-5f57f531">arda::FArdaNativeProviderDesc::mId <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeproviderdesc-msourceformats-9843a5e4">arda::FArdaNativeProviderDesc::mSourceFormats <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeresourcehandoff-mkind-1fb06e3d">arda::FArdaNativeResourceHandoff::mKind <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeresourcehandoff-mrequiredstate-22438afc">arda::FArdaNativeResourceHandoff::mRequiredState <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeresourceslot-maccess-e1acee09">arda::FArdaNativeResourceSlot::mAccess <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeresourceslot-mformat-0f9ce331">arda::FArdaNativeResourceSlot::mFormat <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeresourceslot-mname-1b65f21e">arda::FArdaNativeResourceSlot::mName <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeresourceslot-mtype-b1ab8942">arda::FArdaNativeResourceSlot::mType <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeresourceview-mbufferrange-6ea338b8">arda::FArdaNativeResourceView::mBufferRange <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeresourceview-mmiplevel-9fe0776a">arda::FArdaNativeResourceView::mMipLevel <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeresourceview-mresource-a8139edd">arda::FArdaNativeResourceView::mResource <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeshaderfallback-mprepare-a1b70070">arda::FArdaNativeShaderFallback::mPrepare <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeshaderfallback-mrequiredfeatures-abff4798">arda::FArdaNativeShaderFallback::mRequiredFeatures <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativeshaderfallback-mroute-708ed555">arda::FArdaNativeShaderFallback::mRoute <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativecomputeplan-getroute-e00d35af">arda::FArdaNativeComputePlan::GetRoute <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardanativecomputeplan-getvariantname-efb38020">arda::FArdaNativeComputePlan::GetVariantName <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardanativecomputeplan-getwork-36c16e79">arda::FArdaNativeComputePlan::GetWork <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardanativecomputeplan-record-d7cc26dd">arda::FArdaNativeComputePlan::Record <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardanativecomputeregistry-checksupport-d8bb205b">arda::FArdaNativeComputeRegistry::CheckSupport <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardanativecomputeregistry-findoperand-a2e7b912">arda::FArdaNativeComputeRegistry::FindOperand <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardanativecomputeregistry-findprovider-43e38b75">arda::FArdaNativeComputeRegistry::FindProvider <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardanativecomputeregistry-prepare-35172c0f">arda::FArdaNativeComputeRegistry::Prepare <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardanativecomputeregistry-registeroperand-e335ce82">arda::FArdaNativeComputeRegistry::RegisterOperand <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardanativecomputeregistry-registerprovider-4cccd1a9">arda::FArdaNativeComputeRegistry::RegisterProvider <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardanativecomputeprovider-checksupport-c806e25b">arda::IArdaNativeComputeProvider::CheckSupport <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardanativecomputeprovider-getdesc-ae81ff1d">arda::IArdaNativeComputeProvider::GetDesc <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardanativecomputeprovider-prepare-c82d0f90">arda::IArdaNativeComputeProvider::Prepare <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardanativecomputeprovider-queryhandoff-0a7750c9">arda::IArdaNativeComputeProvider::QueryHandoff <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardanativekernelsource-getformat-34d07e8d">arda::IArdaNativeKernelSource::GetFormat <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardanativekernelsource-getproviderid-9d57f12a">arda::IArdaNativeKernelSource::GetProviderId <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardanativepreparedwork-record-bf1dfc61">arda::IArdaNativePreparedWork::Record <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardanativecomputecontext-8755b900">arda::FArdaNativeComputeContext <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardanativeinvocation-c4a8346d">arda::FArdaNativeInvocation <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardanativekernelvariant-32df6848">arda::FArdaNativeKernelVariant <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardanativelaunch-e57ef7db">arda::FArdaNativeLaunch <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardanativeoperanddesc-f82ee605">arda::FArdaNativeOperandDesc <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardanativeproviderdesc-ef67eb62">arda::FArdaNativeProviderDesc <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardanativeresourcehandoff-fe3d28ca">arda::FArdaNativeResourceHandoff <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardanativeresourceslot-bc618999">arda::FArdaNativeResourceSlot <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardanativeresourceview-0f854574">arda::FArdaNativeResourceView <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardanativeshaderfallback-9df605e1">arda::FArdaNativeShaderFallback <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-ardanativecudaingraphicsproviderid-452b1e8b">arda::ArdaNativeCudaInGraphicsProviderId <span class="api-kind">constant</span></a></li>
+<li><a href="#api-arda-ardanativecudaproviderid-dbd20dae">arda::ArdaNativeCudaProviderId <span class="api-kind">constant</span></a></li>
+<li><a href="#api-arda-addardanativecudavariants-83cbba3b">arda::AddArdaNativeCudaVariants <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-createardanativecudaingraphicsprovider-90c985c8">arda::CreateArdaNativeCudaInGraphicsProvider <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-createardanativecudalinkedsource-77d4c6f1">arda::CreateArdaNativeCudaLinkedSource <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-createardanativecudaprovider-41db9033">arda::CreateArdaNativeCudaProvider <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-createardanativecudasource-c4b31319">arda::CreateArdaNativeCudaSource <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-describeardanativecudaoperand-10b4efd6">arda::DescribeArdaNativeCudaOperand <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-getardanativecudaworkplan-60fb3b87">arda::GetArdaNativeCudaWorkPlan <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-makeardanativecudainvocation-131fabec">arda::MakeArdaNativeCudaInvocation <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-fardanativecudasourcedesc-mcomputecapability-86590f80">arda::FArdaNativeCudaSourceDesc::mComputeCapability <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativecudasourcedesc-mcudacpp-d18eb660">arda::FArdaNativeCudaSourceDesc::mCudaCpp <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativecudasourcedesc-mentry-27ac7521">arda::FArdaNativeCudaSourceDesc::mEntry <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativecudasourcedesc-mexternalcall-b912e2eb">arda::FArdaNativeCudaSourceDesc::mExternalCall <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativecudasourcedesc-mmodule-02faef96">arda::FArdaNativeCudaSourceDesc::mModule <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativecudasourcedesc-mmodulekernel-7df0e61d">arda::FArdaNativeCudaSourceDesc::mModuleKernel <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativecudasourcedesc-mpatches-cfd3ae0a">arda::FArdaNativeCudaSourceDesc::mPatches <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativecudasourcedesc-249e3e98">arda::FArdaNativeCudaSourceDesc <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-ardanativenvapiproviderid-0c6a4d9b">arda::ArdaNativeNvapiProviderId <span class="api-kind">constant</span></a></li>
+<li><a href="#api-arda-createardanativenvapiprovider-99703ff8">arda::CreateArdaNativeNvapiProvider <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-createardanativenvapisource-9d14c5f4">arda::CreateArdaNativeNvapiSource <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-fardanativenvapisourcedesc-mdxil-f67142ab">arda::FArdaNativeNvapiSourceDesc::mDxil <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativenvapisourcedesc-mextensionregisterspace-26840261">arda::FArdaNativeNvapiSourceDesc::mExtensionRegisterSpace <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativenvapisourcedesc-mextensionuavslot-f6f49b84">arda::FArdaNativeNvapiSourceDesc::mExtensionUavSlot <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativenvapisourcedesc-mrequiredopcodes-d0a7cda9">arda::FArdaNativeNvapiSourceDesc::mRequiredOpcodes <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardanativenvapisourcedesc-b5d5a5d0">arda::FArdaNativeNvapiSourceDesc <span class="api-kind">struct</span></a></li>
+</ul>
+<!-- END STATIC NATIVE COMPUTE INDEX --></div>
+        </section>
+        <section id="detailed-reference">
+          <h2>Detailed reference</h2>
+          <div data-api-reference><!-- BEGIN STATIC NATIVE COMPUTE DETAILS -->
+<section class="api-group" id="api-component-core"><h3>Registration, selection, and recording</h3>
+<section class="api-kind-group"><h4>alias</h4>
+<section class="api-entry" id="api-arda-fardanativeroutecheck-722cfeeb" tabindex="-1"><h5>arda::FArdaNativeRouteCheck</h5><pre><code>using FArdaNativeRouteCheck = eastl::function&lt;FArdaRHIStatus(EArdaNativeComputeRoute, const IArdaNativeKernelSource*, const eastl::vector&lt;EArdaRHIResourceState&gt;&amp;)&gt;</code></pre><p>A scheduler may decline a route whose resource states conflict with the pass it compiled. Native routes supply the source and one required state per operand slot. Shader routes supply a null source and no native states. Return Unsupported to continue selection.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeworkref-478ca5f0" tabindex="-1"><h5>arda::FArdaNativeWorkRef</h5><pre><code>using FArdaNativeWorkRef = eastl::shared_ptr&lt;const IArdaNativePreparedWork&gt;</code></pre><p>Shared ownership of immutable work prepared for a specific invocation.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>class</h4>
+<section class="api-entry" id="api-arda-fardanativecomputeplan-e7e68aab" tabindex="-1"><h5>arda::FArdaNativeComputePlan</h5><pre><code>class FArdaNativeComputePlan final : public IArdaRHIComputeCommand</code></pre><p>A resolved implementation and frozen work tied to its preparation device and queue.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputeregistry-9539f736" tabindex="-1"><h5>arda::FArdaNativeComputeRegistry</h5><pre><code>class FArdaNativeComputeRegistry</code></pre><p>Own native providers and immutable operand definitions.</p>
+<dl>
+<dt>Threading</dt><dd>Registry reads and insertions use a shared mutex. Callbacks can query the registry.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardanativecomputeprovider-4cfb5709" tabindex="-1"><h5>arda::IArdaNativeComputeProvider</h5><pre><code>class IArdaNativeComputeProvider</code></pre><p>Validate and prepare native work for one provider and its supported sources.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardanativekernelsource-6625cdc7" tabindex="-1"><h5>arda::IArdaNativeKernelSource</h5><pre><code>class IArdaNativeKernelSource</code></pre><p>Source objects own their artifact or linked entry and its provider-specific ABI.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardanativepreparedwork-c5301881" tabindex="-1"><h5>arda::IArdaNativePreparedWork</h5><pre><code>class IArdaNativePreparedWork</code></pre><p>Prepared, immutable work for one implementation route.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>destructor</h4>
+<section class="api-entry" id="api-arda-iardanativecomputeprovider-iardanativecomputeprovider-1bacca56" tabindex="-1"><h5>arda::IArdaNativeComputeProvider::~IArdaNativeComputeProvider</h5><pre><code>virtual ~IArdaNativeComputeProvider() = default</code></pre><p>Release provider-owned state.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardanativekernelsource-iardanativekernelsource-29c7a42c" tabindex="-1"><h5>arda::IArdaNativeKernelSource::~IArdaNativeKernelSource</h5><pre><code>virtual ~IArdaNativeKernelSource() = default</code></pre><p>Release ownership of the source artifact or linked entry.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardanativepreparedwork-iardanativepreparedwork-f76c21d8" tabindex="-1"><h5>arda::IArdaNativePreparedWork::~IArdaNativePreparedWork</h5><pre><code>virtual ~IArdaNativePreparedWork() = default</code></pre><p>Release the captured state held by this work.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>enum</h4>
+<section class="api-entry" id="api-arda-eardanativecomputepreference-d0128340" tabindex="-1"><h5>arda::EArdaNativeComputePreference</h5><pre><code>enum class EArdaNativeComputePreference : uint8_t</code></pre><p>Choose which implementation routes the resolver may try.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardanativecomputeroute-21d3c2b7" tabindex="-1"><h5>arda::EArdaNativeComputeRoute</h5><pre><code>enum class EArdaNativeComputeRoute : uint8_t</code></pre><p>Implementation selected for a prepared plan.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardanativehandoff-4c69eb11" tabindex="-1"><h5>arda::EArdaNativeHandoff</h5><pre><code>enum class EArdaNativeHandoff : uint8_t</code></pre><p>Whether a provider can use the bound resource as supplied.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>enumerator</h4>
+<section class="api-entry" id="api-arda-eardanativecomputepreference-nativeonly-1b5219dc" tabindex="-1"><h5>arda::EArdaNativeComputePreference::NativeOnly</h5><pre><code>NativeOnly</code></pre><p>Require an eligible native provider and variant.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardanativecomputepreference-prefernative-6e8b8624" tabindex="-1"><h5>arda::EArdaNativeComputePreference::PreferNative</h5><pre><code>PreferNative</code></pre><p>Try native variants in declaration order, then the shader fallback.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardanativecomputepreference-shaderonly-709efc2b" tabindex="-1"><h5>arda::EArdaNativeComputePreference::ShaderOnly</h5><pre><code>ShaderOnly</code></pre><p>Use the registered shader implementation.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardanativecomputeroute-computeshader-cf52cae7" tabindex="-1"><h5>arda::EArdaNativeComputeRoute::ComputeShader</h5><pre><code>ComputeShader</code></pre><p>Fallback that records a compute shader.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardanativecomputeroute-graphicsshader-8972ab9a" tabindex="-1"><h5>arda::EArdaNativeComputeRoute::GraphicsShader</h5><pre><code>GraphicsShader</code></pre><p>Fallback that records a graphics shader on a graphics list.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardanativecomputeroute-native-54839cc2" tabindex="-1"><h5>arda::EArdaNativeComputeRoute::Native</h5><pre><code>Native</code></pre><p>Kernel or external call prepared by a registered native provider.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardanativehandoff-conversionrequired-c33bd6cf" tabindex="-1"><h5>arda::EArdaNativeHandoff::ConversionRequired</h5><pre><code>ConversionRequired</code></pre><p>Add a conversion/copy pass and bind its output to use this provider.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardanativehandoff-direct-5dfa2d46" tabindex="-1"><h5>arda::EArdaNativeHandoff::Direct</h5><pre><code>Direct</code></pre><p>The provider can access the selected view directly.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>function</h4>
+<section class="api-entry" id="api-arda-makeardanativework-0bc256b8" tabindex="-1"><h5>arda::MakeArdaNativeWork</h5><pre><code>[[nodiscard]] FArdaNativeWorkRef MakeArdaNativeWork(eastl::function&lt;FArdaRHIStatus(IArdaRHICommandList&amp;)&gt; Record)</code></pre><p>Wrap a command-list recording callback as prepared work.</p>
+<dl>
+<dt>Record</dt><dd>Callback that appends commands. Capture pipeline state, bindings, and constants by value.</dd>
+<dt>Returns</dt><dd>Prepared work, or an empty reference for an empty callback.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>member variable</h4>
+<section class="api-entry" id="api-arda-fardanativecomputecontext-mallowedproviderids-37cb8f2d" tabindex="-1"><h5>arda::FArdaNativeComputeContext::mAllowedProviderIds</h5><pre><code>eastl::vector&lt;eastl::string&gt; mAllowedProviderIds</code></pre><p>Optional scheduler restriction. Admit only these provider IDs, preserving the operand&#x27;s variant order.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputecontext-mdevice-972ba489" tabindex="-1"><h5>arda::FArdaNativeComputeContext::mDevice</h5><pre><code>FArdaRHIDeviceRef mDevice</code></pre><p>Device on which the prepared work will record.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputecontext-mpreference-c48cf7fc" tabindex="-1"><h5>arda::FArdaNativeComputeContext::mPreference</h5><pre><code>EArdaNativeComputePreference mPreference = EArdaNativeComputePreference::PreferNative</code></pre><p>Routes the resolver may try.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputecontext-mqueue-d8ab00bd" tabindex="-1"><h5>arda::FArdaNativeComputeContext::mQueue</h5><pre><code>EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics</code></pre><p>Queue the command list must use when it records the prepared plan.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputecontext-mrequiredproviderid-45e7d622" tabindex="-1"><h5>arda::FArdaNativeComputeContext::mRequiredProviderId</h5><pre><code>eastl::string mRequiredProviderId</code></pre><p>Require a particular native provider ID. Empty leaves the choice to the operand.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeinvocation-mlaunch-b34f1c85" tabindex="-1"><h5>arda::FArdaNativeInvocation::mLaunch</h5><pre><code>FArdaNativeLaunch mLaunch</code></pre><p>Launch geometry for a variant without a custom selection policy.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeinvocation-mparameters-a02d7caf" tabindex="-1"><h5>arda::FArdaNativeInvocation::mParameters</h5><pre><code>eastl::vector&lt;uint8_t&gt; mParameters</code></pre><p>Parameter block with exactly the operand&#x27;s declared byte count.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeinvocation-mresources-9fe63af6" tabindex="-1"><h5>arda::FArdaNativeInvocation::mResources</h5><pre><code>eastl::vector&lt;FArdaNativeResourceView&gt; mResources</code></pre><p>Physical views in the operand&#x27;s slot order.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativekernelvariant-mname-fc7f6b40" tabindex="-1"><h5>arda::FArdaNativeKernelVariant::mName</h5><pre><code>eastl::string mName</code></pre><p>Variant name unique within the operand, returned by a native plan.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativekernelvariant-mproviderid-e5813250" tabindex="-1"><h5>arda::FArdaNativeKernelVariant::mProviderId</h5><pre><code>eastl::string mProviderId</code></pre><p>Optional provider override. Allows compatible providers to share the same compiled source and ABI.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativekernelvariant-mselect-d39fb58e" tabindex="-1"><h5>arda::FArdaNativeKernelVariant::mSelect</h5><pre><code>eastl::function&lt;TArdaRHIResult&lt;FArdaNativeLaunch&gt;(const FArdaNativeComputeContext&amp;, const FArdaNativeInvocation&amp;)&gt; mSelect</code></pre><p>Return geometry, or Unsupported when another variant should handle this input.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativekernelvariant-msource-c8c9faac" tabindex="-1"><h5>arda::FArdaNativeKernelVariant::mSource</h5><pre><code>eastl::shared_ptr&lt;const IArdaNativeKernelSource&gt; mSource</code></pre><p>Source retained by the registration. Its provider and format IDs must be nonempty.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativelaunch-mblocksize-25e37fbb" tabindex="-1"><h5>arda::FArdaNativeLaunch::mBlockSize</h5><pre><code>uint32_t mBlockSize[3] = {1, 1, 1}</code></pre><p>Threads per group in X, Y, and Z.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativelaunch-mgridsize-ccf5a35c" tabindex="-1"><h5>arda::FArdaNativeLaunch::mGridSize</h5><pre><code>uint32_t mGridSize[3] = {1, 1, 1}</code></pre><p>Work-group counts in X, Y, and Z.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativelaunch-msharedmemorybytes-872d4479" tabindex="-1"><h5>arda::FArdaNativeLaunch::mSharedMemoryBytes</h5><pre><code>uint32_t mSharedMemoryBytes = 0</code></pre><p>Dynamic shared memory requested per group, in bytes.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeoperanddesc-mfallback-5bfb5f82" tabindex="-1"><h5>arda::FArdaNativeOperandDesc::mFallback</h5><pre><code>FArdaNativeShaderFallback mFallback</code></pre><p>Shader implementation eligible when the preference permits a fallback.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeoperanddesc-mid-fc548502" tabindex="-1"><h5>arda::FArdaNativeOperandDesc::mId</h5><pre><code>eastl::string mId</code></pre><p>Nonempty ID unique in the registry.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeoperanddesc-mparametersize-ef2d0929" tabindex="-1"><h5>arda::FArdaNativeOperandDesc::mParameterSize</h5><pre><code>size_t mParameterSize = 0</code></pre><p>Exact invocation parameter size in bytes.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeoperanddesc-mresources-365ab390" tabindex="-1"><h5>arda::FArdaNativeOperandDesc::mResources</h5><pre><code>eastl::vector&lt;FArdaNativeResourceSlot&gt; mResources</code></pre><p>Ordered resource slots shared by every implementation.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeoperanddesc-mvalidate-7130ac45" tabindex="-1"><h5>arda::FArdaNativeOperandDesc::mValidate</h5><pre><code>eastl::function&lt;FArdaRHIStatus(const FArdaNativeInvocation&amp;)&gt; mValidate</code></pre><p>Check algorithm invariants shared by every implementation before selection.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeoperanddesc-mvariants-0db21388" tabindex="-1"><h5>arda::FArdaNativeOperandDesc::mVariants</h5><pre><code>eastl::vector&lt;FArdaNativeKernelVariant&gt; mVariants</code></pre><p>First eligible variant wins. Different variants can use different providers.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeproviderdesc-mgraphicsapis-61073541" tabindex="-1"><h5>arda::FArdaNativeProviderDesc::mGraphicsApis</h5><pre><code>eastl::vector&lt;eastl::string&gt; mGraphicsApis</code></pre><p>Registered graphics module names, such as native-vulkan.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeproviderdesc-mid-5f57f531" tabindex="-1"><h5>arda::FArdaNativeProviderDesc::mId</h5><pre><code>eastl::string mId</code></pre><p>Nonempty provider ID unique in the registry.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeproviderdesc-msourceformats-9843a5e4" tabindex="-1"><h5>arda::FArdaNativeProviderDesc::mSourceFormats</h5><pre><code>eastl::vector&lt;eastl::string&gt; mSourceFormats</code></pre><p>Source format IDs the provider recognizes.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeresourcehandoff-mkind-1fb06e3d" tabindex="-1"><h5>arda::FArdaNativeResourceHandoff::mKind</h5><pre><code>EArdaNativeHandoff mKind = EArdaNativeHandoff::Direct</code></pre><p>Direct access or a request for an explicit copy/conversion pass.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeresourcehandoff-mrequiredstate-22438afc" tabindex="-1"><h5>arda::FArdaNativeResourceHandoff::mRequiredState</h5><pre><code>EArdaRHIResourceState mRequiredState = EArdaRHIResourceState::Common</code></pre><p>State required on entry to a direct handoff. The provider records its native synchronization.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeresourceslot-maccess-e1acee09" tabindex="-1"><h5>arda::FArdaNativeResourceSlot::mAccess</h5><pre><code>EArdaComputeAccess mAccess = EArdaComputeAccess::Read</code></pre><p>Read, write, or read/write access required by every route.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeresourceslot-mformat-0f9ce331" tabindex="-1"><h5>arda::FArdaNativeResourceSlot::mFormat</h5><pre><code>EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown</code></pre><p>Required texture storage format. Unknown leaves the format unconstrained.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeresourceslot-mname-1b65f21e" tabindex="-1"><h5>arda::FArdaNativeResourceSlot::mName</h5><pre><code>eastl::string mName</code></pre><p>Nonempty name unique within the operand.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeresourceslot-mtype-b1ab8942" tabindex="-1"><h5>arda::FArdaNativeResourceSlot::mType</h5><pre><code>EArdaRHIResourceType mType = EArdaRHIResourceType::Buffer</code></pre><p>RHI resource kind required by this slot.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeresourceview-mbufferrange-6ea338b8" tabindex="-1"><h5>arda::FArdaNativeResourceView::mBufferRange</h5><pre><code>FArdaRHIBufferRange mBufferRange</code></pre><p>Nonempty range inside a bound buffer.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeresourceview-mmiplevel-9fe0776a" tabindex="-1"><h5>arda::FArdaNativeResourceView::mMipLevel</h5><pre><code>uint32_t mMipLevel = 0</code></pre><p>Mip index for a bound texture.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeresourceview-mresource-a8139edd" tabindex="-1"><h5>arda::FArdaNativeResourceView::mResource</h5><pre><code>FArdaRHIResourceRef mResource</code></pre><p>Retained RHI resource. Its kind must match the slot.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeshaderfallback-mprepare-a1b70070" tabindex="-1"><h5>arda::FArdaNativeShaderFallback::mPrepare</h5><pre><code>eastl::function&lt;TArdaRHIResult&lt;FArdaNativeWorkRef&gt;(const FArdaNativeComputeContext&amp;, const FArdaNativeInvocation&amp;)&gt; mPrepare</code></pre><p>Freeze the resources, bindings, and arguments into work without submitting it.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeshaderfallback-mrequiredfeatures-abff4798" tabindex="-1"><h5>arda::FArdaNativeShaderFallback::mRequiredFeatures</h5><pre><code>FArdaRHIFeatureRequirements mRequiredFeatures</code></pre><p>Device features required by this shader implementation.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeshaderfallback-mroute-708ed555" tabindex="-1"><h5>arda::FArdaNativeShaderFallback::mRoute</h5><pre><code>EArdaNativeComputeRoute mRoute = EArdaNativeComputeRoute::ComputeShader</code></pre><p>Compute or graphics shader route. A graphics route requires a graphics queue.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>method</h4>
+<section class="api-entry" id="api-arda-fardanativecomputeplan-getroute-e00d35af" tabindex="-1"><h5>arda::FArdaNativeComputePlan::GetRoute</h5><pre><code>[[nodiscard]] EArdaNativeComputeRoute GetRoute() const noexcept</code></pre><p>Return the selected native, compute shader, or graphics shader route.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputeplan-getvariantname-efb38020" tabindex="-1"><h5>arda::FArdaNativeComputePlan::GetVariantName</h5><pre><code>[[nodiscard]] const eastl::string&amp; GetVariantName() const noexcept</code></pre><p>Return the chosen native variant name, or an empty string for a shader route.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputeplan-getwork-36c16e79" tabindex="-1"><h5>arda::FArdaNativeComputePlan::GetWork</h5><pre><code>[[nodiscard]] const FArdaNativeWorkRef&amp; GetWork() const noexcept</code></pre><p>Borrow the shared work reference for low-level integration. Copy it to retain ownership.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputeplan-record-d7cc26dd" tabindex="-1"><h5>arda::FArdaNativeComputePlan::Record</h5><pre><code>[[nodiscard]] FArdaRHIStatus Record(IArdaRHICommandList&amp; Commands) const</code></pre><p>Record the frozen work without submitting it.</p>
+<dl>
+<dt>Commands</dt><dd>Open command list on the preparation device and queue.</dd>
+<dt>Returns</dt><dd>Recording status.</dd>
+<dt>Errors</dt><dd>An empty plan returns InvalidState. Another device returns WrongDevice. A different queue returns InvalidArgument.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputeregistry-checksupport-d8bb205b" tabindex="-1"><h5>arda::FArdaNativeComputeRegistry::CheckSupport</h5><pre><code>[[nodiscard]] FArdaRHIStatus CheckSupport(const char* Id, const FArdaNativeComputeContext&amp; Context) const</code></pre><p>Check device, queue, and provider or shader eligibility before supplying frame inputs.</p>
+<dl>
+<dt>Id</dt><dd>Registered operand ID.</dd>
+<dt>Context</dt><dd>Device, queue, and allowed routes.</dd>
+<dt>Returns</dt><dd>Support status. Prepare checks actual resource handoffs and input policy.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputeregistry-findoperand-a2e7b912" tabindex="-1"><h5>arda::FArdaNativeComputeRegistry::FindOperand</h5><pre><code>[[nodiscard]] eastl::shared_ptr&lt;const FArdaNativeOperandDesc&gt; FindOperand(const char* Id) const</code></pre><p>Look up a registered operand by ID.</p>
+<dl>
+<dt>Id</dt><dd>Operand registry ID.</dd>
+<dt>Returns</dt><dd>Shared immutable definition, or an empty reference for an unknown or null ID.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputeregistry-findprovider-43e38b75" tabindex="-1"><h5>arda::FArdaNativeComputeRegistry::FindProvider</h5><pre><code>[[nodiscard]] eastl::shared_ptr&lt;const IArdaNativeComputeProvider&gt; FindProvider(const char* Id) const</code></pre><p>Look up a registered provider by ID.</p>
+<dl>
+<dt>Id</dt><dd>Provider registry ID.</dd>
+<dt>Returns</dt><dd>Shared provider, or an empty reference for an unknown or null ID.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputeregistry-prepare-35172c0f" tabindex="-1"><h5>arda::FArdaNativeComputeRegistry::Prepare</h5><pre><code>[[nodiscard]] TArdaRHIResult&lt;FArdaNativeComputePlan&gt; Prepare(const char* Id, const FArdaNativeComputeContext&amp; Context, const FArdaNativeInvocation&amp; Invocation, const FArdaNativeRouteCheck&amp; CheckRoute = {}) const</code></pre><p>Validate bindings, choose an implementation, and freeze one invocation. A native Unsupported or BackendFailure can advance to another eligible variant or the shader fallback. An invalid invocation fails before any implementation runs. Preparation does not submit work.</p>
+<dl>
+<dt>Id</dt><dd>Registered operand ID.</dd>
+<dt>Context</dt><dd>Device, queue, and allowed routes.</dd>
+<dt>Invocation</dt><dd>Bindings, parameter bytes, and default launch geometry.</dd>
+<dt>CheckRoute</dt><dd>Optional scheduler callback run before preparing each eligible route.</dd>
+<dt>Returns</dt><dd>Prepared plan or failure status.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputeregistry-registeroperand-e335ce82" tabindex="-1"><h5>arda::FArdaNativeComputeRegistry::RegisterOperand</h5><pre><code>[[nodiscard]] FArdaRHIStatus RegisterOperand(FArdaNativeOperandDesc Operand)</code></pre><p>Publish an operand with at least one native variant or shader implementation.</p>
+<dl>
+<dt>Operand</dt><dd>Resource slots, parameter size, implementations, and optional validator.</dd>
+<dt>Returns</dt><dd>Registration status.</dd>
+<dt>Errors</dt><dd>InvalidArgument for a duplicate ID or invalid operand metadata.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecomputeregistry-registerprovider-4cccd1a9" tabindex="-1"><h5>arda::FArdaNativeComputeRegistry::RegisterProvider</h5><pre><code>[[nodiscard]] FArdaRHIStatus RegisterProvider(eastl::shared_ptr&lt;const IArdaNativeComputeProvider&gt; Provider)</code></pre><p>Register a provider with a unique ID and nonempty, distinct compatibility names.</p>
+<dl>
+<dt>Provider</dt><dd>Immutable provider to retain on success.</dd>
+<dt>Returns</dt><dd>Registration status.</dd>
+<dt>Errors</dt><dd>InvalidArgument for an empty provider, invalid metadata, or duplicate ID.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardanativecomputeprovider-checksupport-c806e25b" tabindex="-1"><h5>arda::IArdaNativeComputeProvider::CheckSupport</h5><pre><code>virtual FArdaRHIStatus CheckSupport(const FArdaNativeComputeContext&amp;, const FArdaNativeOperandDesc&amp;, const IArdaNativeKernelSource&amp;) const = 0</code></pre><p>Check architecture, source ABI, queue and schema without allocating or recording work.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardanativecomputeprovider-getdesc-ae81ff1d" tabindex="-1"><h5>arda::IArdaNativeComputeProvider::GetDesc</h5><pre><code>virtual const FArdaNativeProviderDesc&amp; GetDesc() const noexcept = 0</code></pre><p>Return the provider metadata, valid for the lifetime of the provider.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardanativecomputeprovider-prepare-c82d0f90" tabindex="-1"><h5>arda::IArdaNativeComputeProvider::Prepare</h5><pre><code>virtual TArdaRHIResult&lt;FArdaNativeWorkRef&gt; Prepare(const FArdaNativeComputeContext&amp;, const FArdaNativeOperandDesc&amp;, const IArdaNativeKernelSource&amp;, const FArdaNativeInvocation&amp;, const FArdaNativeLaunch&amp;) const = 0</code></pre><p>Freeze arguments and resolve the source. Preparation must never enqueue work.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardanativecomputeprovider-queryhandoff-0a7750c9" tabindex="-1"><h5>arda::IArdaNativeComputeProvider::QueryHandoff</h5><pre><code>virtual TArdaRHIResult&lt;FArdaNativeResourceHandoff&gt; QueryHandoff(const FArdaNativeComputeContext&amp;, const FArdaNativeResourceSlot&amp;, const FArdaNativeResourceView&amp;) const = 0</code></pre><p>Inspect the physical view and report whether the caller must add a conversion pass.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardanativekernelsource-getformat-34d07e8d" tabindex="-1"><h5>arda::IArdaNativeKernelSource::GetFormat</h5><pre><code>virtual const char* GetFormat() const noexcept = 0</code></pre><p>Return the format ID used to match the provider&#x27;s supported formats.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardanativekernelsource-getproviderid-9d57f12a" tabindex="-1"><h5>arda::IArdaNativeKernelSource::GetProviderId</h5><pre><code>virtual const char* GetProviderId() const noexcept = 0</code></pre><p>Return the registry ID of the default provider for this source.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardanativepreparedwork-record-bf1dfc61" tabindex="-1"><h5>arda::IArdaNativePreparedWork::Record</h5><pre><code>virtual FArdaRHIStatus Record(IArdaRHICommandList&amp; Commands) const = 0</code></pre><p>Append work to an open command list without submitting it.</p>
+<dl>
+<dt>Commands</dt><dd>Open list for the prepared device and queue.</dd>
+<dt>Returns</dt><dd>Recording status.</dd>
+<dt>Ownership</dt><dd>The RHI retains submitted dependencies through GPU completion.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>struct</h4>
+<section class="api-entry" id="api-arda-fardanativecomputecontext-8755b900" tabindex="-1"><h5>arda::FArdaNativeComputeContext</h5><pre><code>struct FArdaNativeComputeContext</code></pre><p>Device, queue, and route preference for support checks and preparation.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeinvocation-c4a8346d" tabindex="-1"><h5>arda::FArdaNativeInvocation</h5><pre><code>struct FArdaNativeInvocation</code></pre><p>Resource bindings and parameter bytes for one invocation.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativekernelvariant-32df6848" tabindex="-1"><h5>arda::FArdaNativeKernelVariant</h5><pre><code>struct FArdaNativeKernelVariant</code></pre><p>One native implementation and its optional launch policy.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativelaunch-e57ef7db" tabindex="-1"><h5>arda::FArdaNativeLaunch</h5><pre><code>struct FArdaNativeLaunch</code></pre><p>Three-dimensional group count and group size for one native dispatch.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeoperanddesc-f82ee605" tabindex="-1"><h5>arda::FArdaNativeOperandDesc</h5><pre><code>struct FArdaNativeOperandDesc</code></pre><p>Register one resource and parameter contract with at least one implementation.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeproviderdesc-ef67eb62" tabindex="-1"><h5>arda::FArdaNativeProviderDesc</h5><pre><code>struct FArdaNativeProviderDesc</code></pre><p>Registry identity and compatibility boundaries of a native provider.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeresourcehandoff-fe3d28ca" tabindex="-1"><h5>arda::FArdaNativeResourceHandoff</h5><pre><code>struct FArdaNativeResourceHandoff</code></pre><p>Representation and graphics resource state that the provider expects at a handoff.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeresourceslot-bc618999" tabindex="-1"><h5>arda::FArdaNativeResourceSlot</h5><pre><code>struct FArdaNativeResourceSlot</code></pre><p>All implementations of an operand consume these slots in declaration order.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeresourceview-0f854574" tabindex="-1"><h5>arda::FArdaNativeResourceView</h5><pre><code>struct FArdaNativeResourceView</code></pre><p>Physical resource bound to one declared operand slot.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativeshaderfallback-9df605e1" tabindex="-1"><h5>arda::FArdaNativeShaderFallback</h5><pre><code>struct FArdaNativeShaderFallback</code></pre><p>Optional shader implementation of the same operation and resource access contract.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h</dd>
+</dl></section>
+</section>
+</section>
+<section class="api-group" id="api-component-cuda"><h3>CUDA and CUDA in Graphics providers</h3>
+<section class="api-kind-group"><h4>constant</h4>
+<section class="api-entry" id="api-arda-ardanativecudaingraphicsproviderid-452b1e8b" tabindex="-1"><h5>arda::ArdaNativeCudaInGraphicsProviderId</h5><pre><code>inline constexpr char ArdaNativeCudaInGraphicsProviderId[] = &quot;cuda-in-graphics&quot;</code></pre><p>Requires CUDA in Graphics for the active graphics API.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-ardanativecudaproviderid-dbd20dae" tabindex="-1"><h5>arda::ArdaNativeCudaProviderId</h5><pre><code>inline constexpr char ArdaNativeCudaProviderId[] = &quot;cuda&quot;</code></pre><p>Provider identity used when constraining execution to a CUDA batch.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>function</h4>
+<section class="api-entry" id="api-arda-addardanativecudavariants-83cbba3b" tabindex="-1"><h5>arda::AddArdaNativeCudaVariants</h5><pre><code>void AddArdaNativeCudaVariants(FArdaNativeOperandDesc&amp; Operand, FArdaNativeKernelVariant Variant)</code></pre><p>Add the same CUDA kernel and launch policy for two execution routes, trying CiG first.</p>
+<dl>
+<dt>Operand</dt><dd>Operand that will own both variants.</dd>
+<dt>Variant</dt><dd>CUDA source, unique name and optional launch policy. The CiG variant adds &quot;.cig&quot; to the name.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-createardanativecudaingraphicsprovider-90c985c8" tabindex="-1"><h5>arda::CreateArdaNativeCudaInGraphicsProvider</h5><pre><code>[[nodiscard]] eastl::shared_ptr&lt;const IArdaNativeComputeProvider&gt; CreateArdaNativeCudaInGraphicsProvider()</code></pre><p>Require D3D12 CiG on a graphics list or Vulkan CiG on a graphics/compute list.</p>
+<dl>
+<dt>Returns</dt><dd>Provider for the native-d3d12 and native-vulkan modules. A context-switch device is ineligible.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-createardanativecudalinkedsource-77d4c6f1" tabindex="-1"><h5>arda::CreateArdaNativeCudaLinkedSource</h5><pre><code>[[nodiscard]] TArdaRHIResult&lt;eastl::shared_ptr&lt;const IArdaNativeKernelSource&gt;&gt; CreateArdaNativeCudaLinkedSource( const FArdaCudaParameterMetadata&amp; Metadata, eastl::shared_ptr&lt;const IArdaCudaKernelEntry&gt; Entry)</code></pre><p>Bind a linked CUDA entry and derive its resource patches from the same parameter schema.</p>
+<dl>
+<dt>Metadata</dt><dd>CUDA parameter metadata used by the kernel.</dd>
+<dt>Entry</dt><dd>Retained linked kernel entry.</dd>
+<dt>Returns</dt><dd>Native source for a registered variant, or a validation error.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-createardanativecudaprovider-41db9033" tabindex="-1"><h5>arda::CreateArdaNativeCudaProvider</h5><pre><code>[[nodiscard]] eastl::shared_ptr&lt;const IArdaNativeComputeProvider&gt; CreateArdaNativeCudaProvider( eastl::vector&lt;eastl::string&gt; GraphicsApis = {})</code></pre><p>Construct a CUDA provider for the named graphics modules.</p>
+<dl>
+<dt>GraphicsApis</dt><dd>Exact registered backend names. An empty list selects native-d3d12 and native-vulkan.</dd>
+<dt>Returns</dt><dd>Provider for devices with CUDA capabilities and CUDA command recording.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-createardanativecudasource-c4b31319" tabindex="-1"><h5>arda::CreateArdaNativeCudaSource</h5><pre><code>[[nodiscard]] TArdaRHIResult&lt;eastl::shared_ptr&lt;const IArdaNativeKernelSource&gt;&gt; CreateArdaNativeCudaSource( FArdaNativeCudaSourceDesc Desc)</code></pre><p>Validate one CUDA source descriptor and keep ownership of the source.</p>
+<dl>
+<dt>Desc</dt><dd>Exactly one linked entry, external call, module image, or CUDA C++ translation unit, plus its patches.</dd>
+<dt>Returns</dt><dd>Source for a native variant or failure status.</dd>
+<dt>Errors</dt><dd>InvalidArgument for multiple or missing source choices, embedded null bytes, or malformed CUDA argument metadata.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-describeardanativecudaoperand-10b4efd6" tabindex="-1"><h5>arda::DescribeArdaNativeCudaOperand</h5><pre><code>[[nodiscard]] TArdaRHIResult&lt;FArdaNativeOperandDesc&gt; DescribeArdaNativeCudaOperand(const char* Id, const FArdaCudaParameterMetadata&amp; Metadata)</code></pre><p>Start an operand with the resource slots and parameter ABI of an ARDA_CUDA_PARAMETER_STRUCT.</p>
+<dl>
+<dt>Id</dt><dd>Nonempty operand registry ID.</dd>
+<dt>Metadata</dt><dd>CUDA parameter metadata for the shared host type.</dd>
+<dt>Returns</dt><dd>Operand descriptor. Add variants or a shader fallback before registering it.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-getardanativecudaworkplan-60fb3b87" tabindex="-1"><h5>arda::GetArdaNativeCudaWorkPlan</h5><pre><code>[[nodiscard]] eastl::shared_ptr&lt;const FArdaCudaDispatchPlan&gt; GetArdaNativeCudaWorkPlan( const FArdaNativeWorkRef&amp; Work)</code></pre><p>Get the frozen dispatch plan for use by a CUDA sequence scheduler.</p>
+<dl>
+<dt>Work</dt><dd>Work from a prepared native compute plan.</dd>
+<dt>Returns</dt><dd>Shared CUDA dispatch plan, or an empty reference for other work.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-makeardanativecudainvocation-131fabec" tabindex="-1"><h5>arda::MakeArdaNativeCudaInvocation</h5><pre><code>template &lt;class Parameters&gt; [[nodiscard]] TArdaRHIResult&lt;FArdaNativeInvocation&gt; MakeArdaNativeCudaInvocation(const Parameters&amp; Host)</code></pre><p>Pack the host values and retain the active resource views for route selection.</p>
+<dl>
+<dt>Host</dt><dd>Host parameter object declared by ARDA_CUDA_PARAMETER_STRUCT.</dd>
+<dt>Returns</dt><dd>Invocation with scalar bytes and RHI views. Shader routes can use views without CUDA sharing.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaParameters.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>member variable</h4>
+<section class="api-entry" id="api-arda-fardanativecudasourcedesc-mcomputecapability-86590f80" tabindex="-1"><h5>arda::FArdaNativeCudaSourceDesc::mComputeCapability</h5><pre><code>uint32_t mComputeCapability = 0</code></pre><p>CUDA C++ native target. Zero compiles for the selected device.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecudasourcedesc-mcudacpp-d18eb660" tabindex="-1"><h5>arda::FArdaNativeCudaSourceDesc::mCudaCpp</h5><pre><code>eastl::string mCudaCpp</code></pre><p>CUDA C++ translation unit to compile with NVRTC during preparation.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecudasourcedesc-mentry-27ac7521" tabindex="-1"><h5>arda::FArdaNativeCudaSourceDesc::mEntry</h5><pre><code>eastl::shared_ptr&lt;const IArdaCudaKernelEntry&gt; mEntry</code></pre><p>Linked entry with build-profile metadata and architecture coverage.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecudasourcedesc-mexternalcall-b912e2eb" tabindex="-1"><h5>arda::FArdaNativeCudaSourceDesc::mExternalCall</h5><pre><code>eastl::shared_ptr&lt;const IArdaCudaExternalCall&gt; mExternalCall</code></pre><p>External library call that runs on the framework&#x27;s CUDA stream.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecudasourcedesc-mmodule-02faef96" tabindex="-1"><h5>arda::FArdaNativeCudaSourceDesc::mModule</h5><pre><code>FArdaCudaModuleDesc mModule</code></pre><p>Owned PTX or cubin image and its target metadata.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecudasourcedesc-mmodulekernel-7df0e61d" tabindex="-1"><h5>arda::FArdaNativeCudaSourceDesc::mModuleKernel</h5><pre><code>FArdaCudaModuleKernelDesc mModuleKernel</code></pre><p>ABI for a module image or NVRTC source. Use an extern &quot;C&quot; entry for a stable source symbol.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativecudasourcedesc-mpatches-cfd3ae0a" tabindex="-1"><h5>arda::FArdaNativeCudaSourceDesc::mPatches</h5><pre><code>eastl::vector&lt;FArdaCudaParameterPatch&gt; mPatches</code></pre><p>Maps neutral resource slots to CUDA parameter locations.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>struct</h4>
+<section class="api-entry" id="api-arda-fardanativecudasourcedesc-249e3e98" tabindex="-1"><h5>arda::FArdaNativeCudaSourceDesc</h5><pre><code>struct FArdaNativeCudaSourceDesc</code></pre><p>Exactly one trusted linked entry, external call, module image, or CUDA C++ translation unit.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h</dd>
+</dl></section>
+</section>
+</section>
+<section class="api-group" id="api-component-nvapi"><h3>NVAPI provider</h3>
+<section class="api-kind-group"><h4>constant</h4>
+<section class="api-entry" id="api-arda-ardanativenvapiproviderid-0c6a4d9b" tabindex="-1"><h5>arda::ArdaNativeNvapiProviderId</h5><pre><code>inline constexpr char ArdaNativeNvapiProviderId[] = &quot;nvapi&quot;</code></pre><p>Registry ID for native D3D12 NVAPI shader extensions.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>function</h4>
+<section class="api-entry" id="api-arda-createardanativenvapiprovider-99703ff8" tabindex="-1"><h5>arda::CreateArdaNativeNvapiProvider</h5><pre><code>[[nodiscard]] eastl::shared_ptr&lt;const IArdaNativeComputeProvider&gt; CreateArdaNativeNvapiProvider()</code></pre><p>Register the &quot;nvapi&quot; provider for &quot;native-d3d12&quot;. Opcode support is checked on the selected device.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-createardanativenvapisource-9d14c5f4" tabindex="-1"><h5>arda::CreateArdaNativeNvapiSource</h5><pre><code>[[nodiscard]] TArdaRHIResult&lt;eastl::shared_ptr&lt;const IArdaNativeKernelSource&gt;&gt; CreateArdaNativeNvapiSource(FArdaNativeNvapiSourceDesc Desc)</code></pre><p>Retain an NVAPI shader and its driver requirements. In space zero, operand slot i maps to ti for reads or ui for writes and read/write access. Buffers use ByteAddressBuffer views. Parameters are 32-bit root constants at b0. The compiled shader fixes numthreads.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>member variable</h4>
+<section class="api-entry" id="api-arda-fardanativenvapisourcedesc-mdxil-f67142ab" tabindex="-1"><h5>arda::FArdaNativeNvapiSourceDesc::mDxil</h5><pre><code>eastl::vector&lt;uint8_t&gt; mDxil</code></pre><p>Owned DXIL compiled with the NVIDIA nvHLSLExtns.h shader header.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativenvapisourcedesc-mextensionregisterspace-26840261" tabindex="-1"><h5>arda::FArdaNativeNvapiSourceDesc::mExtensionRegisterSpace</h5><pre><code>uint32_t mExtensionRegisterSpace = 1</code></pre><p>The nonzero space declared by NV_SHADER_EXTN_REGISTER_SPACE in HLSL. Space zero holds operand resources.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativenvapisourcedesc-mextensionuavslot-f6f49b84" tabindex="-1"><h5>arda::FArdaNativeNvapiSourceDesc::mExtensionUavSlot</h5><pre><code>uint32_t mExtensionUavSlot = 0</code></pre><p>The u register declared by NV_SHADER_EXTN_SLOT in HLSL.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardanativenvapisourcedesc-mrequiredopcodes-d0a7cda9" tabindex="-1"><h5>arda::FArdaNativeNvapiSourceDesc::mRequiredOpcodes</h5><pre><code>eastl::vector&lt;uint32_t&gt; mRequiredOpcodes</code></pre><p>Required NV_EXTN_OP_* numbers from nvShaderExtnEnums.h.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>struct</h4>
+<section class="api-entry" id="api-arda-fardanativenvapisourcedesc-b5d5a5d0" tabindex="-1"><h5>arda::FArdaNativeNvapiSourceDesc</h5><pre><code>struct FArdaNativeNvapiSourceDesc</code></pre><p>Compile HLSL with DXC and supply the resulting compute shader container.</p>
+<dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h</dd>
+</dl></section>
+</section>
+</section>
+<!-- END STATIC NATIVE COMPUTE DETAILS --></div>
+        </section>
+    </article>
+    <nav class="page-nav" aria-label="Document navigation"><a href="../ArdaRDG/native-compute.html" rel="prev"><span class="page-nav-label"><svg class="icon icon-previous" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>Previous</span><span class="page-nav-title">Write a native compute node</span></a></nav>
+  </main>
+  <aside class="page-outline" aria-label="Page outline"><nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#search">Search the API</a></li><li><a href="#symbol-index">Symbol index</a></li><li><a href="#detailed-reference">Detailed reference</a></li></ul></nav></aside>
+</div>
+<footer class="site-footer"><div class="site-footer__inner"><a class="site-brand" href="../index.html">Ardashir</a><div class="footer-group"><p>Documentation</p><a href="../index.html">Overview</a><a href="../ArdaRDG/getting-started.html">Getting started</a><a href="../Essays/arda-graph-and-inductor.html">Engineering essays</a></div><div class="footer-group"><p>Modules</p><a href="../ArdaBackend/index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="index.html">Native compute</a><a href="../index.html#module-ardagraph">ArdaGraph</a><a href="../index.html#module-ardatests">ArdaTests</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div><div class="footer-group"><p>Reference</p><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="api-reference.html">Native compute</a><a href="../glossary.html">Glossary</a></div></div></footer>
+<dialog class="doc-search" aria-label="Search documentation"><form method="dialog">
+  <div class="search-field"><svg class="icon icon-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" aria-label="Search documentation" placeholder="Search documentation" autocomplete="off"><button type="submit" aria-label="Close search"><svg class="icon icon-close" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+  <div class="search-results" aria-live="polite"></div>
+</form></dialog>
+</body>
+</html>
