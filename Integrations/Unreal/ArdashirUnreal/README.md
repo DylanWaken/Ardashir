@@ -47,9 +47,8 @@ is clean, and builds the library with native D3D12 and Vulkan providers
 disabled. The default build uses the revision in `ArdaRevision.json`.
 `--update` advances to the latest published commit on the branch configured in `ArdaRevision.json`; `--ref COMMIT` selects
 a particular published revision. Unreal remains the owner of the graphics API.
-The pinned revision predates ArdaNativeCompute. Use `--update` for the native
-compute registry and NVIDIA provider factories on the published branch. Hardware
-execution still depends on support from the active graphics backend.
+The pinned revision includes the native compute registry and named device features.
+Each native compute provider checks support on the graphics device supplied by Unreal.
 For a local dependency download cache, add
 `--dependency-cache D:/Projects/Ardashader/build/_deps`.
 
