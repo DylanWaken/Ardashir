@@ -28,7 +28,7 @@ namespace arda
 		bool mbOriginal = false;
 	};
 
-	/** Sort values sampled while preparing CUDA work; update before Submit on the render thread. */
+	/** Sort values sampled while preparing work. Update before Submit on the render thread. */
 	struct FArdaPixelSortSortInput
 	{
 		/** Color channel used as the sorting key. */
@@ -63,12 +63,12 @@ namespace arda
 		ARDA_NODE_PARAMETER_WITH_DEFAULT(uint32_t, mHeight, 0)
 	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	/** Inputs retained only by the CUDA sort node. */
+	/** Inputs retained only by the native sort node. */
 	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaPixelSortSortParameters)
 		/** Noise texture read by the sort operand. */
-		ARDA_NODE_CUDA_TEXTURE(mNoise, FArdaPixelSortParameters, mInput)
+		ARDA_NODE_TEXTURE(mNoise, EArdaDependencyAccess::Read, EArdaRHIResourceState::UnorderedAccess)
 		/** Sorted texture output; invocation creates it when unset. */
-		ARDA_NODE_CUDA_TEXTURE(mSorted, FArdaPixelSortParameters, mOutput)
+		ARDA_NODE_TEXTURE(mSorted, EArdaDependencyAccess::Write, EArdaRHIResourceState::UnorderedAccess)
 		/** Dynamic sorting values owned by this node instance and its renderer. */
 		ARDA_NODE_PARAMETER_WITH_DEFAULT(eastl::shared_ptr<FArdaPixelSortSortInput>,
 		    mInput,

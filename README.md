@@ -15,7 +15,8 @@ browse the [documentation source](Docs/index.html).
 
 GPU infrastructure lives under [Source/ArdaInfra](Source/ArdaInfra), grouping the
 CPU math library, backend, native providers, native compute registry, generic graph,
-and GPU dependency graph. Each module has its own CMake library and public headers.
+and GPU dependency graph. The native compute registry and kernel catalog are part
+of the ArdaBackend library. Native providers link as separate CMake targets.
 The source tree has three top-level groups:
 
 ```text
@@ -34,9 +35,9 @@ Source/
   devices, resources, shaders, pipelines, commands, and presentation. See the
   [provider module contract](Docs/ArdaBackend/backend-modules.html).
 
-- **[ArdaBackendImpls](Source/ArdaInfra/ArdaBackendImpls)** — Native Vulkan and D3D12
-  providers implement the RHI device and command interfaces. The CUDA interop
-  code connects GPU work to those providers.
+- **[ArdaBackendImpls](Source/ArdaInfra/ArdaBackendImpls)** — Implements the Vulkan and D3D12
+  backends and the native compute providers. `Cuda` owns shared CUDA execution,
+  `CiG` qualifies CUDA in Graphics, and `NVAPI` handles D3D12 shader intrinsics.
 
 - **[ArdashirUnreal](Integrations/Unreal/ArdashirUnreal/README.md)** implements the
   RHI on Unreal's existing device. A graph submitted in an Unreal render pass
@@ -45,15 +46,18 @@ Source/
 - **[ArdaGraph](Source/ArdaInfra/ArdaGraph)** — Generic directed graph storage with indexed
   adjacency, generational handles, traversal, and graph algorithms.
 
-- **[ArdaNativeCompute](Docs/ArdaNativeCompute/index.html)** — Registers native
-  kernels and equivalent shaders under one resource contract. Choose the CUDA,
+- **[ArdaNativeCompute](Docs/ArdaNativeCompute/index.html)** — The ArdaBackend
+  facade registers ordered native variants and shader fallbacks under one operand
+  contract. Choose the CUDA,
   CUDA in Graphics, or D3D12 NVAPI provider. The CUDA providers accept linked
-  kernels, prebuilt PTX or cubin, and CUDA C++ through optional NVRTC compilation.
+  kernels, packaged PTX or cubin, and CUDA C++ through optional NVRTC compilation.
+  NVAPI accepts packaged DXIL. Build and deploy `.ardakernels` files
+  with CMake or the standalone packager.
   [Provider guide](Docs/ArdaNativeCompute/providers.html)
 
-- **[ArdaDependencyGraph](Source/ArdaInfra/ArdaDependencyGraph)** — Persistent graphics and CUDA
+- **[ArdaDependencyGraph](Source/ArdaInfra/ArdaDependencyGraph)** — Persistent graphics and native compute
   dependency graphs compiled by ArdaInductor. Typed registered nodes declare
-  resources; compilation resolves dependencies, pipelines, CUDA batches, queue
+  resources, and compilation resolves dependencies, pipelines, native batches, queue
   scheduling, and memory budgets. See the [graph guide](Docs/ArdaRDG/inductor.html).
   Its [node library](Source/ArdaInfra/ArdaDependencyGraph/README.md) provides buffer
   and texture uploads, copies, readbacks, and clears, plus native BLAS/TLAS
@@ -146,15 +150,20 @@ toolkit and architecture selection.
   pinned in `ThirdParty/Eigen` and exposed through `Eigen3::Eigen` and ArdaMath
 - [GoogleTest](https://github.com/google/googletest) for module tests
 - [GLFW](https://github.com/glfw/glfw) for cross-platform windows and surfaces
-- [Vulkan-Headers](https://github.com/KhronosGroup/Vulkan-Headers) 1.4.357
-- Direct3D 12 Agility SDK 1.619.5 on Windows
+- [Vulkan-Headers](https://github.com/KhronosGroup/Vulkan-Headers/tree/v1.4.369) 1.4.369
+- [Direct3D 12 Agility SDK](https://www.nuget.org/packages/Microsoft.Direct3D.D3D12/1.620.2) 1.620.2 on Windows
 - CMake 3.24 or newer
 - A C++17 compiler
+- Python 3.8+ for native graphics feature queries, kernel packaging and the test fixture build
 
 The root build downloads pinned GLFW, DirectX Shader Compiler, Vulkan-Headers,
 and Direct3D 12 Agility releases. DXC compiles shaders to DXIL and SPIR-V. The
 Vulkan backend dynamically loads the platform Vulkan loader, so a separately
 installed Vulkan SDK is not required.
+The graphics providers generate feature queries from the Agility `d3d12.h`
+header and Vulkan's `vk.xml` registry during the build. Pair custom Vulkan
+headers with their matching registry. If it is installed outside the SDK's
+standard layout, pass `-DARDASHIR_VULKAN_REGISTRY_FILE=/path/to/vk.xml`.
 
 Eigen is a checked-in submodule reference, initialized by the same
 `git submodule update --init --recursive` command as the other third-party
@@ -177,8 +186,9 @@ cmake --build build/dev --config Debug
 The script reuses compatible installed SDKs and existing project build caches.
 Missing D3D12 components come from the project's SHA-256-verified Agility package,
 including its matching debug layer. Missing Vulkan headers are downloaded at the
-project's pinned tag; missing Khronos validation layers use the existing pinned
-CMake source-build provisioner. That build needs Git, CMake and a C++ compiler;
+project's pinned tag. The optional CMake source-build provisioner uses the
+[Khronos validation layer from Vulkan SDK 1.4.363.1](https://github.com/KhronosGroup/Vulkan-ValidationLayers/releases/tag/vulkan-sdk-1.4.363.1).
+That build needs Git, CMake and a C++ compiler;
 on Windows the script can discover an installed Visual Studio C++ toolchain.
 Visual Studio's base Windows SDK and GPU drivers remain platform prerequisites.
 

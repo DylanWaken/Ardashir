@@ -130,14 +130,14 @@
 ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
 <p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="resource-device"><h2>Device: Factory and submission authority</h2><p><a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a>: Obtain the device after ConfigureBackend and InitializeBackend succeed. It owns capability reporting, object creation and queue submission. Every resource used together must have this device identity.</p><pre><code class="language-cpp">FArdaRHIDeviceRef Device = GetDevice();
 ASSERT_TRUE(Device);
-const FArdaRHICapabilities&amp; Capabilities = Device-&gt;GetCapabilities();
-EXPECT_TRUE(Capabilities.mbStagingTextures);
-EXPECT_TRUE(Capabilities.mbTextureCopies);
-EXPECT_TRUE(Capabilities.mbTextureResolve);
-EXPECT_TRUE(Capabilities.mbExplicitTransitions);
-EXPECT_TRUE(Capabilities.mbSplitTransitions);
-EXPECT_TRUE(Capabilities.mbIndirectCommands);
-EXPECT_TRUE(Capabilities.mbAliasingBarriers);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyExtendedCommands">Complete example: VerifyExtendedCommands</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+const auto Features = Device-&gt;GetFeatures();
+EXPECT_TRUE(Features-&gt;Supports(&quot;texture.staging&quot;));
+EXPECT_TRUE(Features-&gt;Supports(&quot;texture.copy&quot;));
+EXPECT_TRUE(Features-&gt;Supports(&quot;texture.resolve&quot;));
+EXPECT_TRUE(Features-&gt;Supports(&quot;synchronization.explicit-transition&quot;));
+EXPECT_TRUE(Features-&gt;Supports(&quot;synchronization.split-transition&quot;));
+EXPECT_TRUE(Features-&gt;Supports(&quot;command.indirect&quot;));
+EXPECT_TRUE(Features-&gt;Supports(&quot;synchronization.aliasing-barrier&quot;));</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyExtendedCommands">Complete example: VerifyExtendedCommands</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
 <section id="resource-texture"><h2>Texture: Allocate shaped image storage</h2><p><a href="api-reference.html#api-arda-rhi-iardarhitexture-a36c0ceb"><code>IArdaRHITexture</code></a>: Choose dimensions, format, mip count and all required usage bits before allocation. A render target that will later be sampled needs both usages. Views select subresources; they do not add missing allocation permissions.</p><pre><code class="language-cpp">{
 	FArdaRHITextureDesc TextureDesc;
 	TextureDesc.mDebugName = &quot;LifetimeTexture&quot;;
@@ -321,7 +321,7 @@ ASSERT_TRUE(BindingSet);</code></pre><p>This object is not a CUDA buffer pointer
 }</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#CreateExtendedShader">Complete example: CreateExtendedShader</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
 <section id="resource-shaderlibrary"><h2>ShaderLibrary: Share a compiled shader library</h2><p><a href="api-reference.html#api-arda-rhi-iardarhishaderlibrary-79af3185"><code>IArdaRHIShaderLibrary</code></a>: Create the library from real backend bytecode, then obtain a shader by entry point and stage. A library alone is not executable. The complete example creates a compute pipeline, dispatches it and checks its output.</p><pre><code class="language-cpp">auto Device = GetDevice();
 ASSERT_TRUE(Device);
-ASSERT_TRUE(Device-&gt;GetCapabilities().mbShaderLibraries);
+ASSERT_TRUE(Device-&gt;GetFeatures()-&gt;Supports(&quot;shader.library&quot;));
 const eastl::string FileName = eastl::string(&quot;ArdaShaderStructTest&quot;) + GetShaderArtifactExtension(BackendName);
 const std::vector&lt;uint8_t&gt; Bytecode = LoadExtendedShaderArtifact(FileName.c_str());
 ASSERT_FALSE(Bytecode.empty());
@@ -417,7 +417,7 @@ EXPECT_EQ(Table.mValue-&gt;GetFirstDescriptorIndexInHeap(), 0u);</code></pre><p>
 	FArdaRHIResourceCollectionDesc CollectionDesc;
 	CollectionDesc.mItems = {ItemA, ItemB};
 	CollectionDesc.mbMutable = true;
-	CollectionDesc.mbDirectlyIndexed = Caps.mDescriptors.mbDirectResourceHeapIndexing;
+	CollectionDesc.mbDirectlyIndexed = Features-&gt;Supports(&quot;descriptor.direct-resource-heap-indexing&quot;);
 	CollectionDesc.mDebugName = &quot;Mutable resource collection&quot;;
 	auto Collection = Device-&gt;CreateResourceCollection(CollectionDesc);
 	ASSERT_TRUE(Collection) &lt;&lt; Collection.mStatus.mMessage.c_str();
@@ -553,7 +553,7 @@ if (bBundle)
 	ASSERT_TRUE(Device-&gt;WriteDescriptorTable(ColorTable, Item));
 }
 auto Pipeline = Device-&gt;CreateMeshletPipeline(PipelineDesc);
-if (Device-&gt;GetCapabilities().mMeshShaderTier == EArdaRHIMeshShaderTier::None)
+if (!Device-&gt;GetFeatures()-&gt;Supports(&quot;shader.mesh&quot;))
 {
 	EXPECT_FALSE(Pipeline);
 	EXPECT_EQ(Pipeline.mStatus.mCode, EArdaRHIResult::Unsupported);
@@ -584,13 +584,13 @@ if (!bLocalDescriptors)
 PipelineDesc.mMaxPayloadSize = sizeof(uint32_t);
 PipelineDesc.mMaxRecursionDepth = 1;
 auto Pipeline = Device-&gt;CreateRayTracingPipeline(PipelineDesc);
-if (!Device-&gt;GetCapabilities().mRayTracing.mbPipelineShaders)
+if (!Device-&gt;GetFeatures()-&gt;Supports(&quot;ray-tracing.pipeline&quot;))
 {
 	EXPECT_FALSE(Pipeline);
 	EXPECT_EQ(Pipeline.mStatus.mCode, EArdaRHIResult::Unsupported);
 	return;
 }
-EXPECT_GT(Device-&gt;GetCapabilities().mRayTracing.mMaxRayDispatchInvocations, 0u);
+EXPECT_GT(Device-&gt;GetFeatures()-&gt;GetValueOr(&quot;ray-tracing.max-dispatch-invocations&quot;, 0), 0u);
 ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyRayTracingPipelineCapabilityAndExecution">Complete example: VerifyRayTracingPipelineCapabilityAndExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
 <section id="resource-shadertable"><h2>ShaderTable: Connect rays to shader records</h2><p><a href="api-reference.html#api-arda-rhi-iardarhishadertable-65d87242"><code>IArdaRHIShaderTable</code></a>: The table retains a ray-tracing pipeline and records its named exports and optional local arguments. Populate records and commit before dispatch. The scene example demonstrates distinct hit groups, local bindings and indirect dispatch, with output assertions.</p><pre><code class="language-cpp">FArdaRHIShaderTableDesc TableDesc;
 TableDesc.mMaxEntries = 3;

@@ -10,6 +10,10 @@
 
 namespace arda
 {
+	// ================================
+	// Provider objects and references
+	// ================================
+
 	class IArdaProviderObject
 	{
 	public:
@@ -40,6 +44,10 @@ namespace arda
 
 	using FArdaProviderObjectRef = eastl::shared_ptr<IArdaProviderObject>;
 	using FArdaProviderObjectResult = TArdaRHIResult<FArdaProviderObjectRef>;
+
+	// ================================
+	// Provider lifetime statistics
+	// ================================
 
 	struct FArdaProviderLifetimeStats
 	{

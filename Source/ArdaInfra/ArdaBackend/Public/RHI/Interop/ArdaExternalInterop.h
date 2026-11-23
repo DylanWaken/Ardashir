@@ -16,6 +16,10 @@
 
 namespace arda
 {
+	// ================================
+	// External device objects, properties and queues
+	// ================================
+
 	/** Names a backend-specific native object carried by an external device. */
 	struct FArdaExternalNativeObject
 	{
@@ -84,6 +88,10 @@ namespace arda
 		/** Opaque immutable bytes interpreted only by the named backend module. */
 		eastl::vector<uint8_t> mBackendData;
 	};
+
+	// ================================
+	// Importing host resources
+	// ================================
 
 	/**
      * Resolves and imports an external texture into the active RHI device.

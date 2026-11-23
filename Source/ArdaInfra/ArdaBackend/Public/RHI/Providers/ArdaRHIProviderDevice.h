@@ -4,6 +4,7 @@
 #include "RHI/Providers/ArdaRHIProviderCommandList.h"
 #include "RHI/Providers/ArdaProviderResourceTypes.h"
 #include "RHI/Providers/ArdaProviderPipelineTypes.h"
+#include "RHI/Config/ArdaCudaConfig.h"
 #include "RHI/Config/ArdaRHICapabilities.h"
 #include "RHI/Device/ArdaRHIDiagnostics.h"
 #include "RHI/Interop/ArdaRHINativeResourceImports.h"
@@ -17,11 +18,25 @@
 
 namespace arda
 {
+	// ================================
+	// Provider device interface
+	// ================================
+
 	class IArdaRHIProviderDevice
 	{
 	public:
+		// ================================
+		// Device capabilities and diagnostics
+		// ================================
+
 		/** Qualify a nonempty compute pipeline extension against the selected driver and device. */
 		virtual FArdaRHIStatus CheckComputePipelineExtension(const FArdaRHIComputePipelineExtension&) const
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Compute pipeline extension unavailable.");
+		}
+
+		/** Qualify an extension against the selected driver and device without shader arguments. */
+		virtual FArdaRHIStatus CheckComputePipelineExtensionAvailability(const char*) const
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Compute pipeline extension unavailable.");
 		}
@@ -56,6 +71,10 @@ namespace arda
 		[[nodiscard]] virtual EArdaRHINativeResourceType GetTextureImportType() const noexcept = 0;
 		[[nodiscard]] virtual EArdaRHINativeResourceType GetBufferImportType() const noexcept = 0;
 
+		// ================================
+		// Texture and buffer creation
+		// ================================
+
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateTexture(const FArdaRHITextureDesc& Desc) = 0;
 
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateSamplerFeedbackTexture(const FArdaProviderObjectRef&,
@@ -68,6 +87,10 @@ namespace arda
 		}
 
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateBuffer(const FArdaRHIBufferDesc& Desc) = 0;
+
+		// ================================
+		// Resource allocation and reuse
+		// ================================
 
 		/** Installs a weakly captured allocator bridge before resource creation begins.
 		 * The callback must call the raw CreateBuffer factory on a cache miss, not AllocateBuffer.
@@ -118,6 +141,10 @@ namespace arda
 			return false;
 		}
 
+		// ================================
+		// Memory requirements and binding
+		// ================================
+
 		/** Queries exact descriptor requirements without allocating or binding GPU memory. */
 		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIMemoryRequirements> QueryTextureMemoryRequirements(
 		    const FArdaRHITextureDesc&)
@@ -150,6 +177,10 @@ namespace arda
 		    const FArdaRHIBufferDesc& Desc,
 		    const FArdaProviderObjectRef& Heap,
 		    uint64_t Offset) = 0;
+
+		// ================================
+		// Sparse resources and streaming budgets
+		// ================================
 
 		[[nodiscard]] virtual TArdaRHIResult<FArdaRHITextureTiling> GetTextureTiling(const FArdaProviderObjectRef&)
 		{
@@ -193,6 +224,10 @@ namespace arda
 			    "Streaming budget reservation is unsupported by this backend provider.");
 		}
 
+		// ================================
+		// Staging and host mapping
+		// ================================
+
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateStagingTexture(
 		    const FArdaRHIStagingTextureDesc& Desc) = 0;
 		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIStagingTextureMapping> MapStagingTexture(
@@ -208,8 +243,18 @@ namespace arda
 
 		/** Unmaps a native buffer previously returned by MapBuffer. */
 		virtual void UnmapBuffer(const FArdaProviderObjectRef& Buffer) noexcept = 0;
+
+		// ================================
+		// Native resource imports
+		// ================================
+
 		[[nodiscard]] virtual FArdaProviderObjectResult ImportTexture(const FArdaRHINativeTextureImportDesc& Desc) = 0;
 		[[nodiscard]] virtual FArdaProviderObjectResult ImportBuffer(const FArdaRHINativeBufferImportDesc& Desc) = 0;
+
+		// ================================
+		// Samplers, shaders and bindings
+		// ================================
+
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateSampler(const FArdaRHISamplerDesc& Desc) = 0;
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateShader(const FArdaRHIShaderDesc& Desc) = 0;
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateBindingLayout(const FArdaRHIBindingLayoutDesc& Desc) = 0;
@@ -223,6 +268,11 @@ namespace arda
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateBindingSet(const FArdaRHIBindingSetDesc& Desc,
 		    const FArdaProviderObjectRef& Layout,
 		    const eastl::vector<FArdaProviderBinding>& Bindings) = 0;
+
+		// ================================
+		// Framebuffer and pipeline creation
+		// ================================
+
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateFramebuffer(
 		    const FArdaProviderFramebufferCreateInfo& Info) = 0;
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateGraphicsPipeline(
@@ -254,6 +304,10 @@ namespace arda
 			        "Work graphs are unsupported by this backend provider.")};
 		}
 
+		// ================================
+		// Shader table creation
+		// ================================
+
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateShaderTable(const FArdaProviderObjectRef&,
 		    const FArdaRHIShaderTableDesc&)
 		{
@@ -261,6 +315,10 @@ namespace arda
 			    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
 			        "Shader tables are unsupported by this backend provider.")};
 		}
+
+		// ================================
+		// Acceleration structures
+		// ================================
 
 		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIAccelStructMemoryRequirements>
 		GetAccelStructBuildMemoryRequirements(const FArdaRHIAccelStructDesc&,
@@ -291,6 +349,10 @@ namespace arda
 			return 0;
 		}
 
+		// ================================
+		// Opacity micromaps
+		// ================================
+
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateOpacityMicromap(const FArdaRHIOpacityMicromapDesc&,
 		    const FArdaProviderObjectRef&,
 		    const FArdaProviderObjectRef&)
@@ -311,6 +373,10 @@ namespace arda
 		{
 			return 0;
 		}
+
+		// ================================
+		// Shader table updates
+		// ================================
 
 		virtual FArdaRHIStatus SetShaderTableRecord(const FArdaProviderObjectRef&,
 		    const FArdaRHIShaderTableRecordDesc&,
@@ -343,6 +409,10 @@ namespace arda
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
 			    "Shader tables are unsupported by this backend provider.");
 		}
+
+		// ================================
+		// Queries and GPU fences
+		// ================================
 
 		/** Creates a native queue-completion event query. */
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateEventQuery()
@@ -449,6 +519,10 @@ namespace arda
 			    "GPU fences are unsupported by this backend provider.");
 		}
 
+		// ================================
+		// Command submission and queue synchronization
+		// ================================
+
 		[[nodiscard]] virtual TArdaRHIResult<eastl::unique_ptr<IArdaProviderCommandList>> CreateCommandList(
 		    EArdaRHIQueueType Queue,
 		    bool bImmediate) = 0;
@@ -480,6 +554,10 @@ namespace arda
 			(void)Submission;
 			return {false, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Submission polling is unavailable.")};
 		}
+
+		// ================================
+		// Provider maintenance
+		// ================================
 
 		virtual void RunGarbageCollection() = 0;
 

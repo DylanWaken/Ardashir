@@ -14,6 +14,10 @@
 
 namespace arda
 {
+	// ================================
+	// Feedback formats and texture description
+	// ================================
+
 	/** Enumerates sampler feedback format values. */
 	enum class EArdaRHISamplerFeedbackFormat : uint8_t
 	{
@@ -39,6 +43,10 @@ namespace arda
 		/** Stores the debug name. */
 		eastl::string mDebugName;
 	};
+
+	// ================================
+	// Sampler feedback texture interface
+	// ================================
 
 	/** Interface for sampler feedback texture. */
 	class IArdaRHISamplerFeedbackTexture : public virtual IArdaRHIResource

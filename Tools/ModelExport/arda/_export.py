@@ -466,7 +466,7 @@ def export_state_dict(state_dict, model, f):
         descriptors = [Path(model).expanduser().resolve()]
     check(descriptors, "The export contains no model descriptors")
     packages = [read_package(path) for path in descriptors]
-    check(all(package["version"] == 2 for package in packages),
+    check(all(package["version"] >= 2 for package in packages),
           "Replacement checkpoints require a version 2 model descriptor; re-export the model")
     values = state_dict.state_dict() if isinstance(state_dict, torch.nn.Module) else state_dict
     check(isinstance(values, Mapping) and all(isinstance(name, str) for name in values),
@@ -554,6 +554,7 @@ def export(model, args=(), f=None, *, kwargs=None, target_archs=("sm_80",), inpu
                                     "scope": "local CUDA device; not every deployment device"}
                 variants.append({"architecture": f"sm_{target}", "target_sm": target,
                     "descriptor": package_path.name, "package": package_path.name,
+                    "kernel_libraries": json.loads(package_path.with_suffix(".json").read_text(encoding="utf-8"))["kernel_libraries"],
                     "state_dict": checkpoint_path.name, "metadata": package_path.with_suffix(".json").name,
                     "sha256": hashlib.sha256(package_path.read_bytes()).hexdigest(),
                     "state_dict_sha256": hashlib.sha256(checkpoint_path.read_bytes()).hexdigest(),
@@ -576,7 +577,8 @@ def export(model, args=(), f=None, *, kwargs=None, target_archs=("sm_80",), inpu
                 "audit": {"onnx": onnx_path.name, "reference": reference_path.name,
                           "onnx_sha256": hashlib.sha256(onnx_path.read_bytes()).hexdigest()},
                 "runtime_dependencies": ["Arda", "CUDA driver"],
-                "runtime_files": [variant[key] for variant in variants for key in ("descriptor", "state_dict")],
+                "runtime_files": [file for variant in variants for file in
+                                  (variant["descriptor"], variant["state_dict"], *variant["kernel_libraries"])],
                 "artifacts": variants}
             (stage / manifest_name).write_text(json.dumps(manifest, indent=2, allow_nan=False) + "\n", encoding="utf-8")
             files = tuple(item.name for item in stage.iterdir())

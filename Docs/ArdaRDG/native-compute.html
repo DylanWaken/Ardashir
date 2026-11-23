@@ -110,9 +110,9 @@
 </section>
 <section id="register">
   <h2>Register a buffer fill</h2>
-  <p>This example writes the numbers 0 through 15 into a 64-byte buffer. Link <code>Ardashir::ArdaNativeCompute</code> to your application. For this CUDA C++ implementation, build with <code>ARDASHIR_ENABLE_CUDA=ON</code> and an NVRTC-enabled CUDA Toolkit. Initialize the graphics device with an available CUDA execution mode.</p>
-  <p>At startup, register <code>CreateArdaNativeCudaInGraphicsProvider()</code> and <code>CreateArdaNativeCudaProvider()</code> with <code>registry.RegisterProvider</code>. Check each status. The example shares one source between the CiG and general CUDA variants. Each operand declares its views in the order callers must bind them. For this kernel the pointer occupies eight bytes in the argument block. The patch tells CUDA to put the address of resource slot 0 at byte offset 0.</p>
-  <pre><code class="language-cpp">#include "ArdaNativeCompute.h"
+  <p>This example writes the numbers 0 through 15 into a 64-byte buffer. Link <code>Ardashir::ArdaBackend</code>. For this CUDA C++ implementation, build with <code>ARDASHIR_ENABLE_CUDA=ON</code> and an NVRTC-enabled CUDA Toolkit. Initialize the graphics device with an available CUDA execution mode.</p>
+  <p>Pass <code>GetArdaNativeComputeRegistry()</code> to use the providers linked into the application. To populate a local registry with those providers, call <code>RegisterLinkedArdaNativeComputeProviders</code> and check its status. The example shares one source between the CiG and general CUDA variants. The patch places the address of resource slot 0 in the eight-byte argument at offset 0.</p>
+  <pre><code class="language-cpp">#include "NativeCompute/ArdaNativeCompute.h"
 #include "CUDA/ArdaNativeCudaProvider.h"
 using namespace arda;
 
@@ -133,11 +133,15 @@ FArdaRHIStatus RegisterFill(FArdaNativeComputeRegistry&amp; registry,
     auto kernel = CreateArdaNativeCudaSource(eastl::move(source));
     if (!kernel) return kernel.mStatus;
 
-    FArdaNativeOperandDesc fill;
+    FArdaNativeOperand fill;
     fill.mId = "example.fill16";
-    fill.mResources = {{"output", EArdaRHIResourceType::Buffer, EArdaComputeAccess::Write}};
+    FArdaNativeResourceSlotsCreator slots;
+    slots.AddBuffer("output", EArdaComputeAccess::Write);
+    fill.mResources = slots.Finalize();
     fill.mParameterSize = 8;
-    fill.mFallback = eastl::move(fallback);
+    UseArdaNativeDirectResources(fill);
+    if (fallback.mPrepare)
+        fill.mShaderFallbacks.push_back(eastl::move(fallback));
     fill.mValidate = [](const FArdaNativeInvocation&amp; call) {
         const auto&amp; range = call.mResources[0].mBufferRange;
         const auto&amp; buffer = dynamic_cast&lt;const IArdaRHIBuffer&amp;&gt;(*call.mResources[0].mResource);
@@ -153,7 +157,7 @@ FArdaRHIStatus RegisterFill(FArdaNativeComputeRegistry&amp; registry,
         }});
     return registry.RegisterOperand(eastl::move(fill));
 }</code></pre>
-  <p><a href="../ArdaNativeCompute/api-reference.html#api-arda-fardanativeoperanddesc-f82ee605">Operand fields</a> · <a href="../ArdaNativeCompute/api-reference.html#api-arda-fardanativecudasourcedesc-249e3e98">CUDA source and argument layout</a></p>
+  <p><a href="../ArdaNativeCompute/api-reference.html#api-arda-fardanativeoperand-cced0f69">Operand fields</a> · <a href="../ArdaNativeCompute/api-reference.html#api-arda-fardanativecudasourcedesc-249e3e98">CUDA source and argument layout</a></p>
 </section>
 <section id="record">
   <h2>Record and submit</h2>
@@ -190,7 +194,7 @@ FArdaRHIStatus RegisterFill(FArdaNativeComputeRegistry&amp; registry,
       <tr><td>Library call</td><td>Set <code>mExternalCall</code> to a shared reference to an <code>IArdaCudaExternalCall</code> implementation. Link the external library in the adapter target.</td><td>The adapter prepares context-specific state and enqueues on the borrowed stream.</td></tr>
     </tbody>
   </table>
-  <p>For a linked C++ kernel, you can derive the slots, ABI and resource patches from a single <code>ARDA_CUDA_PARAMETER_STRUCT</code>. Start with <code>DescribeArdaNativeCudaOperand</code>, bind each compiled entry with <code>CreateArdaNativeCudaLinkedSource</code>, then call <code>MakeArdaNativeCudaInvocation</code> with the typed host arguments. PixelSort uses these helpers for its row and column kernels. <a href="../ArdaNativeCompute/api-reference.html#api-arda-describeardanativecudaoperand-10b4efd6">Describe an operand from its schema</a> · <a href="../ArdaNativeCompute/api-reference.html#api-arda-makeardanativecudainvocation-131fabec">Pack typed arguments</a></p>
+  <p>For a linked C++ kernel, you can derive the slots, ABI and resource patches from a single <code>ARDA_CUDA_PARAMETER_STRUCT</code>. Start with <code>DescribeArdaNativeCudaOperand</code>, bind each compiled entry with <code>CreateArdaNativeCudaLinkedSource</code>, then call <code>MakeArdaNativeCudaInvocation</code> with the typed host arguments. <a href="../ArdaNativeCompute/api-reference.html#api-arda-describeardanativecudaoperand-10b4efd6">Describe an operand from its schema</a> · <a href="../ArdaNativeCompute/api-reference.html#api-arda-makeardanativecudainvocation-131fabec">Pack typed arguments</a></p>
 </section>
 <section id="fallback">
   <h2>Select a variant or a shader</h2>
@@ -227,7 +231,7 @@ void FillCS(uint lane : SV_GroupIndex)
     };
     return fallback;
 }</code></pre>
-  <p>For a raster implementation, set the route to <code>GraphicsShader</code>, declare its required features and return work that sets graphics state and draws. PixelSort shows input-dependent selection in a full application. It picks a column kernel for portrait images and a row kernel otherwise. Its shader sorts the same tiles. <a href="Examples/Reference/ArdaPixelSortOperand.cpp">PixelSort registration and shader fallback</a> · <a href="node-recipes.html#cuda">Node recipe</a></p>
+  <p>For a raster implementation, set the route to <code>GraphicsShader</code>, declare its required features and return work that sets graphics state and draws. PixelSort selects a packaged column kernel for portrait images and a packaged row kernel otherwise. Its fallback shader sorts the same tiles. <a href="Examples/Reference/ArdaPixelSortOperand.cpp">PixelSort registration and shader fallback</a> · <a href="../ArdaNativeCompute/providers.html#libraries">Build a kernel library</a></p>
   <p><code>CheckSupport</code> can rule out unavailable routes before creating resources. <code>Prepare</code> also checks the actual views and inputs and can try another variant after a compilation failure. The plan fixes the route before the first command. A recording or submission error returns to the caller so a partially recorded operation cannot execute twice. <a href="../ArdaNativeCompute/api-reference.html#api-arda-fardanativecomputeregistry-checksupport-d8bb205b">Support query</a> · <a href="../ArdaNativeCompute/api-reference.html#api-arda-fardanativecomputeregistry-prepare-35172c0f">Preparation</a></p>
 </section>
 <section id="graph">
@@ -239,11 +243,11 @@ call.mParameters.resize(8, 0);
 return context.RecordNativeCompute(registry, "example.fill16", call,
     EArdaNativeComputePreference::PreferNative);</code></pre>
   <p>The graph checks the pass declarations before the registry prepares each candidate. For example, CUDA needs unordered-access state for a shared buffer. A pass that declares a shader-resource read can use a compute fallback that reads through an SRV. Every route still needs permission to access the full bound range.</p>
-  <p>A CUDA sequence can share one graphics-to-CUDA handoff across several nodes. In a <code>PrepareCuda</code> callback, append with <code>AppendNativeCudaCompute</code>. An explicitly batched CUDA pass accepts only CUDA work. Before building that pass or allocating shared textures, call <code>CheckSupport</code> with <code>mPreference = NativeOnly</code> and <code>mAllowedProviderIds = {ArdaNativeCudaInGraphicsProviderId, ArdaNativeCudaProviderId}</code>. To require CiG, set <code>mRequiredProviderId = ArdaNativeCudaInGraphicsProviderId</code>. Frame inputs must still satisfy the chosen kernel. <a href="Examples/Reference/ArdaPixelSortSortNode.cpp">PixelSort graph callbacks</a> · <a href="api-reference.html#api-arda-fardadependencyexecutioncontext-recordnativecompute-3b06b366">Record a graph operation</a> · <a href="api-reference.html#api-arda-fardadependencyexecutioncontext-appendnativecudacompute-b9fb69c1">Append to a CUDA batch</a></p>
+  <p>Use <code>EArdaNodeType::Native</code> for a typed native operand node. Its <code>SelectNativeExecutionMode</code> hook lets the compiler choose a route and group compatible context-switching nodes. Its <code>PrepareNative</code> hook resolves views and returns a prepared plan for the graph executor. PixelSort uses <code>CheckSupport</code> with <code>mPreference = NativeOnly</code> before allocating shared textures. You can require a specific provider by selecting its ID in <code>mRequiredProviderId</code>. <a href="Examples/Reference/ArdaPixelSortSortNode.cpp">PixelSort graph callbacks</a> · <a href="api-reference.html#api-arda-fardadependencyexecutioncontext-recordnativecompute-3b06b366">Record a graph operation</a></p>
 </section>
 <section id="provider">
   <h2>Add a compute provider</h2>
-  <p>Implement <code>IArdaNativeComputeProvider</code> in a target that links <code>Ardashir::ArdaNativeCompute</code>. Keep SDK headers, compiler options, source layout and native synchronization in the provider or its graphics backend integration. An application registers the provider and can add one of its sources to any compatible operand.</p>
+  <p>Implement <code>IArdaNativeComputeProvider</code> in a module that links <code>Ardashir::ArdaBackend</code>. Keep SDK headers, compiler options, source layout and native synchronization in the provider or its graphics backend integration. Link the provider and its registration function so applications can access it from the process-wide registry. <a href="../ArdaNativeCompute/providers.html#modules">Link a native provider module</a></p>
   <ol>
     <li>Return a stable provider ID, supported graphics module names and loadable source formats from <code>GetDesc</code>. Give each source an owning <code>IArdaNativeKernelSource</code> with the same provider ID and a format from that list.</li>
     <li>Use <code>CheckSupport</code> to qualify the device, queue, architecture and operand schema. The registry calls it during preflight, before there are any frame resources.</li>

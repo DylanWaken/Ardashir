@@ -15,6 +15,10 @@
 
 namespace arda
 {
+	// ================================
+	// Shader binding sets
+	// ================================
+
 	/** Describes binding item. */
 	struct FArdaRHIBindingItem
 	{

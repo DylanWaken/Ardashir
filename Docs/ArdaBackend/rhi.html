@@ -294,17 +294,18 @@
             <dt>Opacity micromaps</dt>
             <dd><a href="api-reference.html#api-arda-rhi-fardarhiopacitymicromapdesc-f7ce8bf2"><code>FArdaRHIOpacityMicromapDesc</code></a> pre-encodes microtriangle opacity for ray tracing. It can reduce any-hit work but adds build memory and content tooling; require <code>mbRayTracingOpacityMicromap</code>.</dd>
           </dl>
-          <pre><code>const auto&amp; caps = device-&gt;GetCapabilities();
+          <pre><code>const auto features = device-&gt;GetFeatures();
 
-if (caps.mbBindless)
+if (features-&gt;Supports("descriptor.bindless"))
     ConfigureBindlessMaterials(*device);
 else
     ConfigureBoundedMaterialSets(*device);
 
-if (caps.mbRayTracing &amp;&amp; caps.mbRayTracingAccelStruct)
+if (features-&gt;Supports("ray-tracing.pipeline") &amp;&amp;
+    features-&gt;Supports("ray-tracing.acceleration-structure"))
     CreateRayTracingScene(*device);
 
-if (caps.mbTiledTextures &amp;&amp; caps.mbHeaps)
+if (features-&gt;Supports("resource.reserved-texture-2d") &amp;&amp; features-&gt;Supports("memory.explicit-heap"))
     EnableSparseTextureStreaming(*device);</code></pre>
         </section>
 

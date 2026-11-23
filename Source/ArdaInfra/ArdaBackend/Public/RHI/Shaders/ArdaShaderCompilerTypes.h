@@ -16,6 +16,10 @@ namespace arda
 {
 	class FArdaShaderType;
 
+	// ================================
+	// Compiler definitions and environment
+	// ================================
+
 	/** Stores one preprocessor definition supplied to shader compilation. */
 	struct FArdaShaderDefine
 	{
@@ -95,6 +99,10 @@ namespace arda
 		/** Name-sorted preprocessor definitions. */
 		eastl::vector<FArdaShaderDefine> mDefines;
 	};
+
+	// ================================
+	// Shader permutation parameters and domains
+	// ================================
 
 	/** Identifies one shader type, backend module, and permutation for compilation policy. */
 	struct FArdaShaderPermutationParameters
@@ -192,6 +200,10 @@ namespace arda
 			return mPermutationId;
 		}
 
+		// ================================
+		// Permutation dimension access
+		// ================================
+
 		/**
          * Reads one dimension from the stored identifier.
          * @tparam Dimension Dimension to read.
@@ -242,6 +254,10 @@ namespace arda
 		uint32_t mPermutationId = 0;
 	};
 }
+
+// ================================
+// Permutation dimension macros
+// ================================
 
 /**
  * Declares a Boolean shader permutation dimension.

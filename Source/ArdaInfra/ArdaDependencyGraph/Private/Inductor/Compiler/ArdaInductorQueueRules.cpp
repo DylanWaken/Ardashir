@@ -49,8 +49,8 @@ namespace arda::inductor_detail
 		const auto QueueAvailable = [&](EArdaRHIQueueType Queue)
 		{
 			return !G.mDevice ||
-			    (G.mDevice->GetCapabilities().IsQueueSupported(Queue) &&
-			        G.mDevice->GetCapabilities().mQueues.mbGpuWaits);
+			    (G.mDevice->IsQueueSupported(Queue) &&
+			        G.mDevice->GetFeatures()->Supports("queue.gpu-waits"));
 		};
 		const bool CopyAvailable =
 		    !GraphicsOnly && EnableCopy && G.mOptions.mbEnableCopyQueue && QueueAvailable(EArdaRHIQueueType::Copy);
@@ -60,7 +60,12 @@ namespace arda::inductor_detail
 		const auto AsyncCandidate = [&](FArdaHandle Handle)
 		{
 			const auto& Node = G.mTopology.TryGetNode(Handle)->mPayload;
-			return Node.mDefinition->mKind == EArdaDependencyNodeKind::Compute &&
+			const auto Kind = Node.mDefinition->mKind;
+			const bool NativeCompute = Kind == EArdaDependencyNodeKind::Native && G.mDevice &&
+			    bool(G.mCompile.mNodes.at(Handle)
+			            .mNativeRoutes[GetArdaRHIQueueIndex(EArdaRHIQueueType::Compute)]
+			            .mSelection);
+			return (Kind == EArdaDependencyNodeKind::Compute || NativeCompute) &&
 			    eastl::none_of(G.GetNodeDescription(Node).mAccesses.begin(),
 			        G.GetNodeDescription(Node).mAccesses.end(),
 			        [&](const auto& Access)
@@ -91,6 +96,12 @@ namespace arda::inductor_detail
 			        }))
 			{
 				R.mQueues[I] = EArdaRHIQueueType::Copy;
+			}
+			if (ComputeAvailable && N.mDefinition->mKind == EArdaDependencyNodeKind::Native &&
+			    !G.mCompile.mNodes.at(H).mNativeRoutes[GetArdaRHIQueueIndex(EArdaRHIQueueType::Graphics)].mSelection &&
+			    AsyncCandidate(H))
+			{
+				R.mQueues[I] = EArdaRHIQueueType::Compute;
 			}
 			if (!AsyncCandidate(H) || !ComputeAvailable || Visited.count(H.GetIndex()))
 			{
@@ -203,8 +214,8 @@ namespace arda::inductor_detail
 				return Error("A queue rule selected an invalid queue type.");
 			}
 			if (Graph.mDevice &&
-			    (!Graph.mDevice->GetCapabilities().IsQueueSupported(Queue) ||
-			        (Queue != EArdaRHIQueueType::Graphics && !Graph.mDevice->GetCapabilities().mQueues.mbGpuWaits)))
+			    (!Graph.mDevice->IsQueueSupported(Queue) ||
+			        (Queue != EArdaRHIQueueType::Graphics && !Graph.mDevice->GetFeatures()->Supports("queue.gpu-waits"))))
 			{
 				return Error("A queue rule selected a queue without the required device support or GPU waits.");
 			}
@@ -212,10 +223,21 @@ namespace arda::inductor_detail
 			if ((Queue == EArdaRHIQueueType::Copy &&
 			        (Kind != EArdaDependencyNodeKind::Copy || !Graph.mOptions.mbEnableCopyQueue)) ||
 			    (Queue == EArdaRHIQueueType::Compute &&
-			        ((Kind != EArdaDependencyNodeKind::Compute && Kind != EArdaDependencyNodeKind::Copy) ||
+			        ((Kind != EArdaDependencyNodeKind::Compute && Kind != EArdaDependencyNodeKind::Copy &&
+			             Kind != EArdaDependencyNodeKind::Native) ||
 			            !Graph.mOptions.mbEnableAsyncCompute)))
 			{
 				return Error("A queue rule assigned a node to an incompatible or disabled queue.");
+			}
+			if (Graph.mDevice && Kind == EArdaDependencyNodeKind::Native)
+			{
+				const auto& Route = Graph.mCompile.mNodes.at(Handle).mNativeRoutes[GetArdaRHIQueueIndex(Queue)];
+				if (!Route.mSelection)
+				{
+					auto Status = Route.mSelection.mStatus;
+					Status.mMessage = "Node '" + Node.mName + "': " + Status.mMessage;
+					return Status;
+				}
 			}
 			for (const auto& Access : Graph.GetNodeDescription(Node).mAccesses)
 			{

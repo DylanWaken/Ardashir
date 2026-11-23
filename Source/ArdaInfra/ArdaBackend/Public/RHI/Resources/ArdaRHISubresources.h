@@ -4,6 +4,10 @@
 
 namespace arda
 {
+	// ================================
+	// Texture subresource iteration
+	// ================================
+
 	struct FArdaTextureSubresource
 	{
 		uint32_t mMipLevel;

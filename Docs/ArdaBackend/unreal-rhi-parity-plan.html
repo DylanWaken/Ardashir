@@ -196,13 +196,11 @@ cannot decide whether a module that needs compaction, local SBT data, indirect
 trace, or hardware RT cores can run. Arda therefore publishes structured
 sub-capabilities in <code>FArdaRHICapabilities</code>, which serves as the immutable
 per-device ability table after initialization.</p>
-<p><code>FArdaRHICapabilities::Evaluate</code> compares the table with
-<code>FArdaRHIFeatureRequirements</code> and returns every missing ability.
-<code>GetArdaRHIProfileRequirements</code> maps <code>EArdaRHIDeviceProfile</code> to a standard
-requirement set. Built-in profiles distinguish basic RT infrastructure,
-real-time hardware RT, and
-real-time RT plus ML facts. A future software tracer may omit
-<code>mbRequireHardwareRayTracing</code>; real-time Ardashir modules do not.</p>
+<p><code>FArdaRHICapabilities::Evaluate</code> compares the table with an application's
+<code>FArdaRHIFeatureRequirements</code> and returns every missing ability. A renderer
+can also declare shared startup requirements in <a href="api-reference.html#api-arda-fardabackendconfiguration-mrequiredfeatures"><code>mRequiredFeatures</code></a>.
+Each workload supplies the requirements it uses. For example, a hardware RT
+renderer can require <code>ray-tracing.hardware</code>.</p>
 <h3 id="ray-tracing-has-four-independent-lifecycles">Ray tracing has four independent lifecycles</h3>
 <ol>
 <li>Geometry and instances determine BLAS/TLAS prebuild sizes.</li>
@@ -252,7 +250,7 @@ capability reporting.</li>
 <p>The plan was completed in this dependency order so support bits could not get
 ahead of native execution:</p>
 <ol>
-<li>Add structured capabilities, ability-table evaluation, RT/ML profiles, and
+<li>Add structured capabilities, ability-table evaluation, application-defined requirements, and
 admission/rejection tests.</li>
 <li>Add per-queue native signaling, D3D12 GPU waits, Vulkan family selection,
 timeline waits, and ownership transfer.</li>
@@ -380,10 +378,9 @@ Vulkan swap-chain tests validate acquisition, callback ordering,
 native-present bypass, post-present, and resize. Vulkan presentation remains
 dependent on a host-provided surface and reports the surface-clamped extent.</p>
 <h3 id="capability-admission--implemented">Capability admission — implemented</h3>
-<p><code>FArdaRHICapabilities::Evaluate</code> and named device profiles let every later
-renderer or ML module ask whether its exact requirements are available. The report contains
-all missing abilities. A software RT profile can omit hardware cores; the
-real-time renderer profile can require them and refuse to run.</p>
+<p>Renderers and ML modules can use <code>FArdaRHICapabilities::Evaluate</code> for
+RHI operations and <a href="api-reference.html#api-arda-getbackendfeatures-541aecbb"><code>GetBackendFeatures</code></a> for shared feature values. A portable evaluation reports all missing abilities.
+Startup checks declared requirements on every selected device.</p>
 <h2 id="deliberate-differences-from-unreal">Deliberate differences from Unreal</h2>
 <p>Arda is still intentionally smaller than Unreal RHI/RDG:</p>
 <ul>
@@ -410,7 +407,7 @@ occlusion queries and other partial/deferred features are explicitly listed in
 the current audit.</p>
 <p>Required focused coverage includes:</p>
 <ul>
-<li>RT/ML profile admission and explicit missing-ability traces;</li>
+<li>feature admission and explicit missing-ability diagnostics;</li>
 <li>BLAS/TLAS build, update, compaction, hit/local SBT records, and indirect ray
 dispatch on D3D12 and Vulkan;</li>
 <li>Vulkan mesh/ray pipelines and opacity-micromap build, compact copy, and BLAS

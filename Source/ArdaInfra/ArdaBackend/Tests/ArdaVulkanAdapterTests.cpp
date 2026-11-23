@@ -154,7 +154,7 @@ namespace arda
 			for (const auto Queue : {EArdaRHIQueueType::Graphics, EArdaRHIQueueType::Compute})
 			{
 				SCOPED_TRACE(static_cast<uint32_t>(Queue));
-				if (Queue == EArdaRHIQueueType::Compute && !mDevice->GetCapabilities().mQueues.mbCompute)
+				if (Queue == EArdaRHIQueueType::Compute && !mDevice->GetFeatures()->Supports("queue.compute"))
 				{
 					continue;
 				}

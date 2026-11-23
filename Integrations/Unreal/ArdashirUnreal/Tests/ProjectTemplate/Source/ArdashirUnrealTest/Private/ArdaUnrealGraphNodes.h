@@ -2,7 +2,6 @@
 
 #include "BackendImpl/ArdaUnrealBackend.h"
 #include "ArdaDependencyGraph.h"
-#include "RHI/CUDA/ArdaCudaParameters.h"
 
 namespace arda
 {

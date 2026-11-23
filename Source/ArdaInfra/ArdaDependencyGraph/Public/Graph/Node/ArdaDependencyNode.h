@@ -122,11 +122,36 @@ namespace arda
 		              eastl::declval<FArdaCudaSequence&>()))>
 		{
 		};
+
+		template <class Node, class = void>
+		struct TArdaNodeNativeHook : eastl::false_type
+		{
+		};
+
+		template <class Node>
+		struct TArdaNodeNativeHook<Node,
+		    eastl::void_t<decltype(Node::SelectNativeExecutionMode(eastl::declval<const FArdaNativeComputeContext&>(),
+		                      eastl::declval<eastl::string&>())),
+		        decltype(Node::PrepareNative(eastl::declval<FArdaDependencyExecutionContext&>(),
+		            eastl::declval<const typename Node::FArdaParameters&>(),
+		            eastl::declval<const typename Node::FArdaState&>(),
+		            eastl::declval<typename Node::FArdaInstanceState&>()))>>
+		    : eastl::bool_constant<eastl::is_same_v<decltype(Node::SelectNativeExecutionMode(
+		                                                eastl::declval<const FArdaNativeComputeContext&>(),
+		                                                eastl::declval<eastl::string&>())),
+		                               TArdaRHIResult<EArdaNativeExecutionMode>> &&
+		          eastl::is_same_v<decltype(Node::PrepareNative(eastl::declval<FArdaDependencyExecutionContext&>(),
+		                               eastl::declval<const typename Node::FArdaParameters&>(),
+		                               eastl::declval<const typename Node::FArdaState&>(),
+		                               eastl::declval<typename Node::FArdaInstanceState&>())),
+		              TArdaRHIResult<FArdaNativeComputePlan>>>
+		{
+		};
 	};
 
 	/** Compile-time check for metadata, identity, description, preparation and the selected execution hook.
-	 * GetRequirements, Prepare, Validate and CreateInstance have stateless defaults in the base. Record is required for native
-	 * work; PrepareCuda is required for CUDA. Synchronization nodes may omit execution entirely.
+	 * GetRequirements, Prepare, Validate and CreateInstance have stateless defaults in the base.
+	 * Native operands provide SelectNativeExecutionMode and PrepareNative. Legacy CUDA nodes use PrepareCuda.
 	 */
 	template <class Node, class = void>
 	struct TArdaDependencyNodeContract : eastl::false_type
@@ -170,13 +195,16 @@ namespace arda
 	                               eastl::declval<const typename Node::FArdaParameters&>(),
 	                               eastl::declval<const typename Node::FArdaState&>())),
 	              TArdaRHIResult<eastl::shared_ptr<typename Node::FArdaInstanceState>>> &&
-	          (Node::mKind == EArdaDependencyNodeKind::Cuda ? FArdaDependencyNodeBase::TArdaNodeCudaHook<Node>::value &&
-	                      !FArdaDependencyNodeBase::TArdaNodeRecordHook<Node>::value
-	                                                        : !FArdaDependencyNodeBase::TArdaNodeCudaHook<
-	                                                              Node>::value &&
-	                      !FArdaDependencyNodeBase::TArdaNodeComputeAlternativeHook<Node>::value &&
-	                      (FArdaDependencyNodeBase::TArdaNodeRecordHook<Node>::value ||
-	                          Node::mKind == EArdaDependencyNodeKind::Synchronization))>
+	          (FArdaDependencyNodeBase::TArdaNodeCudaHook<Node>::value ==
+	              (Node::mKind == EArdaDependencyNodeKind::Cuda)) &&
+	          (FArdaDependencyNodeBase::TArdaNodeNativeHook<Node>::value ==
+	              (Node::mKind == EArdaDependencyNodeKind::Native)) &&
+	          (!FArdaDependencyNodeBase::TArdaNodeComputeAlternativeHook<Node>::value ||
+	              Node::mKind == EArdaDependencyNodeKind::Cuda) &&
+	          (Node::mKind == EArdaDependencyNodeKind::Cuda || Node::mKind == EArdaDependencyNodeKind::Native
+	                  ? !FArdaDependencyNodeBase::TArdaNodeRecordHook<Node>::value
+	                  : FArdaDependencyNodeBase::TArdaNodeRecordHook<Node>::value ||
+	                      Node::mKind == EArdaDependencyNodeKind::Synchronization)>
 	{
 	};
 
@@ -188,9 +216,9 @@ namespace arda
 	 * Describe(const FArdaParameters&, const FArdaState&) -> FArdaDependencyNodeDesc.
 	 * Macro-authored parameter structs provide default identity and resource descriptions;
 	 * Describe may add pipeline contributions or parameter-dependent effects to those declarations.
-	 * Native nodes implement Record(Context&, const FArdaParameters&, const FArdaState&, FArdaInstanceState&)
-	 * returning FArdaRHIStatus. CUDA nodes instead implement PrepareCuda with the same arguments plus
-	 * FArdaCudaSequence& and append operations without submitting. Synchronization may omit execution.
+	 * RHI nodes implement Record(Context&, const FArdaParameters&, const FArdaState&, FArdaInstanceState&).
+	 * Native operands implement PrepareNative with the same arguments, returning a prepared facade plan.
+	 * Legacy CUDA nodes use PrepareCuda with an additional FArdaCudaSequence& argument.
 	 * GetMetadata must be stable; canonical keys cover every behavior-affecting parameter and full resource
 	 * identity without structure padding. Describe must declare all resource accesses and pipeline needs.
 	 * Override FArdaState/Prepare for immutable device setup and FArdaInstanceState/CreateInstance for private
@@ -399,10 +427,10 @@ namespace arda
 					for (const auto& Member : ParametersMetadata.GetMembers())
 					{
 						if (Member.mKind == EArdaNodeParameterKind::CudaResource &&
-						    Kind != EArdaDependencyNodeKind::Cuda)
+						    Kind != EArdaDependencyNodeKind::Cuda && Kind != EArdaDependencyNodeKind::Native)
 						{
 							return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-							    "CUDA parameter mappings require a CUDA node execution contract.");
+							    "Operand parameter mappings require a native compute execution contract.");
 						}
 						if (Member.mKind == EArdaNodeParameterKind::ShaderResource &&
 						    Kind == EArdaDependencyNodeKind::Cuda)
@@ -622,8 +650,20 @@ namespace arda
 					}
 				}
 
-				// Each domain exposes exactly one recording hook; CUDA work is appended to the shared sequence.
-				if constexpr (Kind == EArdaDependencyNodeKind::Cuda)
+				if constexpr (Kind == EArdaDependencyNodeKind::Native)
+				{
+					Definition.mSelectNativeExecutionMode =
+					    [](const FArdaNativeComputeContext& Context, eastl::string& ProviderId)
+					{
+						return Derived::SelectNativeExecutionMode(Context, ProviderId);
+					};
+					Definition.mPrepareNative = [](FArdaDependencyExecutionContext& Context, const void* Value)
+					{
+						const auto& P = *static_cast<const FArdaBound*>(Value);
+						return Derived::PrepareNative(Context, *P.mParameters, *P.mPrepared->mState, *P.mInstance);
+					};
+				}
+				else if constexpr (Kind == EArdaDependencyNodeKind::Cuda)
 				{
 					Definition.mPrepareCuda =
 					    [](FArdaDependencyExecutionContext& Context, const void* Value, FArdaCudaSequence& Sequence)

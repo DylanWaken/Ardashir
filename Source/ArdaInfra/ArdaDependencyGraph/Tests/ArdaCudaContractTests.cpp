@@ -1,6 +1,6 @@
 #include "Inductor/Runtime/ArdaInductorCudaContract.h"
 
-#include "ArdaNativeCompute.h"
+#include "NativeCompute/ArdaNativeCompute.h"
 #include <gtest/gtest.h>
 
 namespace arda::cuda_contract_tests

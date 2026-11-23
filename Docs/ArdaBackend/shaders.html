@@ -435,7 +435,7 @@ if (!status)
           <p><a href="api-reference.html#api-arda-backend-fardaglobalshadermap-b7046fe0"><code>arda::FArdaGlobalShaderMap</code></a> is the bridge from committed, backend-neutral type records to device-bound shaders and layouts. It snapshots every selected registered permutation. <code>LoadOnly</code> and <code>Startup</code> load all slots eagerly; <code>OnDemand</code> publishes unloaded slots and resolves one under the map mutex when it is first requested.</p>
           <pre><code>arda::FArdaGlobalShaderMap shaderMap;
 if (!shaderMap.Initialize(
-        arda::GetDeviceContext(),
+        arda::GetDevice(),
         arda::GetBackendConfiguration().mShaderCacheDirectory))
 {
     for (const auto&amp; diagnostic : shaderMap.GetDiagnostics())
@@ -450,7 +450,7 @@ if (!blur)
 const auto&amp; shader = blur-&gt;GetShader();
 const auto&amp; layouts = blur-&gt;GetBindingLayouts();
 // Feed shader and layouts into a pipeline initializer.</code></pre>
-          <p>The <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-initialize-17dd8883"><code>Initialize(DeviceContext)</code></a> overload uses the configured <code>mShaderCacheDirectory</code>; the <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-initialize-4ea3e035"><code>Initialize(DeviceContext, ShaderDirectory)</code></a> overload uses its explicit directory instead. Initialization is idempotent and pointer-stable only for the same device, backend, and resolved directory. A successful map rejects changed inputs with <code>ResetRequired</code>. Call <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-reset-b230f2a3"><code>Reset</code></a> before device recovery, backend switching, or changing artifact roots.</p>
+          <p><code>Initialize(Device)</code> uses the configured <code>mShaderCacheDirectory</code>. <code>Initialize(Device, ShaderDirectory)</code> uses the supplied directory. Initialization is idempotent and pointer-stable for the same device, backend, and resolved directory. Call <code>Reset</code> before changing those inputs. <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-initialize-17dd8883">Configured directory overload</a> · <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-initialize-4ea3e035">Explicit directory overload</a> · <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-reset-b230f2a3">Reset</a></p>
           <p>The map retains the device, shader references, layouts, and instances. Code that keeps pointers returned by <code>Find</code> must not outlive the map or cross <code>Reset</code>. Reset the pipeline cache before or with the shader map if cached PSOs retain those shader objects.</p>
         </section>
 

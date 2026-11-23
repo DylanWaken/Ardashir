@@ -1,3 +1,4 @@
+#include "CUDA/ArdaRHICuda.h"
 #include "RHI/Device/ArdaRHIDeviceImpl.h"
 #include "RHI/Memory/ArdaRHIHeapImpl.h"
 

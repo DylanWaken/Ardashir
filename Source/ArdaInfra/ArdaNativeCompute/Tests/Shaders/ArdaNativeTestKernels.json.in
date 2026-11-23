@@ -1,0 +1,41 @@
+{
+  "library": "arda-native-test",
+  "kernels": [
+    {
+      "provider": "cuda",
+      "name": "texture-add",
+      "signature": "texture-add-v1",
+      "format": "ptx",
+      "entryPoint": "arda_native_texture_add",
+      "attributes": [150],
+      "file": "ArdaNativeFill.ptx"
+    },
+    {
+      "provider": "cuda",
+      "name": "fill",
+      "signature": "fill-v1",
+      "format": "ptx",
+      "entryPoint": "arda_native_fill",
+      "attributes": [150],
+      "file": "ArdaNativeFill.ptx"
+    },
+    {
+      "provider": "cuda",
+      "name": "fill-jit",
+      "signature": "fill-v1",
+      "format": "cuda-cpp",
+      "entryPoint": "arda_native_fill",
+      "mode": "jit",
+      "file": "ArdaNativeFill.cu"
+    },
+    {
+      "provider": "cuda-in-graphics",
+      "name": "fill",
+      "signature": "fill-v1",
+      "format": "ptx",
+      "entryPoint": "arda_native_fill",
+      "attributes": [150],
+      "file": "ArdaNativeFill.ptx"
+    }@ArdaNvapiTestManifestEntry@
+  ]
+}

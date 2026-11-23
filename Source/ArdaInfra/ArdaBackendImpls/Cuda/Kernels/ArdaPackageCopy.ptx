@@ -1,0 +1,26 @@
+.version 6.0
+.target sm_50
+.address_size 64
+.visible .entry ArdaPackageCopy(.param .u64 source, .param .u64 destination, .param .u64 count)
+{
+ .reg .pred p;
+ .reg .b32 a, b, c, value;
+ .reg .b64 index, size, src, dst, temporary;
+ mov.u32 a, %ctaid.x;
+ mov.u32 b, %ntid.x;
+ mov.u32 c, %tid.x;
+ mul.wide.u32 index, a, b;
+ cvt.u64.u32 temporary, c;
+ add.u64 index, index, temporary;
+ ld.param.u64 size, [count];
+ setp.ge.u64 p, index, size;
+ @p bra done;
+ ld.param.u64 src, [source];
+ ld.param.u64 dst, [destination];
+ add.u64 src, src, index;
+ add.u64 dst, dst, index;
+ ld.global.u8 value, [src];
+ st.global.u8 [dst], value;
+done:
+ ret;
+}

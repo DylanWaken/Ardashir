@@ -1,6 +1,7 @@
 /** Immutable erased node implementations and synchronized registry lookup. */
 #pragma once
 
+#include "NativeCompute/ArdaNativeCompute.h"
 #include "Graph/Node/ArdaDependencyNodeDesc.h"
 #include "Graph/Resources/ArdaDependencyResourceContext.h"
 #include "Graph/Resources/ArdaGraphValue.h"
@@ -45,7 +46,7 @@ namespace arda
 		~FArdaDependencyNodeExecutable() = default;
 		eastl::string mName;
 		uint32_t mVersion = 1;
-		/** Complete portable implementation when authored from data; empty for native class definitions. */
+		/** Portable kernel reference and binding schema for data-authored nodes. */
 		eastl::string mPortableDefinition;
 		EArdaDependencyNodeKind mKind = EArdaDependencyNodeKind::Compute;
 		/** Public attachment schema used for input type validation and canonical identity, before preparation.
@@ -82,6 +83,13 @@ namespace arda
 		eastl::function<eastl::string(const void*)> mCanonicalKey;
 		eastl::function<TArdaRHIResult<FArdaDependencyNodeDesc>(const void*)> mDescribe;
 		eastl::function<FArdaRHIStatus(FArdaDependencyExecutionContext&, const void*)> mRecord;
+		/** Registry for provider selection and resource allocation preflight. */
+		eastl::shared_ptr<const FArdaNativeComputeRegistry> mNativeRegistry;
+		eastl::function<TArdaRHIResult<EArdaNativeExecutionMode>(const FArdaNativeComputeContext&, eastl::string&)>
+		    mSelectNativeExecutionMode;
+		/** Freeze one invocation using the route compatible with its compiled accesses. */
+		eastl::function<TArdaRHIResult<FArdaNativeComputePlan>(FArdaDependencyExecutionContext&, const void*)>
+		    mPrepareNative;
 		/** Per-stage dynamic state, called once in each consuming draw with the terminal's resource context. */
 		eastl::function<FArdaRHIStatus(FArdaDependencyExecutionContext&, const void*, FArdaGraphicsWork&)>
 		    mConfigureGraphics;

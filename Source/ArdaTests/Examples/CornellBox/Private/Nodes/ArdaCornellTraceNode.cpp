@@ -90,9 +90,9 @@ namespace arda
 	FArdaDependencyNodeRequirements FArdaCornellTraceNode::GetRequirements(const FArdaParameters&)
 	{
 		FArdaDependencyNodeRequirements R;
-		R.mFeatures.mbRequireRayTracingPipelines = true;
-		R.mFeatures.mbRequireAccelerationStructures = true;
-		R.mFeatures.mbRequirePersistentShaderTables = true;
+		R.mFeatures.Require("ray-tracing.pipeline");
+		R.mFeatures.Require("ray-tracing.acceleration-structure");
+		R.mFeatures.Require("ray-tracing.persistent-shader-tables");
 		return R;
 	}
 

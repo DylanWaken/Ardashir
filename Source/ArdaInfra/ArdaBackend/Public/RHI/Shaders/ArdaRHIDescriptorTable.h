@@ -10,6 +10,10 @@
 
 namespace arda
 {
+	// ================================
+	// Descriptor tables
+	// ================================
+
 	/**
      * Mutable bounded descriptor table. Each native table version retains its
      * written resources through all command-list uses of that version.

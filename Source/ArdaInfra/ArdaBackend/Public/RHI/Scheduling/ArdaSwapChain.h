@@ -15,6 +15,10 @@
 
 namespace arda
 {
+	// ================================
+	// Presentation hooks and window surfaces
+	// ================================
+
 	/** Application callback that can replace or augment native presentation. */
 	class IArdaCustomPresent
 	{
@@ -57,6 +61,10 @@ namespace arda
 		[[nodiscard]] virtual FArdaNativeObject CreateVulkanSurface(FArdaNativeObject VulkanInstance,
 		    eastl::string& OutError) = 0;
 	};
+
+	// ================================
+	// Swap chain lifecycle
+	// ================================
 
 	/** Manages presentation images and submission for a native swap chain. */
 	class IArdaSwapChain
@@ -112,17 +120,4 @@ namespace arda
 		/** @return The most recent swap-chain error message. */
 		[[nodiscard]] virtual const eastl::string& GetError() const noexcept = 0;
 	};
-
-	/**
-     * Initializes the backend and a swap chain for a window surface.
-     * @param WindowSurface Platform adapter used to create the native surface.
-     * @param Width Initial presentation width in pixels.
-     * @param Height Initial presentation height in pixels.
-     * @param OutSwapChain Receives a swap chain to destroy before shutdown.
-     * @return The backend initialization outcome.
-     */
-	[[nodiscard]] EArdaInitializeResult InitializeBackendForPresentation(IArdaWindowSurface& WindowSurface,
-	    uint32_t Width,
-	    uint32_t Height,
-	    eastl::unique_ptr<IArdaSwapChain>& OutSwapChain);
 }

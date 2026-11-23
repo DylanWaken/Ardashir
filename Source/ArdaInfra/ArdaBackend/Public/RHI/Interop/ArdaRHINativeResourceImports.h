@@ -17,6 +17,10 @@
 
 namespace arda
 {
+	// ================================
+	// Native texture imports
+	// ================================
+
 	/** Backend-neutral description of a native texture import. */
 	struct FArdaRHINativeTextureImportDesc
 	{
@@ -56,6 +60,10 @@ namespace arda
 			    !O.mLifetimeToken.owner_before(mLifetimeToken);
 		}
 	};
+
+	// ================================
+	// Native buffer imports
+	// ================================
 
 	/** Backend-neutral description of a native buffer import. */
 	struct FArdaRHINativeBufferImportDesc

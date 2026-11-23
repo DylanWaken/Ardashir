@@ -12,6 +12,10 @@
 
 namespace arda
 {
+	// ================================
+	// RHI resource kinds
+	// ================================
+
 	/** Enumerates resource type values. */
 	enum class EArdaRHIResourceType : uint8_t
 	{
@@ -52,6 +56,10 @@ namespace arda
 		CommandList,
 		Count
 	};
+
+	// ================================
+	// Resource identity and lifetime
+	// ================================
 
 	/** Device-affine intrusive lifetime shared by storage, views, pipelines and command objects.
      * Retained references preserve CPU object lifetime; submitted work additionally retains its

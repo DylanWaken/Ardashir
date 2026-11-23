@@ -169,8 +169,8 @@ namespace arda::graphics_stage_gpu_tests
 		Pixel.mGraphicsStage = EArdaGraphicsStage::Pixel;
 		Pixel.BindShader<FArdaFragmentCaptureShader::FArdaParameters>({});
 		InferArdaNodeRequirements(Graph, EArdaDependencyNodeKind::Graphics, Pixel);
-		EXPECT_TRUE(Pixel.mRequirements.mFeatures.mbRequireFragmentShaderStoresAndAtomics);
-		EXPECT_FALSE(Pixel.mRequirements.mFeatures.mbRequireVertexShaderStoresAndAtomics);
+		EXPECT_TRUE(Pixel.mRequirements.mFeatures.Contains("shader.fragment-stores-and-atomics"));
+		EXPECT_FALSE(Pixel.mRequirements.mFeatures.Contains("shader.vertex-stores-and-atomics"));
 		FArdaRHICapabilities Caps;
 		EXPECT_FALSE(Caps.Evaluate(Pixel.mRequirements.mFeatures).IsSupported());
 		Caps.mbFragmentShaderStoresAndAtomics = true;
@@ -180,8 +180,8 @@ namespace arda::graphics_stage_gpu_tests
 		Vertex.mGraphicsStage = EArdaGraphicsStage::Vertex;
 		Vertex.BindShader<FArdaVertexStorageParameters>({});
 		InferArdaNodeRequirements(Graph, EArdaDependencyNodeKind::Graphics, Vertex);
-		EXPECT_FALSE(Vertex.mRequirements.mFeatures.mbRequireFragmentShaderStoresAndAtomics);
-		EXPECT_TRUE(Vertex.mRequirements.mFeatures.mbRequireVertexShaderStoresAndAtomics);
+		EXPECT_FALSE(Vertex.mRequirements.mFeatures.Contains("shader.fragment-stores-and-atomics"));
+		EXPECT_TRUE(Vertex.mRequirements.mFeatures.Contains("shader.vertex-stores-and-atomics"));
 		EXPECT_FALSE(Caps.Evaluate(Vertex.mRequirements.mFeatures).IsSupported());
 		Caps.mbVertexShaderStoresAndAtomics = true;
 		EXPECT_TRUE(Caps.Evaluate(Vertex.mRequirements.mFeatures).IsSupported());
@@ -189,8 +189,8 @@ namespace arda::graphics_stage_gpu_tests
 		FArdaDependencyNodeDesc Compute;
 		Compute.BindShader<FArdaVertexCaptureShader::FArdaParameters>({});
 		InferArdaNodeRequirements(Graph, EArdaDependencyNodeKind::Compute, Compute);
-		EXPECT_FALSE(Compute.mRequirements.mFeatures.mbRequireFragmentShaderStoresAndAtomics);
-		EXPECT_FALSE(Compute.mRequirements.mFeatures.mbRequireVertexShaderStoresAndAtomics);
+		EXPECT_FALSE(Compute.mRequirements.mFeatures.Contains("shader.fragment-stores-and-atomics"));
+		EXPECT_FALSE(Compute.mRequirements.mFeatures.Contains("shader.vertex-stores-and-atomics"));
 	}
 
 	struct FArdaShaderState
@@ -413,14 +413,21 @@ namespace arda::graphics_stage_gpu_tests
 		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters&)
 		{
 			FArdaDependencyNodeRequirements R;
-			R.mFeatures.mbRequireGeometryShaders = Stage == EArdaGraphicsStage::Geometry;
-			R.mFeatures.mbRequireTessellationShaders =
-			    Stage == EArdaGraphicsStage::Hull || Stage == EArdaGraphicsStage::Domain;
-			R.mFeatures.mbRequireMeshShaders =
-			    Stage == EArdaGraphicsStage::Mesh || Stage == EArdaGraphicsStage::Amplification;
+			if (Stage == EArdaGraphicsStage::Geometry)
+			{
+				R.mFeatures.Require("shader.geometry");
+			}
+			if (Stage == EArdaGraphicsStage::Hull || Stage == EArdaGraphicsStage::Domain)
+			{
+				R.mFeatures.Require("shader.tessellation");
+			}
+			if (Stage == EArdaGraphicsStage::Mesh || Stage == EArdaGraphicsStage::Amplification)
+			{
+				R.mFeatures.Require("shader.mesh");
+			}
 			if constexpr (Stage == EArdaGraphicsStage::Amplification)
 			{
-				R.mFeatures.mMinMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+				R.mFeatures.Require("shader.mesh-tier", 2);
 			}
 			return R;
 		}
@@ -608,7 +615,7 @@ namespace arda::graphics_stage_gpu_tests
 		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters&)
 		{
 			FArdaDependencyNodeRequirements Result;
-			Result.mFeatures.mbRequireFragmentShaderStoresAndAtomics = true;
+			Result.mFeatures.Require("shader.fragment-stores-and-atomics");
 			return Result;
 		}
 
@@ -807,7 +814,7 @@ namespace arda::graphics_stage_gpu_tests
 
 	TEST_P(FArdaGraphicsStageGpu, FragmentFetchCapturesInterpolatedRecordsAndReportsBoundedOverflow)
 	{
-		if (!GetDevice()->GetCapabilities().mbFragmentShaderStoresAndAtomics)
+		if (!GetDevice()->GetFeatures()->Supports("shader.fragment-stores-and-atomics"))
 		{
 			GTEST_SKIP() << "Pixel shader storage and atomics unavailable";
 		}
@@ -863,7 +870,7 @@ namespace arda::graphics_stage_gpu_tests
 
 	TEST_P(FArdaGraphicsStageGpu, GeometryStageConnectsVertexValuesToRasterization)
 	{
-		if (!GetDevice()->GetCapabilities().mbGeometryShaders)
+		if (!GetDevice()->GetFeatures()->Supports("shader.geometry"))
 		{
 			GTEST_SKIP() << "Geometry shaders unavailable";
 		}
@@ -897,7 +904,7 @@ namespace arda::graphics_stage_gpu_tests
 
 	TEST_P(FArdaGraphicsStageGpu, HullAndDomainStagesPassTypedControlPointsAndShaderOutputs)
 	{
-		if (!GetDevice()->GetCapabilities().mbTessellationShaders)
+		if (!GetDevice()->GetFeatures()->Supports("shader.tessellation"))
 		{
 			GTEST_SKIP() << "Tessellation shaders unavailable";
 		}
@@ -934,7 +941,8 @@ namespace arda::graphics_stage_gpu_tests
 	{
 		const auto Tier = WithAmplification ? EArdaRHIMeshShaderTier::MeshAndAmplificationShaders
 		                                    : EArdaRHIMeshShaderTier::MeshShadersOnly;
-		if (!GetDevice()->GetCapabilities().SupportsMeshShaderTier(Tier))
+		if (!GetDevice()->GetFeatures()->Supports("shader.mesh-tier",
+		        Tier == EArdaRHIMeshShaderTier::MeshAndAmplificationShaders ? 2 : 1))
 		{
 			GTEST_SKIP() << (WithAmplification ? "Amplification shaders unavailable" : "Mesh shaders unavailable");
 		}

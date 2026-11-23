@@ -3,7 +3,6 @@
  */
 #pragma once
 
-#include "RHI/CUDA/ArdaRHICuda.h"
 #include "RHI/Pipelines/ArdaRHIComputePipeline.h"
 #include "RHI/Pipelines/ArdaRHIGraphicsPipeline.h"
 #include "RHI/Pipelines/ArdaRHIMeshletPipeline.h"
@@ -16,6 +15,12 @@
 
 namespace arda
 {
+	// ================================
+	// Command payloads and transfer callbacks
+	// ================================
+
+	struct FArdaCudaDispatch;
+
 	/** Result returned by a device-to-host buffer copy. */
 	using FArdaRHIBufferReadbackResult = TArdaRHIResult<eastl::vector<uint8_t>>;
 
@@ -33,10 +38,18 @@ namespace arda
 		virtual FArdaRHIStatus RecordOn(IArdaRHICommandList& Commands) const = 0;
 	};
 
+	// ================================
+	// Command list interface
+	// ================================
+
 	/** Interface for command list. */
 	class IArdaRHICommandList : public virtual IArdaRHIResource
 	{
 	public:
+		// ================================
+		// Native operations
+		// ================================
+
 		/** Record a prepared implementation into this list. ExecuteCommandList submits it. */
 		virtual FArdaRHIStatus RecordNativeCompute(const IArdaRHIComputeCommand& Command)
 		{
@@ -81,6 +94,10 @@ namespace arda
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "CUDA sequence recording is unavailable.");
 		}
 
+		// ================================
+		// Command list lifecycle
+		// ================================
+
 		/**
          * Device retained by this command list, including after process-wide backend shutdown.
          * @return A borrowed pointer valid for the lifetime of this command list.
@@ -122,6 +139,10 @@ namespace arda
          * @threading Externally synchronize access to this command list.
          */
 		virtual FArdaRHIStatus Reset() = 0;
+
+		// ================================
+		// Resource transfers and color clears
+		// ================================
 
 		/**
          * Performs the write buffer operation.
@@ -258,6 +279,10 @@ namespace arda
 		    const FArdaRHITextureSubresourceRange& Range,
 		    const FArdaRHIColor& Color) = 0;
 
+		// ================================
+		// Resource transitions and state tracking
+		// ================================
+
 		/**
          * Performs the set texture state operation.
          * @param Texture The texture.
@@ -321,6 +346,10 @@ namespace arda
          * @return A status describing whether the operation succeeded.
          */
 		virtual FArdaRHIStatus BeginTrackingBufferState(IArdaRHIBuffer& Buffer, EArdaRHIResourceState State) = 0;
+
+		// ================================
+		// State inspection and barrier controls
+		// ================================
 
 		/**
          * Observes independently tracked facade, backend, and native texture
@@ -413,6 +442,10 @@ namespace arda
 		/** Declares that memory is changing ownership between aliased resources. */
 		virtual FArdaRHIStatus AliasingBarrier(IArdaRHIResource* ResourceBefore, IArdaRHIResource* ResourceAfter) = 0;
 
+		// ================================
+		// Integer and depth-stencil clears
+		// ================================
+
 		/**
          * Performs the clear texture uint operation.
          * @param Texture The texture.
@@ -448,6 +481,10 @@ namespace arda
          * @return A status describing whether the operation succeeded.
          */
 		virtual FArdaRHIStatus ClearBufferUInt(IArdaRHIBuffer& Buffer, uint32_t Value) = 0;
+
+		// ================================
+		// Pipeline state and push constants
+		// ================================
 
 		/**
          * Binds graphics pipeline, framebuffer, descriptors, vertex/index streams and raster regions on an open graphics list.
@@ -506,6 +543,10 @@ namespace arda
 		 * @threading Externally synchronize command-list recording and do not update a closed or submitted recording.
 		 */
 		virtual void SetPushConstants(const void* Data, size_t Size) = 0;
+
+		// ================================
+		// Drawing and dispatch
+		// ================================
 
 		/**
          * Draws with the most recently bound graphics pipeline in this recording generation.
@@ -581,6 +622,10 @@ namespace arda
 		/** Executes ray-dispatch dimensions from a GPU argument buffer. */
 		virtual FArdaRHIStatus DispatchRaysIndirect(IArdaRHIBuffer& Arguments, uint64_t Offset = 0) = 0;
 
+		// ================================
+		// Acceleration structure builds and copies
+		// ================================
+
 		/**
          * Performs the build bottom level accel struct operation.
          * @param AccelStruct The accel struct.
@@ -633,6 +678,10 @@ namespace arda
 		/** Copies a built acceleration structure into a compact-size destination. */
 		virtual FArdaRHIStatus CompactAccelStruct(IArdaRHIAccelStruct& Destination, IArdaRHIAccelStruct& Source) = 0;
 
+		// ================================
+		// Work graphs and shader bundles
+		// ================================
+
 		/** Dispatches a work graph with CPU entry records. */
 		virtual FArdaRHIStatus DispatchWorkGraph(IArdaRHIWorkGraphPipeline&,
 		    const void*,
@@ -653,6 +702,10 @@ namespace arda
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
 			    "Shader bundles are unsupported by this command-list implementation.");
 		}
+
+		// ================================
+		// Opacity micromaps and sampler feedback
+		// ================================
 
 		/**
          * Performs the build opacity micromap operation.
@@ -703,6 +756,10 @@ namespace arda
          */
 		virtual FArdaRHIStatus SetSamplerFeedbackTextureState(IArdaRHISamplerFeedbackTexture& Texture,
 		    EArdaRHIResourceState State) = 0;
+
+		// ================================
+		// Timing queries and debug markers
+		// ================================
 
 		/**
          * Performs the begin timer query operation.

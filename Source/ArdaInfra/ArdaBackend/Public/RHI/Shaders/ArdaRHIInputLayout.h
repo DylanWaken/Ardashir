@@ -15,6 +15,10 @@
 
 namespace arda
 {
+	// ================================
+	// Vertex attributes
+	// ================================
+
 	/** Describes vertex attribute desc. */
 	struct FArdaRHIVertexAttributeDesc
 	{
@@ -59,6 +63,10 @@ namespace arda
      * @return A status describing whether the operation succeeded.
      */
 	[[nodiscard]] FArdaRHIStatus Validate(const FArdaRHIVertexAttributeDesc& Value) noexcept;
+
+	// ================================
+	// Input layout descriptors and resources
+	// ================================
 
 	/** Complete deterministic key used to cache input layouts. */
 	struct FArdaRHIInputLayoutDesc

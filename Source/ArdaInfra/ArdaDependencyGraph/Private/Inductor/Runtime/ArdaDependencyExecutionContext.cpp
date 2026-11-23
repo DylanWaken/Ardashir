@@ -2,11 +2,10 @@
 #include "Graph/Node/ArdaDependencyGraphImpl.h"
 #include "Inductor/Runtime/ArdaDependencyExecutionContext.h"
 #include "Inductor/Compiler/ArdaInductorCommandProgramInternal.h"
-#include "Inductor/Runtime/ArdaInductorCudaContract.h"
+#include "Inductor/Runtime/ArdaInductorNativeContract.h"
 #include "Inductor/Runtime/ArdaInductorRuntimeStatus.h"
 #include "Inductor/Rules/ArdaInductorResourceStates.h"
-#include "ArdaNativeCompute.h"
-#include "CUDA/ArdaNativeCudaProvider.h"
+#include "NativeCompute/ArdaNativeCompute.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/sort.h>
@@ -118,8 +117,18 @@ namespace arda
 	    const FArdaNativeComputeRegistry& Registry,
 	    const char* OperandId,
 	    const FArdaNativeInvocation& Invocation,
-	    EArdaNativeComputePreference Preference,
-	    bool bCudaBatch) const
+	    EArdaNativeComputePreference Preference) const
+	{
+		FArdaNativeComputeContext Selection;
+		Selection.mPreference = Preference;
+		return PrepareNativeCompute(Registry, OperandId, Invocation, eastl::move(Selection));
+	}
+
+	TArdaRHIResult<FArdaNativeComputePlan> FArdaDependencyExecutionContext::PrepareNativeCompute(
+	    const FArdaNativeComputeRegistry& Registry,
+	    const char* OperandId,
+	    const FArdaNativeInvocation& Invocation,
+	    FArdaNativeComputeContext Selection) const
 	{
 		if (!mGraph || !mFrame || !mPass || !mGraph->mTopology.TryGetNode(mNode))
 		{
@@ -140,11 +149,8 @@ namespace arda
 		{
 			return {{}, eastl::move(Status)};
 		}
-		FArdaNativeComputeContext Selection{GetDevice(), GetCommands().GetQueueType(), Preference};
-		if (bCudaBatch)
-		{
-			Selection.mAllowedProviderIds = {ArdaNativeCudaInGraphicsProviderId, ArdaNativeCudaProviderId};
-		}
+		Selection.mDevice = GetDevice();
+		Selection.mQueue = GetCommands().GetQueueType();
 		return Registry.Prepare(OperandId,
 		    Selection,
 		    Invocation,
@@ -152,16 +158,11 @@ namespace arda
 		        const IArdaNativeKernelSource*,
 		        const eastl::vector<EArdaRHIResourceState>& RequiredStates)
 		    {
-			    auto Domain = EArdaInductorNativeBindingDomain::Any;
-			    if (Route == EArdaNativeComputeRoute::ComputeShader)
-			    {
-				    Domain = EArdaInductorNativeBindingDomain::ComputeShader;
-			    }
-			    else if (Route == EArdaNativeComputeRoute::GraphicsShader)
-			    {
-				    Domain = EArdaInductorNativeBindingDomain::GraphicsShader;
-			    }
-			    auto Status = ValidateArdaInductorNativeBindings(*Operand, Invocation, Declared, Domain, RequiredStates);
+			    auto Status = ValidateArdaInductorNativeBindings(*Operand,
+			        Invocation,
+			        Declared,
+			        GetArdaInductorNativeBindingDomain(Route),
+			        RequiredStates);
 			    if (Status.mCode == EArdaRHIResult::InvalidState)
 			    {
 				    Status.mCode = EArdaRHIResult::Unsupported;
@@ -175,23 +176,8 @@ namespace arda
 	    const FArdaNativeInvocation& Invocation,
 	    EArdaNativeComputePreference Preference) const
 	{
-		const auto Plan = PrepareNativeCompute(Registry, OperandId, Invocation, Preference, false);
+		const auto Plan = PrepareNativeCompute(Registry, OperandId, Invocation, Preference);
 		return Plan ? Plan.mValue.Record(GetCommands()) : Plan.mStatus;
-	}
-
-	FArdaRHIStatus FArdaDependencyExecutionContext::AppendNativeCudaCompute(FArdaCudaSequence& Sequence,
-	    const FArdaNativeComputeRegistry& Registry,
-	    const char* OperandId,
-	    const FArdaNativeInvocation& Invocation) const
-	{
-		const auto Plan = PrepareNativeCompute(Registry, OperandId, Invocation, EArdaNativeComputePreference::NativeOnly, true);
-		if (!Plan)
-		{
-			return Plan.mStatus;
-		}
-		const auto CudaPlan = GetArdaNativeCudaWorkPlan(Plan.mValue.GetWork());
-		return CudaPlan ? Sequence.AddPlan(CudaPlan)
-		                : MakeArdaInductorRuntimeError("The selected native provider cannot append to a CUDA batch.");
 	}
 
 	FArdaRHIStatus FArdaDependencyExecutionContext::ReadbackBuffer(FArdaDependencyResourceHandle Resource,

@@ -194,7 +194,7 @@ namespace
 		    EArdaRHIQueueType::Copy};
 		for (const auto Queue : Queues)
 		{
-			if (!mDevice->GetCapabilities().IsQueueSupported(Queue))
+			if (!mDevice->IsQueueSupported(Queue))
 			{
 				continue;
 			}

@@ -12,6 +12,10 @@
 
 namespace arda
 {
+	// ================================
+	// GPU heap descriptor and interface
+	// ================================
+
 	/** Describes heap desc. */
 	struct FArdaRHIHeapDesc
 	{

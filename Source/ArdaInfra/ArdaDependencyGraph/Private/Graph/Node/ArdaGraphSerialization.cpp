@@ -41,7 +41,7 @@ namespace arda
 	namespace
 	{
 		constexpr uint64_t ArdaGraphArchiveMagic = 0x4850415247414452ull;
-		constexpr uint32_t ArdaGraphArchiveVersion = 4;
+		constexpr uint32_t ArdaGraphArchiveVersion = 5;
 
 		FArdaRHIStatus ArchiveInvalid(const char* Message)
 		{
@@ -51,6 +51,12 @@ namespace arda
 	}
 
 	TArdaRHIResult<eastl::string> FArdaGraphSerialization::Serialize(const FArdaDependencyGraph& Graph)
+	{
+		return Serialize(Graph, nullptr);
+	}
+
+	TArdaRHIResult<eastl::string> FArdaGraphSerialization::Serialize(const FArdaDependencyGraph& Graph,
+	    eastl::vector<eastl::string>* ReferencedLibraries)
 	{
 		if (auto Status = CheckArdaGraphRecordingReentry(Graph.mRevisions.get()); !Status)
 		{
@@ -104,7 +110,22 @@ namespace arda
 		Archive.WriteInteger(DefinitionNames.size(), 8);
 		for (const auto& Name : DefinitionNames)
 		{
-			Archive.Write(PortableDefinitions.at(Name));
+			const auto& Bytes = PortableDefinitions.at(Name);
+			Archive.Write(Bytes);
+			if (ReferencedLibraries)
+			{
+				const auto Reference = FArdaRuntimeNodeDefinition::Deserialize(Bytes);
+				if (!Reference)
+				{
+					return {{}, Reference.mStatus};
+				}
+				const auto& Library = Reference.mValue.mKernel.mLibrary;
+				if (eastl::find(ReferencedLibraries->begin(), ReferencedLibraries->end(), Library) ==
+				    ReferencedLibraries->end())
+				{
+					ReferencedLibraries->push_back(Library);
+				}
+			}
 		}
 		if (auto Status = WriteArdaGraphExternalValues(Archive, Source); !Status)
 		{
@@ -364,6 +385,7 @@ namespace arda
 		}
 		auto Graph = eastl::make_unique<FArdaDependencyGraph>(eastl::move(Device));
 		FArdaGraphEdit Edit(*Graph);
+		Edit.mbArchiveRestore = true;
 		if (!Edit.GetStatus())
 		{
 			return {{}, Edit.GetStatus()};
@@ -625,7 +647,7 @@ namespace arda
 					}
 					Node.mOutputs.push_back(eastl::move(Output));
 				}
-				ReadArdaGraphDescription(Archive, Node.mDesc);
+				ReadArdaGraphDescription(Archive, Node.mDesc, Version < 5);
 				const auto NodeIndex = SemanticNodeIndex++;
 				for (const auto& Output : Node.mOutputs)
 				{
@@ -655,7 +677,7 @@ namespace arda
 				if (bStageDeclaration)
 				{
 					auto Declaration = eastl::make_shared<FArdaDependencyNodeDesc>();
-					ReadArdaGraphDescription(Archive, *Declaration);
+					ReadArdaGraphDescription(Archive, *Declaration, Version < 5);
 					Node.mStageDeclaration = eastl::move(Declaration);
 				}
 				else
@@ -697,12 +719,12 @@ namespace arda
 		{
 			FArdaInductorSubgraphAdmission Admission;
 			eastl::string Type;
-			uint32_t Version = 0;
-			Archive.Fields(Admission.mName, Type, Version, Admission.mArchivedParameters);
+		uint32_t NodeVersion = 0;
+		Archive.Fields(Admission.mName, Type, NodeVersion, Admission.mArchivedParameters);
 			Admission.mDefinition = FindDefinition(Type);
 			if (Admission.mName.empty() || !AdmissionNames.insert(Admission.mName).second || !Admission.mDefinition ||
 			    !Admission.mDefinition->mExpand || !Admission.mDefinition->mDeserializeParameters ||
-			    Admission.mDefinition->mVersion != Version)
+		    Admission.mDefinition->mVersion != NodeVersion)
 			{
 				return {{},
 				    ArchiveInvalid(
@@ -725,7 +747,7 @@ namespace arda
 			}
 			Admission.mParameters = eastl::move(Decoded.mValue);
 			Admission.mbUnboundExternalParameters = Parameters.mbHasUnboundExternalReferences;
-			ReadArdaGraphRequirements(Archive, Admission.mRequirements);
+			ReadArdaGraphRequirements(Archive, Admission.mRequirements, Version < 5);
 			Recording.mImpl->mSubgraphAdmissions.push_back(eastl::move(Admission));
 		}
 		if (Version >= 4)
@@ -783,10 +805,19 @@ namespace arda
 
 	FArdaRHIStatus FArdaGraphSerialization::Save(const FArdaDependencyGraph& Graph, const std::filesystem::path& Path)
 	{
-		const auto Data = Serialize(Graph);
+		eastl::vector<eastl::string> ReferencedLibraries;
+		const auto Data = Serialize(Graph, &ReferencedLibraries);
 		if (!Data)
 		{
 			return Data.mStatus;
+		}
+		const auto Directory = std::filesystem::absolute(Path).parent_path();
+		for (const auto& Library : ReferencedLibraries)
+		{
+			if (auto Status = StageArdaNativeKernelLibrary(Library, Directory); !Status)
+			{
+				return Status;
+			}
 		}
 		return fileops::AtomicWrite(Path, Data.mValue)
 		    ? FArdaRHIStatus{}
@@ -798,10 +829,14 @@ namespace arda
 	    FArdaRHIDeviceRef Device)
 	{
 		eastl::string Data;
-		if (fileops::ReadBinaryFile(Path, Data, FArdaGraphArchiveWriter::mMaximumBytes) != fileops::EArdaFileReadResult::Success)
+		if (fileops::ReadBinaryFile(Path, Data, FArdaGraphArchiveWriter::mMaximumBytes) !=
+		    fileops::EArdaFileReadResult::Success)
 		{
-			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Graph archive is unreadable or exceeds the size limit.")};
+			return {{},
+			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+			        "Graph archive is unreadable or exceeds the size limit.")};
 		}
+		AddArdaNativeKernelDirectory(std::filesystem::absolute(Path).parent_path());
 		return Deserialize(Data, eastl::move(Device));
 	}
 }

@@ -49,7 +49,7 @@
 <a href="api-reference.html"><svg class="icon icon-layers" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 5-10 5L2 8zm-10 9 10 5 10-5M2 16l10 5 10-5"/></svg>Reference</a></nav><hr><nav class="sidebar-chapters" aria-label="Documentation navigation"><details class="sidebar-group" open><summary>Native compute<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="index.html">Overview</a>
 <a href="providers.html" aria-current="page">Choose a GPU provider</a>
 <a href="../ArdaRDG/native-compute.html">Write a native compute node</a>
-<a href="api-reference.html">API reference</a></div></details></nav><details class="sidebar-group mobile-outline"><summary>On this page<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="#objectives">Match the kernel to its execution path</a><a href="#cig">Run a CUDA kernel in graphics</a><a href="#nvapi">Use an NVAPI shader intrinsic on D3D12</a><a href="#summary">Check the selected implementation</a></div></details></div>
+<a href="api-reference.html">API reference</a></div></details></nav><details class="sidebar-group mobile-outline"><summary>On this page<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="sidebar-links"><a href="#objectives">Match the kernel to its execution path</a><a href="#modules">Link provider modules</a><a href="#libraries">Build and deploy a kernel library</a><a href="#cig">Run a CUDA kernel in graphics</a><a href="#nvapi">Use an NVAPI shader intrinsic on D3D12</a><a href="#summary">Check the selected implementation</a></div></details></div>
 </details><details class="section-switcher"><summary aria-label="Choose a module">Modules<svg class="icon icon-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><nav aria-label="Modules"><a href="../ArdaBackend/index.html">GPU backend</a>
 <a href="../ArdaRDG/index.html">Dependency graph</a>
 <a href="index.html">Native compute</a>
@@ -68,7 +68,7 @@
     <article class="prose" data-doc-article>
 <header class="page-header">
   <h1>Choose a GPU provider</h1>
-  <p>An operand can offer several implementations of the same operation. Register the providers your application can use, then put the preferred implementation first in the operand.</p>
+  <p>An operand can offer several implementations of the same operation. Link the provider modules your application can use, then put the preferred implementation first in the operand.</p>
 </header>
 <section id="objectives">
   <h2>Match the kernel to its execution path</h2>
@@ -76,15 +76,87 @@
   <tbody>
     <tr><td><code>nvapi</code></td><td>D3D12 graphics or compute</td><td>DXIL compiled with NVIDIA HLSL shader intrinsics. Uses D3D12 shader views directly.</td></tr>
     <tr><td><code>cuda-in-graphics</code></td><td>D3D12 graphics, or Vulkan graphics or compute</td><td>CUDA kernels or qualified library calls on a device initialized for CUDA in Graphics (CiG). Resources must expose the required CUDA representations.</td></tr>
-    <tr><td><code>cuda</code></td><td>Qualified D3D12 or Vulkan graphics or compute queue, subject to the device’s CUDA launch mode</td><td>Linked CUDA kernels, PTX, cubin, CUDA C++ or library calls. Accepts an ordinary CUDA context.</td></tr>
+    <tr><td><code>cuda</code></td><td>Qualified graphics backend and queue, subject to the device’s CUDA launch mode</td><td>Linked CUDA kernels, PTX, cubin, CUDA C++ or library calls. Accepts an ordinary CUDA context.</td></tr>
   </tbody></table>
-  <p>Register a compute or graphics shader fallback on the same operand to run on other hardware. Source compilation and device checks happen during preparation, before commands are recorded.</p>
+  <p>List equivalent compute and graphics shader implementations in <code>mShaderFallbacks</code> in preference order. The registry tries them after the native variants. Use a packaged artifact to ship compiled code or explicitly select runtime compilation for source.</p>
+</section>
+<section id="modules">
+  <h2>Link provider modules</h2>
+  <p>The process-wide registry registers the providers linked into <code>Ardashir::ArdaBackend</code>. To use the same providers from a local registry, call <code>RegisterLinkedArdaNativeComputeProviders(registry)</code> and check its status. The built-in CUDA, CiG, and NVAPI modules are selected by <code>ARDASHIR_NATIVE_COMPUTE_CUDA</code>, <code>ARDASHIR_NATIVE_COMPUTE_CIG</code>, and <code>ARDASHIR_NATIVE_COMPUTE_NVAPI</code>. Each defaults to <code>ON</code>. <code>ARDASHIR_ENABLE_CUDA</code> enables the CUDA interop implementation in the built-in graphics backends and lets the build discover optional NVRTC support.</p>
+  <p>Implement <code>IArdaNativeComputeProvider</code> to advertise a provider ID, source formats and supported resource categories, probe the device, and prepare work. Report known slot states through <code>GetRequiredState</code> for preflight. Implement <code>LoadKernel</code> to decode your packaged format and <code>RecordBatch</code> to record a context-switching session. Supply a function in the <code>arda</code> namespace that calls <code>RegisterProvider</code>.</p>
+  <pre><code class="language-cpp">namespace arda
+{
+    FArdaRHIStatus RegisterExampleNativeProvider(FArdaNativeComputeRegistry&amp; registry)
+    {
+        static const auto provider = eastl::make_shared&lt;FExampleNativeProvider&gt;();
+        return registry.RegisterProvider(provider);
+    }
+}</code></pre>
+  <p>Declare the static library target before configuring the Ardashir subdirectory. CMake references the registration function from ArdaBackend so the provider is pulled in when a consumer links the backend.</p>
+  <pre><code class="language-cmake">add_library(ExampleNativeProvider STATIC ExampleNativeProvider.cpp)
+list(APPEND ARDASHIR_NATIVE_COMPUTE_MODULE_TARGETS ExampleNativeProvider)
+list(APPEND ARDASHIR_NATIVE_COMPUTE_REGISTRATION_FUNCTIONS RegisterExampleNativeProvider)
+add_subdirectory(path/to/Ardashir)
+target_link_libraries(ExampleNativeProvider PRIVATE Ardashir::ArdaBackend)
+target_link_libraries(MyApp PRIVATE Ardashir::ArdaBackend)</code></pre>
+</section>
+<section id="libraries">
+  <h2>Build and deploy a kernel library</h2>
+  <p>Each <code>.ardakernels</code> file contains one library and an index of payloads. A kernel key specifies library, provider, kernel name, and signature. Change the signature when the layout or binding contract changes, and use the same four fields in the packaged operand or graph reference. This manifest packages the NVAPI shader used in the next example.</p>
+  <pre><code class="language-json">{
+  "library": "examples",
+  "kernels": [{
+    "provider": "nvapi",
+    "name": "lane",
+    "signature": "lane-v1",
+    "format": "nvapi-dxil",
+    "entryPoint": "WriteLane",
+    "attributes": [0, 1, 8],
+    "file": "@LaneDxil@"
+  }]
+}</code></pre>
+  <p>After adding the Ardashir subdirectory, declare the build-time compiler command and point the packaging target at <code>kernels.json.in</code>. List include files that should trigger recompilation in <code>DEPENDS</code>. The library rebuilds when the configured manifest, a payload, or the packager changes. <code>DEPLOY_TO</code> stages the package beside its executable.</p>
+  <pre><code class="language-cmake">set(LaneDxil "${CMAKE_CURRENT_BINARY_DIR}/lane.dxil")
+ardashir_compile_native_kernel(
+    SOURCE lane.hlsl OUTPUT "${LaneDxil}" COMPILER "${ARDASHIR_DXC_EXECUTABLE}"
+    ARGUMENTS -T cs_6_0 -E WriteLane -I "${NVAPI_HEADERS}" -Fo @OUTPUT@ @SOURCE@
+    DEPENDS "${NVAPI_HEADERS}/nvHLSLExtns.h" "${NVAPI_HEADERS}/nvHLSLExtnsInternal.h"
+        "${NVAPI_HEADERS}/nvShaderExtnEnums.h")
+ardashir_add_native_kernel_library(ExampleKernels
+    MANIFEST kernels.json.in DEPLOY_TO MyApp)</code></pre>
+  <p>For prebuilt artifacts, point <code>file</code> to the artifact using a path relative to the manifest or an absolute path. You can also pack a complete manifest outside CMake with <code>python Scripts/BuildArdaNativeKernelLibrary.py --manifest kernels.json --output examples.ardakernels</code>. The packager requires Python 3.8 or later.</p>
+  <ul>
+    <li>For NVAPI, use <code>nvapi-dxil</code> and list the extension UAV slot, register space, and required opcode IDs in <code>attributes</code>.</li>
+    <li>For CUDA or CiG, use <code>cubin</code> or <code>ptx</code> and list architecture words as <code>(computeCapability &lt;&lt; 1) | exact</code>. For example, <code>150</code> describes a virtual target of 75. Use <code>nvcc --cubin</code> for device-specific binaries and <code>nvcc --ptx</code> for driver finalization.</li>
+    <li>To opt into runtime compilation of a CUDA C++ payload, use <code>format: "cuda-cpp"</code> with <code>mode: "jit"</code>. The selected provider needs NVRTC at runtime. A missing runtime compiler can leave a compiled variant or shader fallback eligible.</li>
+  </ul>
+  <p>Keep the file named <code>&lt;library&gt;.ardakernels</code>. Add an asset directory with <code>AddArdaNativeKernelDirectory</code> for application-managed locations, or load a specific file with <code>LoadArdaNativeKernelLibrary</code>. Pass the key, argument layout, and operand description to <code>MakeArdaPackagedNativeOperand</code>, then register the result. The provider reads the payload during resolution and validates its arguments against the layout.</p>
+</section>
+<section id="resources">
+  <h2>Bind an ordinary graphics allocation</h2>
+  <p>The CUDA and NVAPI helpers install both operand boundary hooks. They bind a compatible view directly and stage copies when the provider needs another view. Choose the helper and the resource category that matches the kernel's ABI.</p>
+  <table><thead><tr><th scope="col">Helper</th><th scope="col">Native resource categories</th></tr></thead><tbody>
+    <tr><td><code>UseArdaNativeCudaResources</code></td><td><code>ArdaNativeCudaBufferCategory</code> for linear buffers and <code>ArdaNativeCudaSurfaceCategory</code> for textures exposed as CUDA surfaces. Applies to CUDA and CiG.</td></tr>
+    <tr><td><code>UseArdaNativeNvapiResources</code></td><td><code>ArdaNativeNvapiRawBufferCategory</code> for raw buffer views and <code>ArdaNativeNvapiTextureCategory</code> for texture views.</td></tr>
+  </tbody></table>
+  <p>To write into an ordinary graphics buffer with the CUDA buffer-fill operand, use this setup after adding its native variants and before registering it. Create a device-local destination with <code>Raw | UnorderedAccess</code> usage and <code>UnorderedAccess</code> as its initial state. Pass the same output range to <code>RunFill</code>. <a href="../ArdaRDG/native-compute.html#register">Buffer-fill operand</a></p>
+  <pre><code class="language-cpp">UseArdaNativeCudaResources(fill);
+for (auto&amp; variant : fill.mVariants)
+{
+    variant.mNativeResources = fill.mResources;
+    variant.mNativeResources.front().mCategory = ArdaNativeCudaBufferCategory;
+    variant.mGraphicsStates = {EArdaRHIResourceState::UnorderedAccess};
+}</code></pre>
+  <p>The fill's write slot binds a CUDA-shared scratch range. The plan records the kernel, copies the written range back into the declared graphics range, and restores its state. Use <code>ReadWrite</code> to preserve bytes within a partially updated staging range. The native session flushes preceding work for graphics preparation commands and closes the current batch before recording graphics publication commands.</p>
+  <p>For a CUDA kernel authored to take linear texture data, declare a logical texture slot and a native buffer slot. Obtain the selected mip's row and slice pitches with <code>GetArdaRHITextureBufferFootprint</code> and supply them as kernel parameters. The built-in pitched helper handles one mip of a single-layer texture or a 3D region. Same-format texture staging copies the selected mip's layers. Use the operand hooks to define application-specific format conversions.</p>
+  <p>A multi-provider operand can select its conversion functions by <code>context.mProvider.GetDesc().mId</code>. The directional helpers are <code>PrepareArdaCudaGraphicsToNative</code>, <code>PrepareArdaCudaNativeToGraphics</code>, <code>PrepareArdaNvapiGraphicsToNative</code>, and <code>PrepareArdaNvapiNativeToGraphics</code>.</p>
+  <p>For provider-owned storage, declare <code>EArdaRHIResourceType::Count</code> on the native-side slot and its provider category. Set <code>FArdaNativeResourceView::mNativeResource</code> to an <code>IArdaNativeResource</code> with the matching provider and category IDs. The provider's <code>Prepare</code> and recording implementation must retain that allocation through GPU completion.</p>
 </section>
 <section id="cig">
   <h2>Run a CUDA kernel in graphics</h2>
-  <p>Include <code>CUDA/ArdaNativeCudaProvider.h</code>. Register <code>CreateArdaNativeCudaInGraphicsProvider()</code> and <code>CreateArdaNativeCudaProvider()</code>, checking each returned status. Add the kernel once with <code>AddArdaNativeCudaVariants(operand, variant)</code>. Both variants share its source, argument layout and launch policy.</p>
+  <p>Include <code>CUDA/ArdaNativeCudaProvider.h</code>. Add a linked or in-memory kernel with <code>AddArdaNativeCudaVariants(operand, variant)</code>. Both variants share its source, argument layout and launch policy. For a package, publish an entry for each provider ID you want to support.</p>
   <p>To require CiG, choose the graphics-queue CUDA mode when creating the device, then set <code>context.mPreference = EArdaNativeComputePreference::NativeOnly</code> and <code>context.mRequiredProviderId = ArdaNativeCudaInGraphicsProviderId</code>. A device using an ordinary CUDA context fails this check. With automatic routing, the registry tries the next eligible variant.</p>
-  <p>D3D12 captures CUDA work on its graphics list. Vulkan uses a CiG context associated with the graphics device and orders CUDA work with graphics through semaphores. Qualify the actual buffer or texture as well as the device. A driver may support a shared linear buffer and reject a shared image. <a href="../ArdaBackend/cuda-graphics.html">CUDA queues and resource handoffs</a></p>
+  <p>D3D12 CiG captures CUDA work directly on its graphics list. Vulkan CiG uses a context associated with the graphics device, submits separate CUDA segments, and orders them with graphics through semaphores. Qualify the actual buffer or texture as well as the device. A driver may support a shared linear buffer and reject a shared image. <a href="../ArdaBackend/cuda-graphics.html">CUDA queues and resource handoffs</a></p>
 </section>
 <section id="nvapi">
   <h2>Use an NVAPI shader intrinsic on D3D12</h2>
@@ -102,7 +174,7 @@ void WriteLane(uint index : SV_GroupIndex)
 }</code></pre>
   <p>Save the shader as <code>lane.hlsl</code> and compile it from the repository root with DXC. Ship the resulting DXIL with the application.</p>
   <pre><code class="language-sh">dxc -T cs_6_0 -E WriteLane -I ThirdParty/NVAPI -Fo lane.dxil lane.hlsl</code></pre>
-  <p>Register <code>CreateArdaNativeNvapiProvider()</code> once. Pass the DXIL bytes to the source factory. Declare the shader’s extension UAV slot, register space, and every required opcode. The provider queries the active D3D12 device for those opcodes and builds the compute pipeline through NVAPI.</p>
+  <p>Load the DXIL from a kernel library or pass the bytes directly to the source factory. Declare the shader’s extension UAV slot, register space, and every required opcode. The provider queries the active D3D12 device for those opcodes and builds the compute pipeline through NVAPI.</p>
   <pre><code class="language-cpp">#include "NVAPI/ArdaNativeNvapiProvider.h"
 #include "nvShaderExtnEnums.h"  // Add ThirdParty/NVAPI to the shader author's include path.
 
@@ -119,9 +191,12 @@ FArdaRHIStatus RegisterLaneIndex(FArdaNativeComputeRegistry&amp; registry,
     auto shader = CreateArdaNativeNvapiSource(eastl::move(source));
     if (!shader) return shader.mStatus;
 
-    FArdaNativeOperandDesc operand;
+    FArdaNativeOperand operand;
     operand.mId = "example.lane-index";
-    operand.mResources = {{"Output", EArdaRHIResourceType::Buffer, EArdaComputeAccess::Write}};
+    FArdaNativeResourceSlotsCreator slots;
+    slots.AddBuffer("Output", EArdaComputeAccess::Write);
+    operand.mResources = slots.Finalize();
+    UseArdaNativeDirectResources(operand);
     operand.mVariants.push_back({"lane-id", shader.mValue, {}});
     return registry.RegisterOperand(eastl::move(operand));
 }</code></pre>
@@ -130,12 +205,12 @@ FArdaRHIStatus RegisterLaneIndex(FArdaNativeComputeRegistry&amp; registry,
 </section>
 <section id="summary">
   <h2>Check the selected implementation</h2>
-  <p>Use <code>CheckSupport</code> before allocating provider-specific storage. Call <code>Prepare</code> with the final views, then inspect <code>GetRoute()</code> and <code>GetVariantName()</code>. A missing driver, opcode, or resource representation can send an operation to its shader fallback. <a href="../ArdaRDG/native-compute.html#fallback">Register a shader fallback</a></p>
+  <p><code>QueryProviderSupport</code> reports the cached device qualification, execution mode and runtime compilation availability. Use <code>CheckSupport</code> to test an operand and its kernel requirements before allocating provider-specific storage. Call <code>Prepare</code> with the final views, then inspect <code>GetRoute()</code> and <code>GetVariantName()</code>. A missing driver, opcode, or resource representation can send an operation to a shader fallback. <a href="../ArdaRDG/native-compute.html#fallback">Register a shader fallback</a></p>
 </section>
     </article>
     <nav class="page-nav" aria-label="Document navigation"><a href="index.html" rel="prev"><span class="page-nav-label"><svg class="icon icon-previous" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>Previous</span><span class="page-nav-title">Overview</span></a><a href="../ArdaRDG/native-compute.html" rel="next"><span class="page-nav-label">Next<svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="page-nav-title">Write a native compute node</span></a></nav>
   </main>
-  <aside class="page-outline" aria-label="Page outline"><nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#objectives">Match the kernel to its execution path</a></li><li><a href="#cig">Run a CUDA kernel in graphics</a></li><li><a href="#nvapi">Use an NVAPI shader intrinsic on D3D12</a></li><li><a href="#summary">Check the selected implementation</a></li></ul></nav></aside>
+  <aside class="page-outline" aria-label="Page outline"><nav class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul><li><a href="#objectives">Match the kernel to its execution path</a></li><li><a href="#modules">Link provider modules</a></li><li><a href="#libraries">Build and deploy a kernel library</a></li><li><a href="#resources">Bind an ordinary graphics allocation</a></li><li><a href="#cig">Run a CUDA kernel in graphics</a></li><li><a href="#nvapi">Use an NVAPI shader intrinsic on D3D12</a></li><li><a href="#summary">Check the selected implementation</a></li></ul></nav></aside>
 </div>
 <footer class="site-footer"><div class="site-footer__inner"><a class="site-brand" href="../index.html">Ardashir</a><div class="footer-group"><p>Documentation</p><a href="../index.html">Overview</a><a href="../ArdaRDG/getting-started.html">Getting started</a><a href="../Essays/arda-graph-and-inductor.html">Engineering essays</a></div><div class="footer-group"><p>Modules</p><a href="../ArdaBackend/index.html">GPU backend</a><a href="../ArdaRDG/index.html">Dependency graph</a><a href="index.html">Native compute</a><a href="../index.html#module-ardagraph">ArdaGraph</a><a href="../index.html#module-ardatests">ArdaTests</a><a href="../ArdaTrace/index.html">ArdaTrace</a><a href="../ArdaScene/index.html">ArdaScene</a></div><div class="footer-group"><p>Reference</p><a href="../ArdaBackend/api-reference.html">GPU backend</a><a href="../ArdaRDG/api-reference.html">Dependency graph</a><a href="api-reference.html">Native compute</a><a href="../glossary.html">Glossary</a></div></div></footer>
 <dialog class="doc-search" aria-label="Search documentation"><form method="dialog">

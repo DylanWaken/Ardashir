@@ -29,7 +29,7 @@ namespace arda
 	FArdaDependencyNodeRequirements FArdaWorkWriteNode::GetRequirements(const FArdaParameters&)
 	{
 		FArdaDependencyNodeRequirements R;
-		R.mFeatures.mbRequireWorkGraphs = true;
+		R.mFeatures.Require("work-graph.dispatch");
 		return R;
 	}
 

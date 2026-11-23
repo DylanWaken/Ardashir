@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "RHI/Config/ArdaBackendFeatures.h"
 #include "RHI/Config/ArdaRHIStatus.h"
 #include "RHI/Scheduling/ArdaRHIQueueTypes.h"
 
@@ -16,6 +17,10 @@
 
 namespace arda
 {
+	// ================================
+	// Device limits, feature tiers and formats
+	// ================================
+
 	struct FArdaRHITextureDesc;
 	struct FArdaRHIBufferDesc;
 
@@ -148,6 +153,10 @@ namespace arda
 		UnrestrictedAddressingAndViews
 	};
 
+	// ================================
+	// Ray tracing capabilities
+	// ================================
+
 	/** Ray-tracing abilities and native limits reported by one device. */
 	struct FArdaRHIRayTracingCapabilities
 	{
@@ -223,6 +232,10 @@ namespace arda
 			return EArdaRHIRayTracingTier::HardwareAccelerationStructures;
 		}
 	};
+
+	// ================================
+	// Descriptors and queues
+	// ================================
 
 	/** Bindless and direct descriptor-indexing abilities. */
 	struct FArdaRHIDescriptorCapabilities
@@ -342,6 +355,10 @@ namespace arda
 		}
 	};
 
+	// ================================
+	// Residency and machine learning capabilities
+	// ================================
+
 	/** Sparse/reserved-resource and streaming-budget abilities. */
 	struct FArdaRHIResidencyCapabilities
 	{
@@ -380,221 +397,11 @@ namespace arda
 		uint32_t mSubgroupMaxSize = 0;
 	};
 
-	/** A module's explicit desktop-GPU admission requirements. */
-	struct FArdaRHIFeatureRequirements
-	{
-		/** When true, reject a device missing ray-tracing infrastructure. */
-		bool mbRequireRayTracingInfrastructure = false;
-		/** When true, reject a device missing hardware ray tracing. */
-		bool mbRequireHardwareRayTracing = false;
-		/** When true, reject a device missing ray-tracing pipelines. */
-		bool mbRequireRayTracingPipelines = false;
-		/** When true, reject a device missing acceleration structures. */
-		bool mbRequireAccelerationStructures = false;
-		/** When true, reject a device missing acceleration-structure update. */
-		bool mbRequireAccelerationStructureUpdate = false;
-		/** When true, reject a device missing acceleration-structure compaction. */
-		bool mbRequireAccelerationStructureCompaction = false;
-		/** When true, reject a device missing indirect ray dispatch. */
-		bool mbRequireIndirectRayDispatch = false;
-		/** When true, reject a device missing local shader-table arguments. */
-		bool mbRequireLocalShaderTableArguments = false;
-		/** When true, reject a device missing opacity micromaps. */
-		bool mbRequireOpacityMicromaps = false;
-		/** When true, reject a device missing mesh shaders. */
-		bool mbRequireMeshShaders = false;
-		/** When true, reject a device missing the graphics geometry shader stage. */
-		bool mbRequireGeometryShaders = false;
-		/** When true, reject a device missing graphics hull/domain tessellation stages. */
-		bool mbRequireTessellationShaders = false;
-		/** Require storage writes and atomics from traditional pre-rasterization shader stages. */
-		bool mbRequireVertexShaderStoresAndAtomics = false;
-		/** Require storage writes and atomics from pixel shaders. */
-		bool mbRequireFragmentShaderStoresAndAtomics = false;
-		/** When true, reject a device missing unbounded descriptors. */
-		bool mbRequireUnboundedDescriptors = false;
-		/** When true, reject a device missing descriptor update-after-bind. */
-		bool mbRequireUpdateAfterBind = false;
-		/** When true, reject a device missing direct descriptor indexing. */
-		bool mbRequireDirectDescriptorIndexing = false;
-		/** When true, reject a device missing dedicated compute queue. */
-		bool mbRequireDedicatedComputeQueue = false;
-		/** When true, reject a device missing dedicated copy queue. */
-		bool mbRequireDedicatedCopyQueue = false;
-		/** When true, reject a device missing GPU queue waits. */
-		bool mbRequireGpuQueueWaits = false;
-		/** When true, reject a device missing sparse residency. */
-		bool mbRequireSparseResidency = false;
-		/** When true, reject a device missing streaming budget telemetry. */
-		bool mbRequireStreamingBudget = false;
-		/** When true, reject a device missing native sampler feedback. */
-		bool mbRequireSamplerFeedback = false;
-		/** When true, reject a device missing work graphs. */
-		bool mbRequireWorkGraphs = false;
-		/** When true, reject a device missing shader bundles. */
-		bool mbRequireShaderBundles = false;
-		/** When true, reject a device missing custom present. */
-		bool mbRequireCustomPresent = false;
-		/** When true, reject a device missing native float16. */
-		bool mbRequireNativeFloat16 = false;
-		/** When true, reject a device missing native int8. */
-		bool mbRequireNativeInt8 = false;
+	// ================================
+	// Device capabilities and feature evaluation
+	// ================================
 
-		// Additional independent provider abilities. Existing flags retain their original meaning.
-		/** Ordinary shaders must support inline ray queries. */
-		bool mbRequireInlineRayQueries = false;
-		/** Bottom-level geometry acceleration structures must be supported. */
-		bool mbRequireBottomLevelAccelerationStructures = false;
-		/** Top-level instance acceleration structures must be supported. */
-		bool mbRequireTopLevelAccelerationStructures = false;
-		/** GPU instance/indirect top-level build inputs must be supported. */
-		bool mbRequireIndirectTopLevelBuild = false;
-		/** Explicit shader tables must support commit and reuse across dispatches. */
-		bool mbRequirePersistentShaderTables = false;
-		/** Shader-indexed descriptor tables must be supported. */
-		bool mbRequireBindless = false;
-		/** Runtime-sized shader descriptor arrays must be supported. */
-		bool mbRequireRuntimeDescriptorArrays = false;
-		/** Unused descriptor-array entries must be allowed to remain unpopulated. */
-		bool mbRequirePartiallyBoundDescriptors = false;
-		/** Unused descriptor entries must support updates while earlier work remains pending. */
-		bool mbRequireUpdateUnusedWhilePending = false;
-		/** Variable descriptor-count allocation must be supported. */
-		bool mbRequireVariableDescriptorCount = false;
-		/** Shaders must support direct sampler-heap indexing; independent of resource heaps. */
-		bool mbRequireDirectSamplerHeapIndexing = false;
-		/** The native descriptor-buffer binding path must be supported. */
-		bool mbRequireDescriptorBuffer = false;
-		/** The native descriptor-heap binding model must be supported. */
-		bool mbRequireDescriptorHeap = false;
-		/** A graphics queue must be available. */
-		bool mbRequireGraphicsQueue = false;
-		/** A compute queue must be available, without requiring a dedicated native family. */
-		bool mbRequireComputeQueue = false;
-		/** A copy queue must be available, without requiring a dedicated native family. */
-		bool mbRequireCopyQueue = false;
-		/** Native timeline-style submission synchronization must be supported. */
-		bool mbRequireTimelineSynchronization = false;
-		/** The provider must support queue-family resource ownership transfers. */
-		bool mbRequireQueueFamilyOwnershipTransfer = false;
-		/** A queue capable of native sparse binding must be available. */
-		bool mbRequireSparseBindingQueue = false;
-		/** Reserved buffers must support explicit physical tile mappings. */
-		bool mbRequireReservedBuffers = false;
-		/** Reserved 2D textures must support explicit physical tile mappings. */
-		bool mbRequireReservedTexture2D = false;
-		/** Reserved 3D textures must support explicit physical tile mappings. */
-		bool mbRequireReservedTexture3D = false;
-		/** Compatible sparse mappings must support sharing physical tiles. */
-		bool mbRequireAliasedMappings = false;
-		/** The provider must support requesting a streaming-budget reservation. */
-		bool mbRequireBudgetReservation = false;
-		/** Typed retained resource collections must be supported. */
-		bool mbRequireResourceCollections = false;
-		/** Conservative rasterization must be supported. */
-		bool mbRequireConservativeRasterization = false;
-		/** Variable-rate shading must be supported. */
-		bool mbRequireVariableRateShading = false;
-		/** Resources must support creation before explicit heap memory is bound. */
-		bool mbRequireVirtualResources = false;
-		/** Explicit native heaps and compatible resource placement must be supported. */
-		bool mbRequireHeaps = false;
-		/** CPU-visible pitched staging textures must support map/unmap. */
-		bool mbRequireStagingTextures = false;
-		/** Qualified texture region/subresource copy operations must be supported. */
-		bool mbRequireTextureCopies = false;
-		/** Multisample texture resolve operations must be supported. */
-		bool mbRequireTextureResolve = false;
-		/** Explicit portable resource transitions must reach native barriers. */
-		bool mbRequireExplicitTransitions = false;
-		/** Paired begin/end transitions must be supported. */
-		bool mbRequireSplitTransitions = false;
-		/** Draw/dispatch arguments supplied by GPU buffers must be supported. */
-		bool mbRequireIndirectCommands = false;
-		/** Indirect arguments must support a nonzero first-instance value. */
-		bool mbRequireIndirectFirstInstance = false;
-		/** Native barriers must support activating resources in overlapping heap memory. */
-		bool mbRequireAliasingBarriers = false;
-		/** Event, timer and GPU fence queries must be supported; timestamp widths are checked separately. */
-		bool mbRequireQueries = false;
-		/** Retained compiled libraries must support entry-point shader objects. */
-		bool mbRequireShaderLibraries = false;
-		/** Compatible native pipeline-cache data must support persistence between runs. */
-		bool mbRequirePipelineCachePersistence = false;
-		/** The portable subgroup/wave operation set must be supported. */
-		bool mbRequireSubgroupOperations = false;
-		/** Shader/native buffer addresses must be supported; this does not promise CUDA-runtime pointers. */
-		bool mbRequireBufferDeviceAddress = false;
-
-		// Zero/None leaves a numeric/tier requirement unconstrained. Unknown native limits
-		// do not satisfy nonzero requirements; requiring a limit does not imply other operations.
-		/** Lowest admitted ray tracing tier. */
-		EArdaRHIRayTracingTier mMinRayTracingTier = EArdaRHIRayTracingTier::None;
-		/** Lowest admitted mesh shader tier. */
-		EArdaRHIMeshShaderTier mMinMeshShaderTier = EArdaRHIMeshShaderTier::None;
-		/** Lowest admitted work graph tier. */
-		EArdaRHIWorkGraphTier mMinWorkGraphTier = EArdaRHIWorkGraphTier::None;
-		/** Lowest admitted sampler feedback tier. */
-		EArdaRHISamplerFeedbackTier mMinSamplerFeedbackTier = EArdaRHISamplerFeedbackTier::None;
-		/** Resource descriptor capacity required by this module. Zero imposes no requirement. */
-		uint32_t mMinResourceDescriptors = 0;
-		/** Sampler descriptor capacity required by this module. Zero imposes no requirement. */
-		uint32_t mMinSamplerDescriptors = 0;
-		/** Maximum ray recursion depth the module needs to admit. Zero imposes no requirement. */
-		uint32_t mMinRayRecursionDepth = 0;
-		/** Ray payload capacity required in bytes; a native unqueryable limit cannot satisfy a nonzero requirement. Zero imposes no requirement. */
-		uint32_t mMinRayPayloadSize = 0;
-		/** Ray-generation invocation capacity required for one direct dispatch. Zero imposes no requirement. */
-		uint32_t mMinRayDispatchInvocations = 0;
-		/** Meaningful timestamp bits required on the graphics queue. Zero imposes no requirement. */
-		uint32_t mMinGraphicsTimestampValidBits = 0;
-		/** Meaningful timestamp bits required on the compute queue. Zero imposes no requirement. */
-		uint32_t mMinComputeTimestampValidBits = 0;
-		/** Meaningful timestamp bits required on the copy queue. Zero imposes no requirement. */
-		uint32_t mMinCopyTimestampValidBits = 0;
-		/**
-		 * Smallest subgroup width accepted by the module. When either subgroup bound
-		 * is nonzero, the complete reported native width interval must be known and
-		 * contained in the accepted interval, and subgroup operations must be supported.
-		 * This does not assume the provider supports choosing a subgroup width.
-		 */
-		uint32_t mMinSubgroupSize = 0;
-		/** Largest accepted subgroup width; zero leaves the upper bound open. Equal nonzero bounds require one exact native width. */
-		uint32_t mMaxSubgroupSize = 0;
-	};
-
-	/** Detailed result of evaluating a feature requirement set. */
-	struct FArdaRHIFeatureSupportReport
-	{
-		/** All requested abilities absent from this device; an empty list means admission succeeded. */
-		eastl::vector<eastl::string> mMissingAbilities;
-
-		[[nodiscard]] bool IsSupported() const noexcept
-		{
-			/** All requested abilities absent from this device; an empty list means admission succeeded. */
-			return mMissingAbilities.empty();
-		}
-
-		[[nodiscard]] FArdaRHIStatus ToStatus() const
-		{
-			if (mMissingAbilities.empty())
-			{
-				return {};
-			}
-			eastl::string Message = "Missing RHI abilities: ";
-			for (size_t Index = 0; Index < mMissingAbilities.size(); ++Index)
-			{
-				if (Index)
-				{
-					Message += ", ";
-				}
-				Message += mMissingAbilities[Index];
-			}
-			return {EArdaRHIResult::Unsupported, eastl::move(Message)};
-		}
-	};
-
-	/** Describes all capabilities reported by an RHI device. */
+	/** Provider-side device facts used to validate RHI commands and qualify published feature values. */
 	struct FArdaRHICapabilities
 	{
 		/** Native resource and work-dispatch limits used by common admission checks. */
@@ -666,6 +473,9 @@ namespace arda
 		/** Compatible native pipeline-cache data can be persisted between runs. */
 		bool mbPipelineCachePersistence = false;
 
+		/** Adapter features translated into Arda names by this device's provider. */
+		FArdaBackendFeatureListRef mBackendFeatures;
+
 		/** Tests stage support without relying on the ABI-preserved mesh-tier numeric values. */
 		[[nodiscard]] bool SupportsMeshShaderTier(EArdaRHIMeshShaderTier Required) const noexcept
 		{
@@ -688,164 +498,22 @@ namespace arda
 			return mQueues.IsSupported(Queue);
 		}
 
-		/** Evaluates every requested ability and returns all failures. */
-		[[nodiscard]] FArdaRHIFeatureSupportReport Evaluate(const FArdaRHIFeatureRequirements& R) const
-		{
-			FArdaRHIFeatureSupportReport Report;
-			const auto Need = [&Report](bool Required, bool Present, const char* Name)
-			{
-				if (Required && !Present)
-				{
-					Report.mMissingAbilities.push_back(Name);
-				}
-			};
-			Need(R.mbRequireRayTracingInfrastructure, mRayTracing.mbInfrastructure, "ray-tracing infrastructure");
-			Need(R.mbRequireHardwareRayTracing, mRayTracing.mbHardwareAccelerated, "hardware ray tracing");
-			Need(R.mbRequireRayTracingPipelines, mRayTracing.mbPipelineShaders, "ray-tracing pipelines");
-			Need(R.mbRequireAccelerationStructures, mRayTracing.mbAccelerationStructures, "acceleration structures");
-			Need(R.mbRequireAccelerationStructureUpdate, mRayTracing.mbBuildUpdate, "acceleration-structure update");
-			Need(R.mbRequireAccelerationStructureCompaction,
-			    mRayTracing.mbCompaction,
-			    "acceleration-structure compaction");
-			Need(R.mbRequireIndirectRayDispatch, mRayTracing.mbIndirectDispatch, "indirect ray dispatch");
-			Need(R.mbRequireLocalShaderTableArguments,
-			    mRayTracing.mbLocalShaderTableArguments,
-			    "local shader-table arguments");
-			Need(R.mbRequireOpacityMicromaps, mRayTracing.mbOpacityMicromaps, "opacity micromaps");
-			Need(R.mbRequireMeshShaders,
-			    SupportsMeshShaderTier(EArdaRHIMeshShaderTier::MeshShadersOnly),
-			    "mesh shaders");
-			Need(R.mbRequireGeometryShaders, mbGeometryShaders, "geometry shaders");
-			Need(R.mbRequireTessellationShaders, mbTessellationShaders, "tessellation shaders");
-			Need(R.mbRequireVertexShaderStoresAndAtomics,
-			    mbVertexShaderStoresAndAtomics,
-			    "vertex shader storage and atomics");
-			Need(R.mbRequireFragmentShaderStoresAndAtomics,
-			    mbFragmentShaderStoresAndAtomics,
-			    "fragment shader storage and atomics");
-			Need(R.mbRequireUnboundedDescriptors, mDescriptors.mbUnboundedArrays, "unbounded descriptors");
-			Need(R.mbRequireUpdateAfterBind, mDescriptors.mbUpdateAfterBind, "descriptor update-after-bind");
-			Need(R.mbRequireDirectDescriptorIndexing,
-			    mDescriptors.mbDirectResourceHeapIndexing,
-			    "direct descriptor indexing");
-			Need(R.mbRequireDedicatedComputeQueue, mQueues.mbDedicatedComputeFamily, "dedicated compute queue");
-			Need(R.mbRequireDedicatedCopyQueue, mQueues.mbDedicatedCopyFamily, "dedicated copy queue");
-			Need(R.mbRequireGpuQueueWaits, mQueues.mbGpuWaits, "GPU queue waits");
-			Need(R.mbRequireSparseResidency, mResidency.mbSparseBinding, "sparse residency");
-			Need(R.mbRequireStreamingBudget, mResidency.mbStreamingBudget, "streaming budget telemetry");
-			Need(R.mbRequireSamplerFeedback,
-			    mSamplerFeedbackTier != EArdaRHISamplerFeedbackTier::None,
-			    "native sampler feedback");
-			Need(R.mbRequireWorkGraphs, mWorkGraphTier != EArdaRHIWorkGraphTier::None, "work graphs");
-			Need(R.mbRequireShaderBundles, mbShaderBundleDispatch, "shader bundles");
-			Need(R.mbRequireCustomPresent, mbCustomPresent, "custom present");
-			Need(R.mbRequireNativeFloat16, mMachineLearning.mbNativeFloat16, "native float16");
-			Need(R.mbRequireNativeInt8, mMachineLearning.mbNativeInt8, "native int8");
+		/** Adds qualified RHI abilities to the provider's translated feature list and publishes an immutable snapshot. */
+		void PublishBackendFeatures(eastl::shared_ptr<FArdaBackendFeatureList> Features);
 
-			Need(R.mbRequireInlineRayQueries, mRayTracing.mbInlineRayQueries, "inline ray queries");
-			Need(R.mbRequireBottomLevelAccelerationStructures,
-			    mRayTracing.mbBottomLevel,
-			    "bottom-level acceleration structures");
-			Need(R.mbRequireTopLevelAccelerationStructures,
-			    mRayTracing.mbTopLevel,
-			    "top-level acceleration structures");
-			Need(R.mbRequireIndirectTopLevelBuild, mRayTracing.mbIndirectTopLevelBuild, "indirect top-level build");
-			Need(R.mbRequirePersistentShaderTables, mRayTracing.mbPersistentShaderTables, "persistent shader tables");
-			Need(R.mbRequireBindless, mDescriptors.mbBindless, "bindless descriptor tables");
-			Need(R.mbRequireRuntimeDescriptorArrays,
-			    mDescriptors.mbRuntimeDescriptorArrays,
-			    "runtime descriptor arrays");
-			Need(R.mbRequirePartiallyBoundDescriptors, mDescriptors.mbPartiallyBound, "partially bound descriptors");
-			Need(R.mbRequireUpdateUnusedWhilePending,
-			    mDescriptors.mbUpdateUnusedWhilePending,
-			    "descriptor update-unused-while-pending");
-			Need(R.mbRequireVariableDescriptorCount,
-			    mDescriptors.mbVariableDescriptorCount,
-			    "variable descriptor count");
-			Need(R.mbRequireDirectSamplerHeapIndexing,
-			    mDescriptors.mbDirectSamplerHeapIndexing,
-			    "direct sampler heap indexing");
-			Need(R.mbRequireDescriptorBuffer, mDescriptors.mbDescriptorBuffer, "descriptor buffers");
-			Need(R.mbRequireDescriptorHeap, mDescriptors.mbDescriptorHeap, "descriptor heaps");
-			Need(R.mbRequireGraphicsQueue, mQueues.mbGraphics, "graphics queue");
-			Need(R.mbRequireComputeQueue, mQueues.mbCompute, "compute queue");
-			Need(R.mbRequireCopyQueue, mQueues.mbCopy, "copy queue");
-			Need(R.mbRequireTimelineSynchronization, mQueues.mbTimelineSynchronization, "timeline synchronization");
-			Need(R.mbRequireQueueFamilyOwnershipTransfer,
-			    mQueues.mbQueueFamilyOwnershipTransfer,
-			    "queue-family ownership transfer");
-			Need(R.mbRequireSparseBindingQueue, mQueues.mbSparseBindingQueue, "sparse binding queue");
-			Need(R.mbRequireReservedBuffers, mResidency.mbReservedBuffers, "reserved buffers");
-			Need(R.mbRequireReservedTexture2D, mResidency.mbReservedTexture2D, "reserved 2D textures");
-			Need(R.mbRequireReservedTexture3D, mResidency.mbReservedTexture3D, "reserved 3D textures");
-			Need(R.mbRequireAliasedMappings, mResidency.mbAliasedMappings, "aliased sparse mappings");
-			Need(R.mbRequireBudgetReservation, mResidency.mbBudgetReservation, "streaming budget reservation");
-			Need(R.mbRequireResourceCollections, mbResourceCollections, "resource collections");
-			Need(R.mbRequireConservativeRasterization, mbConservativeRasterization, "conservative rasterization");
-			Need(R.mbRequireVariableRateShading, mbVariableRateShading, "variable rate shading");
-			Need(R.mbRequireVirtualResources, mbVirtualResources, "virtual resources");
-			Need(R.mbRequireHeaps, mbHeaps, "explicit heaps");
-			Need(R.mbRequireStagingTextures, mbStagingTextures, "staging textures");
-			Need(R.mbRequireTextureCopies, mbTextureCopies, "texture copies");
-			Need(R.mbRequireTextureResolve, mbTextureResolve, "texture resolve");
-			Need(R.mbRequireExplicitTransitions, mbExplicitTransitions, "explicit transitions");
-			Need(R.mbRequireSplitTransitions, mbSplitTransitions, "split transitions");
-			Need(R.mbRequireIndirectCommands, mbIndirectCommands, "indirect commands");
-			Need(R.mbRequireIndirectFirstInstance, mbIndirectFirstInstance, "indirect first instance");
-			Need(R.mbRequireAliasingBarriers, mbAliasingBarriers, "aliasing barriers");
-			Need(R.mbRequireQueries, mbQueries, "GPU queries");
-			Need(R.mbRequireShaderLibraries, mbShaderLibraries, "shader libraries");
-			Need(R.mbRequirePipelineCachePersistence, mbPipelineCachePersistence, "pipeline cache persistence");
-			Need(R.mbRequireSubgroupOperations, mMachineLearning.mbSubgroupOperations, "subgroup operations");
-			Need(R.mbRequireBufferDeviceAddress, mMachineLearning.mbBufferDeviceAddress, "buffer device addresses");
-			Need(R.mMinRayTracingTier != EArdaRHIRayTracingTier::None,
-			    mRayTracing.GetTier() >= R.mMinRayTracingTier,
-			    "ray-tracing tier");
-			Need(R.mMinMeshShaderTier != EArdaRHIMeshShaderTier::None,
-			    SupportsMeshShaderTier(R.mMinMeshShaderTier),
-			    "mesh-shader tier");
-			Need(R.mMinWorkGraphTier != EArdaRHIWorkGraphTier::None,
-			    mWorkGraphTier >= R.mMinWorkGraphTier,
-			    "work-graph tier");
-			Need(R.mMinSamplerFeedbackTier != EArdaRHISamplerFeedbackTier::None,
-			    mSamplerFeedbackTier >= R.mMinSamplerFeedbackTier,
-			    "sampler-feedback tier");
-			Need(R.mMinResourceDescriptors != 0,
-			    mDescriptors.mMaxResourceDescriptors >= R.mMinResourceDescriptors,
-			    "resource descriptor capacity");
-			Need(R.mMinSamplerDescriptors != 0,
-			    mDescriptors.mMaxSamplerDescriptors >= R.mMinSamplerDescriptors,
-			    "sampler descriptor capacity");
-			Need(R.mMinRayRecursionDepth != 0,
-			    mRayTracing.mMaxRecursionDepth >= R.mMinRayRecursionDepth,
-			    "ray recursion depth");
-			Need(R.mMinRayPayloadSize != 0, mRayTracing.mMaxRayPayloadSize >= R.mMinRayPayloadSize, "ray payload size");
-			Need(R.mMinRayDispatchInvocations != 0,
-			    mRayTracing.mMaxRayDispatchInvocations >= R.mMinRayDispatchInvocations,
-			    "ray dispatch invocations");
-			Need(R.mMinGraphicsTimestampValidBits != 0,
-			    mQueues.GetTimestampValidBits(EArdaRHIQueueType::Graphics) >= R.mMinGraphicsTimestampValidBits,
-			    "graphics timestamp precision");
-			Need(R.mMinComputeTimestampValidBits != 0,
-			    mQueues.GetTimestampValidBits(EArdaRHIQueueType::Compute) >= R.mMinComputeTimestampValidBits,
-			    "compute timestamp precision");
-			Need(R.mMinCopyTimestampValidBits != 0,
-			    mQueues.GetTimestampValidBits(EArdaRHIQueueType::Copy) >= R.mMinCopyTimestampValidBits,
-			    "copy timestamp precision");
-			if (R.mMinSubgroupSize != 0 || R.mMaxSubgroupSize != 0)
-			{
-				const auto& ML = mMachineLearning;
-				const bool Known =
-				    ML.mbSubgroupOperations && ML.mSubgroupMinSize != 0 && ML.mSubgroupMaxSize >= ML.mSubgroupMinSize;
-				const bool Valid = R.mMaxSubgroupSize == 0 || R.mMinSubgroupSize <= R.mMaxSubgroupSize;
-				Need(true,
-				    Known && Valid && ML.mSubgroupMinSize >= R.mMinSubgroupSize &&
-				        (R.mMaxSubgroupSize == 0 || ML.mSubgroupMaxSize <= R.mMaxSubgroupSize),
-				    "subgroup width interval");
-			}
-			return Report;
-		}
+		/** Returns this device's snapshot, deriving a portable list for providers that supply only RHI facts. */
+		[[nodiscard]] FArdaBackendFeatureListRef GetBackendFeatureList() const;
+
+		/** Evaluates a conjunction of named requirements against the published values. */
+		[[nodiscard]] FArdaRHIFeatureSupportReport Evaluate(const FArdaRHIFeatureRequirements& Requirements) const;
+
+	private:
+		void AddPortableFeatures(FArdaBackendFeatureList& Features) const;
 	};
+
+	// ================================
+	// Resource capability validation
+	// ================================
 
 	/** Validates portable shape plus reported device limits and format uses; unreported limits are not inferred. */
 	[[nodiscard]] FArdaRHIStatus ValidateResourceCapabilities(const FArdaRHITextureDesc& Desc,

@@ -9,6 +9,10 @@
 
 namespace arda::fileops
 {
+	// ================================
+	// Path checks and file reads
+	// ================================
+
 	enum class EArdaFileReadResult
 	{
 		Success,
@@ -29,6 +33,10 @@ namespace arda::fileops
 	/** Read at most MaximumBytes from the open file. Reject oversized input before allocating output storage. */
 	EArdaFileReadResult ReadBinaryFile(const std::filesystem::path& Path, eastl::string& Contents, size_t MaximumBytes);
 	eastl::string ReadText(const std::filesystem::path& Path);
+
+	// ================================
+	// Temporary files and atomic publication
+	// ================================
 
 	// Produces a process-unique sibling name; it does not create or reserve a file.
 	std::filesystem::path TemporaryPath(const std::filesystem::path& Base, const char* Kind);

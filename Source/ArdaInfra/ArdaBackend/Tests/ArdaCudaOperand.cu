@@ -1,5 +1,5 @@
 #include "ArdaTestComputeOperand.h"
-#include "RHI/CUDA/ArdaCudaKernelBinding.cuh"
+#include "CUDA/ArdaCudaKernelBinding.cuh"
 #include "ArdaCudaBuildInfo.h"
 #include "ArdaCudaOperand.cuh"
 

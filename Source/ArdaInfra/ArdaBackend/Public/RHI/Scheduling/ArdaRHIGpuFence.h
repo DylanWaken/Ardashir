@@ -9,6 +9,10 @@
 
 namespace arda
 {
+	// ================================
+	// GPU fence interface
+	// ================================
+
 	/** Native queue fence facade; one signal is tracked at a time. */
 	class IArdaRHIGpuFence : public virtual IArdaRHIResource
 	{

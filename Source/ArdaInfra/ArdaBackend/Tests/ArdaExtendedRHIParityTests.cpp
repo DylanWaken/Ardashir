@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
 #include <atomic>
 #include <cmath>
 #include <cstdio>
@@ -310,7 +312,7 @@ namespace
 		ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 		FArdaRHIDeviceRef Device = GetDevice();
 		ASSERT_TRUE(Device);
-		if (Device->GetCapabilities().mSamplerFeedbackTier == EArdaRHISamplerFeedbackTier::None)
+		if (!Device->GetFeatures()->Supports("sampler.feedback"))
 		{
 			GTEST_SKIP() << "The D3D12 adapter has no sampler-feedback tier.";
 		}
@@ -519,14 +521,14 @@ namespace
 
 		FArdaRHIDeviceRef Device = GetDevice();
 		ASSERT_TRUE(Device);
-		const FArdaRHICapabilities& Capabilities = Device->GetCapabilities();
-		EXPECT_TRUE(Capabilities.mbStagingTextures);
-		EXPECT_TRUE(Capabilities.mbTextureCopies);
-		EXPECT_TRUE(Capabilities.mbTextureResolve);
-		EXPECT_TRUE(Capabilities.mbExplicitTransitions);
-		EXPECT_TRUE(Capabilities.mbSplitTransitions);
-		EXPECT_TRUE(Capabilities.mbIndirectCommands);
-		EXPECT_TRUE(Capabilities.mbAliasingBarriers);
+		const auto Features = Device->GetFeatures();
+		EXPECT_TRUE(Features->Supports("texture.staging"));
+		EXPECT_TRUE(Features->Supports("texture.copy"));
+		EXPECT_TRUE(Features->Supports("texture.resolve"));
+		EXPECT_TRUE(Features->Supports("synchronization.explicit-transition"));
+		EXPECT_TRUE(Features->Supports("synchronization.split-transition"));
+		EXPECT_TRUE(Features->Supports("command.indirect"));
+		EXPECT_TRUE(Features->Supports("synchronization.aliasing-barrier"));
 
 		FArdaRHITextureDesc TextureDesc;
 		TextureDesc.mDebugName = "Extended copy source";
@@ -850,8 +852,8 @@ namespace
 		ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 		FArdaRHIDeviceRef Device = GetDevice();
 		ASSERT_TRUE(Device);
-		ASSERT_TRUE(Device->GetCapabilities().mbVirtualResources);
-		ASSERT_TRUE(Device->GetCapabilities().mbHeaps);
+		ASSERT_TRUE(Device->GetFeatures()->Supports("resource.virtual"));
+		ASSERT_TRUE(Device->GetFeatures()->Supports("memory.explicit-heap"));
 
 		FArdaRHIBufferDesc BufferDesc;
 		BufferDesc.mDebugName = "Explicit heap alias A";
@@ -978,12 +980,12 @@ namespace
 		std::memcpy(Values.data(), Bytes.data(), Bytes.size());
 		if (bSubgroup)
 		{
-			const auto& Caps = Device->GetCapabilities().mMachineLearning;
+			const auto Features = Device->GetFeatures();
 			for (uint32_t Thread = 0; Thread < 64; ++Thread)
 			{
 				const uint32_t Width = Values[Thread * 2 + 1];
-				ASSERT_GE(Width, Caps.mSubgroupMinSize);
-				ASSERT_LE(Width, Caps.mSubgroupMaxSize);
+				ASSERT_GE(Width, Features->GetValueOr("shader.subgroup-min-size", 0));
+				ASSERT_LE(Width, Features->GetValueOr("shader.subgroup-max-size", 0));
 				const uint32_t First = (Thread / Width) * Width;
 				const uint32_t Count = eastl::min(Width, 64u - First);
 				EXPECT_EQ(Values[Thread * 2], Count * (2 * First + Count + 1) / 2);
@@ -1016,13 +1018,13 @@ namespace
 		ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 		auto Device = GetDevice();
 		ASSERT_TRUE(Device);
-		const auto& Caps = Device->GetCapabilities().mDescriptors;
+		const auto Features = Device->GetFeatures();
 		FArdaRHIBindlessLayoutDesc Desc;
 		Desc.mVisibility = EArdaRHIShaderStage::Compute;
 		Desc.mMaxCapacity = 4;
-		Desc.mbUnbounded = Caps.mbUnboundedArrays;
-		Desc.mbUpdateAfterBind = Caps.mbUpdateAfterBind;
-		Desc.mbVariableDescriptorCount = Caps.mbVariableDescriptorCount;
+		Desc.mbUnbounded = Features->Supports("descriptor.unbounded-arrays");
+		Desc.mbUpdateAfterBind = Features->Supports("descriptor.update-after-bind");
+		Desc.mbVariableDescriptorCount = Features->Supports("descriptor.variable-count");
 		Desc.mRegisterSpaces.push_back({0, 1, EArdaRHIBindingType::StructuredBufferUAV});
 		auto Layout = Device->CreateBindlessLayout(Desc);
 		ASSERT_TRUE(Layout);
@@ -1125,15 +1127,15 @@ namespace
 		ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 		FArdaRHIDeviceRef Device = GetDevice();
 		ASSERT_TRUE(Device);
-		ASSERT_TRUE(Device->GetCapabilities().mDescriptors.mbBindless);
+		ASSERT_TRUE(Device->GetFeatures()->Supports("descriptor.bindless"));
 		if (std::strcmp(BackendName, "native-d3d12") == 0)
 		{
 			FArdaRHIFeatureRequirements Requirements;
-			Requirements.mbRequireDescriptorHeap = true;
+			Requirements.Require("descriptor.heap");
 			const auto Admission = Device->RequireFeatures(Requirements);
 			ASSERT_TRUE(Admission) << Admission.mMessage.c_str();
 		}
-		if (bDirectHeapIndexing && !Device->GetCapabilities().mDescriptors.mbDirectResourceHeapIndexing)
+		if (bDirectHeapIndexing && !Device->GetFeatures()->Supports("descriptor.direct-resource-heap-indexing"))
 		{
 			GTEST_SKIP() << "Direct native resource-heap indexing is unavailable.";
 		}
@@ -1229,10 +1231,10 @@ namespace
 		ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 		auto Device = GetDevice();
 		ASSERT_TRUE(Device);
-		const auto& DescriptorCaps = Device->GetCapabilities().mDescriptors;
+		const auto Features = Device->GetFeatures();
 		if (bDescriptorBuffer
-		        ? !DescriptorCaps.mbDescriptorBuffer
-		        : (!DescriptorCaps.mbDirectResourceHeapIndexing || !DescriptorCaps.mbDirectSamplerHeapIndexing))
+		        ? !Features->Supports("descriptor.buffer")
+		        : (!Features->Supports("descriptor.direct-resource-heap-indexing") || !Features->Supports("descriptor.direct-sampler-heap-indexing")))
 		{
 			GTEST_SKIP() << "Direct resource and sampler heaps are unavailable.";
 		}
@@ -1450,7 +1452,7 @@ namespace
 		ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 		auto Device = GetDevice();
 		ASSERT_TRUE(Device);
-		if (Device->GetCapabilities().mWorkGraphTier == EArdaRHIWorkGraphTier::None)
+		if (!Device->GetFeatures()->Supports("work-graph.dispatch"))
 		{
 			GTEST_SKIP() << "D3D12 work graphs are unavailable.";
 		}
@@ -1533,9 +1535,8 @@ namespace
 		FArdaRHIDeviceRef Device = GetDevice();
 		ASSERT_TRUE(Device);
 		FArdaRHIFeatureRequirements Requirements;
-		Requirements.mbRequireGeometryShaders = !bTessellation && !bIndirectFirstInstance;
-		Requirements.mbRequireTessellationShaders = bTessellation;
-		Requirements.mbRequireIndirectFirstInstance = bIndirectFirstInstance;
+		Requirements.Require(bIndirectFirstInstance ? "command.indirect-first-instance" :
+		    bTessellation ? "shader.tessellation" : "shader.geometry");
 		const auto Admission = Device->RequireFeatures(Requirements);
 		ASSERT_TRUE(Admission) << Admission.mMessage.c_str();
 
@@ -1687,8 +1688,7 @@ namespace
 		auto Device = GetDevice();
 		ASSERT_TRUE(Device);
 		FArdaRHIFeatureRequirements Requirements;
-		Requirements.mbRequireVertexShaderStoresAndAtomics = !bPixelStage;
-		Requirements.mbRequireFragmentShaderStoresAndAtomics = bPixelStage;
+		Requirements.Require(bPixelStage ? "shader.fragment-stores-and-atomics" : "shader.vertex-stores-and-atomics");
 		const auto Admission = Device->RequireFeatures(Requirements);
 		ASSERT_TRUE(Admission) << Admission.mMessage.c_str();
 
@@ -1844,7 +1844,7 @@ namespace
 			ASSERT_TRUE(Device->WriteDescriptorTable(ColorTable, Item));
 		}
 		auto Pipeline = Device->CreateMeshletPipeline(PipelineDesc);
-		if (Device->GetCapabilities().mMeshShaderTier == EArdaRHIMeshShaderTier::None)
+		if (!Device->GetFeatures()->Supports("shader.mesh"))
 		{
 			EXPECT_FALSE(Pipeline);
 			EXPECT_EQ(Pipeline.mStatus.mCode, EArdaRHIResult::Unsupported);
@@ -1964,17 +1964,17 @@ namespace
 		FArdaRHIDeviceRef Device = GetDevice();
 		ASSERT_TRUE(Device);
 
-		const FArdaRHICapabilities& Capabilities = Device->GetCapabilities();
+		const auto Features = Device->GetFeatures();
 		const bool bD3D12 = std::strcmp(BackendName, "native-d3d12") == 0;
 		if (bD3D12)
 		{
 			FArdaRHIFeatureRequirements Requirements;
-			Requirements.mbRequireTimelineSynchronization = true;
-			Requirements.mbRequireGpuQueueWaits = true;
+			Requirements.Require("synchronization.timeline-semaphore");
+			Requirements.Require("queue.gpu-waits");
 			const auto Admission = Device->RequireFeatures(Requirements);
 			ASSERT_TRUE(Admission) << Admission.mMessage.c_str();
 		}
-		if (Capabilities.mQueues.mbCopy)
+		if (Features->Supports("queue.copy"))
 		{
 			FArdaRHIBufferDesc BufferDesc;
 			BufferDesc.mUsage = EArdaRHIBufferUsage::None;
@@ -2043,7 +2043,7 @@ namespace
 			EXPECT_EQ(Commands.mStatus.mCode, EArdaRHIResult::Unsupported);
 		}
 
-		if (Capabilities.mQueues.mbCompute)
+		if (Features->Supports("queue.compute"))
 		{
 			FArdaRHIBufferDesc OutputDesc;
 			OutputDesc.mDebugName = "Compute queue breadth output";
@@ -2135,7 +2135,7 @@ namespace
 		TArdaRHIResult<FArdaRHIBindingLayoutRef> Layout;
 		if (bLocalDescriptors)
 		{
-			if (!Device->GetCapabilities().mDescriptors.mbDirectResourceHeapIndexing)
+			if (!Device->GetFeatures()->Supports("descriptor.direct-resource-heap-indexing"))
 			{
 				GTEST_SKIP() << "Local direct-heap descriptors are unavailable.";
 			}
@@ -2163,13 +2163,13 @@ namespace
 		PipelineDesc.mMaxPayloadSize = sizeof(uint32_t);
 		PipelineDesc.mMaxRecursionDepth = 1;
 		auto Pipeline = Device->CreateRayTracingPipeline(PipelineDesc);
-		if (!Device->GetCapabilities().mRayTracing.mbPipelineShaders)
+		if (!Device->GetFeatures()->Supports("ray-tracing.pipeline"))
 		{
 			EXPECT_FALSE(Pipeline);
 			EXPECT_EQ(Pipeline.mStatus.mCode, EArdaRHIResult::Unsupported);
 			return;
 		}
-		EXPECT_GT(Device->GetCapabilities().mRayTracing.mMaxRayDispatchInvocations, 0u);
+		EXPECT_GT(Device->GetFeatures()->GetValueOr("ray-tracing.max-dispatch-invocations", 0), 0u);
 		ASSERT_TRUE(Pipeline) << Pipeline.mStatus.mMessage.c_str();
 
 		FArdaRHIBufferDesc OutputDesc;
@@ -2259,16 +2259,16 @@ namespace
 
 		FArdaRHIDeviceRef Device = GetDevice();
 		ASSERT_TRUE(Device);
-		const auto& Ray = Device->GetCapabilities().mRayTracing;
-		if (!Ray.mbAccelerationStructures)
+		const auto Features = Device->GetFeatures();
+		if (!Features->Supports("ray-tracing.acceleration-structure"))
 		{
 			GTEST_SKIP() << "Native acceleration structures unavailable.";
 		}
-		EXPECT_TRUE(Ray.mbBottomLevel);
-		EXPECT_TRUE(Ray.mbTopLevel);
-		EXPECT_TRUE(Ray.mbBuildUpdate);
-		EXPECT_TRUE(Ray.mbCompaction);
-		EXPECT_GT(Ray.mAccelerationStructureAlignment, 0u);
+		EXPECT_TRUE(Features->Supports("ray-tracing.bottom-level-acceleration-structure"));
+		EXPECT_TRUE(Features->Supports("ray-tracing.top-level-acceleration-structure"));
+		EXPECT_TRUE(Features->Supports("ray-tracing.acceleration-structure-update"));
+		EXPECT_TRUE(Features->Supports("ray-tracing.acceleration-structure-compaction"));
+		EXPECT_GT(Features->GetValueOr("ray-tracing.acceleration-structure-alignment", 0), 0u);
 
 		const float Vertices[9] = {-1.f, -1.f, 0.f, 0.f, 1.f, 0.f, 1.f, -1.f, 0.f};
 		FArdaRHIBufferDesc VertexDesc;
@@ -2395,9 +2395,9 @@ namespace
 		ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 		FArdaRHIDeviceRef Device = GetDevice();
 		ASSERT_TRUE(Device);
-		const auto& Ray = Device->GetCapabilities().mRayTracing;
-		if (!Ray.mbPipelineShaders || !Ray.mbAccelerationStructures || !Ray.mbIndirectDispatch ||
-		    !Ray.mbLocalShaderTableArguments)
+		const auto Features = Device->GetFeatures();
+		if (!Features->Supports("ray-tracing.pipeline") || !Features->Supports("ray-tracing.acceleration-structure") || !Features->Supports("ray-tracing.indirect-dispatch") ||
+		    !Features->Supports("ray-tracing.local-shader-table-arguments"))
 		{
 			GTEST_SKIP() << "Native scene tracing, indirect dispatch, or local SBT arguments are unavailable.";
 		}
@@ -2694,7 +2694,7 @@ namespace
 		ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 		auto Device = GetDevice();
 		ASSERT_TRUE(Device);
-		if (!Device->GetCapabilities().mRayTracing.mbOpacityMicromaps)
+		if (!Device->GetFeatures()->Supports("ray-tracing.opacity-micromap"))
 		{
 			GTEST_SKIP() << "VK_EXT_opacity_micromap is unavailable.";
 		}
@@ -2939,11 +2939,11 @@ namespace
 		ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 		auto Device = GetDevice();
 		ASSERT_TRUE(Device);
-		const auto& Caps = Device->GetCapabilities();
-		ASSERT_TRUE(Caps.mDescriptors.mbUnboundedArrays);
-		ASSERT_TRUE(Caps.mDescriptors.mbUpdateAfterBind);
-		ASSERT_TRUE(Caps.mDescriptors.mbVariableDescriptorCount);
-		ASSERT_TRUE(Caps.mbResourceCollections);
+		const auto Features = Device->GetFeatures();
+		ASSERT_TRUE(Features->Supports("descriptor.unbounded-arrays"));
+		ASSERT_TRUE(Features->Supports("descriptor.update-after-bind"));
+		ASSERT_TRUE(Features->Supports("descriptor.variable-count"));
+		ASSERT_TRUE(Features->Supports("resource.collections"));
 
 		FArdaRHIBindlessLayoutDesc Bindless;
 		Bindless.mVisibility = EArdaRHIShaderStage::All;
@@ -2984,7 +2984,7 @@ namespace
 		FArdaRHIResourceCollectionDesc CollectionDesc;
 		CollectionDesc.mItems = {ItemA, ItemB};
 		CollectionDesc.mbMutable = true;
-		CollectionDesc.mbDirectlyIndexed = Caps.mDescriptors.mbDirectResourceHeapIndexing;
+		CollectionDesc.mbDirectlyIndexed = Features->Supports("descriptor.direct-resource-heap-indexing");
 		CollectionDesc.mDebugName = "Mutable resource collection";
 		auto Collection = Device->CreateResourceCollection(CollectionDesc);
 		ASSERT_TRUE(Collection) << Collection.mStatus.mMessage.c_str();
@@ -3135,15 +3135,15 @@ namespace
 		ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 		auto Device = GetDevice();
 		ASSERT_TRUE(Device);
-		const auto& Residency = Device->GetCapabilities().mResidency;
-		if (!Residency.mbSparseBinding || !Residency.mbReservedBuffers || !Residency.mbReservedTexture2D)
+		const auto Features = Device->GetFeatures();
+		if (!Features->Supports("resource.sparse-binding") || !Features->Supports("resource.reserved-buffer") || !Features->Supports("resource.reserved-texture-2d"))
 		{
 			GTEST_SKIP() << "Native sparse residency is unavailable.";
 		}
-		ASSERT_GT(Residency.mTileSizeInBytes, 0u);
+		ASSERT_GT(Features->GetValueOr("resource.sparse-tile-bytes", 0), 0u);
 
 		FArdaRHIBufferDesc BufferDesc;
-		BufferDesc.mByteSize = Residency.mTileSizeInBytes * 2;
+		BufferDesc.mByteSize = Features->GetValueOr("resource.sparse-tile-bytes", 0) * 2;
 		BufferDesc.mUsage = EArdaRHIBufferUsage::Raw | EArdaRHIBufferUsage::ShaderResource;
 		BufferDesc.mbTiled = true;
 		BufferDesc.mDebugName = "Sparse parity buffer";
@@ -3152,7 +3152,7 @@ namespace
 		auto BufferMemory = Device->GetBufferMemoryRequirements(Buffer.mValue);
 		ASSERT_TRUE(BufferMemory);
 		FArdaRHIHeapDesc HeapDesc;
-		HeapDesc.mCapacity = eastl::max<uint64_t>(BufferMemory.mValue.mAlignment, Residency.mTileSizeInBytes * 2);
+		HeapDesc.mCapacity = eastl::max<uint64_t>(BufferMemory.mValue.mAlignment, Features->GetValueOr("resource.sparse-tile-bytes", 0) * 2);
 		HeapDesc.mMemoryTypeBits = BufferMemory.mValue.mMemoryTypeBits;
 		HeapDesc.mDebugName = "Sparse parity heap";
 		auto Heap = Device->CreateHeap(HeapDesc);
@@ -3211,7 +3211,7 @@ namespace
 		TextureMapping.mHeap = {};
 		ASSERT_TRUE(Device->UpdateTextureTileMappings(Texture.mValue, {TextureMapping}, EArdaRHIQueueType::Graphics));
 
-		if (Residency.mbReservedTexture3D)
+		if (Features->Supports("resource.reserved-texture-3d"))
 		{
 			FArdaRHITextureDesc VolumeDesc = TextureDesc;
 			VolumeDesc.mDebugName = "Sparse parity 3D texture";
@@ -3235,7 +3235,7 @@ namespace
 			ASSERT_TRUE(Device->UpdateTextureTileMappings(Volume.mValue, {VolumeMapping}, EArdaRHIQueueType::Graphics));
 		}
 
-		if (Residency.mbAliasedMappings)
+		if (Features->Supports("resource.aliased-sparse-mapping"))
 		{
 			BufferDesc.mDebugName = "Sparse parity alias buffer";
 			auto Alias = Device->CreateBuffer(BufferDesc);
@@ -3265,13 +3265,13 @@ namespace
 			ASSERT_TRUE(Device->UpdateBufferTileMappings(Buffer.mValue, {AliasedMapping}, EArdaRHIQueueType::Graphics));
 		}
 
-		if (Residency.mbStreamingBudget)
+		if (Features->Supports("memory.streaming-budget"))
 		{
 			const auto Budget = Device->QueryStreamingBudget(true);
 			ASSERT_TRUE(Budget) << Budget.mStatus.mMessage.c_str();
 			EXPECT_GT(Budget.mValue.mBudgetBytes, 0u);
 			EXPECT_TRUE(Budget.mValue.mbLocalMemory);
-			if (Residency.mbBudgetReservation)
+			if (Features->Supports("memory.budget-reservation"))
 			{
 				ASSERT_TRUE(Device->SetStreamingBudgetReservation(Budget.mValue.mCurrentReservationBytes, true));
 			}
@@ -3295,13 +3295,13 @@ namespace
 
 		auto Device = GetDevice();
 		ASSERT_TRUE(Device);
-		const auto& Residency = Device->GetCapabilities().mResidency;
-		ASSERT_TRUE(Residency.mbStreamingBudget);
+		const auto Features = Device->GetFeatures();
+		ASSERT_TRUE(Features->Supports("memory.streaming-budget"));
 		const auto Budget = Device->QueryStreamingBudget(true);
 		ASSERT_TRUE(Budget) << Budget.mStatus.mMessage.c_str();
 		EXPECT_GT(Budget.mValue.mBudgetBytes, 0u);
 		EXPECT_TRUE(Budget.mValue.mbLocalMemory);
-		if (Residency.mbBudgetReservation)
+		if (Features->Supports("memory.budget-reservation"))
 		{
 			ASSERT_TRUE(Device->SetStreamingBudgetReservation(Budget.mValue.mCurrentReservationBytes, true));
 		}
@@ -3324,7 +3324,7 @@ namespace
 
 		auto Device = GetDevice();
 		ASSERT_TRUE(Device);
-		ASSERT_TRUE(Device->GetCapabilities().mbQueries);
+		ASSERT_TRUE(Device->GetFeatures()->Supports("query.gpu"));
 		auto Event = Device->CreateEventQuery();
 		auto Timer = Device->CreateTimerQuery();
 		auto Fence = Device->CreateGpuFence();
@@ -3399,7 +3399,7 @@ namespace
 		ASSERT_TRUE(Device);
 		auto Timer = Device->CreateTimerQuery();
 		ASSERT_TRUE(Timer) << Timer.mStatus.mMessage.c_str();
-		const auto& Caps = Device->GetCapabilities().mQueues;
+		const auto Features = Device->GetFeatures();
 		FArdaRHIBufferDesc Desc;
 		Desc.mUsage = EArdaRHIBufferUsage::None;
 		Desc.mByteSize = 2 * 1024 * 1024;
@@ -3414,7 +3414,7 @@ namespace
 		         EArdaRHIQueueType::Copy,
 		         EArdaRHIQueueType::Graphics})
 		{
-			if (!Caps.IsSupported(Queue))
+			if (!Device->IsQueueSupported(Queue))
 			{
 				continue;
 			}
@@ -3423,14 +3423,14 @@ namespace
 			ASSERT_TRUE(Commands) << Commands.mStatus.mMessage.c_str();
 			EXPECT_EQ(Commands.mValue->BeginTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::InvalidState);
 			ASSERT_TRUE(Commands.mValue->Open());
-			if (!Caps.SupportsTimestamps(Queue))
+			if (Device->GetTimestampValidBits(Queue) == 0)
 			{
 				EXPECT_EQ(Commands.mValue->BeginTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::Unsupported);
 				ASSERT_TRUE(Commands.mValue->Close());
 				continue;
 			}
-			EXPECT_GT(Caps.GetTimestampValidBits(Queue), 0u);
-			EXPECT_LE(Caps.GetTimestampValidBits(Queue), 64u);
+			EXPECT_GT(Device->GetTimestampValidBits(Queue), 0u);
+			EXPECT_LE(Device->GetTimestampValidBits(Queue), 64u);
 			for (unsigned Generation = 0; Generation < 2; ++Generation)
 			{
 				if (Generation)
@@ -3472,7 +3472,7 @@ namespace
 				EXPECT_FALSE(Device->PollTimerQuery(Timer.mValue).mValue);
 			}
 		}
-		if (Caps.SupportsTimestamps(EArdaRHIQueueType::Graphics))
+		if (Features->Supports("queue.graphics.timestamp-bits"))
 		{
 			auto Old = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
 			ASSERT_TRUE(Old);
@@ -3523,7 +3523,7 @@ namespace
 
 		auto Device = GetDevice();
 		ASSERT_TRUE(Device);
-		ASSERT_TRUE(Device->GetCapabilities().mbShaderLibraries);
+		ASSERT_TRUE(Device->GetFeatures()->Supports("shader.library"));
 		const eastl::string FileName = eastl::string("ArdaShaderStructTest") + GetShaderArtifactExtension(BackendName);
 		const std::vector<uint8_t> Bytecode = LoadExtendedShaderArtifact(FileName.c_str());
 		ASSERT_FALSE(Bytecode.empty());
@@ -3771,6 +3771,42 @@ namespace
 #endif
 #endif
 
+	struct FArdaResourceLimitFact
+	{
+		const char* mName;
+		uint64_t mValue;
+	};
+
+	auto GetResourceLimitFacts(const arda::FArdaRHIDeviceLimits& Limits)
+	{
+		return std::array<FArdaResourceLimitFact, 24>{{
+		    {"buffer.max-bytes", Limits.mMaxBufferSize},
+		    {"buffer.max-uniform-range", Limits.mMaxUniformBufferRange},
+		    {"buffer.max-storage-range", Limits.mMaxStorageBufferRange},
+		    {"buffer.uniform-offset-alignment", Limits.mMinUniformBufferOffsetAlignment},
+		    {"buffer.storage-offset-alignment", Limits.mMinStorageBufferOffsetAlignment},
+		    {"compute.max-workgroup-invocations", Limits.mMaxComputeWorkGroupInvocations},
+		    {"rendering.max-color-attachments", Limits.mMaxColorAttachments},
+		    {"rendering.max-viewports", Limits.mMaxViewports},
+		    {"rendering.max-viewport-width", Limits.mMaxViewportDimensions[0]},
+		    {"rendering.max-viewport-height", Limits.mMaxViewportDimensions[1]},
+		    {"vertex.max-attributes", Limits.mMaxVertexAttributes},
+		    {"vertex.max-bindings", Limits.mMaxVertexBindings},
+		    {"vertex.max-stride", Limits.mMaxVertexStride},
+		    {"compute.max-workgroup-size-x", Limits.mMaxComputeWorkGroupSize[0]},
+		    {"compute.max-workgroup-size-y", Limits.mMaxComputeWorkGroupSize[1]},
+		    {"compute.max-workgroup-size-z", Limits.mMaxComputeWorkGroupSize[2]},
+		    {"compute.max-workgroup-count-x", Limits.mMaxComputeWorkGroupCount[0]},
+		    {"compute.max-workgroup-count-y", Limits.mMaxComputeWorkGroupCount[1]},
+		    {"compute.max-workgroup-count-z", Limits.mMaxComputeWorkGroupCount[2]},
+		    {"texture.max-1d-dimension", Limits.mMaxTexture1D},
+		    {"texture.max-2d-dimension", Limits.mMaxTexture2D},
+		    {"texture.max-3d-dimension", Limits.mMaxTexture3D},
+		    {"texture.max-cube-dimension", Limits.mMaxTextureCube},
+		    {"texture.max-array-layers", Limits.mMaxTextureArrayLayers},
+		}};
+	}
+
 	void VerifyResourceAdmissionFacts(const char* BackendName)
 	{
 		using namespace arda;
@@ -3786,9 +3822,15 @@ namespace
 		ARDA_REQUIRE_BACKEND();
 		const auto Device = GetDevice();
 		ASSERT_TRUE(Device);
-		const auto& Caps = Device->GetCapabilities();
-		const auto& Limits = Caps.mLimits;
-		ASSERT_TRUE(Caps.mbFormatSupportReported);
+		const auto Features = Device->GetFeatures();
+		const auto& Limits = Device->GetLimits();
+		ASSERT_TRUE(Features->Supports("format.support-reported"));
+		for (const auto& Fact : GetResourceLimitFacts(Limits))
+		{
+			const auto* Value = Features->Find(Fact.mName);
+			ASSERT_NE(Value, nullptr) << Fact.mName;
+			EXPECT_EQ(*Value, Fact.mValue) << Fact.mName;
+		}
 		EXPECT_GT(Limits.mMaxTexture1D, 0u);
 		EXPECT_GT(Limits.mMaxTexture2D, 0u);
 		EXPECT_GT(Limits.mMaxTexture3D, 0u);
@@ -3892,14 +3934,14 @@ namespace
 		ShaderLibrary
 	};
 
-	using FArdaCapabilityPredicate = bool (*)(const arda::FArdaRHICapabilities&);
+	using FArdaCapabilityPredicate = bool (*)(const arda::IArdaRHIDevice&);
 
 	struct FArdaCapabilityDefinition
 	{
 		const char* mName = nullptr;
-		FArdaCapabilityPredicate mIsAdvertised = nullptr;
+		const char* mFeatureName = nullptr;
 		EArdaCapabilityProbe mProbe = EArdaCapabilityProbe::Contract;
-		const char* mExpression = nullptr;
+		FArdaCapabilityPredicate mIsAdvertised = nullptr;
 	};
 
 	struct FArdaCapabilityConformanceCase
@@ -3909,84 +3951,84 @@ namespace
 		FArdaCapabilityDefinition mCapability;
 	};
 
-	void VerifyCapabilityInvariants(const arda::FArdaRHICapabilities& Caps)
+	void VerifyCapabilityInvariants(const arda::FArdaBackendFeatureList& Features)
 	{
 		using namespace arda;
-		const auto& Ray = Caps.mRayTracing;
-		if (Ray.mbHardwareAccelerated)
+		if (Features.Supports("ray-tracing.hardware"))
 		{
-			EXPECT_TRUE(Ray.mbInfrastructure);
+			EXPECT_TRUE(Features.Supports("ray-tracing.infrastructure"));
 		}
-		if (Ray.mbPipelineShaders)
+		if (Features.Supports("ray-tracing.pipeline"))
 		{
-			EXPECT_TRUE(Ray.mbInfrastructure);
-			EXPECT_TRUE(Ray.mbHardwareAccelerated);
+			EXPECT_TRUE(Features.Supports("ray-tracing.infrastructure"));
+			EXPECT_TRUE(Features.Supports("ray-tracing.hardware"));
 		}
-		if (Ray.mbInlineRayQueries)
+		if (Features.Supports("ray-tracing.inline-query"))
 		{
-			EXPECT_TRUE(Ray.mbHardwareAccelerated);
-			EXPECT_TRUE(Ray.mbAccelerationStructures);
+			EXPECT_TRUE(Features.Supports("ray-tracing.hardware"));
+			EXPECT_TRUE(Features.Supports("ray-tracing.acceleration-structure"));
 		}
-		if (Ray.mbBottomLevel || Ray.mbTopLevel || Ray.mbBuildUpdate || Ray.mbCompaction)
+		if (Features.Supports("ray-tracing.bottom-level-acceleration-structure") || Features.Supports("ray-tracing.top-level-acceleration-structure") || Features.Supports("ray-tracing.acceleration-structure-update") || Features.Supports("ray-tracing.acceleration-structure-compaction"))
 		{
-			EXPECT_TRUE(Ray.mbAccelerationStructures);
+			EXPECT_TRUE(Features.Supports("ray-tracing.acceleration-structure"));
 		}
-		if (Ray.mbIndirectDispatch || Ray.mbLocalShaderTableArguments || Ray.mbPersistentShaderTables)
+		if (Features.Supports("ray-tracing.indirect-dispatch") || Features.Supports("ray-tracing.local-shader-table-arguments") || Features.Supports("ray-tracing.persistent-shader-tables"))
 		{
-			EXPECT_TRUE(Ray.mbPipelineShaders);
+			EXPECT_TRUE(Features.Supports("ray-tracing.pipeline"));
 		}
-		if (Ray.mbIndirectTopLevelBuild)
+		if (Features.Supports("ray-tracing.indirect-top-level-build"))
 		{
-			EXPECT_TRUE(Ray.mbTopLevel);
+			EXPECT_TRUE(Features.Supports("ray-tracing.top-level-acceleration-structure"));
 		}
-		if (Ray.mbOpacityMicromaps)
+		if (Features.Supports("ray-tracing.opacity-micromap"))
 		{
-			EXPECT_TRUE(Ray.mbAccelerationStructures);
-		}
-
-		const auto& Descriptors = Caps.mDescriptors;
-		if (Descriptors.mbRuntimeDescriptorArrays || Descriptors.mbUnboundedArrays || Descriptors.mbPartiallyBound ||
-		    Descriptors.mbUpdateAfterBind || Descriptors.mbUpdateUnusedWhilePending ||
-		    Descriptors.mbVariableDescriptorCount || Descriptors.mbDirectResourceHeapIndexing ||
-		    Descriptors.mbDirectSamplerHeapIndexing || Descriptors.mbDescriptorBuffer || Descriptors.mbDescriptorHeap)
-		{
-			EXPECT_TRUE(Descriptors.mbBindless);
-		}
-		if (Descriptors.mbDirectSamplerHeapIndexing)
-		{
-			EXPECT_TRUE(Descriptors.mbDirectResourceHeapIndexing);
+			EXPECT_TRUE(Features.Supports("ray-tracing.acceleration-structure"));
 		}
 
-		const auto& Queues = Caps.mQueues;
-		if (Queues.mbDedicatedComputeFamily)
+		if (Features.Supports("descriptor.runtime-arrays") || Features.Supports("descriptor.unbounded-arrays") || Features.Supports("descriptor.partially-bound") ||
+		    Features.Supports("descriptor.update-after-bind") || Features.Supports("descriptor.update-unused-while-pending") ||
+		    Features.Supports("descriptor.variable-count") || Features.Supports("descriptor.direct-resource-heap-indexing") ||
+		    Features.Supports("descriptor.direct-sampler-heap-indexing") || Features.Supports("descriptor.buffer") || Features.Supports("descriptor.heap"))
 		{
-			EXPECT_TRUE(Queues.mbCompute);
+			EXPECT_TRUE(Features.Supports("descriptor.bindless"));
 		}
-		if (Queues.mbDedicatedCopyFamily)
+		if (Features.Supports("descriptor.direct-sampler-heap-indexing"))
 		{
-			EXPECT_TRUE(Queues.mbCopy);
-		}
-		if (Queues.mbSparseBindingQueue)
-		{
-			EXPECT_TRUE(Queues.mbGraphics || Queues.mbCompute || Queues.mbCopy);
+			EXPECT_TRUE(Features.Supports("descriptor.direct-resource-heap-indexing"));
 		}
 
-		const auto& Residency = Caps.mResidency;
-		if (Residency.mbReservedBuffers || Residency.mbReservedTexture2D || Residency.mbReservedTexture3D ||
-		    Residency.mbAliasedMappings)
+		if (Features.Supports("queue.dedicated-compute"))
 		{
-			EXPECT_TRUE(Residency.mbSparseBinding);
+			EXPECT_TRUE(Features.Supports("queue.compute"));
 		}
-		if (Residency.mbBudgetReservation)
+		if (Features.Supports("queue.dedicated-copy"))
 		{
-			EXPECT_TRUE(Residency.mbStreamingBudget);
+			EXPECT_TRUE(Features.Supports("queue.copy"));
+		}
+		if (Features.Supports("queue.sparse-binding"))
+		{
+			EXPECT_TRUE(Features.Supports("queue.graphics") || Features.Supports("queue.compute") || Features.Supports("queue.copy"));
 		}
 
-		const auto& MachineLearning = Caps.mMachineLearning;
-		if (MachineLearning.mbSubgroupOperations)
+		if (Features.Supports("resource.reserved-buffer") || Features.Supports("resource.reserved-texture-2d") || Features.Supports("resource.reserved-texture-3d") ||
+		    Features.Supports("resource.aliased-sparse-mapping"))
 		{
-			EXPECT_GT(MachineLearning.mSubgroupMinSize, 0u);
-			EXPECT_GE(MachineLearning.mSubgroupMaxSize, MachineLearning.mSubgroupMinSize);
+			EXPECT_TRUE(Features.Supports("resource.sparse-binding"));
+		}
+		if (Features.Supports("memory.budget-reservation"))
+		{
+			EXPECT_TRUE(Features.Supports("memory.streaming-budget"));
+		}
+
+		if (Features.Supports("shader.wave-operations"))
+		{
+			EXPECT_GT(Features.GetValueOr("shader.subgroup-min-size", 0), 0u);
+			EXPECT_GE(Features.GetValueOr("shader.subgroup-max-size", 0), Features.GetValueOr("shader.subgroup-min-size", 0));
+		}
+		if (Features.Supports("shader.task"))
+		{
+			EXPECT_TRUE(Features.Supports("shader.mesh"));
+			EXPECT_GE(Features.GetValueOr("shader.mesh-tier", 0), 2u);
 		}
 	}
 
@@ -4145,142 +4187,133 @@ namespace
 		FAIL() << "Unknown RHI capability conformance probe.";
 	}
 
-#define ARDA_CAPABILITY(Name, Expression, Probe)                                                                       \
-	{Name,                                                                                                             \
-	    +[](const arda::FArdaRHICapabilities& C)                                                                       \
-	    {                                                                                                              \
-		    return static_cast<bool>(Expression);                                                                      \
-	    },                                                                                                             \
-	    EArdaCapabilityProbe::Probe,                                                                                   \
-	    #Expression}
+	bool HasReportedResourceLimits(const arda::IArdaRHIDevice& Device)
+	{
+		const auto& Limits = Device.GetLimits();
+		return Limits.mMaxTexture1D || Limits.mMaxTexture2D || Limits.mMaxTexture3D ||
+		    Limits.mMaxTextureCube || Limits.mMaxTextureArrayLayers || Limits.mMaxColorAttachments ||
+		    Limits.mMaxViewports || Limits.mMaxVertexAttributes || Limits.mMaxVertexBindings ||
+		    Limits.mMaxVertexStride || Limits.mMaxComputeWorkGroupInvocations ||
+		    Limits.mMaxBufferSize || Limits.mMaxUniformBufferRange || Limits.mMaxStorageBufferRange ||
+		    Limits.mMinUniformBufferOffsetAlignment || Limits.mMinStorageBufferOffsetAlignment;
+	}
 
 	const std::vector<FArdaCapabilityConformanceCase>& GetCapabilityConformanceCases()
 	{
 		static const FArdaCapabilityDefinition Definitions[] = {
-		    ARDA_CAPABILITY("RayTracingInfrastructure", C.mRayTracing.mbInfrastructure, RayTracingPipeline),
-		    ARDA_CAPABILITY("HardwareRayTracing", C.mRayTracing.mbHardwareAccelerated, AccelerationStructure),
-		    ARDA_CAPABILITY("RayTracingPipelineShaders", C.mRayTracing.mbPipelineShaders, RayTracingPipeline),
-		    ARDA_CAPABILITY("InlineRayQueries", C.mRayTracing.mbInlineRayQueries, InlineRayQuery),
-		    ARDA_CAPABILITY("AccelerationStructures", C.mRayTracing.mbAccelerationStructures, AccelerationStructure),
-		    ARDA_CAPABILITY("BottomLevelAccelerationStructures", C.mRayTracing.mbBottomLevel, AccelerationStructure),
-		    ARDA_CAPABILITY("TopLevelAccelerationStructures", C.mRayTracing.mbTopLevel, AccelerationStructure),
-		    ARDA_CAPABILITY("AccelerationStructureBuildUpdate", C.mRayTracing.mbBuildUpdate, AccelerationStructure),
-		    ARDA_CAPABILITY("AccelerationStructureCompaction", C.mRayTracing.mbCompaction, AccelerationStructure),
-		    ARDA_CAPABILITY("IndirectRayDispatch", C.mRayTracing.mbIndirectDispatch, RayTracingScene),
-		    ARDA_CAPABILITY("IndirectTopLevelBuild", C.mRayTracing.mbIndirectTopLevelBuild, AccelerationStructure),
-		    ARDA_CAPABILITY("LocalShaderTableArguments", C.mRayTracing.mbLocalShaderTableArguments, RayTracingScene),
-		    ARDA_CAPABILITY("PersistentShaderTables", C.mRayTracing.mbPersistentShaderTables, RayTracingScene),
-		    ARDA_CAPABILITY("OpacityMicromaps", C.mRayTracing.mbOpacityMicromaps, OpacityMicromap),
-		    ARDA_CAPABILITY("RayTracingTier",
-		        C.mRayTracing.GetTier() != arda::EArdaRHIRayTracingTier::None,
-		        AccelerationStructure),
-		    ARDA_CAPABILITY("RayShaderIdentifierSize", C.mRayTracing.mShaderIdentifierSize > 0, RayTracingPipeline),
-		    ARDA_CAPABILITY("RayShaderRecordAlignment", C.mRayTracing.mShaderRecordAlignment > 0, RayTracingPipeline),
-		    ARDA_CAPABILITY("RayShaderTableAlignment", C.mRayTracing.mShaderTableAlignment > 0, RayTracingPipeline),
-		    ARDA_CAPABILITY("AccelerationStructureAlignment",
-		        C.mRayTracing.mAccelerationStructureAlignment > 0,
-		        AccelerationStructure),
-		    ARDA_CAPABILITY("MaximumRayRecursionDepth", C.mRayTracing.mMaxRecursionDepth > 0, RayTracingPipeline),
-		    ARDA_CAPABILITY("MaximumRayPayloadSize", C.mRayTracing.mMaxRayPayloadSize > 0, RayTracingPipeline),
-		    ARDA_CAPABILITY("MaximumRayDispatchInvocations",
-		        C.mRayTracing.mMaxRayDispatchInvocations > 0,
-		        RayTracingPipeline),
+		    {"RayTracingInfrastructure", "ray-tracing.infrastructure", EArdaCapabilityProbe::RayTracingPipeline},
+		    {"HardwareRayTracing", "ray-tracing.hardware", EArdaCapabilityProbe::AccelerationStructure},
+		    {"RayTracingPipelineShaders", "ray-tracing.pipeline", EArdaCapabilityProbe::RayTracingPipeline},
+		    {"InlineRayQueries", "ray-tracing.inline-query", EArdaCapabilityProbe::InlineRayQuery},
+		    {"AccelerationStructures", "ray-tracing.acceleration-structure", EArdaCapabilityProbe::AccelerationStructure},
+		    {"BottomLevelAccelerationStructures", "ray-tracing.bottom-level-acceleration-structure", EArdaCapabilityProbe::AccelerationStructure},
+		    {"TopLevelAccelerationStructures", "ray-tracing.top-level-acceleration-structure", EArdaCapabilityProbe::AccelerationStructure},
+		    {"AccelerationStructureBuildUpdate", "ray-tracing.acceleration-structure-update", EArdaCapabilityProbe::AccelerationStructure},
+		    {"AccelerationStructureCompaction", "ray-tracing.acceleration-structure-compaction", EArdaCapabilityProbe::AccelerationStructure},
+		    {"IndirectRayDispatch", "ray-tracing.indirect-dispatch", EArdaCapabilityProbe::RayTracingScene},
+		    {"IndirectTopLevelBuild", "ray-tracing.indirect-top-level-build", EArdaCapabilityProbe::AccelerationStructure},
+		    {"LocalShaderTableArguments", "ray-tracing.local-shader-table-arguments", EArdaCapabilityProbe::RayTracingScene},
+		    {"PersistentShaderTables", "ray-tracing.persistent-shader-tables", EArdaCapabilityProbe::RayTracingScene},
+		    {"OpacityMicromaps", "ray-tracing.opacity-micromap", EArdaCapabilityProbe::OpacityMicromap},
+		    {"RayTracingTier", "ray-tracing.tier", EArdaCapabilityProbe::AccelerationStructure},
+		    {"RayShaderIdentifierSize", "ray-tracing.shader-identifier-bytes", EArdaCapabilityProbe::RayTracingPipeline},
+		    {"RayShaderRecordAlignment", "ray-tracing.shader-record-alignment", EArdaCapabilityProbe::RayTracingPipeline},
+		    {"RayShaderTableAlignment", "ray-tracing.shader-table-alignment", EArdaCapabilityProbe::RayTracingPipeline},
+		    {"AccelerationStructureAlignment", "ray-tracing.acceleration-structure-alignment", EArdaCapabilityProbe::AccelerationStructure},
+		    {"MaximumRayRecursionDepth", "ray-tracing.recursion-depth", EArdaCapabilityProbe::RayTracingPipeline},
+		    {"MaximumRayPayloadSize", "ray-tracing.max-payload-bytes", EArdaCapabilityProbe::RayTracingPipeline},
+		    {"MaximumRayDispatchInvocations", "ray-tracing.max-dispatch-invocations", EArdaCapabilityProbe::RayTracingPipeline},
 
-		    ARDA_CAPABILITY("BindlessDescriptors", C.mDescriptors.mbBindless, Bindless),
-		    ARDA_CAPABILITY("RuntimeDescriptorArrays", C.mDescriptors.mbRuntimeDescriptorArrays, RuntimeDescriptors),
-		    ARDA_CAPABILITY("UnboundedDescriptorArrays", C.mDescriptors.mbUnboundedArrays, RuntimeDescriptors),
-		    ARDA_CAPABILITY("PartiallyBoundDescriptors", C.mDescriptors.mbPartiallyBound, RuntimeDescriptors),
-		    ARDA_CAPABILITY("DescriptorUpdateAfterBind", C.mDescriptors.mbUpdateAfterBind, RuntimeDescriptors),
-		    ARDA_CAPABILITY("UpdateUnusedDescriptorsWhilePending",
-		        C.mDescriptors.mbUpdateUnusedWhilePending,
-		        RuntimeDescriptors),
-		    ARDA_CAPABILITY("VariableDescriptorCount", C.mDescriptors.mbVariableDescriptorCount, ExpandedDescriptors),
-		    ARDA_CAPABILITY("DirectResourceHeapIndexing",
-		        C.mDescriptors.mbDirectResourceHeapIndexing,
-		        DirectResourceHeap),
-		    ARDA_CAPABILITY("DirectSamplerHeapIndexing",
-		        C.mDescriptors.mbDirectSamplerHeapIndexing,
-		        DirectResourceAndSamplerHeaps),
-		    ARDA_CAPABILITY("DescriptorBuffer", C.mDescriptors.mbDescriptorBuffer, DescriptorBuffer),
-		    ARDA_CAPABILITY("DescriptorHeap", C.mDescriptors.mbDescriptorHeap, Bindless),
-		    ARDA_CAPABILITY("MaximumResourceDescriptors", C.mDescriptors.mMaxResourceDescriptors > 0, Bindless),
-		    ARDA_CAPABILITY("MaximumSamplerDescriptors", C.mDescriptors.mMaxSamplerDescriptors > 0, Bindless),
+		    {"BindlessDescriptors", "descriptor.bindless", EArdaCapabilityProbe::Bindless},
+		    {"RuntimeDescriptorArrays", "descriptor.runtime-arrays", EArdaCapabilityProbe::RuntimeDescriptors},
+		    {"UnboundedDescriptorArrays", "descriptor.unbounded-arrays", EArdaCapabilityProbe::RuntimeDescriptors},
+		    {"PartiallyBoundDescriptors", "descriptor.partially-bound", EArdaCapabilityProbe::RuntimeDescriptors},
+		    {"DescriptorUpdateAfterBind", "descriptor.update-after-bind", EArdaCapabilityProbe::RuntimeDescriptors},
+		    {"UpdateUnusedDescriptorsWhilePending", "descriptor.update-unused-while-pending", EArdaCapabilityProbe::RuntimeDescriptors},
+		    {"VariableDescriptorCount", "descriptor.variable-count", EArdaCapabilityProbe::ExpandedDescriptors},
+		    {"DirectResourceHeapIndexing", "descriptor.direct-resource-heap-indexing", EArdaCapabilityProbe::DirectResourceHeap},
+		    {"DirectSamplerHeapIndexing", "descriptor.direct-sampler-heap-indexing", EArdaCapabilityProbe::DirectResourceAndSamplerHeaps},
+		    {"DescriptorBuffer", "descriptor.buffer", EArdaCapabilityProbe::DescriptorBuffer},
+		    {"DescriptorHeap", "descriptor.heap", EArdaCapabilityProbe::Bindless},
+		    {"MaximumResourceDescriptors", "descriptor.resource-capacity", EArdaCapabilityProbe::Bindless},
+		    {"MaximumSamplerDescriptors", "descriptor.sampler-capacity", EArdaCapabilityProbe::Bindless},
 
-		    ARDA_CAPABILITY("GraphicsQueue", C.mQueues.mbGraphics, QueueBreadth),
-		    ARDA_CAPABILITY("ComputeQueue", C.mQueues.mbCompute, QueueBreadth),
-		    ARDA_CAPABILITY("CopyQueue", C.mQueues.mbCopy, QueueBreadth),
-		    ARDA_CAPABILITY("DedicatedComputeQueueFamily", C.mQueues.mbDedicatedComputeFamily, QueueBreadth),
-		    ARDA_CAPABILITY("DedicatedCopyQueueFamily", C.mQueues.mbDedicatedCopyFamily, QueueBreadth),
-		    ARDA_CAPABILITY("GpuQueueWaits", C.mQueues.mbGpuWaits, QueueBreadth),
-		    ARDA_CAPABILITY("TimelineSynchronization", C.mQueues.mbTimelineSynchronization, QueueBreadth),
-		    ARDA_CAPABILITY("QueueFamilyOwnershipTransfer", C.mQueues.mbQueueFamilyOwnershipTransfer, QueueBreadth),
-		    ARDA_CAPABILITY("SparseBindingQueue", C.mQueues.mbSparseBindingQueue, SparseResidency),
-		    ARDA_CAPABILITY("GraphicsQueueFamilyIndex",
-		        C.mQueues.mGraphicsFamily != arda::ArdaRHIInvalidQueueFamily,
-		        QueueBreadth),
-		    ARDA_CAPABILITY("ComputeQueueFamilyIndex",
-		        C.mQueues.mComputeFamily != arda::ArdaRHIInvalidQueueFamily,
-		        QueueBreadth),
-		    ARDA_CAPABILITY("CopyQueueFamilyIndex",
-		        C.mQueues.mCopyFamily != arda::ArdaRHIInvalidQueueFamily,
-		        QueueBreadth),
+		    {"GraphicsQueue", "queue.graphics", EArdaCapabilityProbe::QueueBreadth},
+		    {"ComputeQueue", "queue.compute", EArdaCapabilityProbe::QueueBreadth},
+		    {"CopyQueue", "queue.copy", EArdaCapabilityProbe::QueueBreadth},
+		    {"DedicatedComputeQueueFamily", "queue.dedicated-compute", EArdaCapabilityProbe::QueueBreadth},
+		    {"DedicatedCopyQueueFamily", "queue.dedicated-copy", EArdaCapabilityProbe::QueueBreadth},
+		    {"GpuQueueWaits", "queue.gpu-waits", EArdaCapabilityProbe::QueueBreadth},
+		    {"TimelineSynchronization", "synchronization.timeline-semaphore", EArdaCapabilityProbe::QueueBreadth},
+		    {"QueueFamilyOwnershipTransfer", "queue.family-ownership-transfer", EArdaCapabilityProbe::QueueBreadth},
+		    {"SparseBindingQueue", "queue.sparse-binding", EArdaCapabilityProbe::SparseResidency},
+		    {"GraphicsQueueFamilyIndex", nullptr, EArdaCapabilityProbe::QueueBreadth,
+		        +[](const arda::IArdaRHIDevice& Device)
+		        {
+			        return Device.GetQueueFamily(arda::EArdaRHIQueueType::Graphics) != arda::ArdaRHIInvalidQueueFamily;
+		        }},
+		    {"ComputeQueueFamilyIndex", nullptr, EArdaCapabilityProbe::QueueBreadth,
+		        +[](const arda::IArdaRHIDevice& Device)
+		        {
+			        return Device.GetQueueFamily(arda::EArdaRHIQueueType::Compute) != arda::ArdaRHIInvalidQueueFamily;
+		        }},
+		    {"CopyQueueFamilyIndex", nullptr, EArdaCapabilityProbe::QueueBreadth,
+		        +[](const arda::IArdaRHIDevice& Device)
+		        {
+			        return Device.GetQueueFamily(arda::EArdaRHIQueueType::Copy) != arda::ArdaRHIInvalidQueueFamily;
+		        }},
 
-		    ARDA_CAPABILITY("SparseBinding", C.mResidency.mbSparseBinding, SparseResidency),
-		    ARDA_CAPABILITY("ReservedBuffers", C.mResidency.mbReservedBuffers, SparseResidency),
-		    ARDA_CAPABILITY("ReservedTexture2D", C.mResidency.mbReservedTexture2D, SparseResidency),
-		    ARDA_CAPABILITY("ReservedTexture3D", C.mResidency.mbReservedTexture3D, SparseResidency),
-		    ARDA_CAPABILITY("AliasedSparseMappings", C.mResidency.mbAliasedMappings, SparseResidency),
-		    ARDA_CAPABILITY("StreamingBudget", C.mResidency.mbStreamingBudget, StreamingBudget),
-		    ARDA_CAPABILITY("StreamingBudgetReservation", C.mResidency.mbBudgetReservation, StreamingBudget),
-		    ARDA_CAPABILITY("SparseTileSize", C.mResidency.mTileSizeInBytes > 0, SparseResidency),
+		    {"SparseBinding", "resource.sparse-binding", EArdaCapabilityProbe::SparseResidency},
+		    {"ReservedBuffers", "resource.reserved-buffer", EArdaCapabilityProbe::SparseResidency},
+		    {"ReservedTexture2D", "resource.reserved-texture-2d", EArdaCapabilityProbe::SparseResidency},
+		    {"ReservedTexture3D", "resource.reserved-texture-3d", EArdaCapabilityProbe::SparseResidency},
+		    {"AliasedSparseMappings", "resource.aliased-sparse-mapping", EArdaCapabilityProbe::SparseResidency},
+		    {"StreamingBudget", "memory.streaming-budget", EArdaCapabilityProbe::StreamingBudget},
+		    {"StreamingBudgetReservation", "memory.budget-reservation", EArdaCapabilityProbe::StreamingBudget},
+		    {"SparseTileSize", "resource.sparse-tile-bytes", EArdaCapabilityProbe::SparseResidency},
 
-		    ARDA_CAPABILITY("SubgroupOperations", C.mMachineLearning.mbSubgroupOperations, Subgroup),
-		    ARDA_CAPABILITY("NativeFloat16", C.mMachineLearning.mbNativeFloat16, Float16),
-		    ARDA_CAPABILITY("NativeInt8", C.mMachineLearning.mbNativeInt8, Int8),
-		    ARDA_CAPABILITY("BufferDeviceAddress", C.mMachineLearning.mbBufferDeviceAddress, InstanceBuffer),
-		    ARDA_CAPABILITY("MinimumSubgroupSize", C.mMachineLearning.mSubgroupMinSize > 0, Subgroup),
-		    ARDA_CAPABILITY("MaximumSubgroupSize", C.mMachineLearning.mSubgroupMaxSize > 0, Subgroup),
+		    {"SubgroupOperations", "shader.wave-operations", EArdaCapabilityProbe::Subgroup},
+		    {"NativeFloat16", "shader.float16", EArdaCapabilityProbe::Float16},
+		    {"NativeInt8", "shader.integer-dot-product", EArdaCapabilityProbe::Int8},
+		    {"BufferDeviceAddress", "resource.buffer-device-address", EArdaCapabilityProbe::InstanceBuffer},
+		    {"MinimumSubgroupSize", "shader.subgroup-min-size", EArdaCapabilityProbe::Subgroup},
+		    {"MaximumSubgroupSize", "shader.subgroup-max-size", EArdaCapabilityProbe::Subgroup},
 
-		    ARDA_CAPABILITY("MeshShaders", C.mMeshShaderTier != arda::EArdaRHIMeshShaderTier::None, MeshShader),
-		    ARDA_CAPABILITY("WorkGraphs", C.mWorkGraphTier != arda::EArdaRHIWorkGraphTier::None, WorkGraph),
-		    ARDA_CAPABILITY("SamplerFeedback",
-		        C.mSamplerFeedbackTier != arda::EArdaRHISamplerFeedbackTier::None,
-		        SamplerFeedback),
-		    ARDA_CAPABILITY("ShaderBundleDispatch", C.mbShaderBundleDispatch, ShaderBundle),
-		    ARDA_CAPABILITY("CustomPresent", C.mbCustomPresent, CustomPresent),
-		    ARDA_CAPABILITY("ResourceCollections", C.mbResourceCollections, ExpandedDescriptors),
-		    ARDA_CAPABILITY("ConservativeRasterization", C.mbConservativeRasterization, Contract),
-		    ARDA_CAPABILITY("VariableRateShading", C.mbVariableRateShading, Contract),
-		    ARDA_CAPABILITY("VirtualResources", C.mbVirtualResources, HeapAliasing),
-		    ARDA_CAPABILITY("ExplicitHeaps", C.mbHeaps, HeapAliasing),
-		    ARDA_CAPABILITY("HeapCapacityAlignment", C.mHeapAllocationAlignment > 0, HeapAliasing),
-		    ARDA_CAPABILITY("StagingTextures", C.mbStagingTextures, ExtendedCommands),
-		    ARDA_CAPABILITY("GeometryShaders", C.mbGeometryShaders, GeometryShader),
-		    ARDA_CAPABILITY("TessellationShaders", C.mbTessellationShaders, TessellationShaders),
-		    ARDA_CAPABILITY("VertexShaderStoresAndAtomics", C.mbVertexShaderStoresAndAtomics, VertexStorage),
-		    ARDA_CAPABILITY("FragmentShaderStoresAndAtomics", C.mbFragmentShaderStoresAndAtomics, FragmentStorage),
-		    ARDA_CAPABILITY("TextureCopies", C.mbTextureCopies, ExtendedCommands),
-		    ARDA_CAPABILITY("TextureResolve", C.mbTextureResolve, Resolve),
-		    ARDA_CAPABILITY("ExplicitTransitions", C.mbExplicitTransitions, ExtendedCommands),
-		    ARDA_CAPABILITY("SplitTransitions", C.mbSplitTransitions, ExtendedCommands),
-		    ARDA_CAPABILITY("IndirectCommands", C.mbIndirectCommands, ExtendedCommands),
-		    ARDA_CAPABILITY("IndirectFirstInstance", C.mbIndirectFirstInstance, IndirectFirstInstance),
-		    ARDA_CAPABILITY("FormatSupport", C.mbFormatSupportReported, ResourceAdmission),
-		    ARDA_CAPABILITY("ResourceLimits",
-		        C.mLimits.mMaxTexture1D || C.mLimits.mMaxTexture2D || C.mLimits.mMaxTexture3D ||
-		            C.mLimits.mMaxTextureCube || C.mLimits.mMaxTextureArrayLayers || C.mLimits.mMaxColorAttachments ||
-		            C.mLimits.mMaxViewports || C.mLimits.mMaxVertexAttributes || C.mLimits.mMaxVertexBindings ||
-		            C.mLimits.mMaxVertexStride || C.mLimits.mMaxComputeWorkGroupInvocations ||
-		            C.mLimits.mMaxBufferSize || C.mLimits.mMaxUniformBufferRange || C.mLimits.mMaxStorageBufferRange ||
-		            C.mLimits.mMinUniformBufferOffsetAlignment || C.mLimits.mMinStorageBufferOffsetAlignment,
-		        ResourceAdmission),
-		    ARDA_CAPABILITY("AliasingBarriers", C.mbAliasingBarriers, HeapAliasing),
-		    ARDA_CAPABILITY("Queries", C.mbQueries, Queries),
-		    ARDA_CAPABILITY("GraphicsTimestamps", C.mQueues.mGraphicsTimestampValidBits != 0, QueueTimestamps),
-		    ARDA_CAPABILITY("ComputeTimestamps", C.mQueues.mComputeTimestampValidBits != 0, QueueTimestamps),
-		    ARDA_CAPABILITY("CopyTimestamps", C.mQueues.mCopyTimestampValidBits != 0, QueueTimestamps),
-		    ARDA_CAPABILITY("ShaderLibraries", C.mbShaderLibraries, ShaderLibrary),
-		    ARDA_CAPABILITY("PipelineCachePersistence", C.mbPipelineCachePersistence, PipelineCache)};
+		    {"MeshShaders", "shader.mesh", EArdaCapabilityProbe::MeshShader},
+		    {"TaskShaders", "shader.task", EArdaCapabilityProbe::MeshShader},
+		    {"MeshShaderTier", "shader.mesh-tier", EArdaCapabilityProbe::MeshShader},
+		    {"WorkGraphs", "work-graph.dispatch", EArdaCapabilityProbe::WorkGraph},
+		    {"WorkGraphTier", "work-graph.tier", EArdaCapabilityProbe::WorkGraph},
+		    {"SamplerFeedback", "sampler.feedback", EArdaCapabilityProbe::SamplerFeedback},
+		    {"SamplerFeedbackTier", "sampler.feedback-tier", EArdaCapabilityProbe::SamplerFeedback},
+		    {"ShaderBundleDispatch", "shader.bundle-dispatch", EArdaCapabilityProbe::ShaderBundle},
+		    {"CustomPresent", "presentation.custom-present", EArdaCapabilityProbe::CustomPresent},
+		    {"ResourceCollections", "resource.collections", EArdaCapabilityProbe::ExpandedDescriptors},
+		    {"ConservativeRasterization", "rendering.conservative-rasterization", EArdaCapabilityProbe::Contract},
+		    {"VariableRateShading", "rendering.variable-rate-shading", EArdaCapabilityProbe::Contract},
+		    {"VirtualResources", "resource.virtual", EArdaCapabilityProbe::HeapAliasing},
+		    {"ExplicitHeaps", "memory.explicit-heap", EArdaCapabilityProbe::HeapAliasing},
+		    {"HeapCapacityAlignment", "memory.heap-capacity-alignment", EArdaCapabilityProbe::HeapAliasing},
+		    {"StagingTextures", "texture.staging", EArdaCapabilityProbe::ExtendedCommands},
+		    {"GeometryShaders", "shader.geometry", EArdaCapabilityProbe::GeometryShader},
+		    {"TessellationShaders", "shader.tessellation", EArdaCapabilityProbe::TessellationShaders},
+		    {"VertexShaderStoresAndAtomics", "shader.vertex-stores-and-atomics", EArdaCapabilityProbe::VertexStorage},
+		    {"FragmentShaderStoresAndAtomics", "shader.fragment-stores-and-atomics", EArdaCapabilityProbe::FragmentStorage},
+		    {"TextureCopies", "texture.copy", EArdaCapabilityProbe::ExtendedCommands},
+		    {"TextureResolve", "texture.resolve", EArdaCapabilityProbe::Resolve},
+		    {"ExplicitTransitions", "synchronization.explicit-transition", EArdaCapabilityProbe::ExtendedCommands},
+		    {"SplitTransitions", "synchronization.split-transition", EArdaCapabilityProbe::ExtendedCommands},
+		    {"IndirectCommands", "command.indirect", EArdaCapabilityProbe::ExtendedCommands},
+		    {"IndirectFirstInstance", "command.indirect-first-instance", EArdaCapabilityProbe::IndirectFirstInstance},
+		    {"FormatSupport", "format.support-reported", EArdaCapabilityProbe::ResourceAdmission},
+		    {"ResourceLimits", nullptr, EArdaCapabilityProbe::ResourceAdmission, HasReportedResourceLimits},
+		    {"AliasingBarriers", "synchronization.aliasing-barrier", EArdaCapabilityProbe::HeapAliasing},
+		    {"Queries", "query.gpu", EArdaCapabilityProbe::Queries},
+		    {"GraphicsTimestamps", "queue.graphics.timestamp-bits", EArdaCapabilityProbe::QueueTimestamps},
+		    {"ComputeTimestamps", "queue.compute.timestamp-bits", EArdaCapabilityProbe::QueueTimestamps},
+		    {"CopyTimestamps", "queue.copy.timestamp-bits", EArdaCapabilityProbe::QueueTimestamps},
+		    {"ShaderLibraries", "shader.library", EArdaCapabilityProbe::ShaderLibrary},
+		    {"PipelineCachePersistence", "pipeline.cache-persistence", EArdaCapabilityProbe::PipelineCache}};
 
 		static const std::vector<FArdaCapabilityConformanceCase> Cases = []
 		{
@@ -4303,41 +4336,34 @@ namespace
 		return Cases;
 	}
 
-#undef ARDA_CAPABILITY
-
 	class FArdaRHICapabilityConformanceTest : public testing::TestWithParam<FArdaCapabilityConformanceCase>
 	{
 	};
 }
 
-TEST(ArdaBackend, CapabilityMatrixCoversEveryPublicField)
+TEST(ArdaBackend, CapabilityMatrixCoversSharedFeatures)
 {
-	std::ifstream Header(ARDA_BACKEND_TEST_SHADER_SOURCE_DIR "/../Public/RHI/Config/ArdaRHICapabilities.h");
-	ASSERT_TRUE(Header);
-	std::string Source((std::istreambuf_iterator<char>(Header)), {});
-	// These are admission inputs/reports, not device capabilities. Remove their full declarations
-	// using the public header's top-level struct delimiter, including all nested method bodies.
-	// Per-format query reports are covered by ResourceAdmission rather than capability predicates.
-	for (const char* Name : {"FArdaRHIFeatureRequirements", "FArdaRHIFeatureSupportReport", "FArdaRHIFormatSupport"})
-	{
-		const auto Begin = Source.find(std::string("\tstruct ") + Name);
-		ASSERT_NE(Begin, std::string::npos) << Name;
-		const auto End = Source.find("\n\t};", Begin);
-		ASSERT_NE(End, std::string::npos) << Name;
-		Source.erase(Begin, End + 4 - Begin);
-	}
-	const std::regex Field(R"(\b(?:bool|uint32_t|uint64_t|EArdaRHI\w+Tier)\s+(m\w+)\s*=)");
-	std::string Expressions;
-	for (const auto& TestCase : GetCapabilityConformanceCases())
-	{
-		Expressions += TestCase.mCapability.mExpression;
-		Expressions += '\n';
-	}
-	for (std::sregex_iterator It(Source.begin(), Source.end(), Field), End; It != End; ++It)
+	std::ifstream Mapping(ARDA_BACKEND_TEST_SHADER_SOURCE_DIR "/../Private/RHI/Config/ArdaRHICapabilities.cpp");
+	ASSERT_TRUE(Mapping);
+	const std::string Source((std::istreambuf_iterator<char>(Mapping)), {});
+	const std::regex PublishedFeature(R"key(Features\.Add\("([a-z0-9.-]+)",)key");
+	const auto& Cases = GetCapabilityConformanceCases();
+	const auto ResourceLimits = GetResourceLimitFacts({});
+	const auto First = std::sregex_iterator(Source.begin(), Source.end(), PublishedFeature);
+	ASSERT_NE(First, std::sregex_iterator{});
+	for (auto It = First; It != std::sregex_iterator{}; ++It)
 	{
 		const std::string Name = (*It)[1];
-		EXPECT_TRUE(std::regex_search(Expressions, std::regex("\\." + Name + "\\b")))
-		    << "Public capability " << Name << " has no conformance case.";
+		const bool HasWorkload = std::any_of(Cases.begin(), Cases.end(), [&Name](const auto& TestCase)
+		{
+			const auto* Feature = TestCase.mCapability.mFeatureName;
+			return Feature && Name == Feature;
+		});
+		const bool IsResourceLimit = std::any_of(ResourceLimits.begin(), ResourceLimits.end(), [&Name](const auto& Fact)
+		{
+			return Name == Fact.mName;
+		});
+		EXPECT_TRUE(HasWorkload || IsResourceLimit) << "Shared feature " << Name << " has no conformance case.";
 	}
 }
 
@@ -4359,14 +4385,19 @@ TEST_P(FArdaRHICapabilityConformanceTest, AdvertisedCapabilityConforms)
 
 	arda::FArdaRHIDeviceRef Device = GetDevice();
 	ASSERT_TRUE(Device);
-	const arda::FArdaRHICapabilities Capabilities = Device->GetCapabilities();
-	if (!TestCase.mCapability.mIsAdvertised(Capabilities))
+	const auto Features = Device->GetFeatures();
+	ASSERT_TRUE(Features);
+	const auto& Capability = TestCase.mCapability;
+	const bool Advertised = Capability.mFeatureName
+	    ? Features->Supports(Capability.mFeatureName)
+	    : Capability.mIsAdvertised(*Device);
+	if (!Advertised)
 	{
 		GTEST_SKIP() << TestCase.mBackendLabel << " does not advertise " << TestCase.mCapability.mName
 		             << " on this adapter.";
 	}
 
-	VerifyCapabilityInvariants(Capabilities);
+	VerifyCapabilityInvariants(*Features);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 	Device = nullptr;
 	ShutdownBackend();

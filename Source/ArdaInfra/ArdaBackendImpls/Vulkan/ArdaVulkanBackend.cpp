@@ -1,5 +1,7 @@
 #include "../ArdaGpuTimestamp.h"
 #include "../ArdaSparseMapping.h"
+#include "ArdaBackend.h"
+#include "CUDA/ArdaCudaProviderCommands.h"
 #include "RHI/Resources/ArdaRHISubresources.h"
 #if defined(_WIN32)
 #define NOMINMAX
@@ -14,7 +16,7 @@
 #include "RHI/Providers/ArdaRHIProviderDevice.h"
 #include "RHI/Pipelines/ArdaRHIProviderPipelineCache.h"
 #include "RHI/Providers/ArdaBackendProvider.h"
-#include "../ArdaBackendRequirements.h"
+#include "RHI/Config/ArdaBackendFeatures.h"
 #include "RHI/Interop/ArdaExternalInterop.h"
 #include "RHI/Providers/ArdaExternalDeviceProvider.h"
 #include "RHI/Scheduling/ArdaSwapChain.h"
@@ -44,6 +46,58 @@ namespace arda
 {
 	namespace
 	{
+		eastl::shared_ptr<FArdaBackendFeatureList> ProbeVulkanBackendFeatures(vk::PhysicalDevice Physical,
+		    uint32_t ApiVersion,
+		    const std::vector<vk::ExtensionProperties>& Extensions)
+		{
+			auto Features = eastl::make_shared<FArdaBackendFeatureList>();
+			const auto Report = [&Features](const char* Name, bool Supported)
+			{
+				// Core and extension paths can report the same capability.
+				if (Supported || !Features->Find(Name))
+				{
+					Features->Add(Name, Supported);
+				}
+			};
+			const auto HasExtension = [&Extensions](const char* Name)
+			{
+				return eastl::any_of(Extensions.begin(), Extensions.end(),
+				    [Name](const vk::ExtensionProperties& Extension)
+				    {
+					    return std::strcmp(Extension.extensionName.data(), Name) == 0;
+				    });
+			};
+
+			// Physical-device support is independent of logical device enablement.
+			const auto CoreFeatures = Physical.getFeatures();
+			const auto Query = [Physical](void* Next)
+			{
+				// Query each structure independently so aggregate core structures and their
+				// individual feature structures do not share a chain.
+				vk::PhysicalDeviceFeatures2 Result;
+				Result.pNext = Next;
+				Physical.getFeatures2(&Result);
+			};
+#include "ArdaVulkanFeatureQueries.inl"
+			Report("rendering.conservative-rasterization.hardware-support", false);
+			Report("rendering.variable-rate-shading.hardware-support",
+			    Features->Supports("rendering.variable-rate-shading.per-draw") ||
+			    Features->Supports("rendering.variable-rate-shading.per-primitive") ||
+			    Features->Supports("rendering.variable-rate-shading.attachment"));
+			if (HasExtension(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME))
+			{
+				vk::PhysicalDeviceSampleLocationsPropertiesEXT SampleLocations;
+				vk::PhysicalDeviceProperties2 Properties;
+				Properties.pNext = &SampleLocations;
+				Physical.getProperties2(&Properties);
+				const bool Supported = bool(SampleLocations.sampleLocationSampleCounts);
+				Report("rendering.programmable-sample-locations", Supported);
+				Report("rendering.per-pixel-sample-locations", Supported &&
+				    SampleLocations.maxSampleLocationGridSize.width >= 2 &&
+				    SampleLocations.maxSampleLocationGridSize.height >= 2);
+			}
+			return Features;
+		}
 
 #if defined(_WIN32)
 		constexpr auto VulkanCudaMemoryHandleType = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32;
@@ -240,136 +294,176 @@ namespace arda
 			return {{}, eastl::move(Status)};
 		}
 
-		vk::Format ToVulkan(EArdaRHIFormat Format) noexcept
+		struct FArdaVulkanFormatMapping
+		{
+			vk::Format mFormat = vk::Format::eUndefined;
+			const char* mFeatureName = nullptr;
+		};
+
+		FArdaVulkanFormatMapping GetVulkanFormatMapping(EArdaRHIFormat Format) noexcept
 		{
 			switch (Format)
 			{
 			case EArdaRHIFormat::R8UInt:
-				return vk::Format::eR8Uint;
+				return {vk::Format::eR8Uint, "r8-uint"};
 			case EArdaRHIFormat::R8SInt:
-				return vk::Format::eR8Sint;
+				return {vk::Format::eR8Sint, "r8-sint"};
 			case EArdaRHIFormat::R8UNorm:
-				return vk::Format::eR8Unorm;
+				return {vk::Format::eR8Unorm, "r8-unorm"};
 			case EArdaRHIFormat::R8SNorm:
-				return vk::Format::eR8Snorm;
+				return {vk::Format::eR8Snorm, "r8-snorm"};
 			case EArdaRHIFormat::RG8UInt:
-				return vk::Format::eR8G8Uint;
+				return {vk::Format::eR8G8Uint, "rg8-uint"};
 			case EArdaRHIFormat::RG8SInt:
-				return vk::Format::eR8G8Sint;
+				return {vk::Format::eR8G8Sint, "rg8-sint"};
 			case EArdaRHIFormat::RG8UNorm:
-				return vk::Format::eR8G8Unorm;
+				return {vk::Format::eR8G8Unorm, "rg8-unorm"};
 			case EArdaRHIFormat::RG8SNorm:
-				return vk::Format::eR8G8Snorm;
+				return {vk::Format::eR8G8Snorm, "rg8-snorm"};
 			case EArdaRHIFormat::R16UInt:
-				return vk::Format::eR16Uint;
+				return {vk::Format::eR16Uint, "r16-uint"};
 			case EArdaRHIFormat::R16SInt:
-				return vk::Format::eR16Sint;
+				return {vk::Format::eR16Sint, "r16-sint"};
 			case EArdaRHIFormat::R16UNorm:
-				return vk::Format::eR16Unorm;
+				return {vk::Format::eR16Unorm, "r16-unorm"};
 			case EArdaRHIFormat::R16SNorm:
-				return vk::Format::eR16Snorm;
+				return {vk::Format::eR16Snorm, "r16-snorm"};
 			case EArdaRHIFormat::R16Float:
-				return vk::Format::eR16Sfloat;
+				return {vk::Format::eR16Sfloat, "r16-float"};
 			case EArdaRHIFormat::RGBA8UInt:
-				return vk::Format::eR8G8B8A8Uint;
+				return {vk::Format::eR8G8B8A8Uint, "rgba8-uint"};
 			case EArdaRHIFormat::RGBA8SInt:
-				return vk::Format::eR8G8B8A8Sint;
+				return {vk::Format::eR8G8B8A8Sint, "rgba8-sint"};
 			case EArdaRHIFormat::RGBA8UNorm:
-				return vk::Format::eR8G8B8A8Unorm;
+				return {vk::Format::eR8G8B8A8Unorm, "rgba8-unorm"};
 			case EArdaRHIFormat::RGBA8SNorm:
-				return vk::Format::eR8G8B8A8Snorm;
+				return {vk::Format::eR8G8B8A8Snorm, "rgba8-snorm"};
 			case EArdaRHIFormat::BGRA8UNorm:
-				return vk::Format::eB8G8R8A8Unorm;
+				return {vk::Format::eB8G8R8A8Unorm, "bgra8-unorm"};
 			case EArdaRHIFormat::SRGBA8UNorm:
-				return vk::Format::eR8G8B8A8Srgb;
+				return {vk::Format::eR8G8B8A8Srgb, "rgba8-unorm-srgb"};
 			case EArdaRHIFormat::SBGRA8UNorm:
-				return vk::Format::eB8G8R8A8Srgb;
+				return {vk::Format::eB8G8R8A8Srgb, "bgra8-unorm-srgb"};
 			case EArdaRHIFormat::R10G10B10A2UNorm:
-				return vk::Format::eA2B10G10R10UnormPack32;
+				return {vk::Format::eA2B10G10R10UnormPack32, "r10g10b10a2-unorm"};
 			case EArdaRHIFormat::R11G11B10Float:
-				return vk::Format::eB10G11R11UfloatPack32;
+				return {vk::Format::eB10G11R11UfloatPack32, "r11g11b10-float"};
 			case EArdaRHIFormat::RG16UInt:
-				return vk::Format::eR16G16Uint;
+				return {vk::Format::eR16G16Uint, "rg16-uint"};
 			case EArdaRHIFormat::RG16SInt:
-				return vk::Format::eR16G16Sint;
+				return {vk::Format::eR16G16Sint, "rg16-sint"};
 			case EArdaRHIFormat::RG16UNorm:
-				return vk::Format::eR16G16Unorm;
+				return {vk::Format::eR16G16Unorm, "rg16-unorm"};
 			case EArdaRHIFormat::RG16SNorm:
-				return vk::Format::eR16G16Snorm;
+				return {vk::Format::eR16G16Snorm, "rg16-snorm"};
 			case EArdaRHIFormat::RG16Float:
-				return vk::Format::eR16G16Sfloat;
+				return {vk::Format::eR16G16Sfloat, "rg16-float"};
 			case EArdaRHIFormat::R32UInt:
-				return vk::Format::eR32Uint;
+				return {vk::Format::eR32Uint, "r32-uint"};
 			case EArdaRHIFormat::R32SInt:
-				return vk::Format::eR32Sint;
+				return {vk::Format::eR32Sint, "r32-sint"};
 			case EArdaRHIFormat::R32Float:
-				return vk::Format::eR32Sfloat;
+				return {vk::Format::eR32Sfloat, "r32-float"};
 			case EArdaRHIFormat::RGBA16UInt:
-				return vk::Format::eR16G16B16A16Uint;
+				return {vk::Format::eR16G16B16A16Uint, "rgba16-uint"};
 			case EArdaRHIFormat::RGBA16SInt:
-				return vk::Format::eR16G16B16A16Sint;
+				return {vk::Format::eR16G16B16A16Sint, "rgba16-sint"};
 			case EArdaRHIFormat::RGBA16Float:
-				return vk::Format::eR16G16B16A16Sfloat;
+				return {vk::Format::eR16G16B16A16Sfloat, "rgba16-float"};
 			case EArdaRHIFormat::RGBA16UNorm:
-				return vk::Format::eR16G16B16A16Unorm;
+				return {vk::Format::eR16G16B16A16Unorm, "rgba16-unorm"};
 			case EArdaRHIFormat::RGBA16SNorm:
-				return vk::Format::eR16G16B16A16Snorm;
+				return {vk::Format::eR16G16B16A16Snorm, "rgba16-snorm"};
 			case EArdaRHIFormat::RG32UInt:
-				return vk::Format::eR32G32Uint;
+				return {vk::Format::eR32G32Uint, "rg32-uint"};
 			case EArdaRHIFormat::RG32SInt:
-				return vk::Format::eR32G32Sint;
+				return {vk::Format::eR32G32Sint, "rg32-sint"};
 			case EArdaRHIFormat::RG32Float:
-				return vk::Format::eR32G32Sfloat;
+				return {vk::Format::eR32G32Sfloat, "rg32-float"};
 			case EArdaRHIFormat::RGB32UInt:
-				return vk::Format::eR32G32B32Uint;
+				return {vk::Format::eR32G32B32Uint, "rgb32-uint"};
 			case EArdaRHIFormat::RGB32SInt:
-				return vk::Format::eR32G32B32Sint;
+				return {vk::Format::eR32G32B32Sint, "rgb32-sint"};
 			case EArdaRHIFormat::RGB32Float:
-				return vk::Format::eR32G32B32Sfloat;
+				return {vk::Format::eR32G32B32Sfloat, "rgb32-float"};
 			case EArdaRHIFormat::RGBA32UInt:
-				return vk::Format::eR32G32B32A32Uint;
+				return {vk::Format::eR32G32B32A32Uint, "rgba32-uint"};
 			case EArdaRHIFormat::RGBA32SInt:
-				return vk::Format::eR32G32B32A32Sint;
+				return {vk::Format::eR32G32B32A32Sint, "rgba32-sint"};
 			case EArdaRHIFormat::RGBA32Float:
-				return vk::Format::eR32G32B32A32Sfloat;
+				return {vk::Format::eR32G32B32A32Sfloat, "rgba32-float"};
 			case EArdaRHIFormat::D16:
-				return vk::Format::eD16Unorm;
+				return {vk::Format::eD16Unorm, "d16-unorm"};
 			case EArdaRHIFormat::D24S8:
-				return vk::Format::eD24UnormS8Uint;
+				return {vk::Format::eD24UnormS8Uint, "d24-unorm-s8-uint"};
 			case EArdaRHIFormat::D32:
-				return vk::Format::eD32Sfloat;
+				return {vk::Format::eD32Sfloat, "d32-float"};
 			case EArdaRHIFormat::D32S8:
-				return vk::Format::eD32SfloatS8Uint;
+				return {vk::Format::eD32SfloatS8Uint, "d32-float-s8-uint"};
 			case EArdaRHIFormat::BC1UNorm:
-				return vk::Format::eBc1RgbaUnormBlock;
+				return {vk::Format::eBc1RgbaUnormBlock, "bc1-unorm"};
 			case EArdaRHIFormat::BC1UNormSRGB:
-				return vk::Format::eBc1RgbaSrgbBlock;
+				return {vk::Format::eBc1RgbaSrgbBlock, "bc1-unorm-srgb"};
 			case EArdaRHIFormat::BC2UNorm:
-				return vk::Format::eBc2UnormBlock;
+				return {vk::Format::eBc2UnormBlock, "bc2-unorm"};
 			case EArdaRHIFormat::BC2UNormSRGB:
-				return vk::Format::eBc2SrgbBlock;
+				return {vk::Format::eBc2SrgbBlock, "bc2-unorm-srgb"};
 			case EArdaRHIFormat::BC3UNorm:
-				return vk::Format::eBc3UnormBlock;
+				return {vk::Format::eBc3UnormBlock, "bc3-unorm"};
 			case EArdaRHIFormat::BC3UNormSRGB:
-				return vk::Format::eBc3SrgbBlock;
+				return {vk::Format::eBc3SrgbBlock, "bc3-unorm-srgb"};
 			case EArdaRHIFormat::BC4UNorm:
-				return vk::Format::eBc4UnormBlock;
+				return {vk::Format::eBc4UnormBlock, "bc4-unorm"};
 			case EArdaRHIFormat::BC4SNorm:
-				return vk::Format::eBc4SnormBlock;
+				return {vk::Format::eBc4SnormBlock, "bc4-snorm"};
 			case EArdaRHIFormat::BC5UNorm:
-				return vk::Format::eBc5UnormBlock;
+				return {vk::Format::eBc5UnormBlock, "bc5-unorm"};
 			case EArdaRHIFormat::BC5SNorm:
-				return vk::Format::eBc5SnormBlock;
+				return {vk::Format::eBc5SnormBlock, "bc5-snorm"};
 			case EArdaRHIFormat::BC6HUFloat:
-				return vk::Format::eBc6HUfloatBlock;
+				return {vk::Format::eBc6HUfloatBlock, "bc6h-uf16"};
 			case EArdaRHIFormat::BC6HSFloat:
-				return vk::Format::eBc6HSfloatBlock;
+				return {vk::Format::eBc6HSfloatBlock, "bc6h-sf16"};
 			case EArdaRHIFormat::BC7UNorm:
-				return vk::Format::eBc7UnormBlock;
+				return {vk::Format::eBc7UnormBlock, "bc7-unorm"};
 			case EArdaRHIFormat::BC7UNormSRGB:
-				return vk::Format::eBc7SrgbBlock;
+				return {vk::Format::eBc7SrgbBlock, "bc7-unorm-srgb"};
 			default:
-				return vk::Format::eUndefined;
+				return {};
+			}
+		}
+
+		vk::Format ToVulkan(EArdaRHIFormat Format) noexcept
+		{
+			return GetVulkanFormatMapping(Format).mFormat;
+		}
+
+		void PublishVulkanFormatFeatures(vk::PhysicalDevice Physical, FArdaBackendFeatureList& Features)
+		{
+			for (uint32_t Index = 1; Index < static_cast<uint32_t>(EArdaRHIFormat::Count); ++Index)
+			{
+				const auto Format = static_cast<EArdaRHIFormat>(Index);
+				const auto Mapping = GetVulkanFormatMapping(Format);
+				if (!Mapping.mFeatureName)
+				{
+					continue;
+				}
+				const auto Properties = Physical.getFormatProperties(Mapping.mFormat);
+				const auto Texture = Properties.optimalTilingFeatures;
+				const auto Buffer = Properties.bufferFeatures;
+				using Flag = vk::FormatFeatureFlagBits;
+				const eastl::string Prefix = eastl::string("format.") + Mapping.mFeatureName;
+				Features.Add(Prefix + ".sampled-image", bool(Texture & Flag::eSampledImage));
+				Features.Add(Prefix + ".storage-image", bool(Texture & Flag::eStorageImage));
+				Features.Add(Prefix + ".color-attachment", bool(Texture & Flag::eColorAttachment));
+				Features.Add(Prefix + ".depth-stencil-attachment", bool(Texture & Flag::eDepthStencilAttachment));
+				Features.Add(Prefix + ".vertex-buffer", bool(Buffer & Flag::eVertexBuffer));
+				Features.Add(Prefix + ".buffer", bool(Buffer & (Flag::eUniformTexelBuffer | Flag::eStorageTexelBuffer)));
+				Features.Add(Prefix + ".linear-filter", bool(Texture & Flag::eSampledImageFilterLinear));
+				if (Texture || Buffer || Properties.linearTilingFeatures)
+				{
+					Features.Add(Prefix + ".plane-count", GetArdaRHIFormatPlaneCount(Format));
+				}
 			}
 		}
 
@@ -2670,7 +2764,7 @@ namespace arda
 				mContext->mDiagnosticCallback.store(nullptr, std::memory_order_relaxed);
 			}
 
-			FArdaRHIStatus Initialize();
+			FArdaRHIStatus Initialize(eastl::shared_ptr<FArdaBackendFeatureList> BackendFeatures);
 
 			FArdaCudaCapabilities GetCudaCapabilities() const override
 			{
@@ -2844,7 +2938,7 @@ namespace arda
 			bool mbPipelineCacheDirty = false;
 		};
 
-		FArdaRHIStatus FArdaVulkanProviderDevice::Initialize()
+		FArdaRHIStatus FArdaVulkanProviderDevice::Initialize(eastl::shared_ptr<FArdaBackendFeatureList> BackendFeatures)
 		{
 			CollectVulkanQuarantine();
 			try
@@ -3174,6 +3268,17 @@ namespace arda
 			mCapabilities.mbPipelineCachePersistence = mPipelineCache != nullptr;
 			mCapabilities.mMachineLearning = mContext->mMachineLearning;
 			mCapabilities.mMachineLearning.mbBufferDeviceAddress = mContext->mbBufferDeviceAddress;
+			const auto& Enabled = mContext->mEnabledFeatures;
+			BackendFeatures->Add(ArdaBackendFeature::ShaderFloat64, Enabled.shaderFloat64 == VK_TRUE);
+			BackendFeatures->Add(ArdaBackendFeature::ShaderInt16, Enabled.shaderInt16 == VK_TRUE);
+			BackendFeatures->Add(ArdaBackendFeature::ShaderInt64, Enabled.shaderInt64 == VK_TRUE);
+			BackendFeatures->Add(ArdaBackendFeature::TaskShader,
+			    mCapabilities.SupportsMeshShaderTier(EArdaRHIMeshShaderTier::MeshAndAmplificationShaders));
+			BackendFeatures->Add("rendering.fill-mode-non-solid", Enabled.fillModeNonSolid == VK_TRUE);
+			BackendFeatures->Add("rendering.multi-draw-indirect", Enabled.multiDrawIndirect == VK_TRUE);
+			BackendFeatures->Add("rendering.sampler-anisotropy", Enabled.samplerAnisotropy == VK_TRUE);
+			PublishVulkanFormatFeatures(mContext->mPhysicalDevice, *BackendFeatures);
+			mCapabilities.PublishBackendFeatures(eastl::move(BackendFeatures));
 			return {};
 		}
 
@@ -11075,6 +11180,10 @@ namespace arda
 						mError = "Vulkan 1.3 or newer is required by the native Vulkan 1.4 backend.";
 						return EArdaInitializeResult::Unavailable;
 					}
+					const uint32_t InstanceApiVersion = bExternal
+					    ? (HasProperty("vulkan.api-version", "1.4") ? VK_API_VERSION_1_4 : VK_API_VERSION_1_3)
+					    : eastl::min(LoaderVersion, VK_API_VERSION_1_4);
+					bool bValidationLayerEnabled = bExternal && HasProperty("vulkan.validation", "enabled");
 					if (!bExternal)
 					{
 						eastl::vector<const char*> Extensions;
@@ -11083,7 +11192,6 @@ namespace arda
 							Extensions = WindowSurface->GetVulkanInstanceExtensions();
 						}
 						eastl::vector<const char*> Layers;
-						bool bValidationLayerEnabled = false;
 						bool bDebugUtilsEnabled = false;
 						if (Configuration.mbEnableValidation)
 						{
@@ -11146,7 +11254,7 @@ namespace arda
 						    VK_MAKE_VERSION(0, 1, 0),
 						    "Ardashir native Vulkan",
 						    VK_MAKE_VERSION(0, 1, 0),
-						    eastl::min(LoaderVersion, VK_API_VERSION_1_4));
+						    InstanceApiVersion);
 						vk::InstanceCreateInfo InstanceInfo;
 						InstanceInfo.pNext = bDebugUtilsEnabled ? &DebugInfo : nullptr;
 						InstanceInfo.pApplicationInfo = &Application;
@@ -11506,6 +11614,9 @@ namespace arda
 						MaskFeature(SupportedFeatures.features.samplerAnisotropy, "samplerAnisotropy");
 						MaskFeature(SupportedFeatures.features.geometryShader, "geometryShader");
 						MaskFeature(SupportedFeatures.features.tessellationShader, "tessellationShader");
+						MaskFeature(SupportedFeatures.features.shaderFloat64, "shaderFloat64");
+						MaskFeature(SupportedFeatures.features.shaderInt16, "shaderInt16");
+						MaskFeature(SupportedFeatures.features.shaderInt64, "shaderInt64");
 						MaskFeature(SupportedFeatures.features.vertexPipelineStoresAndAtomics,
 						    "vertexPipelineStoresAndAtomics");
 						MaskFeature(SupportedFeatures.features.fragmentStoresAndAtomics, "fragmentStoresAndAtomics");
@@ -11634,6 +11745,9 @@ namespace arda
 					Enabled.samplerAnisotropy = Supported.samplerAnisotropy;
 					Enabled.geometryShader = Supported.geometryShader;
 					Enabled.tessellationShader = Supported.tessellationShader;
+					Enabled.shaderFloat64 = Supported.shaderFloat64;
+					Enabled.shaderInt16 = Supported.shaderInt16;
+					Enabled.shaderInt64 = Supported.shaderInt64;
 					Enabled.vertexPipelineStoresAndAtomics = Supported.vertexPipelineStoresAndAtomics;
 					Enabled.fragmentStoresAndAtomics = Supported.fragmentStoresAndAtomics;
 					Enabled.multiDrawIndirect = Supported.multiDrawIndirect;
@@ -11811,7 +11925,11 @@ namespace arda
 					mProviderDevice = eastl::make_shared<FArdaVulkanProviderDevice>(mContext,
 					    Configuration.mPipelineCacheDirectory,
 					    Configuration.mMessageCallback);
-					if (auto Status = mProviderDevice->Initialize(); !Status)
+					auto BackendFeatures = ProbeVulkanBackendFeatures(mContext->mPhysicalDevice,
+					    eastl::min(InstanceApiVersion, mContext->mPhysicalDevice.getProperties().apiVersion),
+					    AvailableExtensions);
+					BackendFeatures->Add("diagnostics.validation-enabled", bValidationLayerEnabled);
+					if (auto Status = mProviderDevice->Initialize(eastl::move(BackendFeatures)); !Status)
 					{
 						mError = Status.mMessage;
 						return EArdaInitializeResult::Failure;
@@ -11829,7 +11947,7 @@ namespace arda
 						    Image ? eastl::string{} : Image.mStatus.mMessage;
 					}
 					if (auto Status =
-					        ValidateArdaBackendRequirements(mProviderDevice->GetCapabilities(), Configuration);
+					        Configuration.EvaluateDevice(*mProviderDevice->GetCapabilities().GetBackendFeatureList()).ToStatus();
 					    !Status)
 					{
 						mError = Status.mMessage;
@@ -11864,7 +11982,7 @@ namespace arda
 			FArdaVulkanBackendModule()
 			{
 				mDescriptor.mName = "native-vulkan";
-				mDescriptor.mDisplayName = "Native Vulkan 1.4 (headers 1.4.357)";
+				mDescriptor.mDisplayName = "Native Vulkan 1.4";
 				mDescriptor.mShaderBinaryFormat = EArdaShaderBinaryFormat::Spirv;
 				mDescriptor.mShaderArtifactExtension = ".spv";
 				mDescriptor.mShaderCompilerIdentity = "dxc-vulkan1.3-native-v2";

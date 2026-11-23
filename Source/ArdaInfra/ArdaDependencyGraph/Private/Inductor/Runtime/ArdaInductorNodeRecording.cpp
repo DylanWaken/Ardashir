@@ -3,7 +3,6 @@
 #include "Inductor/Runtime/ArdaDependencyExecutionContext.h"
 #include "Inductor/Compiler/ArdaInductorCommandProgramInternal.h"
 #include "Inductor/Runtime/ArdaInductorRuntimeStatus.h"
-#include "Inductor/Runtime/ArdaInductorCudaContract.h"
 #include "Inductor/Runtime/ArdaInductorInstancing.h"
 #include "Inductor/Rules/ArdaInductorResourceStates.h"
 
@@ -52,52 +51,27 @@ namespace arda
 			Context.mPass = &PassContext;
 			if (bCuda)
 			{
-				FArdaCudaSequence Sequence(GraphPtr->mCompile.mExecution->mDevice,
-				    PassContext.mUnsafeRawCommandList.GetQueueType(),
-				    CudaCache);
+				RecordLegacyCudaNodes(Nodes, Context, CudaCache, CudaTimer, SampleTiming);
+			}
+			else if (GraphPtr->mTopology.TryGetNode(Nodes.front())->mPayload.mDefinition->mKind ==
+			    EArdaDependencyNodeKind::Native)
+			{
+				FArdaNativeComputeSession Session;
+				auto& Commands = PassContext.mUnsafeRawCommandList;
 				for (auto Handle : Nodes)
 				{
 					Context.mNode = Handle;
 					const auto& Node = GraphPtr->mTopology.TryGetNode(Handle)->mPayload;
-					if (CudaTimer && SampleTiming)
-					{
-						PassContext.ReportStatus(Sequence.BeginTimingRegion(CudaTimer, Handle.GetIndex()));
-					}
-					if (!PassContext.GetStatus())
-					{
-						return;
-					}
-					const size_t FirstOperation = Sequence.GetOperationCount();
-					PassContext.ReportStatus(Node.mDefinition->mPrepareCuda(Context,
-					    GraphPtr->mCompile.mNodes.at(Handle).mParameters.get(),
-					    Sequence));
-					PassContext.ReportStatus(Sequence.GetStatus());
-					if (PassContext.GetStatus() && Sequence.GetOperationCount() < FirstOperation)
-					{
-						PassContext.ReportStatus(MakeArdaInductorRuntimeError(
-						    "CUDA nodes may append operations but cannot replace the shared sequence."));
-					}
-					if (PassContext.GetStatus() && Sequence.GetOperationCount() > FirstOperation)
-					{
-						const auto Declared = Context.GetNativeResourceAccesses();
-						for (size_t Operation = FirstOperation;
-						    PassContext.GetStatus() && Operation < Sequence.GetOperationCount();
-						    ++Operation)
-						{
-							PassContext.ReportStatus(
-							    ValidateArdaInductorCudaBindings(Sequence.GetOperationBindings(Operation), Declared));
-						}
-					}
-					if (CudaTimer && SampleTiming)
-					{
-						PassContext.ReportStatus(Sequence.EndTimingRegion());
-					}
+					auto Prepared = Node.mDefinition->mPrepareNative(Context,
+					    GraphPtr->mCompile.mNodes.at(Handle).mParameters.get());
+					PassContext.ReportStatus(Prepared ? Session.Append(eastl::move(Prepared.mValue), Commands)
+					                                  : eastl::move(Prepared.mStatus));
 					if (!PassContext.GetStatus())
 					{
 						return;
 					}
 				}
-				PassContext.ReportStatus(Sequence.DispatchDeferred(PassContext.mUnsafeRawCommandList));
+				PassContext.ReportStatus(Session.Flush(Commands));
 			}
 			else
 			{

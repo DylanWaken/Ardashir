@@ -101,7 +101,6 @@ namespace arda
 				FArdaRHIBufferDesc Desc;
 				Desc.mByteSize = 16;
 				Desc.mUsage = EArdaRHIBufferUsage::ShaderResource | EArdaRHIBufferUsage::UnorderedAccess;
-				Desc.mbCudaInterop = true;
 				return Context.Buffer(Parameters.mOutput, "Destination", Desc);
 			}
 

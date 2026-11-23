@@ -19,6 +19,10 @@
 
 namespace arda
 {
+	// ================================
+	// Staging texture mapping
+	// ================================
+
 	/** CPU mapping of one staging-texture region, valid until the texture is unmapped. */
 	struct FArdaRHIStagingTextureMapping
 	{
@@ -29,6 +33,10 @@ namespace arda
 		/** Byte distance between adjacent depth slices of the mapped mip. */
 		size_t mDepthPitch = 0;
 	};
+
+	// ================================
+	// Texture dimensions and usage
+	// ================================
 
 	/** Forward declaration of texture desc. */
 	struct FArdaRHITextureDesc;
@@ -88,6 +96,10 @@ namespace arda
 		return static_cast<uint32_t>(Value & Flags) != 0;
 	}
 
+	// ================================
+	// Texture subresource ranges
+	// ================================
+
 	/** Describes texture subresource range. */
 	struct FArdaRHITextureSubresourceRange
 	{
@@ -123,6 +135,10 @@ namespace arda
          */
 		[[nodiscard]] FArdaRHITextureSubresourceRange Resolve(const FArdaRHITextureDesc& Desc) const noexcept;
 	};
+
+	// ================================
+	// Texture descriptions and validation
+	// ================================
 
 	/** Describes texture desc. */
 	struct FArdaRHITextureDesc
@@ -198,6 +214,10 @@ namespace arda
      */
 	[[nodiscard]] FArdaRHIStatus Validate(const FArdaRHITextureDesc& Value) noexcept;
 
+	// ================================
+	// Textures and logical texture references
+	// ================================
+
 	/** Interface for texture. */
 	class IArdaRHITexture : public virtual IArdaRHIResource
 	{
@@ -222,6 +242,10 @@ namespace arda
          */
 		[[nodiscard]] virtual const FArdaRHITextureRef& GetTexture() const noexcept = 0;
 	};
+
+	// ================================
+	// Staging texture descriptions and interface
+	// ================================
 
 	/** Describes staging texture desc. */
 	struct FArdaRHIStagingTextureDesc

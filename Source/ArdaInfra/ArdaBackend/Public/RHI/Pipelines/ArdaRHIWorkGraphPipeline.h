@@ -16,6 +16,10 @@
 
 namespace arda
 {
+	// ================================
+	// Work graph pipeline descriptor and resource
+	// ================================
+
 	/** Work-graph executable state object and backing-memory policy. */
 	struct FArdaRHIWorkGraphPipelineDesc
 	{

@@ -47,7 +47,7 @@ namespace arda
 	FArdaDependencyNodeRequirements FArdaMeshTriangleNode::GetRequirements(const FArdaParameters&)
 	{
 		FArdaDependencyNodeRequirements R;
-		R.mFeatures.mbRequireMeshShaders = true;
+		R.mFeatures.Require("shader.mesh");
 		return R;
 	}
 

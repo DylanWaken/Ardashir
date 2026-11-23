@@ -12,6 +12,19 @@ namespace arda::inductor_detail
 	double NodeCost(const FArdaDependencyGraph::FArdaImpl&, const FArdaDependencyNode&);
 	FArdaRHIStatus AssignQueues(const FArdaDependencyGraph::FArdaImpl&, FArdaInductorCompileResult&);
 
+	inline bool UsesContextSwitch(const FArdaInductorCompileResult& Compile,
+	    const FArdaDependencyNode& Node,
+	    EArdaRHIQueueType Queue)
+	{
+		if (Node.mDefinition->mKind == EArdaDependencyNodeKind::Native)
+		{
+			const auto& Selection =
+			    Compile.mNodes.at(Node.mHandle).mNativeRoutes[GetArdaRHIQueueIndex(Queue)].mSelection;
+			return Selection && Selection.mValue == EArdaNativeExecutionMode::ContextSwitching;
+		}
+		return Node.mDefinition->mKind == EArdaDependencyNodeKind::Cuda;
+	}
+
 	/** Candidate state shared by the independent memory, ordering and evaluation rules. */
 	struct FArdaScheduleSearch
 	{

@@ -5,6 +5,10 @@
 
 namespace arda
 {
+	// ================================
+	// Diagnostic severity and callbacks
+	// ================================
+
 	/** Identifies the severity of a backend diagnostic message. */
 	enum class EArdaDiagnosticSeverity : uint8_t
 	{

@@ -9,27 +9,50 @@ namespace arda
 	void AddArdaNodeIntrinsicRequirements(FArdaDependencyNodeRequirements& Requirements,
 	    EArdaDependencyNodeKind Kind,
 	    EArdaGraphicsStage GraphicsStage,
-	    EArdaRHIShaderStage RayStage) noexcept
+	    EArdaRHIShaderStage RayStage)
 	{
 		auto& Features = Requirements.mFeatures;
 		Requirements.mbRequireCuda |= Kind == EArdaDependencyNodeKind::Cuda;
-		Features.mbRequireGraphicsQueue |=
-		    Kind == EArdaDependencyNodeKind::Graphics || GraphicsStage != EArdaGraphicsStage::None;
-		Features.mbRequireGeometryShaders |= GraphicsStage == EArdaGraphicsStage::Geometry;
-		Features.mbRequireTessellationShaders |=
-		    GraphicsStage == EArdaGraphicsStage::Hull || GraphicsStage == EArdaGraphicsStage::Domain;
-		Features.mbRequireMeshShaders |=
-		    GraphicsStage == EArdaGraphicsStage::Mesh || GraphicsStage == EArdaGraphicsStage::Amplification;
+		if (Kind == EArdaDependencyNodeKind::Graphics || GraphicsStage != EArdaGraphicsStage::None)
+		{
+			Features.Require("queue.graphics");
+		}
+		if (GraphicsStage == EArdaGraphicsStage::Geometry)
+		{
+			Features.Require("shader.geometry");
+		}
+		if (GraphicsStage == EArdaGraphicsStage::Hull || GraphicsStage == EArdaGraphicsStage::Domain)
+		{
+			Features.Require("shader.tessellation");
+		}
+		if (GraphicsStage == EArdaGraphicsStage::Mesh || GraphicsStage == EArdaGraphicsStage::Amplification)
+		{
+			Features.Require("shader.mesh");
+		}
 		if (GraphicsStage == EArdaGraphicsStage::Amplification)
 		{
-			Features.mMinMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+			Features.Require("shader.mesh-tier", 2);
 		}
-		Features.mbRequireRayTracingPipelines |= RayStage != EArdaRHIShaderStage::None;
-		Features.mbRequirePersistentShaderTables |= RayStage == EArdaRHIShaderStage::RayGeneration;
+		if (RayStage != EArdaRHIShaderStage::None)
+		{
+			Features.Require("ray-tracing.pipeline");
+		}
+		if (RayStage == EArdaRHIShaderStage::RayGeneration)
+		{
+			Features.Require("ray-tracing.persistent-shader-tables");
+		}
 	}
 
 	FArdaRHIStatus FArdaDependencyNodeRequirements::Validate() const
 	{
+		for (const auto& Requirement : mFeatures.GetEntries())
+		{
+			if (!Requirement.IsValid())
+			{
+				const auto Message = eastl::string("Invalid graph feature requirement: ") + Requirement.mName;
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, Message.c_str());
+			}
+		}
 		for (const auto Mode : mAllowedCudaLaunchModes)
 		{
 			if (Mode <= EArdaCudaLaunchMode::None || Mode > EArdaCudaLaunchMode::ContextSwitch)
@@ -55,9 +78,7 @@ namespace arda
 		{
 			return Status;
 		}
-		FArdaRHICapabilities Unavailable;
-		Unavailable.mQueues.mbGraphics = false;
-		auto Report = (Device ? Device->GetCapabilities() : Unavailable).Evaluate(mFeatures);
+		auto Report = Device ? Device->CheckFeatureSupport(mFeatures) : FArdaBackendFeatureList{}.Evaluate(mFeatures);
 		const bool NeedsCuda = mbRequireCuda || mbRequireCudaSurfaces || mbRequireCudaLayeredSurfaces ||
 		    mMinCudaComputeCapability || mMinCudaThreadsPerBlock || mMinCudaSharedMemoryBytes ||
 		    !mAllowedCudaLaunchModes.empty();

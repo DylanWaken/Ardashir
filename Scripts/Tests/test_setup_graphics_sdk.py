@@ -104,13 +104,19 @@ class SetupTests(unittest.TestCase):
         self.assertIsNone(setup.find_layer([self.root]))
 
     def test_headers_check_major_minor_and_patch(self):
-        headers = self.root / "vulkan"
-        headers.mkdir()
+        include = self.root / "include"
+        headers = include / "vulkan"
+        headers.mkdir(parents=True)
+        registry = self.root / "registry"
+        registry.mkdir()
+        (registry / "vk.xml").write_text("<registry/>", encoding="utf-8")
         (headers / "vulkan.hpp").write_text("// present", encoding="utf-8")
         for major, minor, patch_version, expected in ((1, 4, 356, False), (1, 3, 999, False), (1, 4, 357, True), (1, 4, 358, True)):
             (headers / "vulkan_core.h").write_text(
                 f"#define VK_HEADER_VERSION {patch_version}\n#define VK_HEADER_VERSION_COMPLETE VK_MAKE_API_VERSION(0, {major}, {minor}, VK_HEADER_VERSION)\n", encoding="utf-8")
-            self.assertEqual(setup.compatible_headers(self.root, "v1.4.357"), expected)
+            self.assertEqual(setup.compatible_headers(include, "v1.4.357"), expected)
+        (registry / "vk.xml").unlink()
+        self.assertFalse(setup.compatible_headers(include, "v1.4.357"))
 
     def test_explicit_broken_layer_path_fails_without_provisioning(self):
         with patch.object(setup, "compatible_headers", return_value=True), \

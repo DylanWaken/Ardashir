@@ -89,6 +89,7 @@ namespace arda::detail
 		      mBackendName(eastl::move(BackendName)),
 		      mLifetimeTracker(eastl::make_shared<FArdaLifetimeTracker>()),
 		      mDevice(eastl::move(Device)),
+		      mFeatures(mDevice->GetCapabilities().GetBackendFeatureList()),
 		      mAllocator(mDevice)
 		{
 		}
@@ -100,6 +101,7 @@ namespace arda::detail
 			{
 				(void)WaitForIdle();
 			}
+			ReleaseNativeComputeContexts();
 		}
 
 		bool SupportsNativeOperation(const char* Id) const noexcept override
@@ -111,6 +113,13 @@ namespace arda::detail
 		{
 			return mDevice->CheckComputePipelineExtension(Extension);
 		}
+
+		FArdaRHIStatus CheckComputePipelineExtensionAvailability(const char* Id) const override
+		{
+			return mDevice->CheckComputePipelineExtensionAvailability(Id);
+		}
+
+		FArdaBackendFeatureListRef GetFeatures() const override { return mFeatures; }
 
 		const FArdaRHICapabilities& GetCapabilities() const noexcept override
 		{
@@ -290,28 +299,30 @@ namespace arda::detail
 
 		FArdaRHIStatus QueryWorkGraphSupport() const override
 		{
-			return GetCapabilities().mWorkGraphTier != EArdaRHIWorkGraphTier::None
+			return GetFeatures()->Supports("work-graph.dispatch")
 			    ? FArdaRHIStatus{}
 			    : Unsupported("Work graphs are unsupported by this device.");
 		}
 
 		FArdaRHIStatus QueryShaderBundleSupport() const override
 		{
-			return GetCapabilities().mbShaderBundleDispatch
+			return GetFeatures()->Supports("shader.bundle-dispatch")
 			    ? FArdaRHIStatus{}
 			    : Unsupported("Shader bundles are unsupported by this device.");
 		}
 
 		FArdaRHIStatus QueryCustomPresentSupport() const override
 		{
-			return GetCapabilities().mbCustomPresent
+			return GetFeatures()->Supports("presentation.custom-present")
 			    ? FArdaRHIStatus{}
 			    : Unsupported("Custom presentation is unsupported by this device.");
 		}
 
 		FArdaRHIStatus QueryStreamSourceSupport() const override
 		{
-			return Unsupported("Stream-source output is unsupported by the backend providers.");
+			return GetFeatures()->Supports("presentation.stream-source")
+			    ? FArdaRHIStatus{}
+			    : Unsupported("Stream-source output is unsupported by the backend providers.");
 		}
 
 		void TrimDescriptorCaches() override;
@@ -482,6 +493,7 @@ namespace arda::detail
 		mutable std::mutex mCacheMutex;
 		eastl::shared_ptr<FArdaLifetimeTracker> mLifetimeTracker;
 		eastl::shared_ptr<IArdaRHIProviderDevice> mDevice;
+		const FArdaBackendFeatureListRef mFeatures;
 		FArdaGpuAllocator mAllocator;
 		bool mbPipelineCacheDetached = false;
 		TArdaDescriptorCache<FArdaRHISamplerDesc, FArdaRHISamplerRef> mSamplerCache;

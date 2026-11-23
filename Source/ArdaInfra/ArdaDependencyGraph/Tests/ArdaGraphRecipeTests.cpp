@@ -155,7 +155,7 @@ namespace arda::graph_recipe_tests
 
 	TEST_P(FArdaGraphRecipes, Mesh)
 	{
-		if (GetDevice()->GetCapabilities().mMeshShaderTier == EArdaRHIMeshShaderTier::None)
+		if (!GetDevice()->GetFeatures()->Supports("shader.mesh"))
 		{
 			GTEST_SKIP() << "Mesh shaders unavailable";
 		}
@@ -165,9 +165,9 @@ namespace arda::graph_recipe_tests
 
 	TEST_P(FArdaGraphRecipes, WorkGraph)
 	{
-		if (auto S = GetDevice()->QueryWorkGraphSupport(); !S)
+		if (!GetDevice()->GetFeatures()->Supports("work-graph.dispatch"))
 		{
-			GTEST_SKIP() << S.mMessage.c_str();
+			GTEST_SKIP() << "Work graphs are unavailable";
 		}
 		const auto S = RunWorkRecipe(GetDevice());
 		ASSERT_TRUE(S) << S.mMessage.c_str();

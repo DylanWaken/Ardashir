@@ -10,6 +10,10 @@
 
 namespace arda
 {
+	// ================================
+	// Queue types and indexing
+	// ================================
+
 	/** Enumerates queue type values. */
 	enum class EArdaRHIQueueType : uint8_t
 	{

@@ -1,26 +1,61 @@
 set(ARDA_BACKEND_PUBLIC_DIR
     "${PROJECT_SOURCE_DIR}/Source/ArdaInfra/ArdaBackend/Public")
 
-add_library(ArdaBackendCuda STATIC Cuda/ArdaCudaInterop.cpp)
-target_compile_features(ArdaBackendCuda PUBLIC cxx_std_17)
-target_link_libraries(ArdaBackendCuda PRIVATE Ardashir::ArdaBackend ${CMAKE_DL_LIBS})
-target_compile_definitions(ArdaBackendCuda PRIVATE $<$<BOOL:${WIN32}>:NOMINMAX> $<$<BOOL:${WIN32}>:WIN32_LEAN_AND_MEAN>)
-set_target_properties(ArdaBackendCuda PROPERTIES FOLDER "Ardashir/Backends")
-if(ARDASHIR_ENABLE_CUDA)
-    if(NOT EXISTS "${ARDASHIR_CUDA_INCLUDE_DIR}/cuda.h")
-        message(FATAL_ERROR "Set ARDASHIR_CUDA_INCLUDE_DIR to the CUDA 12.0+ SDK include directory (CiG capture requires 13.3+).")
-    endif()
-    target_include_directories(ArdaBackendCuda PRIVATE "${ARDASHIR_CUDA_INCLUDE_DIR}")
-    target_compile_definitions(ArdaBackendCuda PUBLIC ARDA_ENABLE_CUDA=1)
+add_subdirectory(Cuda)
+add_subdirectory(NVAPI)
+add_dependencies(ArdaNativeComputePublicHeaders
+    ArdaNativeComputeCudaPublicHeaders ArdaNativeComputeNvapiPublicHeaders)
+
+add_library(ArdaNativeComputeCiG STATIC EXCLUDE_FROM_ALL CiG/ArdaNativeCudaInGraphicsProvider.cpp)
+add_library(Ardashir::ArdaNativeComputeCiG ALIAS ArdaNativeComputeCiG)
+target_link_libraries(ArdaNativeComputeCiG PUBLIC Ardashir::ArdaNativeComputeCuda)
+
+set_target_properties(ArdaNativeComputeCiG PROPERTIES FOLDER "Ardashir/NativeCompute")
+
+if(ARDASHIR_NATIVE_COMPUTE_CUDA)
+    list(APPEND ARDASHIR_NATIVE_COMPUTE_MODULE_TARGETS Ardashir::ArdaNativeComputeCuda)
+    list(APPEND ARDASHIR_NATIVE_COMPUTE_REGISTRATION_FUNCTIONS RegisterArdaCudaNativeComputeProvider)
 endif()
+if(ARDASHIR_NATIVE_COMPUTE_CIG)
+    list(APPEND ARDASHIR_NATIVE_COMPUTE_MODULE_TARGETS Ardashir::ArdaNativeComputeCiG)
+    list(APPEND ARDASHIR_NATIVE_COMPUTE_REGISTRATION_FUNCTIONS RegisterArdaCiGNativeComputeProvider)
+endif()
+if(ARDASHIR_NATIVE_COMPUTE_NVAPI)
+    list(APPEND ARDASHIR_NATIVE_COMPUTE_MODULE_TARGETS Ardashir::ArdaNativeComputeNvapi)
+    list(APPEND ARDASHIR_NATIVE_COMPUTE_REGISTRATION_FUNCTIONS RegisterArdaNvapiNativeComputeProvider)
+endif()
+set(ARDASHIR_NATIVE_COMPUTE_MODULE_TARGETS "${ARDASHIR_NATIVE_COMPUTE_MODULE_TARGETS}" PARENT_SCOPE)
+set(ARDASHIR_NATIVE_COMPUTE_REGISTRATION_FUNCTIONS
+    "${ARDASHIR_NATIVE_COMPUTE_REGISTRATION_FUNCTIONS}" PARENT_SCOPE)
 
 set(ARDA_NATIVE_LINKED_TARGETS ${ARDASHIR_BACKEND_MODULE_TARGETS})
 set(ARDA_NATIVE_LINKED_FUNCTIONS ${ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS})
+
+if(ARDASHIR_BACKEND_VULKAN OR (WIN32 AND ARDASHIR_BACKEND_D3D12))
+    find_package(Python3 3.8 REQUIRED COMPONENTS Interpreter)
+endif()
+
+function(ardashir_generate_feature_queries Target Script Metadata Output)
+    set(GeneratedDir "${CMAKE_CURRENT_BINARY_DIR}/generated/${Target}")
+    set(GeneratedFile "${GeneratedDir}/${Output}")
+    add_custom_command(OUTPUT "${GeneratedFile}"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${GeneratedDir}"
+        COMMAND "${Python3_EXECUTABLE}" "${Script}" "${Metadata}" "${GeneratedFile}"
+        DEPENDS "${Script}" "${Metadata}" ${ARGN}
+        VERBATIM)
+    target_sources(${Target} PRIVATE "${GeneratedFile}")
+    target_include_directories(${Target} PRIVATE "${GeneratedDir}")
+endfunction()
 
 if(ARDASHIR_BACKEND_VULKAN)
     add_library(ArdaBackendVulkan STATIC
         Vulkan/ArdaVulkanBackend.cpp)
     add_library(Ardashir::ArdaBackendVulkan ALIAS ArdaBackendVulkan)
+    ardashir_generate_feature_queries(ArdaBackendVulkan
+        "${CMAKE_CURRENT_SOURCE_DIR}/Vulkan/GenerateArdaVulkanFeatures.py"
+        "${ARDASHIR_VULKAN_REGISTRY_FILE}"
+        ArdaVulkanFeatureQueries.inl
+        "${CMAKE_CURRENT_SOURCE_DIR}/Vulkan/VulkanFeatureVocabulary.py")
     target_compile_features(ArdaBackendVulkan PUBLIC cxx_std_17)
     target_include_directories(ArdaBackendVulkan PRIVATE
         "${ARDA_BACKEND_PUBLIC_DIR}")
@@ -43,6 +78,12 @@ if(WIN32 AND ARDASHIR_BACKEND_D3D12)
     add_library(ArdaBackendD3D12 STATIC
         D3D12/ArdaD3D12Backend.cpp)
     add_library(Ardashir::ArdaBackendD3D12 ALIAS ArdaBackendD3D12)
+    ardashir_generate_feature_queries(ArdaBackendD3D12
+        "${CMAKE_CURRENT_SOURCE_DIR}/D3D12/GenerateArdaD3D12Features.py"
+        "${ARDASHIR_D3D12_AGILITY_INCLUDE_DIR}/d3d12.h"
+        ArdaD3D12Features.generated.inl
+        "${ARDASHIR_D3D12_AGILITY_INCLUDE_DIR}/dxgiformat.h"
+        "${ARDASHIR_D3D12_AGILITY_INCLUDE_DIR}/d3d12video.h")
     target_compile_features(ArdaBackendD3D12 PUBLIC cxx_std_17)
     target_compile_definitions(ArdaBackendD3D12 PRIVATE
         NOMINMAX WIN32_LEAN_AND_MEAN)

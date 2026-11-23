@@ -13,6 +13,10 @@ namespace arda
 {
 	class FArdaGlobalShaderInstance;
 
+	// ================================
+	// Compute pipeline state
+	// ================================
+
 	/** Renderer-facing compute PSO description; never a concrete RHI pipeline. */
 	struct FArdaComputePipelineStateInitializer
 	{
@@ -29,6 +33,10 @@ namespace arda
 		    const FArdaGlobalShaderInstance& Shader,
 		    const char* DebugName = nullptr);
 	};
+
+	// ================================
+	// Graphics and meshlet pipeline state
+	// ================================
 
 	/**
      * Renderer-facing graphics PSO description.
@@ -113,6 +121,10 @@ namespace arda
 		    const FArdaGlobalShaderInstance* PixelShader,
 		    const arda::FArdaRHIMeshletPipelineDesc& FixedState = {});
 	};
+
+	// ================================
+	// Ray tracing and work graph pipeline state
+	// ================================
 
 	/** Renderer-facing ray-tracing pipeline state description. */
 	struct FArdaRayTracingPipelineStateInitializer

@@ -10,6 +10,10 @@
 
 namespace arda
 {
+	// ================================
+	// Tensor scalar types
+	// ================================
+
 	/** Stable scalar storage identities, independent of texture formats and native SDK enums.
 	 * Values are append-only. Declaring a dtype does not imply provider arithmetic support.
 	 */
@@ -62,6 +66,10 @@ namespace arda
 	/** Returns scalar storage facts; unknown enum values return the unknown descriptor. */
 	[[nodiscard]] FArdaRHIDataTypeInfo GetArdaRHIDataTypeInfo(EArdaRHIDataType DataType) noexcept;
 
+	// ================================
+	// Tensor layouts and buffer views
+	// ================================
+
 	/** Concrete, owning tensor layout values without resource handles or native addresses.
 	 * Serialize the individual fields, never the C++ object representation. Empty dimensions
 	 * mean a scalar; any zero extent means no elements. Strides are explicit and measured in
@@ -92,6 +100,10 @@ namespace arda
 		/** Typed layout within the buffer. */
 		FArdaRHITensorDesc mDesc;
 	};
+
+	// ================================
+	// Tensor layout queries and validation
+	// ================================
 
 	/** Returns the checked logical element count; scalar is one, empty tensor is zero.
 	 * Rejects unknown dtype, mismatched rank, misaligned origin, and count overflow.

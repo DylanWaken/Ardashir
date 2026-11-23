@@ -1,6 +1,6 @@
 #include "ArdaBackend.h"
 #include "ArdaTestBackend.h"
-#include "RHI/CUDA/ArdaCudaModule.h"
+#include "CUDA/ArdaCudaModule.h"
 #include "RHI/Providers/ArdaBackendProvider.h"
 #include <gtest/gtest.h>
 #include <cstring>

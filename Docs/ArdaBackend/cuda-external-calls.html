@@ -188,7 +188,7 @@ declares X as read-only, Y as read/write, and workspace as read/write. Host sele
 must verify that the declared X/Y views contain at least <code>mCount * sizeof(float)</code>
 bytes and that the workspace view contains at least <code>mWorkspaceBytes</code>. Return the
 operand&#39;s explicit <code>NoWork</code> selection for a mathematically empty operation.</p>
-<pre><code class="language-cpp">#include &quot;RHI/CUDA/ArdaCudaExternalCall.h&quot;
+<pre><code class="language-cpp">#include &quot;CUDA/ArdaCudaExternalCall.h&quot;
 #include &lt;cublas_v2.h&gt;
 
 namespace arda
@@ -355,7 +355,7 @@ needs no workspace. It creates and configures a handle and descriptor in
 legacy API deprecated in cuDNN 9; it is shown for existing integrations. For new
 cuDNN workloads, use the execution-plan pattern following the example.
 <a href="https://docs.nvidia.com/deeplearning/cudnn/backend/latest/api/overview.html">cuDNN API overview</a></p>
-<pre><code class="language-cpp">#include &quot;RHI/CUDA/ArdaCudaExternalCall.h&quot;
+<pre><code class="language-cpp">#include &quot;CUDA/ArdaCudaExternalCall.h&quot;
 #include &lt;cudnn.h&gt;
 
 namespace arda

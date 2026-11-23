@@ -15,6 +15,10 @@
 
 namespace arda
 {
+	// ================================
+	// Framebuffer attachments and targets
+	// ================================
+
 	/** Describes framebuffer attachment. */
 	struct FArdaRHIFramebufferAttachment
 	{
@@ -43,6 +47,10 @@ namespace arda
 		/** Stores the attachment. */
 		FArdaRHIFramebufferAttachment mAttachment;
 	};
+
+	// ================================
+	// Framebuffer description and interface
+	// ================================
 
 	/** Describes framebuffer desc. */
 	struct FArdaRHIFramebufferDesc

@@ -1,6 +1,6 @@
 #include "Inductor/Runtime/ArdaInductorCudaContract.h"
 
-#include "ArdaNativeCompute.h"
+#include "NativeCompute/ArdaNativeCompute.h"
 #include "Inductor/Rules/ArdaInductorResourceStates.h"
 #include <EASTL/algorithm.h>
 
@@ -201,7 +201,31 @@ namespace arda
 		return {};
 	}
 
-	FArdaRHIStatus ValidateArdaInductorNativeBindings(const FArdaNativeOperandDesc& Operand,
+	EArdaInductorNativeBindingDomain GetArdaInductorNativeBindingDomain(EArdaNativeComputeRoute Route)
+	{
+		switch (Route)
+		{
+		case EArdaNativeComputeRoute::ComputeShader:
+			return EArdaInductorNativeBindingDomain::ComputeShader;
+		case EArdaNativeComputeRoute::GraphicsShader:
+			return EArdaInductorNativeBindingDomain::GraphicsShader;
+		case EArdaNativeComputeRoute::Native:
+			return EArdaInductorNativeBindingDomain::Any;
+		}
+		return EArdaInductorNativeBindingDomain::Any;
+	}
+
+	bool AllowsArdaInductorNativeResourceState(EArdaNativeComputeRoute Route,
+	    EArdaComputeAccess Access,
+	    EArdaRHIResourceState Declared,
+	    EArdaRHIResourceState Required)
+	{
+		const auto Domain = GetArdaInductorNativeBindingDomain(Route);
+		return (Access == EArdaComputeAccess::Write || AllowsState(Declared, Required, Domain, false)) &&
+		    (Access == EArdaComputeAccess::Read || AllowsState(Declared, Required, Domain, true));
+	}
+
+	FArdaRHIStatus ValidateArdaInductorNativeBindings(const FArdaNativeOperand& Operand,
 	    const FArdaNativeInvocation& Invocation,
 	    const eastl::vector<FArdaInductorNativeResourceAccess>& Declared,
 	    EArdaInductorNativeBindingDomain Domain,

@@ -15,7 +15,7 @@ namespace arda
 	bool FArdaTerrainRenderer::Initialize(arda::FArdaRHIDeviceRef device, arda::EArdaRHIFormat, bool bVerifyTerrain)
 	{
 		mDevice = eastl::move(device);
-		if (!mDevice || !mDevice->GetCapabilities().mQueues.mbGraphics)
+		if (!mDevice || !mDevice->GetFeatures()->Supports("queue.graphics"))
 		{
 			mError = "The initialized backend does not expose a graphics device.";
 			return false;

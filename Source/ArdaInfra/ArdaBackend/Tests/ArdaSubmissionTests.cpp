@@ -38,7 +38,7 @@ namespace
 	{
 		for (const auto Queue : {EArdaRHIQueueType::Graphics, EArdaRHIQueueType::Compute, EArdaRHIQueueType::Copy})
 		{
-			if (!mDevice->GetCapabilities().IsQueueSupported(Queue))
+			if (!mDevice->IsQueueSupported(Queue))
 			{
 				continue;
 			}
@@ -105,7 +105,7 @@ namespace
 			EXPECT_EQ(Commands.mValue->DrawIndexedIndirect(*Buffer.mValue, Offset).mCode,
 			    EArdaRHIResult::InvalidArgument);
 			EXPECT_EQ(Commands.mValue->DispatchIndirect(*Buffer.mValue, Offset).mCode, EArdaRHIResult::InvalidArgument);
-			if (mDevice->GetCapabilities().mRayTracing.mbIndirectDispatch)
+			if (mDevice->GetFeatures()->Supports("ray-tracing.indirect-dispatch"))
 			{
 				EXPECT_EQ(Commands.mValue->DispatchRaysIndirect(*Buffer.mValue, Offset).mCode,
 				    EArdaRHIResult::InvalidArgument);
@@ -125,7 +125,7 @@ namespace
 
 	TEST_P(FArdaSubmissionTest, RejectsOverflowingRayDispatchDimensions)
 	{
-		if (!mDevice->GetCapabilities().mRayTracing.mbPipelineShaders)
+		if (!mDevice->GetFeatures()->Supports("ray-tracing.pipeline"))
 		{
 			GTEST_SKIP() << "Ray-tracing pipelines are unavailable.";
 		}

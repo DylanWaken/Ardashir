@@ -69,7 +69,7 @@
     <text x="616" y="242" class="label">Process-wide backend API</text>
     <text x="616" y="270" class="small">ConfigureBackend(FArdaBackendConfiguration)</text>
     <text x="616" y="293" class="small">InitializeBackend or InitializeBackendForPresentation</text>
-    <text x="616" y="316" class="small">GetDeviceContext; GetDevice; ShutdownBackend</text>
+    <text x="616" y="316" class="small">GetDevice, GetDevices, ShutdownBackend</text>
     <text x="616" y="343" class="tiny">FArdaBackendState serializes configuration and lifetime</text>
     <path class="dataFlow" d="M802 287 H856"/>
 
@@ -89,9 +89,9 @@
     <text x="1515" y="343" class="tiny">implementation types remain private to the linked module</text>
 
     <rect class="data" x="48" y="400" width="754" height="188"/>
-    <text x="425" y="430" class="label">Published device context</text>
-    <text x="425" y="458" class="small">FArdaDeviceContext</text>
-    <text x="425" y="481" class="small">mDevice | mBackendName | mBackend | mQueueCapabilities</text>
+    <text x="425" y="430" class="label">Published device set</text>
+    <text x="425" y="458" class="small">GetDevices returns FArdaBackendDeviceReg snapshots</text>
+    <text x="425" y="481" class="small">mAdapter and mDevice for each configured adapter</text>
     <line x1="78" y1="505" x2="772" y2="505" class="divider"/>
     <text x="425" y="531" class="small">returned refs retain resources through intrusive atomic AddRef / Release</text>
     <text x="425" y="554" class="small">device ownership checks reject cross-device resource use</text>

@@ -20,8 +20,12 @@ namespace arda
 {
 	class IArdaExternalDeviceProvider;
 
+	// ================================
+	// Backend module identity
+	// ================================
+
 	/** C++ provider contract version required by this ArdaBackend build. */
-	inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 15;
+	inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 17;
 
 	/** Describes one backend implementation available to ArdaBackend. */
 	struct FArdaBackendModuleDescriptor
@@ -45,6 +49,10 @@ namespace arda
 		/** Default-selection priority among all registered backend modules. */
 		int32_t mPriority = 0;
 	};
+
+	// ================================
+	// Backend runtime and presentation
+	// ================================
 
 	/** Result of creating presentation resources for an initialized backend device. */
 	struct FArdaSwapChainCreateResult
@@ -79,6 +87,10 @@ namespace arda
 		    arda::FArdaRHIDeviceRef Device) = 0;
 	};
 
+	// ================================
+	// Device creation result
+	// ================================
+
 	/** Result of atomically creating and initializing a backend device. */
 	struct FArdaBackendDeviceCreateResult
 	{
@@ -99,6 +111,10 @@ namespace arda
 			    mProviderDevice != nullptr;
 		}
 	};
+
+	// ================================
+	// Backend module interface
+	// ================================
 
 	/** Contract implemented by every linkable Arda backend module. */
 	class IArdaBackendModule
@@ -131,6 +147,10 @@ namespace arda
 		    IArdaWindowSurface* WindowSurface,
 		    const IArdaExternalDeviceProvider* ExternalProvider) = 0;
 
+		// ================================
+		// Shader compilation
+		// ================================
+
 		/**
          * Allows a module to validate or replace the fallback compiler command.
          * BackendDefined shader formats must make the invocation usable by this
@@ -159,41 +179,4 @@ namespace arda
 			return EArdaBackendShaderCompileResult::NotHandled;
 		}
 	};
-
-	/**
-     * Registers a linkable backend module by its stable descriptor name.
-     * Re-registering the same object is idempotent; name collisions are rejected.
-     * @param Module Module that remains alive until it is unregistered.
-     * @return True when the module is registered.
-     */
-	[[nodiscard]] bool RegisterBackendModule(IArdaBackendModule& Module);
-
-	/**
-     * Removes an inactive backend module from the process registry.
-     * @param Module Exact module object previously registered.
-     * @return True when absent or successfully removed.
-     */
-	[[nodiscard]] bool UnregisterBackendModule(IArdaBackendModule& Module);
-
-	/**
-     * Finds a registered backend by stable name.
-     * @param Name Stable module name.
-     * @return Non-owning module pointer, or null.
-     */
-	[[nodiscard]] IArdaBackendModule* FindBackendModule(const char* Name) noexcept;
-
-	/** @return The highest-priority registered backend module, or null. */
-	[[nodiscard]] IArdaBackendModule* FindDefaultBackendModule() noexcept;
-
-	/** Resolves a registered module into an immutable shader target. */
-	[[nodiscard]] bool ResolveShaderTarget(const char* BackendName, FArdaShaderTarget& OutTarget) noexcept;
-
-	/** Resolves the highest-priority registered module into a shader target. */
-	[[nodiscard]] bool ResolveDefaultShaderTarget(FArdaShaderTarget& OutTarget) noexcept;
-
-	/** @return Copies of all registered descriptors in stable name order. */
-	[[nodiscard]] eastl::vector<FArdaBackendModuleDescriptor> EnumerateBackendModules();
-
-	/** @return Selected module after initialization, or null. */
-	[[nodiscard]] const IArdaBackendModule* GetActiveBackendModule() noexcept;
 }

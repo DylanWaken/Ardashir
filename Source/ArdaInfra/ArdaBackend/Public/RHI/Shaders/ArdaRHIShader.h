@@ -13,6 +13,11 @@
 namespace arda
 {
 	class FArdaShaderParameterMetadata;
+
+	// ================================
+	// Shader stage flags
+	// ================================
+
 	/** Enumerates shader stage values. */
 	enum class EArdaRHIShaderStage : uint16_t
 	{
@@ -65,6 +70,10 @@ namespace arda
 		const uint16_t RayStages = static_cast<uint16_t>(EArdaRHIShaderStage::AllRayTracing);
 		return Value != 0 && (Value & (Value - 1)) == 0 && (Value & RayStages) == Value;
 	}
+
+	// ================================
+	// Shader descriptors and resources
+	// ================================
 
 	/** Describes shader desc. */
 	struct FArdaRHIShaderDesc

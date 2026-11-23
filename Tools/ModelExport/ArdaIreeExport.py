@@ -789,8 +789,11 @@ def _publish_model(package, state, output, state_output):
         staged_state = Path(state_directory) / "model.ardastate"
         write_package(package, staged_model)
         write_state_dict(state, staged_state, package)
-        files = [(staged_model.with_suffix(".json"), output.with_suffix(".json")),
+        libraries = sorted(staged_model.parent.glob("*.ardakernels"))
+        files = [(entry, output.parent / entry.name) for entry in libraries] + [
+                 (staged_model.with_suffix(".json"), output.with_suffix(".json")),
                  (staged_state, state_output), (staged_model, output)]
+        check(len({destination for _, destination in files}) == len(files), "Model outputs alias a kernel library")
         backups, committed = {}, []
         # Back up every destination before changing any of them. The descriptor
         # is published last, once its checkpoint and inspection metadata exist.

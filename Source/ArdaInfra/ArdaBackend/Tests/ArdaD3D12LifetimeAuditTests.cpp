@@ -236,7 +236,7 @@ TEST_F(FArdaD3D12LifetimeAudit, ResetWhileSubmissionIsBlockedPreservesBothRecord
 
 TEST_F(FArdaD3D12LifetimeAudit, ShaderTableKeepsBoundGenerationAndLastSuccessfulCommit)
 {
-	if (!mDevice->GetCapabilities().mRayTracing.mbPipelineShaders)
+	if (!mDevice->GetFeatures()->Supports("ray-tracing.pipeline"))
 	{
 		GTEST_SKIP() << "D3D12 ray-tracing pipelines unavailable";
 	}
@@ -348,7 +348,7 @@ TEST_F(FArdaD3D12LifetimeAudit, ShaderTableKeepsBoundGenerationAndLastSuccessful
 
 TEST_F(FArdaD3D12LifetimeAudit, SparseRemappingReleasesOnlyCompletelyUnmappedHeapOwners)
 {
-	if (!mDevice->GetCapabilities().mResidency.mbReservedBuffers)
+	if (!mDevice->GetFeatures()->Supports("resource.reserved-buffer"))
 	{
 		GTEST_SKIP() << "D3D12 reserved buffers unavailable";
 	}
@@ -412,7 +412,7 @@ TEST_F(FArdaD3D12LifetimeAudit, SparseRemappingReleasesOnlyCompletelyUnmappedHea
 
 TEST_F(FArdaD3D12LifetimeAudit, ReservedPrefixPreservesDataAcrossResizeAndExtremeRequests)
 {
-	if (!mDevice->GetCapabilities().mResidency.mbReservedBuffers)
+	if (!mDevice->GetFeatures()->Supports("resource.reserved-buffer"))
 	{
 		GTEST_SKIP() << "D3D12 reserved buffers unavailable";
 	}
@@ -558,10 +558,10 @@ TEST_F(FArdaD3D12LifetimeAudit, RepeatedAllocateSubmitReopenAndTrimReturnToBasel
 
 TEST_F(FArdaD3D12LifetimeAudit, ReportsNativeFormatFactsAndDispatchLimits)
 {
-	const auto& Capabilities = mDevice->GetCapabilities();
-	EXPECT_TRUE(Capabilities.mbFormatSupportReported);
-	EXPECT_EQ(Capabilities.mLimits.mMaxComputeWorkGroupCount[0], D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION);
-	EXPECT_EQ(Capabilities.mLimits.mMaxTexture2D, D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION);
+	const auto& Limits = mDevice->GetLimits();
+	EXPECT_TRUE(mDevice->GetFeatures()->Supports("format.support-reported"));
+	EXPECT_EQ(Limits.mMaxComputeWorkGroupCount[0], D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION);
+	EXPECT_EQ(Limits.mMaxTexture2D, D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION);
 	const auto Format = mDevice->QueryFormatSupport(EArdaRHIFormat::RGBA8UNorm);
 	D3D12_FEATURE_DATA_FORMAT_SUPPORT Native{DXGI_FORMAT_R8G8B8A8_UNORM};
 	ASSERT_TRUE(SUCCEEDED(
@@ -675,7 +675,7 @@ TEST_F(FArdaD3D12LifetimeAudit, FramebufferViewsHonorMipLayerAndReadOnlyDepth)
 
 TEST_F(FArdaD3D12LifetimeAudit, FailedSparseSignalRetainsIntermediateHeapAndShutdownUntilRetired)
 {
-	if (!mDevice->GetCapabilities().mResidency.mbReservedBuffers)
+	if (!mDevice->GetFeatures()->Supports("resource.reserved-buffer"))
 	{
 		GTEST_SKIP() << "D3D12 reserved buffers unavailable";
 	}

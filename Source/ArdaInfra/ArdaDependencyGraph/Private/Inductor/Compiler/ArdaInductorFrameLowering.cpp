@@ -109,6 +109,7 @@ namespace arda
 				auto Nodes = Selected->second->mNodes;
 				const auto& HeadNode = Graph.mTopology.TryGetNode(Head)->mPayload;
 				const bool bCuda = HeadNode.mDefinition->mKind == EArdaDependencyNodeKind::Cuda;
+				const bool bNative = HeadNode.mDefinition->mKind == EArdaDependencyNodeKind::Native;
 				const auto Queue = Graph.mCompile.mQueues[Position];
 				FArdaInductorCommandAccesses Accesses;
 				for (auto Handle : Nodes)
@@ -123,6 +124,12 @@ namespace arda
 					    (!Node.mDefinition->mPrepareCuda || Node.mDefinition->mKind != EArdaDependencyNodeKind::Cuda))
 					{
 						return MakeArdaInductorRuntimeError("A CUDA batch contains an incompatible node definition.");
+					}
+					if (bNative &&
+					    (!Node.mDefinition->mPrepareNative ||
+					        Node.mDefinition->mKind != EArdaDependencyNodeKind::Native))
+					{
+						return MakeArdaInductorRuntimeError("A native batch contains an incompatible node definition.");
 					}
 					for (const auto& Access : Graph.GetNodeDescription(Node).mAccesses)
 					{
@@ -219,7 +226,7 @@ namespace arda
 						}
 						Frame->mCudaTimers.push_back(eastl::move(RegionTimer));
 					}
-					else if (Graph.mCompile.mExecution->mDevice->GetCapabilities().mQueues.SupportsTimestamps(Queue))
+					else if (Graph.mCompile.mExecution->mDevice->GetTimestampValidBits(Queue))
 					{
 						if (Reuse)
 						{
@@ -247,7 +254,7 @@ namespace arda
 				}
 				// AS lifecycle state comes from accepted build/copy submissions, not a generic write declaration.
 				// Record after ordered producers submit so native and facade source validation observe that state.
-				const bool RecordAtSubmit = bCuda || !Accesses.mAccelerationStructures.empty();
+				const bool RecordAtSubmit = bCuda || bNative || !Accesses.mAccelerationStructures.empty();
 				const auto Pass = Frame->mLowered->AppendCommand(HeadNode.mName,
 				    Queue,
 				    eastl::move(Accesses),

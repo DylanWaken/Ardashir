@@ -1,0 +1,28 @@
+.version 6.0
+.target sm_50
+.address_size 64
+.visible .entry ArdaPackageFill(.param .u64 output, .param .u64 count, .param .u32 pattern)
+{
+ .reg .pred p;
+ .reg .b32 a, b, c, shift, value;
+ .reg .b64 index, size, pointer, address;
+ mov.u32 a, %ctaid.x;
+ mov.u32 b, %ntid.x;
+ mov.u32 c, %tid.x;
+ mul.wide.u32 index, a, b;
+ cvt.u64.u32 address, c;
+ add.u64 index, index, address;
+ ld.param.u64 size, [count];
+ setp.ge.u64 p, index, size;
+ @p bra done;
+ ld.param.u64 pointer, [output];
+ add.u64 address, pointer, index;
+ cvt.u32.u64 shift, index;
+ and.b32 shift, shift, 3;
+ shl.b32 shift, shift, 3;
+ ld.param.u32 value, [pattern];
+ shr.u32 value, value, shift;
+ st.global.u8 [address], value;
+done:
+ ret;
+}

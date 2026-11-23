@@ -281,12 +281,12 @@ namespace arda::inductor_queue_gpu_tests
 			}
 			return Result.mQueues[size_t(Position - Result.mExecutionOrder.begin())];
 		};
-		const auto& Capabilities = mDevice->GetCapabilities();
+		const bool GpuWaits = mDevice->GetFeatures()->Supports("queue.gpu-waits");
 		const auto ComputeQueue =
-		    Capabilities.IsQueueSupported(EArdaRHIQueueType::Compute) && Capabilities.mQueues.mbGpuWaits
+		    mDevice->IsQueueSupported(EArdaRHIQueueType::Compute) && GpuWaits
 		    ? EArdaRHIQueueType::Compute
 		    : EArdaRHIQueueType::Graphics;
-		const auto CopyQueue = Capabilities.IsQueueSupported(EArdaRHIQueueType::Copy) && Capabilities.mQueues.mbGpuWaits
+		const auto CopyQueue = mDevice->IsQueueSupported(EArdaRHIQueueType::Copy) && GpuWaits
 		    ? EArdaRHIQueueType::Copy
 		    : EArdaRHIQueueType::Graphics;
 		for (uint32_t Index = 0; Index < Nodes.size(); ++Index)

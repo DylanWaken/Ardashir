@@ -9,11 +9,19 @@
 
 namespace arda
 {
+	// ================================
+	// Resolved resource bindings
+	// ================================
+
 	struct FArdaProviderBinding
 	{
 		FArdaRHIBindingItem mItem;
 		FArdaProviderObjectRef mObject;
 	};
+
+	// ================================
+	// Sparse resource tile mappings
+	// ================================
 
 	struct FArdaProviderTextureTileMapping
 	{
@@ -31,6 +39,10 @@ namespace arda
 		FArdaProviderObjectRef mHeap;
 		bool mbCommit = true;
 	};
+
+	// ================================
+	// Framebuffer attachments
+	// ================================
 
 	struct FArdaProviderFramebufferTarget
 	{

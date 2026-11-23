@@ -224,7 +224,7 @@ namespace
 		if (OutMeshletKey != nullptr)
 		{
 			*OutMeshletKey = 0;
-			if (Device->GetCapabilities().mMeshShaderTier != EArdaRHIMeshShaderTier::None)
+			if (Device->GetFeatures()->Supports("shader.mesh"))
 			{
 				auto MeshShader = CreateTestShader(*Device,
 				    BackendName,
@@ -314,7 +314,7 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
 		std::filesystem::remove_all(Directory, Error);
 		GTEST_SKIP() << GetBackendError().c_str();
 	}
-	if (!GetDevice()->GetCapabilities().mbPipelineCachePersistence)
+	if (!GetDevice()->GetFeatures()->Supports("pipeline.cache-persistence"))
 	{
 		ShutdownBackend();
 		std::filesystem::remove_all(Directory, Error);
@@ -425,7 +425,7 @@ TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
 	Configuration.mMessageCallback = &Diagnostics;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
 	ARDA_REQUIRE_BACKEND();
-	if (!GetDevice()->GetCapabilities().mbPipelineCachePersistence)
+	if (!GetDevice()->GetFeatures()->Supports("pipeline.cache-persistence"))
 	{
 		ShutdownBackend();
 		std::filesystem::remove_all(Directory, Error);
@@ -738,7 +738,7 @@ TEST(ArdaPipelineStateCache, CachesPrecachesBindsAndEvictsMeshletPipelines)
 
 	FArdaRHIDeviceRef Device = GetDevice();
 	ASSERT_TRUE(Device);
-	if (Device->GetCapabilities().mMeshShaderTier == EArdaRHIMeshShaderTier::None)
+	if (!Device->GetFeatures()->Supports("shader.mesh"))
 	{
 		ShutdownBackend();
 		GTEST_SKIP() << "The selected device does not support mesh shaders.";
@@ -854,7 +854,7 @@ TEST(ArdaPipelineStateCache, CachesRayTracingAndWorkGraphPipelines)
 		FArdaPipelineStateCache Cache(Device, Configuration);
 		const char* BackendName = GetBackendConfiguration().mBackendName.c_str();
 
-		if (Device->GetCapabilities().mRayTracing.mbPipelineShaders)
+		if (Device->GetFeatures()->Supports("ray-tracing.pipeline"))
 		{
 			bTestedPipelineKind = true;
 			auto RayGeneration = CreateTestShader(*Device,
@@ -905,7 +905,7 @@ TEST(ArdaPipelineStateCache, CachesRayTracingAndWorkGraphPipelines)
 			EXPECT_EQ(Cache.GetDiagnostics().back().mKind, EArdaPipelineStateKind::RayTracing);
 		}
 
-		if (Device->GetCapabilities().mWorkGraphTier != EArdaRHIWorkGraphTier::None)
+		if (Device->GetFeatures()->Supports("work-graph.dispatch"))
 		{
 			bTestedPipelineKind = true;
 			auto WorkGraphShader = CreateTestShader(*Device,

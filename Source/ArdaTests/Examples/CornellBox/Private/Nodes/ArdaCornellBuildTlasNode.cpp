@@ -9,12 +9,17 @@ namespace arda
 	FArdaDependencyNodeRequirements FArdaCornellBuildTlasNode::GetRequirements(const FArdaParameters& P)
 	{
 		FArdaDependencyNodeRequirements R;
-		R.mFeatures.mbRequireAccelerationStructures = true;
-		R.mFeatures.mbRequireTopLevelAccelerationStructures = true;
-		R.mFeatures.mbRequireAccelerationStructureUpdate = HasAnyFlags(P.mBuildFlags,
-		    EArdaRHIAccelStructBuildFlags::AllowUpdate | EArdaRHIAccelStructBuildFlags::PerformUpdate);
-		R.mFeatures.mbRequireAccelerationStructureCompaction =
-		    HasAnyFlags(P.mBuildFlags, EArdaRHIAccelStructBuildFlags::AllowCompaction);
+		R.mFeatures.Require("ray-tracing.acceleration-structure");
+		R.mFeatures.Require("ray-tracing.top-level-acceleration-structure");
+		if (HasAnyFlags(P.mBuildFlags,
+		    EArdaRHIAccelStructBuildFlags::AllowUpdate | EArdaRHIAccelStructBuildFlags::PerformUpdate))
+		{
+			R.mFeatures.Require("ray-tracing.acceleration-structure-update");
+		}
+		if (HasAnyFlags(P.mBuildFlags, EArdaRHIAccelStructBuildFlags::AllowCompaction))
+		{
+			R.mFeatures.Require("ray-tracing.acceleration-structure-compaction");
+		}
 		return R;
 	}
 

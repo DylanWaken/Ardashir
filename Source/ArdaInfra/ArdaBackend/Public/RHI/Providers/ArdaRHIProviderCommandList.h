@@ -8,9 +8,20 @@
 
 namespace arda
 {
+	struct FArdaCudaKernel;
+	struct FArdaProviderCudaBinding;
+
+	// ================================
+	// Provider command list interface
+	// ================================
+
 	class IArdaProviderCommandList
 	{
 	public:
+		// ================================
+		// Native operations and CUDA dispatch
+		// ================================
+
 		/**
 		 * Record a supported backend-defined operation without submitting it. Check its ID,
 		 * payload type, resource states, and representation before recording. Keep a copy of
@@ -33,6 +44,10 @@ namespace arda
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Native CUDA recording is unavailable.");
 		}
 
+		// ================================
+		// Recording lifecycle
+		// ================================
+
 		/** Native recording state, queried before CUDA transitions are emitted. */
 		[[nodiscard]] virtual bool IsOpen() const noexcept
 		{
@@ -43,6 +58,11 @@ namespace arda
 		virtual FArdaRHIStatus Open() = 0;
 		virtual FArdaRHIStatus Close() = 0;
 		virtual FArdaRHIStatus Reset() = 0;
+
+		// ================================
+		// Resource uploads, copies and resolves
+		// ================================
+
 		virtual FArdaRHIStatus WriteBuffer(const FArdaProviderObjectRef& Buffer,
 		    const FArdaRHIBufferDesc& Desc,
 		    const void* Data,
@@ -102,6 +122,11 @@ namespace arda
 		    const FArdaProviderObjectRef& Source,
 		    const FArdaRHIStagingTextureDesc& SourceDesc,
 		    const FArdaRHITextureSlice& SourceSlice) = 0;
+
+		// ================================
+		// Resource clears
+		// ================================
+
 		virtual FArdaRHIStatus ClearTexture(const FArdaProviderObjectRef& Texture,
 		    const FArdaRHITextureDesc& Desc,
 		    const FArdaRHITextureSubresourceRange& Range,
@@ -120,6 +145,11 @@ namespace arda
 		    float Depth,
 		    bool bClearStencil,
 		    uint8_t Stencil) = 0;
+
+		// ================================
+		// Resource states and barriers
+		// ================================
+
 		virtual FArdaRHIStatus SetTextureState(const FArdaProviderObjectRef& Texture,
 		    const FArdaRHITextureDesc& Desc,
 		    const FArdaRHITextureSubresourceRange& Range,
@@ -153,6 +183,11 @@ namespace arda
 		virtual void CommitBarriers() = 0;
 		virtual FArdaRHIStatus AliasingBarrier(const FArdaProviderObjectRef& ResourceBefore,
 		    const FArdaProviderObjectRef& ResourceAfter) = 0;
+
+		// ================================
+		// Pipeline state and push constants
+		// ================================
+
 		virtual FArdaRHIStatus SetGraphicsState(const FArdaProviderGraphicsState& State) = 0;
 		virtual FArdaRHIStatus SetComputeState(const FArdaProviderComputeState& State) = 0;
 
@@ -169,6 +204,11 @@ namespace arda
 		}
 
 		virtual void SetPushConstants(const void* Data, size_t Size) = 0;
+
+		// ================================
+		// Draws and dispatches
+		// ================================
+
 		virtual void Draw(const FArdaRHIDrawArguments& Arguments) = 0;
 		virtual void DrawIndexed(const FArdaRHIDrawArguments& Arguments) = 0;
 		virtual FArdaRHIStatus DrawIndirect(const FArdaProviderObjectRef& Arguments,
@@ -210,6 +250,10 @@ namespace arda
 			    "Work graphs are unsupported by this backend provider.");
 		}
 
+		// ================================
+		// Sampler feedback
+		// ================================
+
 		virtual FArdaRHIStatus ClearSamplerFeedbackTexture(const FArdaProviderObjectRef&)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
@@ -238,6 +282,10 @@ namespace arda
 			    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
 			        "Sampler feedback is unsupported by this backend provider.")};
 		}
+
+		// ================================
+		// Acceleration structure states and builds
+		// ================================
 
 		virtual FArdaRHIStatus SetAccelStructState(const FArdaProviderObjectRef&, EArdaRHIResourceState)
 		{
@@ -292,6 +340,10 @@ namespace arda
 			    "Acceleration-structure compaction is unsupported by this backend provider.");
 		}
 
+		// ================================
+		// Opacity micromaps
+		// ================================
+
 		virtual FArdaRHIStatus BuildOpacityMicromap(const FArdaProviderObjectRef&)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
@@ -312,6 +364,10 @@ namespace arda
 			        "Opacity micromaps are unsupported by this backend provider.")};
 		}
 
+		// ================================
+		// Timer queries
+		// ================================
+
 		/** Records the start timestamp for a provider timer query. */
 		virtual FArdaRHIStatus BeginTimerQuery(const FArdaProviderObjectRef&)
 		{
@@ -325,6 +381,10 @@ namespace arda
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
 			    "Timer queries are unsupported by this backend provider.");
 		}
+
+		// ================================
+		// Debug markers
+		// ================================
 
 		virtual void BeginMarker(const char* Name) = 0;
 		virtual void EndMarker() = 0;

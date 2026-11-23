@@ -4,7 +4,7 @@
  */
 #pragma once
 #include "ArdaTestValidation.h"
-#include "RHI/Providers/ArdaBackendProvider.h"
+#include "ArdaBackend.h"
 #include <gtest/gtest.h>
 #include <atomic>
 #include <cstdio>

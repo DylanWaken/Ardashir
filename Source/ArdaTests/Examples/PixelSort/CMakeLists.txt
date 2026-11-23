@@ -5,24 +5,6 @@ if(NOT WIN32)
     message(FATAL_ERROR "PixelSort requires Windows.")
 endif()
 
-# Step 1: compile the .cu file into a static library of native GPU code.
-# PROFILE pixel_sort generates ARDA_CUDA_BUILD_NAMESPACE=arda_cuda_pixel_sort
-# and GetBuildInfo() in ArdaCudaBuildInfo.h. DEPENDS includes the shared schema
-# in the generated build identity; edit that schema once for both C++ and CUDA.
-# With ARCHITECTURES omitted, this target inherits ARDASHIR_CUDA_ARCHITECTURES.
-# The helper emits native (-real) images and links static cudart: no runtime nvcc/PTX.
-#
-# For a different per-kernel architecture/flag policy, add another named target
-# with a UNIQUE PROFILE, e.g. ARCHITECTURES 89 120, DEFINITIONS MY_TUNING=1,
-# or OPTIONS --maxrregcount=64. Each profile gets its own namespace/manifest.
-# Link that target and reference its entry exports explicitly.
-if(ARDASHIR_ENABLE_CUDA AND ARDASHIR_BUILD_CUDA_KERNELS)
-    ardashir_add_cuda_kernels(PixelSortKernels PROFILE pixel_sort
-        SOURCES Private/Nodes/ArdaPixelSortKernels.cu DEPENDS Public/Nodes/ArdaPixelSortOperand.h)
-    target_include_directories(PixelSortKernels PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Public")
-    set_target_properties(PixelSortKernels PROPERTIES FOLDER "Ardashir/Tests/Examples/PixelSort")
-endif()
-# Step 2: compile the renderer and node library with the host C++ compiler.
 # The graph owns GPU execution; the window uses Win32 and capture uses WIC.
 add_executable(PixelSort PixelSortMain.cpp PixelSortWindow.cpp PixelSortRenderer.cpp
     Private/Nodes/ArdaPixelSortOperand.cpp
@@ -37,9 +19,55 @@ target_compile_features(PixelSort PRIVATE cxx_std_17)
 target_compile_definitions(PixelSort PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 target_link_libraries(PixelSort PRIVATE
     ArdaExampleNodes Ardashir::ArdaBackend Ardashir::ArdaDependencyGraph user32 ole32 windowscodecs)
-if(TARGET PixelSortKernels)
-    target_link_libraries(PixelSort PRIVATE PixelSortKernels)
+# Emit one CUDA ELF per architecture with both exported entry points. The package
+# manifest keys encode the same architecture and orientation as the operand variants.
+if(ARDASHIR_ENABLE_CUDA AND ARDASHIR_BUILD_CUDA_KERNELS AND
+        (ARDASHIR_NATIVE_COMPUTE_CUDA OR ARDASHIR_NATIVE_COMPUTE_CIG))
+    set(PixelSortArchitectures ${ARDASHIR_CUDA_ARCHITECTURES})
+    if(NOT PixelSortArchitectures)
+        message(FATAL_ERROR "PixelSort requires at least one native CUDA architecture target.")
+    endif()
+    list(TRANSFORM PixelSortArchitectures REPLACE "-real$" "")
+    list(REMOVE_DUPLICATES PixelSortArchitectures)
+    list(SORT PixelSortArchitectures COMPARE NATURAL ORDER DESCENDING)
+    set(PixelSortKernelRecords "")
+    set(PixelSortArchRows "")
+    set(NvccHostArgs)
+    if(CMAKE_CUDA_HOST_COMPILER)
+        list(APPEND NvccHostArgs -ccbin "${CMAKE_CUDA_HOST_COMPILER}")
+    endif()
+    foreach(Arch IN LISTS PixelSortArchitectures)
+        if(NOT Arch MATCHES "^([1-9][0-9]*)([af]?)$")
+            message(FATAL_ERROR "PixelSort requires explicit native CUDA architecture targets.")
+        endif()
+        math(EXPR Attribute "${CMAKE_MATCH_1} << 1")
+        if(CMAKE_MATCH_2)
+            math(EXPR Attribute "${Attribute} | 1")
+        endif()
+        set(Cubin "${CMAKE_CURRENT_BINARY_DIR}/PixelSortCubins/ArdaPixelSort-sm${Arch}.cubin")
+        ardashir_compile_native_kernel(
+            SOURCE Private/Nodes/ArdaPixelSortKernels.cu OUTPUT "${Cubin}" COMPILER "${CMAKE_CUDA_COMPILER}"
+            ARGUMENTS --cubin -arch=sm_${Arch} -std=c++17 ${NvccHostArgs}
+                -I "${CMAKE_CURRENT_SOURCE_DIR}/Public" -o @OUTPUT@ @SOURCE@
+            DEPENDS Public/Nodes/ArdaPixelSortKernelParameters.h)
+        foreach(Provider IN ITEMS cuda-in-graphics cuda)
+            foreach(Orientation IN ITEMS Rows Columns)
+                string(APPEND PixelSortKernelRecords
+                    "    {\"provider\":\"${Provider}\",\"name\":\"${Orientation}.sm${Arch}\","
+                    "\"signature\":\"rgba8-radix-v1\",\"format\":\"cubin\","
+                    "\"entryPoint\":\"ArdaPixelSort${Orientation}\",\"attributes\":[${Attribute}],\"file\":\"${Cubin}\"},\n")
+            endforeach()
+        endforeach()
+        string(APPEND PixelSortArchRows "    \"${Arch}\",\n")
+    endforeach()
+    string(REGEX REPLACE ",\n$" "\n" PixelSortKernelRecords "${PixelSortKernelRecords}")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ArdaPixelSortArchitectures.inl"
+        CONTENT "${PixelSortArchRows}")
+    ardashir_add_native_kernel_library(PixelSortKernels
+        MANIFEST Private/Nodes/ArdaPixelSortKernels.json.in DEPLOY_TO PixelSort)
+    target_include_directories(PixelSort PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
     target_compile_definitions(PixelSort PRIVATE ARDA_PIXEL_SORT_NATIVE_KERNELS)
+    set_target_properties(PixelSortKernels PROPERTIES FOLDER "Ardashir/Tests/Examples/PixelSort")
 endif()
 if(ARDASHIR_BACKEND_VULKAN)
     # Headers describe the Win32 surface ABI. PixelSortWindow loads the system's
@@ -48,7 +76,7 @@ if(ARDASHIR_BACKEND_VULKAN)
     target_compile_definitions(PixelSort PRIVATE ARDA_PIXEL_SORT_VULKAN)
 endif()
 set_target_properties(PixelSort PROPERTIES FOLDER "Ardashir/Tests/Examples/PixelSort")
-# Step 3: deploy the graphics assets beside the executable, independent of cwd.
+# Deploy graphics assets beside the executable, independent of cwd.
 # Keep this development example runnable outside the source/build tree. CUDA is
 # already native code; DXC is used only for the editable HLSL graphics stages.
 get_filename_component(PixelSortDxcDirectory "${ARDASHIR_DXC_EXECUTABLE}" DIRECTORY)

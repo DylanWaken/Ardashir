@@ -14,6 +14,10 @@
 
 namespace arda
 {
+	// ================================
+	// Sampler modes and description
+	// ================================
+
 	/** Enumerates sampler address mode values. */
 	enum class EArdaRHISamplerAddressMode : uint8_t
 	{
@@ -80,6 +84,10 @@ namespace arda
      * @return A status describing whether the operation succeeded.
      */
 	[[nodiscard]] FArdaRHIStatus Validate(const FArdaRHISamplerDesc& Value) noexcept;
+
+	// ================================
+	// Sampler interface
+	// ================================
 
 	/** Interface for sampler. */
 	class IArdaRHISampler : public virtual IArdaRHIResource

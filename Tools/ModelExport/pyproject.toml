@@ -19,4 +19,4 @@ dependencies = [
 
 [tool.setuptools]
 packages = ["arda"]
-py-modules = ["ArdaIreeExport", "ArdaModelPackage", "ArdaCudaReplay", "ArdaDTypes"]
+py-modules = ["ArdaIreeExport", "ArdaModelPackage", "ArdaCudaReplay", "ArdaDTypes", "ArdaNativeKernelPackage"]

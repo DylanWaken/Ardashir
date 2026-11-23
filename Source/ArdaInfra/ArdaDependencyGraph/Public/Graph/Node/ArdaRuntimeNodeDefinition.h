@@ -3,42 +3,44 @@
 
 #include "Graph/Node/ArdaGraphArchive.h"
 #include "Graph/Node/ArdaGraphEdit.h"
-#include "RHI/CUDA/ArdaCudaModule.h"
+#include "NativeCompute/ArdaNativeKernelLibrary.h"
 #include <EASTL/array.h>
 
 namespace arda
 {
-	/** One named parameter in an exported kernel ABI. */
+	/** Graph schema for one argument in the kernel layout. */
 	struct FArdaRuntimeNodeArgumentDesc
 	{
 		/** Stable parameter name, unique within this definition. */
 		eastl::string mName;
-		/** Exact packed CUDA argument location, size, alignment and kind. */
-		FArdaCudaModuleArgument mAbi;
-		/** Buffer access used by both dependency analysis and CUDA submission. */
+		/** Resource access used by dependency analysis and execution. */
 		EArdaComputeAccess mAccess = EArdaComputeAccess::Read;
+		/** Resource state required by the operand's graph bindings. */
+		EArdaRHIResourceState mState = EArdaRHIResourceState::UnorderedAccess;
+		/** Override the graphics binding kind when an operand converts to a different kernel argument kind. */
+		EArdaRHIResourceType mResourceType = EArdaRHIResourceType::Count;
+		/** Required graphics texture format, or Unknown for an unconstrained view. */
+		EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown;
 	};
 
-	/** Complete immutable implementation; registration copies the descriptor and embedded device code. */
+	/** Immutable reference to a deployed kernel and its graph binding schema. */
 	struct FArdaRuntimeNodeDesc
 	{
 		/** Registry identity. Reusing a name requires byte-identical implementation metadata. */
 		eastl::string mName;
 		/** Positive implementation version. */
 		uint32_t mVersion = 1;
-		/** Embedded PTX or cubin and explicit target compatibility. */
-		FArdaCudaModuleDesc mModule;
-		/** Kernel entry point in the embedded module. */
-		eastl::string mEntryPoint;
-		/** Exact packed argument byte count. */
-		uint32_t mParameterSize = 0;
-		/** Packed argument alignment. */
-		uint32_t mParameterAlignment = 1;
-		/** ABI-ordered parameter schema. No native pointers or external calls are accepted. */
+		/** Provider, library, kernel, and signature used to resolve executable artifacts. */
+		FArdaNativeKernelKey mKernel;
+		/** Packed parameter ABI shared by the provider and graph. */
+		FArdaNativeKernelLayout mLayout;
+		/** Graph bindings in ABI order. */
 		eastl::vector<FArdaRuntimeNodeArgumentDesc> mArguments;
+		/** Native dispatch requires the matching operand's registered resource converters. */
+		bool mbRequiresRegisteredConversions = false;
 	};
 
-	/** One invocation value: a graph buffer range or owned scalar representation, according to the schema. */
+	/** A graph buffer range, texture mip, or owned scalar representation, according to the schema. */
 	struct FArdaRuntimeNodeArgument
 	{
 		/** Logical storage for a buffer argument; empty for scalar values. */
@@ -47,6 +49,10 @@ namespace arda
 		FArdaRHIBufferRange mRange;
 		/** Exact little-endian scalar bytes; empty for buffer arguments. */
 		eastl::vector<uint8_t> mValue;
+		/** Logical texture storage for a surface argument. */
+		FArdaGraphTexture mSurface;
+		/** Mip exposed by a surface argument. */
+		uint32_t mMipLevel = 0;
 	};
 
 	/** Frozen per-invocation parameters for any runtime definition. */
@@ -54,11 +60,11 @@ namespace arda
 	{
 		/** Arguments in the definition's declared ABI order. */
 		eastl::vector<FArdaRuntimeNodeArgument> mArguments;
-		/** Number of CUDA blocks. */
+		/** Work-group counts. */
 		eastl::array<uint32_t, 3> mGrid = {1, 1, 1};
-		/** Threads in each block. */
+		/** Threads per work group. */
 		eastl::array<uint32_t, 3> mBlock = {1, 1, 1};
-		/** Dynamic shared-memory bytes per block. */
+		/** Dynamic shared-memory bytes per work group. */
 		uint32_t mSharedMemoryBytes = 0;
 	};
 

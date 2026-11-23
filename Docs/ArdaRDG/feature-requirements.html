@@ -130,7 +130,7 @@
 FArdaWorkWriteNode::GetRequirements(const FArdaParameters&amp;)
 {
     FArdaDependencyNodeRequirements R;
-    R.mFeatures.mbRequireWorkGraphs = true;
+    R.mFeatures.Require("work-graph.dispatch");
     return R;
 }</code></pre>
           <p>The renderer invokes the header's named <code>WorkWrite</code> operation inside an edit. With an initialized device and the recipe implementation linked, the relevant assembly is:</p>
@@ -167,14 +167,20 @@ return Graph.CompileAndWait();</code></pre>
 FArdaCornellBuildTlasNode::GetRequirements(const FArdaParameters&amp; P)
 {
     FArdaDependencyNodeRequirements R;
-    R.mFeatures.mbRequireAccelerationStructures = true;
-    R.mFeatures.mbRequireTopLevelAccelerationStructures = true;
-    R.mFeatures.mbRequireAccelerationStructureUpdate = HasAnyFlags(
+    R.mFeatures.Require("ray-tracing.acceleration-structure");
+    R.mFeatures.Require("ray-tracing.top-level-acceleration-structure");
+    if (HasAnyFlags(
         P.mBuildFlags,
         EArdaRHIAccelStructBuildFlags::AllowUpdate |
-        EArdaRHIAccelStructBuildFlags::PerformUpdate);
-    R.mFeatures.mbRequireAccelerationStructureCompaction = HasAnyFlags(
-        P.mBuildFlags, EArdaRHIAccelStructBuildFlags::AllowCompaction);
+        EArdaRHIAccelStructBuildFlags::PerformUpdate))
+    {
+        R.mFeatures.Require("ray-tracing.acceleration-structure-update");
+    }
+    if (HasAnyFlags(
+        P.mBuildFlags, EArdaRHIAccelStructBuildFlags::AllowCompaction))
+    {
+        R.mFeatures.Require("ray-tracing.acceleration-structure-compaction");
+    }
     return R;
 }</code></pre>
           <p>Here <code>P.mBuildFlags</code> is part of the node's frozen public parameters and canonical identity. An ordinary build does not require update support merely because the implementation can also update. A later update still needs a compatible previously built AS and correctly declared graph accesses; passing this hook does not establish those invariants. See <a href="node-recipes.html#ray">the ray-tracing assembly</a> for BLAS/TLAS/trace dependencies.</p>
@@ -198,11 +204,14 @@ FArdaCornellBuildTlasNode::GetRequirements(const FArdaParameters&amp; P)
         <section id="registration">
           <h2>One class contract for registration and attachment</h2>
           <p>Typed attachment delegates to the common class base. Attachment by registered name looks up the same class executable and checks the same public parameter type. Explicit requirements are selected from the new parameter snapshot on every call, including repeated invocations with matching parameters.</p>
-          <p>Override <code>GetRequirements(const FArdaParameters&amp;)</code> on the node class. For example, a node whose public parameters include <code>mSampleCount</code> can select its required descriptor capacity:</p>
+          <p>Override <code>GetRequirements(const FArdaParameters&amp;)</code> on the node class. <code>mFeatures.Require</code> uses the same <a href="../ArdaBackend/rhi-feature-guide.html#admission">shared keys</a> as backend startup and combines repeated constraints for one key. Invalid names and value ranges that cannot satisfy the required bits return <code>InvalidArgument</code> during admission and are rejected by the graph archive. A node whose public parameters include <code>mSampleCount</code> can use it to select the required descriptor capacity.</p>
           <pre><code class="language-cpp">static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters&amp; Parameters)
 {
     FArdaDependencyNodeRequirements Requirements;
-    Requirements.mFeatures.mMinResourceDescriptors = Parameters.mSampleCount;
+    if (Parameters.mSampleCount)
+    {
+        Requirements.mFeatures.Require("descriptor.resource-capacity", Parameters.mSampleCount);
+    }
     return Requirements;
 }</code></pre>
           <p>Built-ins, application operations and CUDA nodes all follow this contract. The registry's executable records are framework-owned inspection data. Their constructors and registration function are private; applications cannot submit arbitrary callback records. Device preparation and instance storage are retained by the base, without a separate public execution schema.</p>

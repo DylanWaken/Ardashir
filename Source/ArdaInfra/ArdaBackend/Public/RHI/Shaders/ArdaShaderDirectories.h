@@ -10,6 +10,10 @@
 
 namespace arda
 {
+	// ================================
+	// Shader directory diagnostics
+	// ================================
+
 	/** Identifies shader-source directory registry failures. */
 	enum class EArdaShaderDirectoryError : uint8_t
 	{
@@ -50,6 +54,10 @@ namespace arda
 		}
 	};
 
+	// ================================
+	// Source mappings and registry state
+	// ================================
+
 	/** Maps a virtual shader root to a registered physical directory. */
 	struct FArdaShaderSourceDirectory
 	{
@@ -89,6 +97,10 @@ namespace arda
 		FArdaShaderDirectoryStatus mLastStatus;
 	};
 
+	// ================================
+	// Directory registration and discovery
+	// ================================
+
 	/**
      * Adds an overlay directory. Exact repeats are idempotent. Overlays may
      * share a virtual root, but every discovered full virtual filename must
@@ -122,6 +134,10 @@ namespace arda
      */
 	[[nodiscard]] FArdaShaderDirectoryStatus ScanAndFreezeShaderSourceDirectories();
 
+	// ================================
+	// Source resolution and registry inspection
+	// ================================
+
 	/** @return All currently registered shader source directories. */
 	[[nodiscard]] eastl::vector<FArdaShaderSourceDirectory> EnumerateShaderSourceDirectories();
 
@@ -145,6 +161,10 @@ namespace arda
 
 	/** @return True when the shader source manifest is frozen. */
 	[[nodiscard]] bool AreShaderSourceDirectoriesFrozen() noexcept;
+
+	// ================================
+	// Registry reset and cleanup
+	// ================================
 
 	/**
      * Drops only the frozen manifest and retains registrations for a restart.

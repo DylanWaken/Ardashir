@@ -16,6 +16,10 @@
 
 namespace arda
 {
+	// ================================
+	// Shader bundle descriptors and resources
+	// ================================
+
 	/** One executable compute or mesh record in a shader bundle. */
 	struct FArdaRHIShaderBundleRecord
 	{

@@ -84,7 +84,7 @@ namespace arda::inductor_detail
 		}
 		double QueueEnd[ArdaRHIQueueTypeCount]{};
 		uint64_t Handoffs = 0;
-		bool HavePrevious = false, PreviousCuda = false;
+		bool HavePrevious = false, PreviousContextSwitch = false;
 		for (size_t Position = 0; Position < Order.size(); ++Position)
 		{
 			const auto Index = Order[Position];
@@ -106,13 +106,13 @@ namespace arda::inductor_detail
 			const auto QueueIndex = GetArdaRHIQueueIndex(Candidate.mQueues[Position]);
 			Finish[Index] = eastl::max(Ready, QueueEnd[QueueIndex]) + NodeCost(mGraph, Node);
 			QueueEnd[QueueIndex] = Finish[Index];
-			const bool Cuda = Node.mDefinition->mKind == EArdaDependencyNodeKind::Cuda;
-			if (HavePrevious && PreviousCuda != Cuda)
+			const bool ContextSwitch = UsesContextSwitch(mGraph.mCompile, Node, Candidate.mQueues[Position]);
+			if (HavePrevious && PreviousContextSwitch != ContextSwitch)
 			{
 				++Handoffs;
 			}
 			HavePrevious = true;
-			PreviousCuda = Cuda;
+			PreviousContextSwitch = ContextSwitch;
 		}
 		double Cost = double(Handoffs) * mGraph.mOptions.mCudaHandoffCost;
 		for (const auto& Activation : P.mValue.mAliasActivations)

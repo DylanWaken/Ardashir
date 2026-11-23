@@ -139,23 +139,34 @@ def excerpt(code: str, needle: str) -> str:
 def capabilities() -> list[dict]:
     text = (ROOT / EXTENDED).read_text(encoding="utf-8")
     block = text.split("static const FArdaCapabilityDefinition Definitions[] = {", 1)[1].split("static const std::vector", 1)[0]
-    cases = [{"name": name, "expression": re.sub(r"\s+", " ", expression).strip(), "probe": probe}
-             for name, expression, probe in re.findall(r'ARDA_CAPABILITY\("([^"]+)",\s*(.*?),\s*(\w+)\)', block, re.S)]
-    if len(cases) != block.count('ARDA_CAPABILITY("'):
+    entries = re.findall(
+        r'\{"([^"]+)",\s*(?:"([^"]+)"|nullptr),\s*EArdaCapabilityProbe::(\w+)'
+        r'(?:,\s*(?:\+\[\][^{]+\{\s*return ([^;]+);\s*\}|(\w+)))?\s*\}',
+        block,
+    )
+    if len(entries) != block.count("EArdaCapabilityProbe::"):
         raise ValueError("A capability predicate could not be parsed")
-    header = (ROOT / "Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaRHICapabilities.h").read_text(encoding="utf-8")
-    # Admission requests are inputs, not advertised device facts. Exclude their whole
-    # declaration rather than relying on a boolean naming convention: numeric/tier
-    # constraints intentionally use mMin/mMax names also found in capability models.
-    from validate_docs import Validator
-    for declaration in ("FArdaRHIFeatureRequirements", "FArdaRHIFeatureSupportReport", "FArdaRHIFormatSupport"):
-        header = header.replace(Validator.balanced(header, "struct " + declaration, "{"), "")
-    fields = set(re.findall(r"\b(?:bool|uint32_t|uint64_t|EArdaRHI\w+Tier)\s+(m\w+)\s*=", header))
-    expressions = "\n".join(c["expression"] for c in cases)
-    missing = {field for field in fields if not re.search(r"\." + field + r"\b", expressions)}
+    cases = []
+    for name, key, probe, expression, helper in entries:
+        if key:
+            expression = f'Features->Supports("{key}")'
+        elif helper:
+            body = source_block(EXTENDED, helper)
+            expression = re.search(r"\breturn\s+([^;]+);", body)[1].replace("Limits.", "Device->GetLimits().")
+        else:
+            expression = expression.replace("Device.", "Device->")
+        cases.append({"name": name, "key": key, "expression": " ".join(expression.split()), "probe": probe})
+    mapping = (ROOT / "Source/ArdaInfra/ArdaBackend/Private/RHI/Config/ArdaRHICapabilities.cpp").read_text(encoding="utf-8")
+    keys = set(re.findall(r'Features\.Add\("([a-z0-9.-]+)",', mapping))
+    missing = keys - {case["key"] for case in cases} - resource_limit_facts().keys()
     if missing:
-        raise ValueError(f"Capabilities without a documented executable predicate: {missing}")
+        raise ValueError(f"Features without a documented executable predicate: {sorted(missing)}")
     return cases
+
+
+def resource_limit_facts() -> dict[str, str]:
+    table = source_block(EXTENDED, "GetResourceLimitFacts")
+    return dict(re.findall(r'\{"([a-z0-9.-]+)",\s*Limits\.(\w+(?:\[\d+\])?)\}', table))
 
 
 def page(filename: str, title: str, intro: str, sections: list[tuple[str, str, str]], diagram: str, checkpoints: str = "", objectives: str = "") -> str:
@@ -187,15 +198,23 @@ ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
 
 
 def generate() -> dict[Path, str]:
-    api = evaluate_api((ROOT / "Docs/assets/backend-api.js").read_text(encoding="utf-8"), "ArdaBackendApi")
-    symbols = api["symbols"]
+    symbols = []
+    for asset, global_name, api_page in (
+        ("backend-api.js", "ArdaBackendApi", "api-reference.html"),
+        ("native-compute-api.js", "ArdaNativeComputeApi", "../ArdaNativeCompute/api-reference.html"),
+    ):
+        api = evaluate_api((ROOT / "Docs/assets" / asset).read_text(encoding="utf-8"), global_name)
+        symbols.extend((symbol, api_page) for symbol in api["symbols"])
+
     def api_link(name: str) -> str:
-        match = next((s for s in symbols if s["qualifiedName"] == name), None)
+        match = next((item for item in symbols if item[0]["qualifiedName"] == name), None)
         if not match:
-            match = next((s for s in symbols if s["name"] == name or s["qualifiedName"].endswith("::" + name)), None)
+            match = next((item for item in symbols
+                          if item[0]["name"] == name or item[0]["qualifiedName"].endswith("::" + name)), None)
         if not match:
             raise ValueError(f"No canonical API link for {name}")
-        return f'<a href="api-reference.html#{match["id"]}"><code>{html.escape(name)}</code></a>'
+        symbol, page = match
+        return f'<a href="{page}#{symbol["id"]}"><code>{html.escape(name)}</code></a>'
     blocks: dict[str, str] = {}
     def example(name: str) -> str:
         if name not in blocks:
@@ -227,13 +246,16 @@ def generate() -> dict[Path, str]:
         title, function, prose = PROBES[probe]
         code = example(function)
         guards = "\n".join(f'const bool {c["name"]} = {c["expression"]};' for c in group)
-        body = f'<p>{prose}</p><p>Read {api_link("FArdaRHICapabilities")} from {api_link("IArdaRHIDevice")} and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">{html.escape("const auto& C = Device->GetCapabilities();\n" + guards)}</code></pre>'
+        body = f'<p>{prose}</p><p>Read the named feature snapshot with {api_link("GetFeatures")} and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">{html.escape("const auto Features = Device->GetFeatures();\n" + guards)}</code></pre>'
+        if probe == "ResourceAdmission":
+            body += '<p>The same test compares each <code>GetLimits()</code> value with its corresponding named feature.</p>'
+            example("GetResourceLimitFacts")
         if probe == "Contract":
-            body += '<pre><code class="language-cpp">if (!C.mbConservativeRasterization || !C.mbVariableRateShading) {\n    // Use the ordinary raster pipeline; neither feature is currently advertised.\n}</code></pre>'
+            body += '<pre><code class="language-cpp">if (!ConservativeRasterization || !VariableRateShading) {\n    // Use the ordinary raster pipeline.\n}</code></pre>'
         else:
             # Recording/creation paragraph is accompanied by a complete executable workload.
             calls = re.findall(r"(?:Device|Commands)(?:\.mValue)?->(Create\w+|Dispatch\w*|QueueWait)\(", code)
-            focus = calls[0] + "(" if calls else "GetCapabilities()"
+            focus = calls[0] + "(" if calls else "GetFeatures()"
             snippet = excerpt(code, focus) if focus in code else code
             body += f'<pre><code class="language-cpp">{html.escape(snippet)}</code></pre>'
         body += f'<p><a href="gpu-examples.html#{function}">Complete usage and output checks: {function}</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p>'
@@ -267,7 +289,9 @@ def generate() -> dict[Path, str]:
         DOCS / "resource-recipes.html": page("resource-recipes.html", "Resource recipes", "Choose an RHI resource, allocate it, and manage its lifetime and CUDA representation.", resource_sections, "rhi-data-and-queues.svg"),
         DOCS / "capability-recipes.html": page("capability-recipes.html", "Capability recipes", "Check device capabilities before running the corresponding graphics or compute recipe.", feature_sections, "rt-ml-capability-admission.svg"),
         DOCS / "gpu-examples.html": page("gpu-examples.html", "Complete GPU examples", "Read the compiled GPU tests behind the resource and capability recipes.", examples, "cpu-gpu-queue-timeline.svg"),
-        DOCS / "recipe-coverage.json": json.dumps({"resources": resource_coverage, "capabilities": feature_coverage}, indent=2) + "\n",
+        DOCS / "recipe-coverage.json": json.dumps({
+            "resources": resource_coverage, "capabilities": feature_coverage, "resourceLimits": resource_limit_facts(),
+        }, indent=2) + "\n",
     }
     outputs.update(integration_chapters(api_link))
     return outputs
@@ -286,7 +310,7 @@ def integration_chapters(api_link) -> dict[Path, str]:
         ("validation-modes", "Validation-free builds and asynchronous verification", code('cmake -S . -B build/no-validation -DARDASHIR_ENABLE_GPU_VALIDATION=OFF', 'shell') + '<p>This switch is independent of Debug/Release and BUILD_TESTS. It removes native validation requests, local layer discovery and provisioning from examples/tests while keeping numerical assertions and PixelSort --verify enabled. All four examples reject --validation in an OFF build. PixelSort --verify independently compares CPU/GPU results; ARDGExample --verify enables terrain geometry and gradient readback checks that ordinary viewer runs omit. Existing example CTest cases run without native validation; separate Validation cases explicitly request it in ON builds, including asynchronous PixelSort replay. Dedicated GPU test executables retain their strict validation policy. Keep ON/OFF configurations in separate build directories. This is a test/example policy; applications retain their public backend configuration.</p><p>PixelSort CPU-oracle runs wait for each readback. AsyncReplay tests submit twelve frames without those per-frame waits, then retire work and check shutdown diagnostics. Bounded runs fail if the window closes early. CUDA and graph recipe tests keep their diagnostic callbacks alive through shutdown; malformed kernel registrations and unexpected initialization failures remain failures. See the <a href="validation-tests.html">complete validation guide</a> for configuration and test-result policy.</p>'),
         ("results", "Handle missing validation without hiding device failures", '<p>' + api_link('EArdaInitializeResult') + ' includes ValidationUnavailable. Headless callers read ' + api_link('GetBackendInitializeResult') + ' after InitializeBackend returns false; presentation startup returns the enum directly. In validation-ON builds, the shared ARDA_REQUIRE_BACKEND test assertion skips only that result and keeps other initialization assertion failures. Unexpected validation requests in an OFF build remain failures. Presentation smoke programs use the existing CTest skip code 77.</p><p>A failed layer load can emit error diagnostics before returning ValidationUnavailable. Fixture teardown excludes only that confirmed validation-ON initialization skip from its zero-GPU-error assertion; successfully initialized workloads still require zero errors, including later hardware-feature skips. Applications can report the reason or explicitly reconfigure validation policy before retrying.</p>'),
         ("reproduce", "Reproduce missing and broken installations", '<p>Copy a validation-ON test executable and its D3D12/D3D12Core.dll into an isolated directory, omit d3d12SDKLayers.dll, and set VK_LAYER_PATH to an empty directory. To test broken Vulkan loading, copy only the manifest, leaving its referenced DLL absent. Neither procedure changes the machine’s installed layers.</p><p>Expect backend/graph tests requiring unavailable validation to skip while CPU and validation-independent tests continue. Missing-layer presentation startup returns 77. Run the same workloads with loadable layers and in a validation-OFF build to distinguish discovery failures from workload failures.</p>'),
-        ("diagnosis", "Find provisioning and native diagnostics", '<p>Read validation-layers/download.log, checkout.log, configure.log, build.log and install.log for the failed stage. Then inspect GetBackendError for the loader/device result. Missing validation is different from an unavailable graphics loader, unsupported GPU feature, malformed shader, or invalid descriptor. The latter errors are not converted into validation skips.</p><p>Further reading: <a href="https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/e4786f7ce8f1319215eff0d938f4be4651cbb85d/BUILD.md">Khronos build instructions</a>, <a href="https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderLayerInterface.md">loader discovery</a>, and <a href="https://devblogs.microsoft.com/directx/gettingstarted-dx12agility/">Microsoft Agility deployment</a>.</p>'),
+        ("diagnosis", "Find provisioning and native diagnostics", '<p>Read validation-layers/download.log, checkout.log, configure.log, build.log and install.log for the failed stage. Then inspect GetBackendError for the loader/device result. Missing validation is different from an unavailable graphics loader, unsupported GPU feature, malformed shader, or invalid descriptor. The latter errors are not converted into validation skips.</p><p>Further reading: <a href="https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/317cff060893783f96d4174f50491e6374eb3714/BUILD.md">Khronos build instructions</a>, <a href="https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderLayerInterface.md">loader discovery</a>, and <a href="https://devblogs.microsoft.com/directx/gettingstarted-dx12agility/">Microsoft Agility deployment</a>.</p>'),
     ]
     return {
         DOCS / "cuda-interop.html": cuda_page,

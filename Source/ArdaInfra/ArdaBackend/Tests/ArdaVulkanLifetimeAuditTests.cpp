@@ -283,7 +283,7 @@ namespace arda
 
 		TEST_F(FArdaVulkanLifetimeAuditTest, SparseCommitFailureReleasesTemporaryNativeObjects)
 		{
-			if (!mDevice->GetCapabilities().mResidency.mbReservedBuffers)
+			if (!mDevice->GetFeatures()->Supports("resource.reserved-buffer"))
 			{
 				GTEST_SKIP() << "Vulkan sparse buffers are unavailable.";
 			}
@@ -315,7 +315,7 @@ namespace arda
 
 		TEST_F(FArdaVulkanLifetimeAuditTest, RecoverableSparseWaitFailureDoesNotFreeSubmittedMemory)
 		{
-			if (!mDevice->GetCapabilities().mResidency.mbReservedBuffers)
+			if (!mDevice->GetFeatures()->Supports("resource.reserved-buffer"))
 			{
 				GTEST_SKIP() << "Vulkan sparse buffers are unavailable.";
 			}
@@ -355,7 +355,7 @@ namespace arda
 
 		TEST_F(FArdaVulkanLifetimeAuditTest, SparsePrefixGrowthShrinkAndClampingPreserveExistingData)
 		{
-			if (!mDevice->GetCapabilities().mResidency.mbReservedBuffers)
+			if (!mDevice->GetFeatures()->Supports("resource.reserved-buffer"))
 			{
 				GTEST_SKIP() << "Vulkan sparse buffers are unavailable.";
 			}
@@ -408,7 +408,7 @@ namespace arda
 
 		TEST_F(FArdaVulkanLifetimeAuditTest, SparseBufferOwnersRetireAfterTheirLastMappedRange)
 		{
-			if (!mDevice->GetCapabilities().mResidency.mbReservedBuffers)
+			if (!mDevice->GetFeatures()->Supports("resource.reserved-buffer"))
 			{
 				GTEST_SKIP() << "Vulkan sparse buffers are unavailable.";
 			}
@@ -453,7 +453,7 @@ namespace arda
 
 		TEST_F(FArdaVulkanLifetimeAuditTest, AcceptedSparseRemapRetainsBothGenerationsUntilRetirement)
 		{
-			if (!mDevice->GetCapabilities().mResidency.mbReservedBuffers)
+			if (!mDevice->GetFeatures()->Supports("resource.reserved-buffer"))
 			{
 				GTEST_SKIP() << "Vulkan sparse buffers are unavailable.";
 			}
@@ -519,7 +519,7 @@ namespace arda
 
 		TEST_F(FArdaVulkanLifetimeAuditTest, SparseImageModesRequireFullUnbindBeforeSwitching)
 		{
-			if (!mDevice->GetCapabilities().mResidency.mbReservedTexture2D)
+			if (!mDevice->GetFeatures()->Supports("resource.reserved-texture-2d"))
 			{
 				GTEST_SKIP() << "Vulkan sparse images are unavailable.";
 			}
@@ -568,10 +568,10 @@ namespace arda
 
 		TEST_F(FArdaVulkanLifetimeAuditTest, ReportsNativeFormatAndDeviceLimits)
 		{
-			const auto& Caps = mDevice->GetCapabilities();
-			EXPECT_GT(Caps.mLimits.mMaxTexture2D, 0u);
-			EXPECT_GT(Caps.mLimits.mMaxComputeWorkGroupInvocations, 0u);
-			EXPECT_GT(Caps.mLimits.mMaxBufferSize, 0u);
+			const auto& Limits = mDevice->GetLimits();
+			EXPECT_GT(Limits.mMaxTexture2D, 0u);
+			EXPECT_GT(Limits.mMaxComputeWorkGroupInvocations, 0u);
+			EXPECT_GT(Limits.mMaxBufferSize, 0u);
 			const auto Color = mDevice->QueryFormatSupport(EArdaRHIFormat::RGBA8UNorm);
 			EXPECT_EQ(Color.mNativeFormat, static_cast<uint64_t>(VK_FORMAT_R8G8B8A8_UNORM));
 			EXPECT_TRUE(Color.mbTexture2D);
@@ -634,7 +634,7 @@ namespace arda
 
 		TEST_F(FArdaVulkanLifetimeAuditTest, ShaderTableRecommitRetainsRecordedStorageAndSurvivesAllocationFailure)
 		{
-			if (!mDevice->GetCapabilities().mRayTracing.mbPipelineShaders)
+			if (!mDevice->GetFeatures()->Supports("ray-tracing.pipeline"))
 			{
 				GTEST_SKIP() << "Vulkan ray-tracing pipelines are unavailable.";
 			}

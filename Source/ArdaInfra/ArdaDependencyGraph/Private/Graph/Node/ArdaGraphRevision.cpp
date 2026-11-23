@@ -11,6 +11,7 @@
 #include "Graph/Node/ArdaDependencyGraphStatus.h"
 #include "Inductor/Compiler/ArdaInductor.h"
 #include "Inductor/Rules/ArdaInductorRequirements.h"
+#include "ArdaBackend.h"
 
 namespace arda
 {
@@ -229,6 +230,87 @@ namespace arda
 			    });
 			AppendEdit(eastl::move(Record));
 		}
+		const auto& BoundDevice = Combined->mCompile.mExecution->mDevice;
+		auto Device = BoundDevice ? BoundDevice : arda::GetDevice();
+		const auto CheckNative = [&](const FArdaImpl& Candidate) -> FArdaRHIStatus
+		{
+			for (const auto Handle : Candidate.mTopology.GetNodes())
+			{
+				const auto& Node = Candidate.mTopology.TryGetNode(Handle)->mPayload;
+				if (Node.mbCulled || !Node.mDefinition->mSelectNativeExecutionMode)
+				{
+					continue;
+				}
+				if (!Device)
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+					    ("Node '" + Node.mName + "' needs a target device to validate its native compute operand.")
+					        .c_str());
+				}
+				eastl::string Provider;
+				auto Selection =
+				    Node.mDefinition->mSelectNativeExecutionMode({Device, EArdaRHIQueueType::Graphics}, Provider);
+				if (!Selection && Candidate.mOptions.mbEnableAsyncCompute &&
+				    Device->IsQueueSupported(EArdaRHIQueueType::Compute) &&
+				    Device->GetFeatures()->Supports("queue.gpu-waits"))
+				{
+					Selection =
+					    Node.mDefinition->mSelectNativeExecutionMode({Device, EArdaRHIQueueType::Compute}, Provider);
+				}
+				if (!Selection)
+				{
+					Selection.mStatus.mMessage =
+					    "Node '" + Node.mName + "' (" + Node.mDefinition->mName + "): " + Selection.mStatus.mMessage;
+					return Selection.mStatus;
+				}
+			}
+			return {};
+		};
+		if (!Edit.mbArchiveRestore || BoundDevice)
+		{
+			auto NativeStatus = CheckNative(*Combined);
+			const bool bHasSubgraphs = BoundDevice &&
+			    eastl::any_of(Combined->mTopology.GetNodes().begin(),
+			        Combined->mTopology.GetNodes().end(),
+			        [&](auto Handle)
+			        {
+				        return bool(Combined->mTopology.TryGetNode(Handle)->mPayload.mDefinition->mExpand);
+			        });
+			if (!NativeStatus || bHasSubgraphs)
+			{
+				FArdaDependencyGraph Candidate;
+				Candidate.mImpl = CloneArdaGraphConstruction(*Combined, true);
+				Candidate.mImpl->mCompile.mExecution->mDevice = Device;
+				Candidate.mImpl->mCompiledResourceAliases =
+				    CollectResourceAliases(*Candidate.mImpl, Candidate.mImpl->mResourceGenerations);
+				Candidate.mImpl->mCompiledResourceRemaps = Candidate.mImpl->mResourceRemaps;
+				Candidate.mRevisions->mbBuilding = true;
+				Candidate.mRevisions->mResourceGenerations = Combined->mResourceGenerationSource;
+				if (auto Status = FArdaPreprocessor::PreprocessPending(Candidate); Status)
+				{
+					NativeStatus = CheckNative(*Candidate.mImpl);
+					if (NativeStatus && Device)
+					{
+						Combined->mAdmissionPreprocessed = Candidate.mImpl;
+					}
+				}
+			}
+			if (!NativeStatus)
+			{
+				return NativeStatus;
+			}
+			if (Device && !BoundDevice &&
+			    eastl::any_of(Combined->mTopology.GetNodes().begin(),
+			        Combined->mTopology.GetNodes().end(),
+			        [&](auto Handle)
+			        {
+				        return bool(
+				            Combined->mTopology.TryGetNode(Handle)->mPayload.mDefinition->mSelectNativeExecutionMode);
+			        }))
+			{
+				Combined->mCompile.mExecution->mDevice = Device;
+			}
+		}
 		RefreshConstructionKeys(*Combined);
 		State.mEditKeys.push_back(BuildArdaGraphConstructionKey(*Combined));
 		mImpl = eastl::move(Combined);
@@ -376,13 +458,24 @@ namespace arda
 			}
 			Selected->mCompile.mRevision = State.mNextRevision - 1;
 			mImpl = Selected;
-			auto Preprocessed = FArdaPreprocessor::Preprocess(*this);
-			if (!Preprocessed)
+			const auto& Admission = Restore.mOriginal->mAdmissionPreprocessed;
+			if (!bForceRecompile && Admission &&
+			    Admission->mCompile.mExecution->mDevice == Selected->mCompile.mExecution->mDevice)
 			{
-				mImpl = Draft;
-				return Preprocessed.mStatus;
+				auto Preprocessed = CloneArdaGraphConstruction(*Admission, true);
+				Preprocessed->mCompilerSource = Selected->mCompilerSource;
+				Selected = eastl::move(Preprocessed);
 			}
-			Selected = Preprocessed.mValue->mImpl;
+			else
+			{
+				auto Preprocessed = FArdaPreprocessor::Preprocess(*this);
+				if (!Preprocessed)
+				{
+					mImpl = Draft;
+					return Preprocessed.mStatus;
+				}
+				Selected = Preprocessed.mValue->mImpl;
+			}
 			Selected->mCompile.mRevision = State.mNextRevision - 1;
 			mImpl = Selected;
 			FArdaInductorExecutionState Reuse;

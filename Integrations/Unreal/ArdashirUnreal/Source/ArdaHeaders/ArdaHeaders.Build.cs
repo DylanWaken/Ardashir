@@ -20,10 +20,18 @@ public class ArdaHeaders : ModuleRules
 			Path.Combine(Ardashir, "ThirdParty", "Eigen"),
 			Path.Combine(Ardashir, "Cmake")
 		});
-		string NativeCompute = Path.Combine(Ardashir, "Source", "ArdaInfra", "ArdaNativeCompute", "Public");
-		if (Directory.Exists(NativeCompute))
+		string Infra = Path.Combine(Ardashir, "Source", "ArdaInfra");
+		string[] ProviderHeaders = {
+			Path.Combine(Infra, "ArdaBackendImpls", "Cuda", "Public"),
+			Path.Combine(Infra, "ArdaBackendImpls", "NVAPI", "Public"),
+			Path.Combine(Infra, "ArdaNativeCompute", "Public")
+		};
+		foreach (string ProviderPath in ProviderHeaders)
 		{
-			PublicSystemIncludePaths.Add(NativeCompute);
+			if (Directory.Exists(ProviderPath))
+			{
+				PublicSystemIncludePaths.Add(ProviderPath);
+			}
 		}
 		string EABaseIncludeFile = Path.Combine(Build, "ArdaEABaseInclude.txt");
 		if (File.Exists(EABaseIncludeFile))

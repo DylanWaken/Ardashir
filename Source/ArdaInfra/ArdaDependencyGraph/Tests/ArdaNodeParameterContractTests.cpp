@@ -1,6 +1,6 @@
 #include "ArdaDependencyGraph.h"
 #include "Graph/Node/ArdaNodeDefinition.h"
-#include "RHI/CUDA/ArdaCudaParameters.h"
+#include "CUDA/ArdaCudaParameters.h"
 #include <gtest/gtest.h>
 
 namespace arda::node_parameter_contract_tests

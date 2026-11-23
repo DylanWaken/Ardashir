@@ -32,8 +32,8 @@ namespace arda
 	FArdaDependencyNodeRequirements FArdaPixelSortReadbackNode::GetRequirements(const FArdaParameters&)
 	{
 		FArdaDependencyNodeRequirements R;
-		R.mFeatures.mbRequireStagingTextures = true;
-		R.mFeatures.mbRequireTextureCopies = true;
+		R.mFeatures.Require("texture.staging");
+		R.mFeatures.Require("texture.copy");
 		return R;
 	}
 

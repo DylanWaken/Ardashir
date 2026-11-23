@@ -5,32 +5,34 @@ native compute operand, and draws the result to the swap chain. The sort uses a
 qualified CUDA radix kernel or an HLSL compute fallback. Resize the window to
 change sorting direction while the noise keeps evolving.
 
-The example uses **ArdaBackend**, **ArdaDependencyGraph**, **ArdaNativeCompute**,
-and the optional **PixelSortKernels** target. It uses Win32 for the window, WIC for optional
+The example uses **ArdaBackend**, **ArdaDependencyGraph**, and the optional
+**PixelSortKernels** packaging target. It uses Win32 for the window, WIC for optional
 PNG captures, and Vulkan headers for surface creation. Build it through the
 repository's root CMake project.
 
 ## Follow the modular implementation
 
-1. [CMakeLists.txt](CMakeLists.txt) builds the native CUDA profile and deploys node shader assets.
+1. [CMakeLists.txt](CMakeLists.txt) builds CUDA cubins, packages their entry points into
+   `arda-pixel-sort.ardakernels`, and deploys the package and shader assets beside the executable.
 2. [ArdaPixelSortNodes.h](Public/Nodes/ArdaPixelSortNodes.h) includes individual
    upload, noise, sort, present and readback classes. Each has a matching `.cpp`
    under `Private/Nodes` implementing its hooks on `TArdaNodeDefinition`. Declarative
-   node parameter schemas map resources to their shader or CUDA parameter members.
+   node parameter schemas declare resource dependencies and shader bindings.
    The base owns registration, invocation and state lifetime; each node prepares its own operation. The
    [noise node](Private/Nodes/ArdaPixelSortNoiseNode.cpp) owns its HLSL entry,
    layout and pipeline settings; the [sort node](Private/Nodes/ArdaPixelSortSortNode.cpp)
-   invokes the registered operand. Its `ARDA_NODE_CUDA_TEXTURE` fields inherit the shared parameter schema's
-   resource access and `ResolveNodeCudaParameters` resolves the same mappings before
-   dispatch. Shared shader-file loading is a private utility.
+   invokes the registered operand through the generic native node hooks. It binds
+   the declared graph textures and samples the current settings during preparation.
+   Shared shader-file loading is a private utility.
    Graph parameters retain prepared device state; the renderer needs no library
    initialization and invokes exported callables such as `PixelSortSort(Edit, Parameters)`.
    Each header declares its callable with `ARDA_DECLARE_GRAPH_NODE`; its `.cpp`
    supplies the matching `ARDA_DEFINE_GRAPH_NODE` exactly once.
 3. [ArdaPixelSortOperand.h](Public/Nodes/ArdaPixelSortOperand.h) and
    [ArdaPixelSortOperand.cpp](Private/Nodes/ArdaPixelSortOperand.cpp) define the shared
-   parameter schema, register both routes, and select launch geometry. Resource slot access,
-   CUDA ABI patches and marshaling come from the same schema as the node's parameter mappings.
+   resource and parameter contracts, register both routes, and select launch geometry.
+   The [kernel layout header](Public/Nodes/ArdaPixelSortKernelParameters.h) is shared
+   with the CUDA source.
 4. [ArdaPixelSortKernels.cu](Private/Nodes/ArdaPixelSortKernels.cu) implements the
    compiled radix variants. [ArdaPixelSort.hlsl](Private/Nodes/Shaders/ArdaPixelSort.hlsl)
    supplies the producer, compute fallback, and presentation stages.
@@ -45,7 +47,7 @@ The [shared example layout](../README.md) explains adding more registered nodes.
 ## Build
 
 Use a Visual Studio developer PowerShell with CMake 3.24+ and Ninja. For native
-CUDA kernels, install the NVIDIA CUDA toolkit and select an architecture for the GPU that will run the
+CUDA kernels, install the NVIDIA CUDA toolkit and Python 3.8+, then select an architecture for the GPU that will run the
 application; `120` below targets SM 12.0. CUDA-in-graphics needs CUDA 13.3+ headers
 and a supporting driver. Ordinary context mode uses the backend's CUDA 12+
 external-memory path. The selected nvcc must support the requested targets.
@@ -74,11 +76,9 @@ For a shader-only executable, configure with `ARDASHIR_BUILD_PIXEL_SORT=ON`,
 `ARDASHIR_BACKEND_VULKAN` choose which native providers to link.
 
 For several GPUs use, for example, `-DARDASHIR_CUDA_ARCHITECTURES="80;120"`.
-`ardashir_add_cuda_kernels` compiles native images with `-real`, generates the
-coverage manifest and links static cudart. Both entries inherit that profile's
-coverage. To give additional kernels distinct architectures or compiler flags,
-create separate named profiles and explicitly call each profile's binding
-export, as in the [profile guide](../../../../Docs/ArdaBackend/cuda-interop.html#offline-ptx).
+Each architecture produces one native cubin with both entry points. The
+packaging manifest exposes each entry to CUDA and CiG. See the
+[kernel library guide](../../../../Docs/ArdaNativeCompute/providers.html#libraries).
 
 ## Run and interact
 
@@ -170,9 +170,9 @@ handles explicitly. Resource dependencies determine the execution order:
 1. `UploadFrame` writes time/extent/display constants.
 2. `Noise` reads those constants and writes an **RGBA8UInt** texture with `NoiseCS`.
 3. `Sort` reads noise and writes a separate sorted texture. The graph chooses
-   the route before allocating the textures. The native callback resolves graph
-   handles and adds prepared work to the compiler-provided CUDA sequence. The
-   shader fallback records on the graph's command list using ordinary textures.
+   the route before allocating the textures. The callback resolves graph
+   handles and returns prepared work to the graph's native execution path. The
+   shader fallback records on the graph's command list.
 4. `Present` reads the constants and both images and draws the fullscreen triangle.
 5. Optional registered readback nodes copy source/output/captured pixels to CPU staging.
 
@@ -188,17 +188,17 @@ values without requiring a graph edit.
 Ordinary animation uses `Submit`; diagnostic readbacks use `Wait(ticket)` before
 mapping. Recycling an occupied frame slot can wait. Resize releases graphs before
 replacing the swap chain, and graph destruction retires its own outstanding work.
-PixelSort registers both `cuda-in-graphics` and `cuda`. For each compiled entry,
-`AddArdaNativeCudaVariants` gives both providers the same source and orientation
-check. The renderer tries CiG first. An ordinary CUDA context or the registered
+PixelSort uses the linked `cuda-in-graphics` and `cuda` providers. For each
+architecture, the packaged entries share the same ABI and orientation check.
+The renderer tries CiG first. An ordinary CUDA context or the registered
 HLSL shader can run the same sort when the requested mode allows it.
 [Provider selection](../../../../Docs/ArdaNativeCompute/providers.html#cig) ·
 [Resource handoffs](../../../../Docs/ArdaBackend/cuda-graphics.html)
 
-The nvcc translation unit exports two typed `__global__` entries, each taking
-`FArdaPixelSortParameters::FArdaCuda` by value. The generated manifest describes
-native architecture support. The registry checks support and each variant's
-selection callback accepts its orientation:
+The nvcc translation unit exports `ArdaPixelSortRows` and
+`ArdaPixelSortColumns`. Both entry points take two surface handles followed by
+width, height, channel, and threshold. The registry checks architecture support,
+and each variant's selection callback accepts its orientation.
 
 - **Width ≥ height:** `RadixSort<128, false>`, 128 threads, four pixels per
   thread, 512-pixel row tiles. Grid = `(ceil(width/512), height, 1)`.

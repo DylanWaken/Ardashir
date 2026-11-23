@@ -17,6 +17,10 @@
 
 namespace arda
 {
+	// ================================
+	// Geometry kinds, formats and flags
+	// ================================
+
 	/** Enumerates ray tracing geometry type values. */
 	enum class EArdaRHIRayTracingGeometryType : uint8_t
 	{
@@ -63,6 +67,10 @@ namespace arda
 		return static_cast<uint32_t>(Value & Flags) != 0;
 	}
 
+	// ================================
+	// Acceleration structure build flags
+	// ================================
+
 	/** Enumerates accel struct build flags values. */
 	enum class EArdaRHIAccelStructBuildFlags : uint8_t
 	{
@@ -100,6 +108,10 @@ namespace arda
 		return static_cast<uint32_t>(Value & Flags) != 0;
 	}
 
+	// ================================
+	// Opacity micromap build flags
+	// ================================
+
 	/** Enumerates opacity micromap build flags values. */
 	enum class EArdaRHIOpacityMicromapBuildFlags : uint8_t
 	{
@@ -134,6 +146,10 @@ namespace arda
 		return static_cast<uint32_t>(Value & Flags) != 0;
 	}
 
+	// ================================
+	// Build lifecycle state
+	// ================================
+
 	/** Lifecycle state independently tracked for acceleration structures and micromaps. */
 	enum class EArdaRHIAccelStructBuildState : uint8_t
 	{
@@ -142,6 +158,10 @@ namespace arda
 		Updated,
 		Compacted
 	};
+
+	// ================================
+	// Opacity micromap resources
+	// ================================
 
 	/** Describes opacity micromap usage count. */
 	struct FArdaRHIOpacityMicromapUsageCount
@@ -211,6 +231,10 @@ namespace arda
 		}
 	};
 
+	// ================================
+	// Ray tracing geometry
+	// ================================
+
 	/** Describes ray tracing geometry desc. */
 	struct FArdaRHIRayTracingGeometryDesc
 	{
@@ -247,6 +271,10 @@ namespace arda
 		/** Stores the opacity micromap usage counts. */
 		eastl::vector<FArdaRHIOpacityMicromapUsageCount> mOpacityMicromapUsageCounts;
 	};
+
+	// ================================
+	// Acceleration structure resources
+	// ================================
 
 	/** Describes accel struct desc. */
 	struct FArdaRHIAccelStructDesc
@@ -312,6 +340,10 @@ namespace arda
 			return EArdaRHIAccelStructBuildState::Unbuilt;
 		}
 	};
+
+	// ================================
+	// Ray tracing instances
+	// ================================
 
 	/** Describes ray tracing instance desc. */
 	struct FArdaRHIRayTracingInstanceDesc

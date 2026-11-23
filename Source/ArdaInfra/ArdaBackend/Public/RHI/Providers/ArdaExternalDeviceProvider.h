@@ -1,4 +1,4 @@
-/** Host-owned external device provider contract and registration API. */
+/** Host-owned external device provider contract. */
 #pragma once
 
 #include "RHI/Interop/ArdaExternalInterop.h"
@@ -6,11 +6,16 @@
 
 namespace arda
 {
+	// ================================
+	// External device provider
+	// ================================
+
 	/**
      * Supplies one externally owned native graphics device.
-     * The provider is never owned by Arda and is called only while initialization holds the
-     * backend registry lock. Implementations must not reenter backend registration or lifetime
-     * APIs. Arda copies the selected descriptor and lifetime token before the call returns.
+     * The host owns the provider. Backend configuration queries its name and initialization
+     * copies its device descriptor and retains its lifetime token. These callbacks run under the
+     * backend lifecycle lock. They can inspect published device snapshots. Reentering lifecycle
+     * operations or queries such as GetBackendError or GetExternalDeviceProvider would reacquire that lock.
      */
 	class IArdaExternalDeviceProvider
 	{
@@ -43,27 +48,4 @@ namespace arda
 			return {};
 		}
 	};
-
-	/**
-     * Registers the process-wide external device provider.
-     * Re-registering the same object is idempotent; a different provider or an initialized
-     * backend is rejected. Registration is thread-safe, but the provider remains host-owned.
-     * @param Provider Provider that remains valid until unregistered after shutdown.
-     * @return True when the provider is registered.
-     */
-	[[nodiscard]] bool RegisterExternalDeviceProvider(IArdaExternalDeviceProvider& Provider);
-
-	/**
-     * Unregisters the process-wide external device provider.
-     * @param Provider The exact registered provider object.
-     * @return True when absent or successfully unregistered; false on mismatch or active backend.
-     */
-	[[nodiscard]] bool UnregisterExternalDeviceProvider(IArdaExternalDeviceProvider& Provider);
-
-	/**
-     * Gets the registered provider without transferring ownership.
-     * The host must prevent concurrent unregister while using the returned pointer.
-     * @return The registered provider, or null.
-     */
-	[[nodiscard]] const IArdaExternalDeviceProvider* GetExternalDeviceProvider() noexcept;
 }

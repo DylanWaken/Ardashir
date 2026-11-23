@@ -65,6 +65,8 @@ namespace arda
 		eastl::vector<FArdaInductorSubgraphAdmission> mSubgraphAdmissions;
 		/** Original construction, before preprocess transformations, for forced recompilation and extension. */
 		eastl::shared_ptr<const FArdaImpl> mCompilerSource;
+		/** Preprocessing retained when commit had to resolve native admission through nested or culled work. */
+		eastl::shared_ptr<const FArdaImpl> mAdmissionPreprocessed;
 
 		/** Shared atomic generations distinguish overlapping private edit allocations without locking recording. */
 		eastl::shared_ptr<std::atomic<uint64_t>> mResourceGenerationSource;

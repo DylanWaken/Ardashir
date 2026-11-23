@@ -328,9 +328,8 @@ namespace arda
 			Configuration.mMessageCallback = &Messages;
 			Configuration.mShaderCompilationMode = Options.mShaderMode;
 			Configuration.mShaderCacheDirectory = Options.mShaderCacheDirectory;
-			Configuration.mRequiredFeatures.mbRequireHardwareRayTracing = true;
-			Configuration.mRequiredFeatures.mbRequireRayTracingPipelines = true;
-			Configuration.mRequiredFeatures.mbRequireAccelerationStructures = true;
+			Configuration.mRequiredFeatures = {{ArdaBackendFeature::HardwareRayTracing},
+			    {ArdaBackendFeature::RayTracingPipeline}, {ArdaBackendFeature::AccelerationStructure}};
 			if (!Options.mRenderer.mDenoisingPackage.empty())
 			{
 				Configuration.mCudaExecutionMode = EArdaCudaExecutionMode::ContextSwitch;

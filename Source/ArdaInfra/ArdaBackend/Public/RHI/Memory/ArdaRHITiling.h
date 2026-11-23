@@ -12,6 +12,10 @@
 
 namespace arda
 {
+	// ================================
+	// Texture tile geometry and mappings
+	// ================================
+
 	/** Describes tiled texture coordinate. */
 	struct FArdaRHITiledTextureCoordinate
 	{
@@ -102,6 +106,10 @@ namespace arda
 		/** Stores the subresources. */
 		eastl::vector<FArdaRHISubresourceTiling> mSubresources;
 	};
+
+	// ================================
+	// Buffer tile mappings and streaming budgets
+	// ================================
 
 	/** Generic contiguous tile mapping for sparse/reserved buffers. */
 	struct FArdaRHIBufferTileMapping

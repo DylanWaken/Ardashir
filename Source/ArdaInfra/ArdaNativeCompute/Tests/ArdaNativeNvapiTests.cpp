@@ -15,6 +15,14 @@ namespace arda
 		ASSERT_EQ(Provider->GetDesc().mGraphicsApis.size(), 1u);
 		EXPECT_EQ(Provider->GetDesc().mGraphicsApis.front(), "native-d3d12");
 		EXPECT_EQ(Provider->GetDesc().mId, "nvapi");
+		FArdaNativeComputeRegistry Registry;
+		ASSERT_TRUE(Registry.RegisterProvider(Provider));
+		const auto Raw = Registry.FindResourceCategory(ArdaNativeNvapiProviderId, ArdaNativeNvapiRawBufferCategory);
+		const auto Texture = Registry.FindResourceCategory(ArdaNativeNvapiProviderId, ArdaNativeNvapiTextureCategory);
+		ASSERT_TRUE(Raw);
+		ASSERT_TRUE(Texture);
+		EXPECT_EQ(Raw.mValue.mType, EArdaRHIResourceType::Buffer);
+		EXPECT_EQ(Texture.mValue.mType, EArdaRHIResourceType::Texture);
 	}
 
 #ifdef ARDA_NVAPI_TEST_SHADER
@@ -24,7 +32,10 @@ namespace arda
 		{
 			FArdaNativeNvapiSourceDesc Source;
 			std::ifstream File(ARDA_NVAPI_TEST_SHADER, std::ios::binary | std::ios::ate);
-			if (!File) return Source;
+			if (!File)
+			{
+				return Source;
+			}
 			Source.mDxil.resize(static_cast<size_t>(File.tellg()));
 			File.seekg(0);
 			File.read(reinterpret_cast<char*>(Source.mDxil.data()), static_cast<std::streamsize>(Source.mDxil.size()));
@@ -50,7 +61,10 @@ namespace arda
 		void SetUp() override
 		{
 			ShutdownBackend();
-			if (!FindBackendModule(GetParam())) GTEST_SKIP() << "Backend was not built";
+			if (!FindBackendModule(GetParam()))
+			{
+				GTEST_SKIP() << "Backend was not built";
+			}
 			auto Config = MakeArdaTestBackendConfiguration();
 			Config.mBackendName = GetParam();
 			Config.mMessageCallback = &mDiagnostics;
@@ -58,6 +72,7 @@ namespace arda
 			ARDA_REQUIRE_BACKEND();
 			mDevice = GetDevice();
 		}
+
 		void TearDown() override
 		{
 			if (mDevice)
@@ -68,6 +83,7 @@ namespace arda
 			}
 			ShutdownBackend();
 		}
+
 		FArdaTestDiagnosticCallback mDiagnostics;
 		FArdaRHIDeviceRef mDevice;
 	};
@@ -78,31 +94,55 @@ namespace arda
 		ASSERT_FALSE(SourceDesc.mDxil.empty());
 		const auto Source = CreateArdaNativeNvapiSource(SourceDesc);
 		ASSERT_TRUE(Source);
+		const auto Loaded = LoadArdaNativeKernelLibrary(
+		    std::filesystem::path(ARDA_NATIVE_TEST_KERNEL_DIR) / "arda-native-test.ardakernels");
+		ASSERT_TRUE(Loaded) << Loaded.mMessage.c_str();
 		FArdaNativeComputeRegistry Registry;
-		const auto Provider = CreateArdaNativeNvapiProvider();
-		ASSERT_TRUE(Registry.RegisterProvider(Provider));
+		ASSERT_TRUE(RegisterArdaNvapiNativeComputeProvider(Registry));
+		const auto Provider = Registry.FindProvider(ArdaNativeNvapiProviderId);
+		ASSERT_TRUE(Provider);
 		FArdaNativeOperandDesc Operand;
 		Operand.mId = "nvapi-lane-id";
 		Operand.mResources = {{"Output", EArdaRHIResourceType::Buffer, EArdaComputeAccess::Write}};
 		Operand.mParameterSize = 4;
-		Operand.mVariants.push_back({"vendor-lane-id", Source.mValue, {}});
+		UseArdaNativeNvapiResources(Operand);
+		const FArdaNativeKernelLayout Layout{4, 4, {{0, 4, 4, EArdaNativeArgumentKind::Value}}};
+		auto Packaged =
+		    MakeArdaPackagedNativeOperand({"arda-native-test", ArdaNativeNvapiProviderId, "lane-id", "lane-id-v1"},
+		        Layout,
+		        eastl::move(Operand));
+		ASSERT_TRUE(Packaged) << Packaged.mStatus.mMessage.c_str();
+		Operand = eastl::move(Packaged.mValue);
+		Operand.mVariants.front().mNativeResources = Operand.mResources;
+		Operand.mVariants.front().mNativeResources.front().mCategory = ArdaNativeNvapiRawBufferCategory;
+		Operand.mVariants.front().mGraphicsStates = {EArdaRHIResourceState::UnorderedAccess};
 		ASSERT_TRUE(Registry.RegisterOperand(Operand));
-		const FArdaNativeComputeContext Context{mDevice, EArdaRHIQueueType::Graphics, EArdaNativeComputePreference::NativeOnly};
+		const FArdaNativeComputeContext Context{mDevice,
+		    EArdaRHIQueueType::Graphics,
+		    EArdaNativeComputePreference::NativeOnly};
+		const auto Probe = Registry.QueryProviderSupport(ArdaNativeNvapiProviderId, Context);
 		auto Large = Operand;
 		Large.mParameterSize = 252;
 		EXPECT_EQ(Provider->CheckSupport(Context, Large, *Source.mValue).mCode, EArdaRHIResult::Unsupported);
 		const auto Supported = Registry.CheckSupport(Operand.mId.c_str(), Context);
 		if (std::strcmp(GetParam(), "native-vulkan") == 0)
 		{
+			EXPECT_EQ(Probe.mStatus.mCode, EArdaRHIResult::Unsupported);
 			EXPECT_EQ(Supported.mCode, EArdaRHIResult::Unsupported);
 			return;
 		}
-		if (!Supported) GTEST_SKIP() << Supported.mMessage.c_str();
+		if (!Supported)
+		{
+			GTEST_SKIP() << Supported.mMessage.c_str();
+		}
+		ASSERT_TRUE(Probe) << Probe.mStatus.mMessage.c_str();
+		EXPECT_EQ(Probe.mValue.mMode, EArdaNativeExecutionMode::Direct);
+		EXPECT_FALSE(Probe.mValue.mbRuntimeCompilation);
 
 		constexpr uint32_t Base = 4331, Guard = 93711, Count = 32;
 		FArdaRHIBufferDesc Desc;
 		Desc.mByteSize = (Count + 8) * sizeof(uint32_t);
-		Desc.mUsage = EArdaRHIBufferUsage::UnorderedAccess | EArdaRHIBufferUsage::Raw;
+		Desc.mUsage = EArdaRHIBufferUsage::UnorderedAccess;
 		auto Buffer = mDevice->CreateBuffer(Desc);
 		ASSERT_TRUE(Buffer);
 		FArdaNativeInvocation Invocation;
@@ -119,10 +159,15 @@ namespace arda
 		ASSERT_TRUE(UnknownOpcode);
 		Operand.mId = "unsupported-nvapi";
 		Operand.mVariants.front().mSource = UnknownOpcode.mValue;
-		Operand.mFallback.mPrepare = [](const FArdaNativeComputeContext&, const FArdaNativeInvocation&)
-		    -> TArdaRHIResult<FArdaNativeWorkRef>
+		Operand.mFallback.mPrepare = [](const FArdaNativeComputeContext&,
+		                                 const FArdaNativeInvocation&) -> TArdaRHIResult<FArdaNativeWorkRef>
 		{
-			return {MakeArdaNativeWork([](IArdaRHICommandList&) { return FArdaRHIStatus{}; }), {}};
+			return {MakeArdaNativeWork(
+			            [](IArdaRHICommandList&)
+			            {
+				            return FArdaRHIStatus{};
+			            }),
+			    {}};
 		};
 		ASSERT_TRUE(Registry.RegisterOperand(Operand));
 		EXPECT_EQ(Registry.CheckSupport("unsupported-nvapi", Context).mCode, EArdaRHIResult::Unsupported);
@@ -137,6 +182,7 @@ namespace arda
 			auto Plan = Registry.Prepare("nvapi-lane-id", QueueContext, Invocation);
 			ASSERT_TRUE(Plan) << Plan.mStatus.mMessage.c_str();
 			EXPECT_EQ(Plan.mValue.GetRoute(), EArdaNativeComputeRoute::Native);
+			EXPECT_EQ(Plan.mValue.GetExecutionMode(), EArdaNativeExecutionMode::Direct);
 			auto Commands = mDevice->CreateCommandList(Queue);
 			ASSERT_TRUE(Commands);
 			ASSERT_TRUE(Commands.mValue->Open());
@@ -161,6 +207,7 @@ namespace arda
 			}
 		}
 	}
+
 	INSTANTIATE_TEST_SUITE_P(Native, FArdaNativeNvapiGpu, testing::Values("native-d3d12", "native-vulkan"));
 #endif
 }

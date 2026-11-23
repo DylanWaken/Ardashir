@@ -9,6 +9,10 @@
 
 namespace arda
 {
+	// ================================
+	// Event and timer queries
+	// ================================
+
 	/** Interface for event query. */
 	class IArdaRHIEventQuery : public virtual IArdaRHIResource
 	{

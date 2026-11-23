@@ -319,6 +319,9 @@ def compatible_headers(path: Path, tag: str) -> bool:
     core = path / "vulkan/vulkan_core.h"
     if not core.is_file() or not (path / "vulkan/vulkan.hpp").is_file():
         return False
+    if not any((path.parent / directory / "vk.xml").is_file()
+               for directory in ("registry", "share/vulkan/registry")):
+        return False
     source = core.read_text(encoding="utf-8")
     patch = re.search(r"#define\s+VK_HEADER_VERSION\s+(\d+)", source)
     major_minor = re.search(r"VK_MAKE_API_VERSION\(\s*\d+,\s*(\d+),\s*(\d+),\s*VK_HEADER_VERSION", source)

@@ -18,6 +18,10 @@
 
 namespace arda
 {
+	// ================================
+	// Buffer usage and range constants
+	// ================================
+
 	/** Forward declaration of buffer desc. */
 	struct FArdaRHIBufferDesc;
 
@@ -69,6 +73,10 @@ namespace arda
 		return static_cast<uint32_t>(Value & Flags) != 0;
 	}
 
+	// ================================
+	// Buffer ranges
+	// ================================
+
 	/** Describes buffer range. */
 	struct FArdaRHIBufferRange
 	{
@@ -101,6 +109,10 @@ namespace arda
          */
 		[[nodiscard]] bool IsWholeBuffer(const FArdaRHIBufferDesc& Desc) const noexcept;
 	};
+
+	// ================================
+	// Buffer descriptors and validation
+	// ================================
 
 	/** Describes buffer desc. */
 	struct FArdaRHIBufferDesc
@@ -159,6 +171,10 @@ namespace arda
      */
 	[[nodiscard]] FArdaRHIStatus Validate(const FArdaRHIBufferDesc& Value) noexcept;
 
+	// ================================
+	// Buffer interface
+	// ================================
+
 	/** Interface for buffer. */
 	class IArdaRHIBuffer : public virtual IArdaRHIResource
 	{
@@ -172,6 +188,10 @@ namespace arda
 		/** Returns the physical identity. */
 		[[nodiscard]] virtual const void* GetPhysicalIdentity() const noexcept = 0;
 	};
+
+	// ================================
+	// Uniform buffers
+	// ================================
 
 	/** Describes uniform buffer desc. */
 	struct FArdaRHIUniformBufferDesc

@@ -404,9 +404,22 @@ namespace arda
 			InferArdaNodeRequirements(Graph, Node.mDefinition->mKind, State.mDesc);
 			if (Graph.mCompile.mExecution->mDevice)
 			{
-				if (auto Status = State.mDesc.mRequirements.Check(Graph.mCompile.mExecution->mDevice.Get()); !Status)
+				const auto& Device = Graph.mCompile.mExecution->mDevice;
+				if (auto Status = State.mDesc.mRequirements.Check(Device.Get()); !Status)
 				{
 					return Status;
+				}
+				if (!Node.mbCulled && Node.mDefinition->mSelectNativeExecutionMode)
+				{
+					for (const auto Queue : {EArdaRHIQueueType::Graphics, EArdaRHIQueueType::Compute})
+					{
+						auto& Route = State.mNativeRoutes[GetArdaRHIQueueIndex(Queue)];
+						if (Device->IsQueueSupported(Queue))
+						{
+							Route.mSelection =
+							    Node.mDefinition->mSelectNativeExecutionMode({Device, Queue}, Route.mProviderId);
+						}
+					}
 				}
 			}
 			if (auto Status = DescribeArdaShaderBindings(Graph, State.mDesc); !Status)

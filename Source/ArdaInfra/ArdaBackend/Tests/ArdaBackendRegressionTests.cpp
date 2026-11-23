@@ -162,8 +162,9 @@ namespace
 
 	TEST_P(FArdaBackendRegressionTest, UnboundedSamplerCapacitySupportsReplacementVersions)
 	{
-		const auto& Caps = mDevice->GetCapabilities().mDescriptors;
-		if (!Caps.mbUnboundedArrays)
+		const auto Features = mDevice->GetFeatures();
+		const auto SamplerCapacity = static_cast<uint32_t>(Features->GetValueOr("descriptor.sampler-capacity", 0));
+		if (!Features->Supports("descriptor.unbounded-arrays"))
 		{
 			GTEST_SKIP() << "Unbounded descriptor arrays are unavailable.";
 		}
@@ -174,21 +175,21 @@ namespace
 		Desc.mRegisterSpaces.push_back({0, 1, EArdaRHIBindingType::Sampler});
 		auto Layout = mDevice->CreateBindlessLayout(Desc);
 		ASSERT_TRUE(Layout);
-		EXPECT_EQ(Layout.mValue->GetDesc().mItems.front().mArraySize, Caps.mMaxSamplerDescriptors);
-		EXPECT_EQ(Layout.mValue->GetBindlessDesc()->mMaxCapacity, Caps.mMaxSamplerDescriptors);
+		EXPECT_EQ(Layout.mValue->GetDesc().mItems.front().mArraySize, SamplerCapacity);
+		EXPECT_EQ(Layout.mValue->GetBindlessDesc()->mMaxCapacity, SamplerCapacity);
 		auto Table = mDevice->CreateDescriptorTable(Layout.mValue);
 		ASSERT_TRUE(Table) << Table.mStatus.mMessage.c_str();
 		auto Sampler = mDevice->CreateSampler({});
 		ASSERT_TRUE(Sampler);
 		FArdaRHIBindingItem Item;
 		Item.mType = EArdaRHIBindingType::Sampler;
-		Item.mArrayElement = Caps.mMaxSamplerDescriptors - 1;
+		Item.mArrayElement = SamplerCapacity - 1;
 		Item.mResource = FArdaRHIResourceRef(Sampler.mValue.Get());
 		for (uint32_t Version = 0; Version < 3; ++Version)
 		{
 			ASSERT_TRUE(mDevice->WriteDescriptorTable(Table.mValue, Item));
 		}
-		Desc.mMaxCapacity = Caps.mMaxSamplerDescriptors + 1;
+		Desc.mMaxCapacity = SamplerCapacity + 1;
 		const auto Overflow = mDevice->CreateBindlessLayout(Desc);
 		EXPECT_FALSE(Overflow);
 		EXPECT_EQ(Overflow.mStatus.mCode, EArdaRHIResult::InvalidArgument);
@@ -197,7 +198,7 @@ namespace
 	TEST_P(FArdaBackendRegressionTest, PersistentPipelineKeyIncludesBindlessLayoutAbi)
 	{
 		ASSERT_TRUE(mDevice);
-		ASSERT_TRUE(mDevice->GetCapabilities().mDescriptors.mbDirectResourceHeapIndexing);
+		ASSERT_TRUE(mDevice->GetFeatures()->Supports("descriptor.direct-resource-heap-indexing"));
 		const std::string Path = std::string(ARDA_BACKEND_TEST_SHADER_DIR "/") + "ArdaShaderStructTest" +
 		    GetShaderArtifactExtension(GetParam());
 		std::ifstream Stream(Path, std::ios::binary);

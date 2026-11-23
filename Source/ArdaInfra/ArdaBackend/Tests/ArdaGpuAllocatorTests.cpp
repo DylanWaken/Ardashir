@@ -1,3 +1,4 @@
+#include "ArdaBackend.h"
 #include "RHI/Memory/ArdaGpuAllocator.h"
 #include "RHI/Device/ArdaRHIDevice.h"
 #include "RHI/Device/ArdaRHIDevicePrivate.h"
@@ -83,10 +84,11 @@ namespace
 	class FArdaAllocatorProvider final : public IArdaRHIProviderDevice
 	{
 	public:
-		FArdaAllocatorProvider()
+		explicit FArdaAllocatorProvider(eastl::shared_ptr<FArdaBackendFeatureList> Features = {})
 		{
 			mCapabilities.mbHeaps = true;
 			mCapabilities.mbVirtualResources = true;
+			mCapabilities.PublishBackendFeatures(eastl::move(Features));
 		}
 
 		const FArdaRHICapabilities& GetCapabilities() const noexcept override
@@ -311,6 +313,335 @@ namespace
 
 		FArdaRHICapabilities mCapabilities;
 	};
+
+	class FArdaTestWindowSurface final : public IArdaWindowSurface
+	{
+	public:
+		FArdaNativeObject GetD3D12WindowHandle() const noexcept override
+		{
+			return {};
+		}
+
+		eastl::vector<const char*> GetVulkanInstanceExtensions() const override
+		{
+			return {};
+		}
+
+		FArdaNativeObject CreateVulkanSurface(FArdaNativeObject, eastl::string&) override
+		{
+			return {};
+		}
+	};
+
+	class FArdaTestSwapChain final : public IArdaSwapChain
+	{
+	public:
+		FArdaTestSwapChain(uint32_t Width, uint32_t Height, bool* OutDestroyed = nullptr)
+		    : mWidth(Width),
+		      mHeight(Height),
+		      mOutDestroyed(OutDestroyed)
+		{
+		}
+
+		~FArdaTestSwapChain() override
+		{
+			if (mOutDestroyed)
+			{
+				// Replacing the caller's output must release the lifecycle lock before running its destructor.
+				static_cast<void>(GetBackendError());
+				*mOutDestroyed = true;
+			}
+		}
+
+		bool Resize(uint32_t, uint32_t) override
+		{
+			return false;
+		}
+
+		bool AcquireFrame(FArdaRHIFramebufferRef&) override
+		{
+			return false;
+		}
+
+		void PrepareSubmit() override
+		{
+		}
+
+		bool Present() override
+		{
+			return false;
+		}
+
+		void WaitForIdle() noexcept override
+		{
+		}
+
+		EArdaRHIFormat GetFormat() const noexcept override
+		{
+			return EArdaRHIFormat::RGBA8UNorm;
+		}
+
+		uint32_t GetWidth() const noexcept override
+		{
+			return mWidth;
+		}
+
+		uint32_t GetHeight() const noexcept override
+		{
+			return mHeight;
+		}
+
+		const eastl::string& GetError() const noexcept override
+		{
+			return mError;
+		}
+
+	private:
+		uint32_t mWidth;
+		uint32_t mHeight;
+		bool* mOutDestroyed;
+		eastl::string mError;
+	};
+
+	struct FArdaTestPresentationState
+	{
+		uint32_t mSwapChainAttempts = 0;
+		uint32_t mDestroyedRuntimes = 0;
+		bool mbFailSwapChainCreation = false;
+	};
+
+	class FArdaTestPresentationRuntime final : public IArdaBackendRuntime
+	{
+	public:
+		explicit FArdaTestPresentationRuntime(FArdaTestPresentationState& State)
+		    : mState(State)
+		{
+		}
+
+		~FArdaTestPresentationRuntime() override
+		{
+			++mState.mDestroyedRuntimes;
+		}
+
+		FArdaSwapChainCreateResult CreateSwapChain(uint32_t Width, uint32_t Height, FArdaRHIDeviceRef Device) override
+		{
+			++mState.mSwapChainAttempts;
+			EXPECT_TRUE(Device);
+			EXPECT_FALSE(IsBackendInitialized());
+			EXPECT_FALSE(GetDevice());
+			EXPECT_TRUE(GetDevices().empty());
+			EXPECT_EQ(GetActiveBackendModule(), nullptr);
+
+			if (mState.mbFailSwapChainCreation)
+			{
+				return {{}, "Injected swap chain creation failure."};
+			}
+			return {eastl::make_unique<FArdaTestSwapChain>(Width, Height), {}};
+		}
+
+	private:
+		FArdaTestPresentationState& mState;
+	};
+
+	class FArdaTestPresentationModule final : public IArdaBackendModule
+	{
+	public:
+		FArdaTestPresentationModule()
+		{
+			mDescriptor.mName = "test-presentation";
+			mDescriptor.mDisplayName = "Presentation test backend";
+			mDescriptor.mShaderBinaryFormat = EArdaShaderBinaryFormat::BackendDefined;
+			mDescriptor.mShaderArtifactExtension = ".testbin";
+			mDescriptor.mbSupportsOwnedDevice = true;
+		}
+
+		const FArdaBackendModuleDescriptor& GetDescriptor() const noexcept override
+		{
+			++mDescriptorReads;
+			static_cast<void>(IsBackendInitialized());
+			return mDescriptor;
+		}
+
+		TArdaRHIResult<eastl::vector<FArdaAdapterInfo>> EnumerateAdapters() const override
+		{
+			return {{GetAdapter("test-adapter"), GetAdapter("second-adapter")}, {}};
+		}
+
+		FArdaBackendDeviceCreateResult CreateDevice(const FArdaBackendConfiguration&,
+		    const FArdaAdapterId& RequestedAdapter,
+		    IArdaWindowSurface*,
+		    const IArdaExternalDeviceProvider*) override
+		{
+			const bool bSecond = RequestedAdapter.mValue == "second-adapter";
+			auto Features = eastl::make_shared<FArdaBackendFeatureList>();
+			Features->Add("example.tier", bSecond ? 1 : 3);
+			Features->Add("example.mask", bSecond ? 0 : 4);
+			return {EArdaInitializeResult::Success,
+			    GetAdapter(bSecond ? "second-adapter" : "test-adapter"),
+			    eastl::make_unique<FArdaTestPresentationRuntime>(mState),
+			    eastl::make_shared<FArdaAllocatorProvider>(eastl::move(Features)),
+			    {}};
+		}
+
+		FArdaRHIStatus ConfigureShaderCompileInvocation(FArdaBackendShaderCompileInvocation&) const override
+		{
+			return FArdaRHIStatus::Success();
+		}
+
+		FArdaTestPresentationState mState;
+		mutable uint32_t mDescriptorReads = 0;
+
+	private:
+		FArdaAdapterInfo GetAdapter(const char* Id) const
+		{
+			FArdaAdapterInfo Adapter;
+			Adapter.mId = {mDescriptor.mName, Id};
+			Adapter.mName = "Test adapter";
+			return Adapter;
+		}
+
+		FArdaBackendModuleDescriptor mDescriptor;
+	};
+
+	class FArdaBackendPresentationTest : public testing::Test
+	{
+	protected:
+		void SetUp() override
+		{
+			ShutdownBackend();
+			mOriginalConfiguration = GetBackendConfiguration();
+			ASSERT_TRUE(RegisterBackendModule(mModule));
+			FArdaBackendConfiguration Configuration;
+			Configuration.mBackendName = mModule.GetDescriptor().mName;
+			Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+			Configuration.mPipelineCacheDirectory.clear();
+			ASSERT_TRUE(ConfigureBackend(Configuration)) << GetBackendError().c_str();
+		}
+
+		void TearDown() override
+		{
+			ShutdownBackend();
+			EXPECT_TRUE(UnregisterBackendModule(mModule));
+			if (!mOriginalConfiguration.mBackendName.empty() || FindDefaultBackendModule())
+			{
+				EXPECT_TRUE(ConfigureBackend(mOriginalConfiguration));
+			}
+		}
+
+		FArdaTestPresentationModule mModule;
+		FArdaTestWindowSurface mSurface;
+
+	private:
+		FArdaBackendConfiguration mOriginalConfiguration;
+	};
+
+	TEST_F(FArdaBackendPresentationTest, DuplicateInitializationPreservesExistingSwapChain)
+	{
+		const auto DescriptorReads = mModule.mDescriptorReads;
+		EXPECT_EQ(FindBackendModule("test-presentation"), &mModule);
+		FArdaShaderTarget ShaderTarget;
+		EXPECT_TRUE(ResolveShaderTarget("test-presentation", ShaderTarget));
+		EXPECT_EQ(mModule.mDescriptorReads, DescriptorReads);
+
+		eastl::unique_ptr<IArdaSwapChain> SwapChain;
+		ASSERT_EQ(InitializeBackendForPresentation(mSurface, 32, 24, SwapChain), EArdaInitializeResult::Success)
+		    << GetBackendError().c_str();
+		ASSERT_TRUE(SwapChain);
+		const auto* OriginalSwapChain = SwapChain.get();
+		const auto OriginalDevice = GetDevice();
+		ASSERT_TRUE(OriginalDevice);
+
+		EXPECT_EQ(InitializeBackendForPresentation(mSurface, 64, 48, SwapChain), EArdaInitializeResult::Failure);
+		EXPECT_EQ(SwapChain.get(), OriginalSwapChain);
+		EXPECT_EQ(GetDevice(), OriginalDevice);
+		EXPECT_EQ(mModule.mState.mSwapChainAttempts, 1u);
+	}
+
+	TEST_F(FArdaBackendPresentationTest, FailedSwapChainCreationLeavesBackendUnpublished)
+	{
+		ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+		ShutdownBackend();
+		ASSERT_EQ(GetBackendInitializeResult(), EArdaInitializeResult::Success);
+		const auto DestroyedBeforePresentation = mModule.mState.mDestroyedRuntimes;
+		mModule.mState.mbFailSwapChainCreation = true;
+
+		bool bOriginalSwapChainDestroyed = false;
+		eastl::unique_ptr<IArdaSwapChain> SwapChain = eastl::make_unique<FArdaTestSwapChain>(16, 12,
+		    &bOriginalSwapChainDestroyed);
+		const auto* OriginalSwapChain = SwapChain.get();
+		EXPECT_EQ(InitializeBackendForPresentation(mSurface, 32, 24, SwapChain), EArdaInitializeResult::Failure);
+		EXPECT_STREQ(GetBackendError().c_str(), "Injected swap chain creation failure.");
+		EXPECT_EQ(mModule.mState.mSwapChainAttempts, 1u);
+		EXPECT_EQ(mModule.mState.mDestroyedRuntimes, DestroyedBeforePresentation + 1);
+		EXPECT_EQ(GetBackendInitializeResult(), EArdaInitializeResult::Success);
+		EXPECT_EQ(SwapChain.get(), OriginalSwapChain);
+		EXPECT_FALSE(bOriginalSwapChainDestroyed);
+		EXPECT_FALSE(IsBackendInitialized());
+		EXPECT_FALSE(GetDevice());
+		EXPECT_TRUE(GetDevices().empty());
+		EXPECT_EQ(GetActiveBackendModule(), nullptr);
+
+		mModule.mState.mbFailSwapChainCreation = false;
+		ASSERT_EQ(InitializeBackendForPresentation(mSurface, 32, 24, SwapChain), EArdaInitializeResult::Success)
+		    << GetBackendError().c_str();
+		EXPECT_TRUE(SwapChain);
+		EXPECT_TRUE(bOriginalSwapChainDestroyed);
+		EXPECT_TRUE(IsBackendInitialized());
+		EXPECT_TRUE(GetDevice());
+		EXPECT_EQ(GetActiveBackendModule(), &mModule);
+	}
+
+	TEST_F(FArdaBackendPresentationTest, PublishesFeaturesPerDeviceAndRejectsAnUnsupportedSecondAdapter)
+	{
+		const char* Provider = "test-presentation";
+		auto Configuration = GetBackendConfiguration();
+		Configuration.mAdapters = {{Provider, "test-adapter"}, {Provider, "second-adapter"}};
+		Configuration.mRequiredFeatures = {{"example.tier", 1}};
+		ASSERT_TRUE(ConfigureBackend(Configuration));
+		ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+
+		const auto First = GetBackendFeatures(0);
+		const auto Second = GetBackendFeatures(1);
+		ASSERT_TRUE(First);
+		ASSERT_TRUE(Second);
+		EXPECT_EQ(First, GetBackendFeatures());
+		EXPECT_EQ(Second, GetDevices()[1].mFeatures);
+		EXPECT_EQ(Second, GetDevice(1)->GetFeatures());
+		EXPECT_TRUE(First->Supports("example.tier", 3));
+		EXPECT_FALSE(Second->Supports("example.tier", 3));
+		EXPECT_TRUE(First->Supports("example.mask", 0, 4));
+		EXPECT_FALSE(First->Supports("example.mask", 0, 2));
+		ASSERT_NE(Second->Find("example.mask"), nullptr);
+		EXPECT_EQ(*Second->Find("example.mask"), 0u);
+		EXPECT_FALSE(Second->Supports("example.missing", 0));
+		EXPECT_FALSE(GetBackendFeatures(2));
+		ASSERT_TRUE(SetDefaultDevice(1));
+		EXPECT_EQ(Second, GetBackendFeatures());
+		ShutdownBackend();
+		EXPECT_FALSE(GetBackendFeatures());
+		EXPECT_TRUE(First->Supports("example.tier", 3));
+
+		Configuration.mRequiredFeatures = {{"example.mask", 0, 4}};
+		ASSERT_TRUE(ConfigureBackend(Configuration));
+		EXPECT_FALSE(InitializeBackend());
+		EXPECT_EQ(GetBackendInitializeResult(), EArdaInitializeResult::Unavailable);
+		EXPECT_NE(GetBackendError().find("example.mask"), eastl::string::npos);
+		EXPECT_FALSE(GetBackendFeatures(0));
+		EXPECT_TRUE(GetDevices().empty());
+	}
+
+	TEST_F(FArdaBackendPresentationTest, RejectsInvalidFeatureNamesAndUnreportedRequirements)
+	{
+		auto Configuration = GetBackendConfiguration();
+		Configuration.mRequiredFeatures = {{"VK_EXT_example"}};
+		EXPECT_FALSE(ConfigureBackend(Configuration));
+		EXPECT_NE(GetBackendError().find("VK_EXT_example"), eastl::string::npos);
+
+		Configuration.mRequiredFeatures = {{"example.unreported", 0}};
+		ASSERT_TRUE(ConfigureBackend(Configuration));
+		EXPECT_FALSE(InitializeBackend());
+		EXPECT_NE(GetBackendError().find("example.unreported"), eastl::string::npos);
+	}
 
 	class FArdaGpuAllocatorTest : public testing::Test
 	{

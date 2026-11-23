@@ -18,6 +18,10 @@
 
 namespace arda
 {
+	// ================================
+	// Compute pipeline descriptors
+	// ================================
+
 	/** Immutable backend extension request included in compute pipeline identity. */
 	struct FArdaRHIComputePipelineExtension
 	{
@@ -60,6 +64,10 @@ namespace arda
 			return mComputeShader == O.mComputeShader && mBindingLayouts == O.mBindingLayouts && mExtension == O.mExtension;
 		}
 	};
+
+	// ================================
+	// Compute pipeline resource and dispatch state
+	// ================================
 
 	/** Interface for compute pipeline. */
 	class IArdaRHIComputePipeline : public virtual IArdaRHIResource

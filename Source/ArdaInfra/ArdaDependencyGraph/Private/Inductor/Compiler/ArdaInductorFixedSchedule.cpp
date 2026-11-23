@@ -158,7 +158,7 @@ namespace arda
 		eastl::vector<double> Finish(Order.size(), 0);
 		double QueueEnd[ArdaRHIQueueTypeCount]{};
 		uint64_t Handoffs = 0;
-		bool HavePrevious = false, PreviousCuda = false;
+		bool HavePrevious = false, PreviousContextSwitch = false;
 		for (size_t I = 0; I < Order.size(); ++I)
 		{
 			double Ready = 0;
@@ -183,13 +183,13 @@ namespace arda
 				return {{}, Error("Adaptive critical-path cost overflowed.")};
 			}
 			QueueEnd[Queue] = Finish[I];
-			const bool Cuda = Node.mDefinition->mKind == EArdaDependencyNodeKind::Cuda;
-			if (HavePrevious && PreviousCuda != Cuda)
+			const bool ContextSwitch = UsesContextSwitch(G.mCompile, Node, Candidate.mQueues[I]);
+			if (HavePrevious && PreviousContextSwitch != ContextSwitch)
 			{
 				++Handoffs;
 			}
 			HavePrevious = true;
-			PreviousCuda = Cuda;
+			PreviousContextSwitch = ContextSwitch;
 		}
 		double Cost = *eastl::max_element(QueueEnd, QueueEnd + ArdaRHIQueueTypeCount) +
 		    double(Handoffs) * G.mOptions.mCudaHandoffCost;

@@ -1,4 +1,4 @@
-/** Host-owned resource resolution contract and named provider registry API. */
+/** Host-owned resource resolution contract. */
 #pragma once
 
 #include "RHI/Config/ArdaRHIStatus.h"
@@ -7,6 +7,10 @@
 
 namespace arda
 {
+	// ================================
+	// External resource provider
+	// ================================
+
 	/**
      * Resolves stable external resource identifiers into native import descriptors.
      * Providers are host-owned. Resolve callbacks execute under the registry lock; they must
@@ -45,27 +49,4 @@ namespace arda
 		[[nodiscard]] virtual arda::FArdaRHIStatus ResolveNativeBuffer(uint64_t Id,
 		    arda::FArdaRHINativeBufferImportDesc& OutDesc) = 0;
 	};
-
-	/**
-     * Registers an external resource provider by its stable name.
-     * The same object/name registration is idempotent; name collisions are rejected.
-     * @param Provider Host-owned provider that remains valid until unregistered.
-     * @return True when the provider is registered; inspect GetBackendError on failure.
-     */
-	[[nodiscard]] bool RegisterExternalResourceProvider(IArdaExternalResourceProvider& Provider);
-
-	/**
-     * Unregisters an external resource provider.
-     * @param Provider Exact provider object to unregister.
-     * @return True when absent or removed; false on a name collision/mismatch.
-     */
-	[[nodiscard]] bool UnregisterExternalResourceProvider(IArdaExternalResourceProvider& Provider);
-
-	/**
-     * Looks up a resource provider by stable name.
-     * The pointer is non-owning and must not race provider unregistration.
-     * @param Name Null-terminated provider name.
-     * @return Matching provider, or null.
-     */
-	[[nodiscard]] const IArdaExternalResourceProvider* GetExternalResourceProvider(const char* Name) noexcept;
 }

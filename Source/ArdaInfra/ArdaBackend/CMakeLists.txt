@@ -1,7 +1,7 @@
 include(ArdaBackendLayout)
 ardashir_validate_backend_layout("${CMAKE_CURRENT_SOURCE_DIR}")
 ardashir_add_module(ArdaBackend Private/RHI/Config/ArdaBackendCorePch.h)
-target_link_libraries(ArdaBackend PUBLIC Ardashir::ArdaMath)
+target_link_libraries(ArdaBackend PUBLIC Ardashir::ArdaMath Ardashir::ArdaNativeComputeHeaders)
 find_package(Threads REQUIRED)
 target_link_libraries(ArdaBackend PUBLIC Threads::Threads)
 
@@ -49,31 +49,31 @@ function(ardashir_finalize_backend_modules)
         CONTENT "${ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT}")
 endfunction()
 
-# Compile public and implementation headers independently, without the PCH.
-# Public headers never receive the private include path or native SDK includes.
-foreach(ARDA_HEADER_VISIBILITY Public Private)
-    file(GLOB_RECURSE ARDA_BACKEND_HEADERS CONFIGURE_DEPENDS
-        RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/${ARDA_HEADER_VISIBILITY}"
-        "${CMAKE_CURRENT_SOURCE_DIR}/${ARDA_HEADER_VISIBILITY}/*.h")
-    set(ARDA_BACKEND_HEADER_SOURCES)
-    foreach(ARDA_HEADER IN LISTS ARDA_BACKEND_HEADERS)
-        string(MAKE_C_IDENTIFIER "${ARDA_HEADER}" ARDA_HEADER_ID)
-        set(ARDA_HEADER_SOURCE
-            "${CMAKE_CURRENT_BINARY_DIR}/${ARDA_HEADER_VISIBILITY}Header_${ARDA_HEADER_ID}.cpp")
-        file(GENERATE OUTPUT "${ARDA_HEADER_SOURCE}"
-            CONTENT "#include \"${ARDA_HEADER}\"\n")
-        list(APPEND ARDA_BACKEND_HEADER_SOURCES "${ARDA_HEADER_SOURCE}")
+function(ardashir_finalize_native_compute_modules)
+    foreach(Provider IN LISTS ARDASHIR_NATIVE_COMPUTE_MODULE_TARGETS)
+        if(NOT TARGET "${Provider}")
+            message(FATAL_ERROR "Native compute provider target does not exist: ${Provider}")
+        endif()
+        target_link_libraries(ArdaBackend INTERFACE "$<LINK_ONLY:${Provider}>")
     endforeach()
-    # One target, still one independent translation unit per header.
-    set(ARDA_HEADER_TARGET "ArdaBackend${ARDA_HEADER_VISIBILITY}Headers")
-    add_library(${ARDA_HEADER_TARGET} OBJECT ${ARDA_BACKEND_HEADER_SOURCES})
-    target_compile_features(${ARDA_HEADER_TARGET} PRIVATE cxx_std_17)
-    target_include_directories(${ARDA_HEADER_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Public")
-    if(ARDA_HEADER_VISIBILITY STREQUAL "Private")
-        target_include_directories(${ARDA_HEADER_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
-    endif()
-    target_link_libraries(${ARDA_HEADER_TARGET} PRIVATE Ardashir::EASTL Ardashir::ArdaMath)
-    set_target_properties(${ARDA_HEADER_TARGET} PROPERTIES FOLDER "Ardashir/Tests" UNITY_BUILD OFF)
+    set_property(TARGET ArdaBackend PROPERTY ARDA_NATIVE_COMPUTE_PROVIDER_TARGETS
+        "${ARDASHIR_NATIVE_COMPUTE_MODULE_TARGETS}")
+
+    set(Registrations "")
+    foreach(Function IN LISTS ARDASHIR_NATIVE_COMPUTE_REGISTRATION_FUNCTIONS)
+        if(NOT Function MATCHES "^[A-Za-z_][A-Za-z0-9_]*$")
+            message(FATAL_ERROR "Invalid native compute registration function: ${Function}")
+        endif()
+        string(APPEND Registrations "ARDA_LINKED_NATIVE_COMPUTE_PROVIDER(${Function})\n")
+    endforeach()
+    get_target_property(BackendBinaryDir ArdaBackend BINARY_DIR)
+    file(GENERATE OUTPUT "${BackendBinaryDir}/ArdaLinkedNativeComputeProviders.inl"
+        CONTENT "${Registrations}")
+endfunction()
+
+foreach(Visibility Public Private)
+    ardashir_add_header_checks(ArdaBackend ${Visibility}
+        Ardashir::ArdaMath Ardashir::EASTL Ardashir::ArdaNativeComputeHeaders)
 endforeach()
 
 if(ARDASHIR_BUILD_TESTS)
@@ -91,22 +91,17 @@ if(ARDASHIR_BUILD_TESTS)
     if(ARDASHIR_BACKEND_VULKAN)
         target_compile_definitions(ArdaBackendTests PRIVATE
             ARDA_TEST_NATIVE_VULKAN)
-        if(TARGET Vulkan::Headers)
-            target_link_libraries(ArdaBackendTests PRIVATE Vulkan::Headers)
-        elseif(TARGET Vulkan-Headers)
-            target_link_libraries(ArdaBackendTests PRIVATE Vulkan-Headers)
-        endif()
     endif()
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         target_compile_definitions(ArdaBackendTests PRIVATE
             ARDA_TEST_NATIVE_D3D12)
+        target_include_directories(ArdaBackendTests PRIVATE
+            "${ARDASHIR_D3D12_AGILITY_INCLUDE_DIR}")
     endif()
     target_include_directories(ArdaBackendTests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/Private")
     target_link_libraries(ArdaBackendTests PRIVATE Ardashir::ArdaBackend GTest::gtest)
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)
-        target_include_directories(ArdaBackendTests PRIVATE
-            "${ARDASHIR_D3D12_AGILITY_INCLUDE_DIR}")
         ardashir_deploy_d3d12_agility(ArdaBackendTests)
     endif()
     set_target_properties(ArdaBackendTests PROPERTIES FOLDER "Ardashir/Tests")

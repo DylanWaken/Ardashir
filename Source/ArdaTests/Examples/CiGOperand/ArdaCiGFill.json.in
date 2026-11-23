@@ -1,0 +1,14 @@
+{
+  "library": "example-cig-fill",
+  "kernels": [
+    {
+      "provider": "cuda-in-graphics",
+      "name": "fill",
+      "signature": "fill-u32-v1",
+      "format": "cubin",
+      "entryPoint": "arda_example_fill",
+      "attributes": [@ArdaCiGAttribute@],
+      "file": "@ArdaCiGFillCubin@"
+    }
+  ]
+}

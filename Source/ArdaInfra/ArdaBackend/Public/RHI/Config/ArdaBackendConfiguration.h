@@ -2,7 +2,7 @@
 #pragma once
 
 #include "RHI/Config/ArdaBackendDiagnostics.h"
-#include "RHI/Config/ArdaRHICapabilities.h"
+#include "RHI/Config/ArdaBackendFeatures.h"
 #include "RHI/Config/ArdaCudaConfig.h"
 #include "RHI/Device/ArdaAdapter.h"
 #include <EASTL/vector.h>
@@ -10,6 +10,10 @@
 
 namespace arda
 {
+	// ================================
+	// Startup policies and outcomes
+	// ================================
+
 	/**
      * Selects when registered shaders are compiled and loaded.
      *
@@ -48,40 +52,9 @@ namespace arda
 		ValidationUnavailable
 	};
 
-	/** Desktop-GPU admission profile applied during backend initialization. */
-	enum class EArdaRHIDeviceProfile : uint8_t
-	{
-		None,
-		RayTracingInfrastructure,
-		RealtimeRayTracing,
-		RealtimeRayTracingAndML
-	};
-
-	/** Returns the feature requirements implied by a standard device profile. */
-	[[nodiscard]] inline arda::FArdaRHIFeatureRequirements GetArdaRHIProfileRequirements(
-	    EArdaRHIDeviceProfile Profile) noexcept
-	{
-		arda::FArdaRHIFeatureRequirements Result;
-		if (Profile >= EArdaRHIDeviceProfile::RayTracingInfrastructure)
-		{
-			Result.mbRequireRayTracingInfrastructure = true;
-			Result.mbRequireAccelerationStructures = true;
-		}
-		if (Profile >= EArdaRHIDeviceProfile::RealtimeRayTracing)
-		{
-			Result.mbRequireHardwareRayTracing = true;
-			Result.mbRequireRayTracingPipelines = true;
-			Result.mbRequireLocalShaderTableArguments = true;
-			Result.mbRequireUnboundedDescriptors = true;
-			Result.mbRequireGpuQueueWaits = true;
-		}
-		if (Profile >= EArdaRHIDeviceProfile::RealtimeRayTracingAndML)
-		{
-			Result.mbRequireNativeFloat16 = true;
-			Result.mbRequireDedicatedComputeQueue = true;
-		}
-		return Result;
-	}
+	// ================================
+	// Backend configuration
+	// ================================
 
 	/** Configures backend selection, devices, shader policy, validation, and diagnostics. */
 	struct FArdaBackendConfiguration
@@ -107,10 +80,8 @@ namespace arda
 		EArdaCudaExecutionMode mCudaExecutionMode = EArdaCudaExecutionMode::Automatic;
 		/** Whether graphics API validation layers are enabled. */
 		bool mbEnableValidation = true;
-		/** Optional RT/ML-oriented desktop-GPU admission profile. */
-		EArdaRHIDeviceProfile mRequiredDeviceProfile = EArdaRHIDeviceProfile::None;
-		/** Additional module-specific abilities required during initialization. */
-		arda::FArdaRHIFeatureRequirements mRequiredFeatures;
+		/** Arda feature names required on every selected device, in the same vocabulary as GetBackendFeatures(). */
+		FArdaRHIFeatureRequirements mRequiredFeatures;
 		/** Timing policy for registered shader compilation on the active backend. */
 		EArdaShaderCompilationMode mShaderCompilationMode = EArdaShaderCompilationMode::OnDemand;
 
@@ -133,5 +104,11 @@ namespace arda
 		std::filesystem::path mPipelineCacheDirectory = std::filesystem::path(".arda-cache") / "pipelines";
 		/** Receives backend diagnostic messages, or null to use the default callback. */
 		IArdaDiagnosticCallback* mMessageCallback = nullptr;
+
+		/** Checks this configuration against the features published by one device. */
+		[[nodiscard]] FArdaRHIFeatureSupportReport EvaluateDevice(const FArdaBackendFeatureList& Features) const
+		{
+			return Features.Evaluate(mRequiredFeatures);
+		}
 	};
 }

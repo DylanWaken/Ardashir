@@ -2,7 +2,7 @@
 #pragma once
 
 #include "RHI/Providers/ArdaProviderObject.h"
-#include "RHI/CUDA/ArdaRHICuda.h"
+#include "RHI/Resources/ArdaComputeAccess.h"
 #include "RHI/Resources/ArdaRHIAccelerationStructures.h"
 #include "RHI/Scheduling/ArdaRHIDrawTypes.h"
 #include "RHI/Scheduling/ArdaRHINativeOperation.h"
@@ -10,6 +10,10 @@
 
 namespace arda
 {
+	// ================================
+	// Native operation packets
+	// ================================
+
 	/** Backend object and resolved view of one declared native operation binding. */
 	struct FArdaProviderNativeOperationBinding
 	{
@@ -27,14 +31,9 @@ namespace arda
 		eastl::vector<FArdaProviderNativeOperationBinding> mBindings;
 	};
 
-	struct FArdaProviderCudaBinding
-	{
-		FArdaProviderObjectRef mObject;
-		EArdaComputeAccess mAccess = EArdaComputeAccess::Read;
-		EArdaComputeBindingType mType = EArdaComputeBindingType::Buffer;
-		FArdaRHIBufferRange mBufferRange;
-		uint32_t mMipLevel = 0;
-	};
+	// ================================
+	// Graphics and compute command state
+	// ================================
 
 	struct FArdaProviderVertexBufferBinding
 	{
@@ -72,6 +71,10 @@ namespace arda
 		eastl::vector<FArdaRHIViewport> mViewports;
 		eastl::vector<FArdaRHIRect> mScissors;
 	};
+
+	// ================================
+	// Ray tracing command state and geometry
+	// ================================
 
 	struct FArdaProviderRayTracingState
 	{

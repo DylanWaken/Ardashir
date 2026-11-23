@@ -105,29 +105,44 @@ class ModuleConfig:
     """Everything that varies between documented public modules."""
 
     name: str
-    source_public_root: str
+    source_public_roots: Tuple[str, ...]
     docs_root: str
     api_js_path: str
     api_global: str
     api_page: str = "api-reference.html"
     include_only_umbrellas: Tuple[str, ...] = ()
     required_public_headers: Tuple[str, ...] = ()
+    extra_public_headers: Tuple[str, ...] = ()
+
+
+NATIVE_COMPUTE_FACADE_HEADERS = (
+    "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+    "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+    "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+)
+
+BACKEND_COMPATIBILITY_HEADER_ROOTS = (
+    "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/RHI",
+    "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/RHI",
+)
+
+NATIVE_COMPUTE_PROVIDER_HEADER_ROOTS = (
+    ("Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA", "cuda"),
+    ("Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI", "nvapi"),
+)
 
 
 MODULES = (
     ModuleConfig(
         name="ArdaBackend",
-        source_public_root="Source/ArdaInfra/ArdaBackend/Public",
+        source_public_roots=("Source/ArdaInfra/ArdaBackend/Public", *BACKEND_COMPATIBILITY_HEADER_ROOTS),
         docs_root="ArdaBackend",
         api_js_path="assets/backend-api.js",
         api_global="ArdaBackendApi",
-        include_only_umbrellas=(
-            "Source/ArdaInfra/ArdaBackend/Public/ArdaBackend.h",
-        ),
     ),
     ModuleConfig(
         name="ArdaDependencyGraph",
-        source_public_root="Source/ArdaInfra/ArdaDependencyGraph/Public",
+        source_public_roots=("Source/ArdaInfra/ArdaDependencyGraph/Public",),
         docs_root="ArdaRDG",
         api_js_path="assets/arda-rdg-api.js",
         api_global="ArdaRDGApi",
@@ -137,10 +152,11 @@ MODULES = (
     ),
     ModuleConfig(
         name="ArdaNativeCompute",
-        source_public_root="Source/ArdaInfra/ArdaNativeCompute/Public",
+        source_public_roots=tuple(root for root, _ in NATIVE_COMPUTE_PROVIDER_HEADER_ROOTS),
         docs_root="ArdaNativeCompute",
         api_js_path="assets/native-compute-api.js",
         api_global="ArdaNativeComputeApi",
+        extra_public_headers=NATIVE_COMPUTE_FACADE_HEADERS,
     ),
 )
 
@@ -845,10 +861,19 @@ class Validator:
                     self.fail(path, "%s field %s must be an array" % (
                         identifier or label, field_name
                     ))
-        headers = sorted(
+        public_headers = {
             item.resolve()
-            for item in (self.repo / module.source_public_root).rglob("*") if item.suffix in {".h", ".cuh"}
-        )
+            for root in module.source_public_roots
+            for item in (self.repo / root).rglob("*")
+            if item.suffix in {".h", ".cuh"}
+        }
+        for source in module.extra_public_headers:
+            header = self.repo / source
+            if header.is_file():
+                public_headers.add(header.resolve())
+            else:
+                self.fail(header, "%s configured public header is missing" % module.name)
+        headers = sorted(public_headers)
         expected_sources = {
             posix(header.relative_to(self.repo)) for header in headers
         }
@@ -857,13 +882,13 @@ class Validator:
             required_names = set(module.required_public_headers)
             for missing_name in sorted(required_names - actual_names):
                 self.fail(
-                    self.repo / module.source_public_root,
+                    self.repo / module.source_public_roots[0],
                     "%s required public header is missing: %s"
                     % (module.name, missing_name),
                 )
             for unexpected_name in sorted(actual_names - required_names):
                 self.fail(
-                    self.repo / module.source_public_root / unexpected_name,
+                    self.repo / module.source_public_roots[0] / unexpected_name,
                     "%s has an unconfigured public header; add it to "
                     "required_public_headers" % module.name,
                 )
@@ -911,7 +936,7 @@ class Validator:
         ):
             self.fail(path, "public header absent from API source provenance: %s" % missing_source)
         for stale_source in sorted(source_paths - expected_sources):
-            if stale_source.startswith(module.source_public_root.rstrip("/") + "/"):
+            if any(stale_source.startswith(root + "/") for root in module.source_public_roots):
                 self.fail(path, "API source provenance is not a current public header: %s" % stale_source)
         declarations = self.extract_public_declarations(headers)
         uncovered: Dict[str, List[Tuple[str, int, str]]] = collections.defaultdict(list)

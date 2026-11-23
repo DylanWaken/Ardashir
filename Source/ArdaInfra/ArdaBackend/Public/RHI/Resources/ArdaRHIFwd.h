@@ -6,6 +6,10 @@
 
 namespace arda
 {
+	// ================================
+	// RHI object forward declarations
+	// ================================
+
 	/** Forward declaration of RHI object. */
 	template <typename T>
 	class TArdaRHIRef;
@@ -79,6 +83,10 @@ namespace arda
 	class IArdaRHIDepthStencilState;
 	/** Forward declaration of command list. */
 	class IArdaRHICommandList;
+
+	// ================================
+	// Intrusive RHI reference aliases
+	// ================================
 
 	/** Intrusive owning reference to device. */
 	using FArdaRHIResourceRef = TArdaRHIRef<IArdaRHIResource>;

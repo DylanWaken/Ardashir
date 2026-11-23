@@ -11,6 +11,10 @@
 
 namespace arda
 {
+	// ================================
+	// Texture and buffer transitions
+	// ================================
+
 	/** Explicit texture transition including expected state and pipeline domains. */
 	struct FArdaRHITextureTransitionDesc
 	{

@@ -418,7 +418,7 @@ namespace arda
 	FArdaDependencyNodeRequirements FArdaMeshTriangleNode::GetRequirements(const FArdaParameters&amp;)
 	{
 		FArdaDependencyNodeRequirements R;
-		R.mFeatures.mbRequireMeshShaders = true;
+		R.mFeatures.Require("shader.mesh");
 		return R;
 	}
 
@@ -1092,7 +1092,7 @@ namespace arda
 	FArdaDependencyNodeRequirements FArdaWorkWriteNode::GetRequirements(const FArdaParameters&amp;)
 	{
 		FArdaDependencyNodeRequirements R;
-		R.mFeatures.mbRequireWorkGraphs = true;
+		R.mFeatures.Require("work-graph.dispatch");
 		return R;
 	}
 
@@ -1184,7 +1184,7 @@ namespace arda
 #include &quot;Nodes/ArdaPixelSortSortNode.h&quot;
 #include &quot;ArdaPixelSortNodeInternal.h&quot;
 #include &quot;Nodes/ArdaPixelSortOperand.h&quot;
-#include &quot;ArdaNativeCompute.h&quot;
+#include &quot;NativeCompute/ArdaNativeCompute.h&quot;
 
 namespace arda
 {
@@ -1473,9 +1473,9 @@ namespace arda
 	FArdaDependencyNodeRequirements FArdaCornellTraceNode::GetRequirements(const FArdaParameters&amp;)
 	{
 		FArdaDependencyNodeRequirements R;
-		R.mFeatures.mbRequireRayTracingPipelines = true;
-		R.mFeatures.mbRequireAccelerationStructures = true;
-		R.mFeatures.mbRequirePersistentShaderTables = true;
+		R.mFeatures.Require("ray-tracing.pipeline");
+		R.mFeatures.Require("ray-tracing.acceleration-structure");
+		R.mFeatures.Require("ray-tracing.persistent-shader-tables");
 		return R;
 	}
 

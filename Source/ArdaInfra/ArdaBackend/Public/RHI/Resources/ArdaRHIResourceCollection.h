@@ -19,6 +19,10 @@
 
 namespace arda
 {
+	// ================================
+	// Resource collection entries
+	// ================================
+
 	/** Kind of resource retained by a general resource collection. */
 	enum class EArdaRHIResourceCollectionItemType : uint8_t
 	{
@@ -43,6 +47,10 @@ namespace arda
 		FArdaRHIAccelStructRef mAccelerationStructure;
 		FArdaRHISamplerRef mSampler;
 	};
+
+	// ================================
+	// Resource collection description and interface
+	// ================================
 
 	/** Mutable collection used by bindless and ray/ML systems. */
 	struct FArdaRHIResourceCollectionDesc

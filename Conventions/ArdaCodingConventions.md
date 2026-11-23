@@ -33,7 +33,7 @@ prefix with the `Arda` project stem:
 - `TArda` for class and alias templates.
 
 ```cpp
-class FArdaBackendDevice;
+class FArdaBackendDeviceReg;
 struct FArdaBackendConfiguration;
 enum class EArdaShaderBinaryFormat;
 using FArdaDeviceHandle = arda::FArdaRHIDeviceRef;
@@ -81,8 +81,8 @@ Every project-owned source filename must begin with `Arda` and use PascalCase.
 Match implementation files to their primary declarations.
 
 ```text
-ArdaBackendDevice.h
-ArdaBackendDevice.cpp
+ArdaBackend.h
+ArdaBackend.cpp
 ArdaBackendTests.cpp
 ArdaBackendPch.h
 ```

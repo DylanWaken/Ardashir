@@ -2,6 +2,7 @@
 #pragma once
 
 #include "ArdaGraph.h"
+#include "NativeCompute/ArdaNativeCompute.h"
 #include "Graph/Node/ArdaDependencyNodeDesc.h"
 #include "RHI/Memory/ArdaMemoryPlanner.h"
 #include <EASTL/shared_ptr.h>
@@ -18,7 +19,7 @@ namespace arda
 	struct FArdaInductorCompiledGraph;
 	class FArdaDependencyNodeExecutable;
 
-	/** One native dispatch or CUDA batch. Stream UINT32_MAX denotes native work. */
+	/** One queue dispatch. The stream index is used by legacy CUDA callbacks. */
 	struct FArdaInductorDispatch
 	{
 		eastl::vector<FArdaGraphNodeHandle> mNodes;
@@ -35,12 +36,20 @@ namespace arda
 	/** Device preparation retained separately from the authored topology and its public parameter schema. */
 	struct FArdaInductorNodeState
 	{
+		struct FArdaNativeRoute
+		{
+			eastl::string mProviderId;
+			TArdaRHIResult<EArdaNativeExecutionMode> mSelection;
+		};
+
 		/** Described execution effects, prepared shaders, bindings and native pipeline contributions. */
 		FArdaDependencyNodeDesc mDesc;
 		/** Private bound schema identified by the node definition's mPreparedParameterType. */
 		eastl::shared_ptr<const void> mParameters;
 		/** Per-draw mutable stage instances; immutable device preparation may be shared. */
 		eastl::vector<eastl::shared_ptr<const void>> mGraphicsStageParameters;
+		/** Provider and execution mode eligible before frame-specific bindings are available. */
+		eastl::array<FArdaNativeRoute, ArdaRHIQueueTypeCount> mNativeRoutes;
 	};
 
 	/** Admission contract of a subgraph whose body replaced its interface node during compilation. */

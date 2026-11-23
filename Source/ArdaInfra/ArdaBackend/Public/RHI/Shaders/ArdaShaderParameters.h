@@ -17,6 +17,10 @@
 
 namespace arda
 {
+	// ================================
+	// Shader parameter types and metadata records
+	// ================================
+
 	/** Identifies the semantic kind of a shader parameter member. */
 	enum class EArdaShaderParameterKind : uint8_t
 	{
@@ -126,6 +130,10 @@ namespace arda
 		eastl::string mPath;
 	};
 
+	// ================================
+	// Shader parameter metadata
+	// ================================
+
 	/**
      * C++ parameter-struct metadata authored by macros.
      *
@@ -183,6 +191,10 @@ namespace arda
 			return mMembers;
 		}
 
+		// ================================
+		// Member lookup and traversal
+		// ================================
+
 		/**
          * Finds a direct member by name.
          * @param Name Direct member name.
@@ -204,6 +216,10 @@ namespace arda
          * @param OutMembers Receives flattened member entries.
          */
 		void GetFlattenedMembers(eastl::vector<FArdaFlattenedShaderParameterMember>& OutMembers) const;
+
+		// ================================
+		// Binding layout and set creation
+		// ================================
 
 		/**
          * Builds one RHI layout per register-space and visibility group.
@@ -236,6 +252,10 @@ namespace arda
 		    const void* Parameters,
 		    const arda::FArdaRHIBindingLayoutRef& Layout,
 		    arda::FArdaRHIBindingSetRef& OutBindingSet) const;
+
+		// ================================
+		// Push constant operations
+		// ================================
 
 		/**
          * Applies this layout's concrete push-constant block from a parameter instance.
@@ -295,6 +315,10 @@ namespace arda
 		return ParameterType::GetStaticMetadata().ApplyPushConstants(CommandList, &Parameters, Layout);
 	}
 }
+
+// ================================
+// Parameter metadata implementation macros
+// ================================
 
 /** Internal implementation for declaring an array shader parameter member. */
 #define ARDA_INTERNAL_SHADER_PARAMETER_ACCESS(Kind,                                                                    \
@@ -399,6 +423,10 @@ private:                                                                        
 	    Visibility,                                                                                                    \
 	    ::arda::EArdaShaderResourceAccess::AutoDeduction)
 
+// ================================
+// Explicit UAV access macros
+// ================================
+
 /** Declares a texture UAV's required shader access explicitly. */
 #define ARDA_SHADER_TEXTURE_UAV_ACCESS(MemberName, Slot, Space, Visibility, Access)                                    \
 	ARDA_INTERNAL_SHADER_PARAMETER_SCALAR_ACCESS(::arda::EArdaShaderParameterKind::TextureUAV,                         \
@@ -444,6 +472,10 @@ private:                                                                        
 	    Count,                                                                                                         \
 	    Visibility,                                                                                                    \
 	    Access)
+
+// ================================
+// Parameter struct declaration macros
+// ================================
 
 /**
  * Begins a macro-authored shader parameter struct declaration.
@@ -493,6 +525,10 @@ public:                                                                         
 	}                                                                                                                  \
 	}                                                                                                                  \
 	;
+
+// ================================
+// Shader value and resource parameters
+// ================================
 
 /**
  * Declares an unbound value member in a shader parameter struct.
@@ -588,6 +624,10 @@ public:                                                                         
 	    Space,                                                                                                         \
 	    Visibility)
 
+// ================================
+// Resource array parameters
+// ================================
+
 /** Declares a fixed-size texture SRV array with the specified binding and count. */
 #define ARDA_SHADER_TEXTURE_SRV_ARRAY(MemberName, Slot, Space, Count, Visibility)                                      \
 	ARDA_INTERNAL_SHADER_PARAMETER(::arda::EArdaShaderParameterKind::TextureSRV,                                       \
@@ -653,6 +693,10 @@ public:                                                                         
 	    Space,                                                                                                         \
 	    Count,                                                                                                         \
 	    Visibility)
+
+// ================================
+// Push constants and nested parameters
+// ================================
 
 /** Declares a typed push-constant block with the specified binding and visibility. */
 #define ARDA_SHADER_PUSH_CONSTANTS(CppType, MemberName, Slot, Space, Visibility)                                       \

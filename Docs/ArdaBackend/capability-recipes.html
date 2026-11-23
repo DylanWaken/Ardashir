@@ -128,15 +128,15 @@
 <p>Short snippets are literal excerpts from compiled GoogleTest workloads. They use ASSERT_TRUE/EXPECT_EQ to make failures visible. Adapt those checks to your application's status handling. Variables and helpers are initialized in each linked complete example; snippets are not separate standalone programs. The complete examples show allocation, binding, execution, readback assertions and cleanup.</p>
 <pre><code class="language-shell">cmake --build build --config Debug --target ArdaBackendTests
 ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
-<p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="feature-raytracingpipeline"><h2>Dispatch ray-tracing stages</h2><p>Infrastructure, hardware traversal and pipeline shaders are separate facts. Respect identifier/record/table alignments and recursion/dispatch limits. A zero payload limit means the backend exposes no queryable bound, not that zero-byte payloads are the only valid choice.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool RayTracingInfrastructure = C.mRayTracing.mbInfrastructure;
-const bool RayTracingPipelineShaders = C.mRayTracing.mbPipelineShaders;
-const bool RayShaderIdentifierSize = C.mRayTracing.mShaderIdentifierSize &gt; 0;
-const bool RayShaderRecordAlignment = C.mRayTracing.mShaderRecordAlignment &gt; 0;
-const bool RayShaderTableAlignment = C.mRayTracing.mShaderTableAlignment &gt; 0;
-const bool MaximumRayRecursionDepth = C.mRayTracing.mMaxRecursionDepth &gt; 0;
-const bool MaximumRayPayloadSize = C.mRayTracing.mMaxRayPayloadSize &gt; 0;
-const bool MaximumRayDispatchInvocations = C.mRayTracing.mMaxRayDispatchInvocations &gt; 0;</code></pre><pre><code class="language-cpp">auto RayGeneration = CreateExtendedShader(*Device,
+<p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="feature-raytracingpipeline"><h2>Dispatch ray-tracing stages</h2><p>Infrastructure, hardware traversal and pipeline shaders are separate facts. Respect identifier/record/table alignments and recursion/dispatch limits. A zero payload limit means the backend exposes no queryable bound, not that zero-byte payloads are the only valid choice.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool RayTracingInfrastructure = Features-&gt;Supports(&quot;ray-tracing.infrastructure&quot;);
+const bool RayTracingPipelineShaders = Features-&gt;Supports(&quot;ray-tracing.pipeline&quot;);
+const bool RayShaderIdentifierSize = Features-&gt;Supports(&quot;ray-tracing.shader-identifier-bytes&quot;);
+const bool RayShaderRecordAlignment = Features-&gt;Supports(&quot;ray-tracing.shader-record-alignment&quot;);
+const bool RayShaderTableAlignment = Features-&gt;Supports(&quot;ray-tracing.shader-table-alignment&quot;);
+const bool MaximumRayRecursionDepth = Features-&gt;Supports(&quot;ray-tracing.recursion-depth&quot;);
+const bool MaximumRayPayloadSize = Features-&gt;Supports(&quot;ray-tracing.max-payload-bytes&quot;);
+const bool MaximumRayDispatchInvocations = Features-&gt;Supports(&quot;ray-tracing.max-dispatch-invocations&quot;);</code></pre><pre><code class="language-cpp">auto RayGeneration = CreateExtendedShader(*Device,
     BackendName,
     &quot;ArdaRayTracingTest&quot;,
     &quot;RayGen&quot;,
@@ -148,7 +148,7 @@ LayoutDesc.mItems.push_back({0, 1, EArdaRHIBindingType::StructuredBufferUAV});
 TArdaRHIResult&lt;FArdaRHIBindingLayoutRef&gt; Layout;
 if (bLocalDescriptors)
 {
-	if (!Device-&gt;GetCapabilities().mDescriptors.mbDirectResourceHeapIndexing)
+	if (!Device-&gt;GetFeatures()-&gt;Supports(&quot;descriptor.direct-resource-heap-indexing&quot;))
 	{
 		GTEST_SKIP() &lt;&lt; &quot;Local direct-heap descriptors are unavailable.&quot;;
 	}
@@ -164,16 +164,16 @@ else
 	Layout = Device-&gt;CreateBindingLayout(LayoutDesc);
 }
 ASSERT_TRUE(Layout) &lt;&lt; Layout.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyRayTracingPipelineCapabilityAndExecution">Complete usage and output checks: VerifyRayTracingPipelineCapabilityAndExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-accelerationstructure"><h2>Build, update and compact acceleration structures</h2><p>Select BLAS or TLAS support explicitly, then inspect update and compaction flags before choosing those operations. The example queries requirements, builds, validates state and exercises allowed lifecycle operations. Graphics AS storage is not a CUDA traversal handle.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool HardwareRayTracing = C.mRayTracing.mbHardwareAccelerated;
-const bool AccelerationStructures = C.mRayTracing.mbAccelerationStructures;
-const bool BottomLevelAccelerationStructures = C.mRayTracing.mbBottomLevel;
-const bool TopLevelAccelerationStructures = C.mRayTracing.mbTopLevel;
-const bool AccelerationStructureBuildUpdate = C.mRayTracing.mbBuildUpdate;
-const bool AccelerationStructureCompaction = C.mRayTracing.mbCompaction;
-const bool IndirectTopLevelBuild = C.mRayTracing.mbIndirectTopLevelBuild;
-const bool RayTracingTier = C.mRayTracing.GetTier() != arda::EArdaRHIRayTracingTier::None;
-const bool AccelerationStructureAlignment = C.mRayTracing.mAccelerationStructureAlignment &gt; 0;</code></pre><pre><code class="language-cpp">const float Vertices[9] = {-1.f, -1.f, 0.f, 0.f, 1.f, 0.f, 1.f, -1.f, 0.f};
+<section id="feature-accelerationstructure"><h2>Build, update and compact acceleration structures</h2><p>Select BLAS or TLAS support explicitly, then inspect update and compaction flags before choosing those operations. The example queries requirements, builds, validates state and exercises allowed lifecycle operations. Graphics AS storage is not a CUDA traversal handle.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool HardwareRayTracing = Features-&gt;Supports(&quot;ray-tracing.hardware&quot;);
+const bool AccelerationStructures = Features-&gt;Supports(&quot;ray-tracing.acceleration-structure&quot;);
+const bool BottomLevelAccelerationStructures = Features-&gt;Supports(&quot;ray-tracing.bottom-level-acceleration-structure&quot;);
+const bool TopLevelAccelerationStructures = Features-&gt;Supports(&quot;ray-tracing.top-level-acceleration-structure&quot;);
+const bool AccelerationStructureBuildUpdate = Features-&gt;Supports(&quot;ray-tracing.acceleration-structure-update&quot;);
+const bool AccelerationStructureCompaction = Features-&gt;Supports(&quot;ray-tracing.acceleration-structure-compaction&quot;);
+const bool IndirectTopLevelBuild = Features-&gt;Supports(&quot;ray-tracing.indirect-top-level-build&quot;);
+const bool RayTracingTier = Features-&gt;Supports(&quot;ray-tracing.tier&quot;);
+const bool AccelerationStructureAlignment = Features-&gt;Supports(&quot;ray-tracing.acceleration-structure-alignment&quot;);</code></pre><pre><code class="language-cpp">const float Vertices[9] = {-1.f, -1.f, 0.f, 0.f, 1.f, 0.f, 1.f, -1.f, 0.f};
 FArdaRHIBufferDesc VertexDesc;
 VertexDesc.mByteSize = sizeof(Vertices);
 VertexDesc.mUsage = EArdaRHIBufferUsage::Vertex | EArdaRHIBufferUsage::AccelStructBuildInput;
@@ -182,8 +182,8 @@ VertexDesc.mInitialState = EArdaRHIResourceState::AccelStructBuildInput;
 VertexDesc.mDebugName = &quot;AS parity vertices&quot;;
 auto VertexBuffer = Device-&gt;CreateBuffer(VertexDesc);
 ASSERT_TRUE(VertexBuffer) &lt;&lt; VertexBuffer.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyAccelerationStructureLifecycleAndStateParity">Complete usage and output checks: VerifyAccelerationStructureLifecycleAndStateParity</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-inlinerayquery"><h2>Trace rays from an ordinary compute shader</h2><p>Inline ray queries traverse a built TLAS without dispatching a ray-generation pipeline. Select the inline shader branch in the complete scene example. It still requires hardware traversal, valid instances and ordered AS construction.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool InlineRayQueries = C.mRayTracing.mbInlineRayQueries;</code></pre><pre><code class="language-cpp">// Keep the world-space hit/miss oracle fixed while exercising an asymmetric
+<section id="feature-inlinerayquery"><h2>Trace rays from an ordinary compute shader</h2><p>Inline ray queries traverse a built TLAS without dispatching a ray-generation pipeline. Select the inline shader branch in the complete scene example. It still requires hardware traversal, valid instances and ordered AS construction.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool InlineRayQueries = Features-&gt;Supports(&quot;ray-tracing.inline-query&quot;);</code></pre><pre><code class="language-cpp">// Keep the world-space hit/miss oracle fixed while exercising an asymmetric
 // affine matrix at the Eigen-to-native TLAS instance boundary. Incorrect
 // column-major serialization leaves the triangle away from the hit ray.
 FArdaAffineTransform3f ObjectToWorld = FArdaAffineTransform3f::Identity();
@@ -205,10 +205,10 @@ VertexDesc.mInitialState = EArdaRHIResourceState::AccelStructBuildInput;
 VertexDesc.mDebugName = &quot;Known-result ray-scene vertices&quot;;
 auto VertexBuffer = Device-&gt;CreateBuffer(VertexDesc);
 ASSERT_TRUE(VertexBuffer) &lt;&lt; VertexBuffer.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">Complete usage and output checks: VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-raytracingscene"><h2>Use hit groups, local arguments and indirect rays</h2><p>The scene assigns distinct records to hit groups, supplies local arguments and verifies indirect dispatch output. Persistent shader tables and local descriptor arguments require explicit record/commit semantics and GPU lifetime retention.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool IndirectRayDispatch = C.mRayTracing.mbIndirectDispatch;
-const bool LocalShaderTableArguments = C.mRayTracing.mbLocalShaderTableArguments;
-const bool PersistentShaderTables = C.mRayTracing.mbPersistentShaderTables;</code></pre><pre><code class="language-cpp">// Keep the world-space hit/miss oracle fixed while exercising an asymmetric
+<section id="feature-raytracingscene"><h2>Use hit groups, local arguments and indirect rays</h2><p>The scene assigns distinct records to hit groups, supplies local arguments and verifies indirect dispatch output. Persistent shader tables and local descriptor arguments require explicit record/commit semantics and GPU lifetime retention.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool IndirectRayDispatch = Features-&gt;Supports(&quot;ray-tracing.indirect-dispatch&quot;);
+const bool LocalShaderTableArguments = Features-&gt;Supports(&quot;ray-tracing.local-shader-table-arguments&quot;);
+const bool PersistentShaderTables = Features-&gt;Supports(&quot;ray-tracing.persistent-shader-tables&quot;);</code></pre><pre><code class="language-cpp">// Keep the world-space hit/miss oracle fixed while exercising an asymmetric
 // affine matrix at the Eigen-to-native TLAS instance boundary. Incorrect
 // column-major serialization leaves the triangle away from the hit ray.
 FArdaAffineTransform3f ObjectToWorld = FArdaAffineTransform3f::Identity();
@@ -230,8 +230,8 @@ VertexDesc.mInitialState = EArdaRHIResourceState::AccelStructBuildInput;
 VertexDesc.mDebugName = &quot;Known-result ray-scene vertices&quot;;
 auto VertexBuffer = Device-&gt;CreateBuffer(VertexDesc);
 ASSERT_TRUE(VertexBuffer) &lt;&lt; VertexBuffer.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">Complete usage and output checks: VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-opacitymicromap"><h2>Build Vulkan opacity micromaps</h2><p>Micromap support is independent of ordinary ray tracing and is currently implemented by Vulkan only. Formats, usage counts and subdivision levels must agree with the geometry. Build ordering and compaction queries are checked by the example.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool OpacityMicromaps = C.mRayTracing.mbOpacityMicromaps;</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc InputDesc;
+<section id="feature-opacitymicromap"><h2>Build Vulkan opacity micromaps</h2><p>Micromap support is independent of ordinary ray tracing and is currently implemented by Vulkan only. Formats, usage counts and subdivision levels must agree with the geometry. Build ordering and compaction queries are checked by the example.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool OpacityMicromaps = Features-&gt;Supports(&quot;ray-tracing.opacity-micromap&quot;);</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc InputDesc;
 InputDesc.mByteSize = 256;
 InputDesc.mUsage = EArdaRHIBufferUsage::OpacityMicromapBuildInput;
 InputDesc.mCpuAccess = EArdaRHICpuAccess::Write;
@@ -242,11 +242,11 @@ ASSERT_TRUE(Input) &lt;&lt; Input.mStatus.mMessage.c_str();
 InputDesc.mDebugName = &quot;Opacity micromap triangle descriptors&quot;;
 auto Triangles = Device-&gt;CreateBuffer(InputDesc);
 ASSERT_TRUE(Triangles) &lt;&lt; Triangles.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyVulkanOpacityMicromapLifecycleAndStateParity">Complete usage and output checks: VerifyVulkanOpacityMicromapLifecycleAndStateParity</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-bindless"><h2>Address descriptors by array index</h2><p>Bindless tables describe shader-visible indices rather than arbitrary native handles. Capacity, register spaces and descriptor types must agree with the shader. The example writes a table, dispatches through it and verifies the selected resource's data.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool BindlessDescriptors = C.mDescriptors.mbBindless;
-const bool DescriptorHeap = C.mDescriptors.mbDescriptorHeap;
-const bool MaximumResourceDescriptors = C.mDescriptors.mMaxResourceDescriptors &gt; 0;
-const bool MaximumSamplerDescriptors = C.mDescriptors.mMaxSamplerDescriptors &gt; 0;</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc OutputDesc;
+<section id="feature-bindless"><h2>Address descriptors by array index</h2><p>Bindless tables describe shader-visible indices rather than arbitrary native handles. Capacity, register spaces and descriptor types must agree with the shader. The example writes a table, dispatches through it and verifies the selected resource's data.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool BindlessDescriptors = Features-&gt;Supports(&quot;descriptor.bindless&quot;);
+const bool DescriptorHeap = Features-&gt;Supports(&quot;descriptor.heap&quot;);
+const bool MaximumResourceDescriptors = Features-&gt;Supports(&quot;descriptor.resource-capacity&quot;);
+const bool MaximumSamplerDescriptors = Features-&gt;Supports(&quot;descriptor.sampler-capacity&quot;);</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc OutputDesc;
 OutputDesc.mDebugName = &quot;Bindless descriptor table output&quot;;
 OutputDesc.mByteSize = sizeof(uint32_t);
 OutputDesc.mStructureStride = sizeof(uint32_t);
@@ -254,12 +254,12 @@ OutputDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::Unord
 OutputDesc.mInitialState = EArdaRHIResourceState::Common;
 auto Output = Device-&gt;CreateBuffer(OutputDesc);
 ASSERT_TRUE(Output);</code></pre><p><a href="gpu-examples.html#VerifyBindlessDescriptorTable">Complete usage and output checks: VerifyBindlessDescriptorTable</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-runtimedescriptors"><h2>Update descriptors without rewriting recorded work</h2><p>Runtime arrays, partially bound arrays, variable counts and update-after-bind are separate capabilities. The implementation preserves recorded descriptor versions; do not interpret these flags as permission to overwrite data still used by a GPU submission.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool RuntimeDescriptorArrays = C.mDescriptors.mbRuntimeDescriptorArrays;
-const bool UnboundedDescriptorArrays = C.mDescriptors.mbUnboundedArrays;
-const bool PartiallyBoundDescriptors = C.mDescriptors.mbPartiallyBound;
-const bool DescriptorUpdateAfterBind = C.mDescriptors.mbUpdateAfterBind;
-const bool UpdateUnusedDescriptorsWhilePending = C.mDescriptors.mbUpdateUnusedWhilePending;</code></pre><pre><code class="language-cpp">void VerifyRuntimeDescriptorVersions(const char* BackendName)
+<section id="feature-runtimedescriptors"><h2>Update descriptors without rewriting recorded work</h2><p>Runtime arrays, partially bound arrays, variable counts and update-after-bind are separate capabilities. The implementation preserves recorded descriptor versions; do not interpret these flags as permission to overwrite data still used by a GPU submission.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool RuntimeDescriptorArrays = Features-&gt;Supports(&quot;descriptor.runtime-arrays&quot;);
+const bool UnboundedDescriptorArrays = Features-&gt;Supports(&quot;descriptor.unbounded-arrays&quot;);
+const bool PartiallyBoundDescriptors = Features-&gt;Supports(&quot;descriptor.partially-bound&quot;);
+const bool DescriptorUpdateAfterBind = Features-&gt;Supports(&quot;descriptor.update-after-bind&quot;);
+const bool UpdateUnusedDescriptorsWhilePending = Features-&gt;Supports(&quot;descriptor.update-unused-while-pending&quot;);</code></pre><pre><code class="language-cpp">void VerifyRuntimeDescriptorVersions(const char* BackendName)
 {
 	using namespace arda;
 	ShutdownBackend();
@@ -274,13 +274,13 @@ const bool UpdateUnusedDescriptorsWhilePending = C.mDescriptors.mbUpdateUnusedWh
 	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
 	auto Device = GetDevice();
 	ASSERT_TRUE(Device);
-	const auto&amp; Caps = Device-&gt;GetCapabilities().mDescriptors;
+	const auto Features = Device-&gt;GetFeatures();
 	FArdaRHIBindlessLayoutDesc Desc;
 	Desc.mVisibility = EArdaRHIShaderStage::Compute;
 	Desc.mMaxCapacity = 4;
-	Desc.mbUnbounded = Caps.mbUnboundedArrays;
-	Desc.mbUpdateAfterBind = Caps.mbUpdateAfterBind;
-	Desc.mbVariableDescriptorCount = Caps.mbVariableDescriptorCount;
+	Desc.mbUnbounded = Features-&gt;Supports(&quot;descriptor.unbounded-arrays&quot;);
+	Desc.mbUpdateAfterBind = Features-&gt;Supports(&quot;descriptor.update-after-bind&quot;);
+	Desc.mbVariableDescriptorCount = Features-&gt;Supports(&quot;descriptor.variable-count&quot;);
 	Desc.mRegisterSpaces.push_back({0, 1, EArdaRHIBindingType::StructuredBufferUAV});
 	auto Layout = Device-&gt;CreateBindlessLayout(Desc);
 	ASSERT_TRUE(Layout);
@@ -334,9 +334,9 @@ const bool UpdateUnusedDescriptorsWhilePending = C.mDescriptors.mbUpdateUnusedWh
 	ASSERT_TRUE(Commands.mValue-&gt;Close());
 	auto Submission = Device-&gt;ExecuteCommandList(Commands.mValue);
 	ASSERT_TRUE(Submission);</code></pre><p><a href="gpu-examples.html#VerifyRuntimeDescriptorVersions">Complete usage and output checks: VerifyRuntimeDescriptorVersions</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-expandeddescriptors"><h2>Use resource collections</h2><p>Collections preserve stable indices while resources change. The test compares shader output before and after an indexed update and checks retention. This feature does not automatically make a collection itself CUDA-addressable.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool VariableDescriptorCount = C.mDescriptors.mbVariableDescriptorCount;
-const bool ResourceCollections = C.mbResourceCollections;</code></pre><pre><code class="language-cpp">FArdaRHIBindlessLayoutDesc Bindless;
+<section id="feature-expandeddescriptors"><h2>Use resource collections</h2><p>Collections preserve stable indices while resources change. The test compares shader output before and after an indexed update and checks retention. This feature does not automatically make a collection itself CUDA-addressable.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool VariableDescriptorCount = Features-&gt;Supports(&quot;descriptor.variable-count&quot;);
+const bool ResourceCollections = Features-&gt;Supports(&quot;resource.collections&quot;);</code></pre><pre><code class="language-cpp">FArdaRHIBindlessLayoutDesc Bindless;
 Bindless.mVisibility = EArdaRHIShaderStage::All;
 Bindless.mbUnbounded = true;
 Bindless.mbUpdateAfterBind = true;
@@ -351,8 +351,8 @@ ASSERT_TRUE(Table) &lt;&lt; Table.mStatus.mMessage.c_str();
 EXPECT_GT(Table.mValue-&gt;GetCapacity(), 0u);
 ASSERT_TRUE(Device-&gt;ResizeDescriptorTable(Table.mValue, 8));
 EXPECT_EQ(Table.mValue-&gt;GetCapacity(), 8u);</code></pre><p><a href="gpu-examples.html#VerifyExpandedDescriptorsAndResourceCollections">Complete usage and output checks: VerifyExpandedDescriptorsAndResourceCollections</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-directresourceheap"><h2>Index the resource descriptor heap</h2><p>Set direct-heap indexing in the bindless layout and compile a shader for that binding model. The queried flag covers resource descriptors only; sampler heap access has its own capability and layout.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool DirectResourceHeapIndexing = C.mDescriptors.mbDirectResourceHeapIndexing;</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc OutputDesc;
+<section id="feature-directresourceheap"><h2>Index the resource descriptor heap</h2><p>Set direct-heap indexing in the bindless layout and compile a shader for that binding model. The queried flag covers resource descriptors only; sampler heap access has its own capability and layout.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool DirectResourceHeapIndexing = Features-&gt;Supports(&quot;descriptor.direct-resource-heap-indexing&quot;);</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc OutputDesc;
 OutputDesc.mDebugName = &quot;Bindless descriptor table output&quot;;
 OutputDesc.mByteSize = sizeof(uint32_t);
 OutputDesc.mStructureStride = sizeof(uint32_t);
@@ -360,8 +360,8 @@ OutputDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::Unord
 OutputDesc.mInitialState = EArdaRHIResourceState::Common;
 auto Output = Device-&gt;CreateBuffer(OutputDesc);
 ASSERT_TRUE(Output);</code></pre><p><a href="gpu-examples.html#VerifyBindlessDescriptorTable">Complete usage and output checks: VerifyBindlessDescriptorTable</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-directresourceandsamplerheaps"><h2>Index resource and sampler heaps together</h2><p>Both direct-indexing flags must hold for a shader using both heaps. Keep sampler and resource index spaces distinct. The example binds both tables and checks texture sampling through the selected indices.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool DirectSamplerHeapIndexing = C.mDescriptors.mbDirectSamplerHeapIndexing;</code></pre><pre><code class="language-cpp">FArdaRHITextureDesc TextureDesc;
+<section id="feature-directresourceandsamplerheaps"><h2>Index resource and sampler heaps together</h2><p>Both direct-indexing flags must hold for a shader using both heaps. Keep sampler and resource index spaces distinct. The example binds both tables and checks texture sampling through the selected indices.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool DirectSamplerHeapIndexing = Features-&gt;Supports(&quot;descriptor.direct-sampler-heap-indexing&quot;);</code></pre><pre><code class="language-cpp">FArdaRHITextureDesc TextureDesc;
 TextureDesc.mDebugName = &quot;Direct-heap sampled texture&quot;;
 TextureDesc.mWidth = 1;
 TextureDesc.mHeight = 1;
@@ -370,8 +370,8 @@ TextureDesc.mUsage = EArdaRHITextureUsage::ShaderResource | EArdaRHITextureUsage
 TextureDesc.mInitialState = EArdaRHIResourceState::RenderTarget;
 auto Texture = Device-&gt;CreateTexture(TextureDesc);
 ASSERT_TRUE(Texture) &lt;&lt; Texture.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyDirectResourceAndSamplerHeapIndexing">Complete usage and output checks: VerifyDirectResourceAndSamplerHeapIndexing</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-descriptorbuffer"><h2>Use native descriptor-buffer storage</h2><p>The Vulkan descriptor-buffer path is distinct from a conventional descriptor set and from direct resource/sampler heap indexing. The conformance dispatch also runs the combined resource/sampler example with descriptor-buffer selection enabled.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool DescriptorBuffer = C.mDescriptors.mbDescriptorBuffer;</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc OutputDesc;
+<section id="feature-descriptorbuffer"><h2>Use native descriptor-buffer storage</h2><p>The Vulkan descriptor-buffer path is distinct from a conventional descriptor set and from direct resource/sampler heap indexing. The conformance dispatch also runs the combined resource/sampler example with descriptor-buffer selection enabled.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool DescriptorBuffer = Features-&gt;Supports(&quot;descriptor.buffer&quot;);</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc OutputDesc;
 OutputDesc.mDebugName = &quot;Bindless descriptor table output&quot;;
 OutputDesc.mByteSize = sizeof(uint32_t);
 OutputDesc.mStructureStride = sizeof(uint32_t);
@@ -379,28 +379,28 @@ OutputDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::Unord
 OutputDesc.mInitialState = EArdaRHIResourceState::Common;
 auto Output = Device-&gt;CreateBuffer(OutputDesc);
 ASSERT_TRUE(Output);</code></pre><p><a href="gpu-examples.html#VerifyBindlessDescriptorTable">Complete usage and output checks: VerifyBindlessDescriptorTable</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-queuebreadth"><h2>Order work across queue families</h2><p>Queue availability, dedicated families and GPU waits are independent facts. Submit the producer first and pass its returned submission value to QueueWait before recording dependent execution. Vulkan queue-family transitions are required when ownership actually changes.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool GraphicsQueue = C.mQueues.mbGraphics;
-const bool ComputeQueue = C.mQueues.mbCompute;
-const bool CopyQueue = C.mQueues.mbCopy;
-const bool DedicatedComputeQueueFamily = C.mQueues.mbDedicatedComputeFamily;
-const bool DedicatedCopyQueueFamily = C.mQueues.mbDedicatedCopyFamily;
-const bool GpuQueueWaits = C.mQueues.mbGpuWaits;
-const bool TimelineSynchronization = C.mQueues.mbTimelineSynchronization;
-const bool QueueFamilyOwnershipTransfer = C.mQueues.mbQueueFamilyOwnershipTransfer;
-const bool GraphicsQueueFamilyIndex = C.mQueues.mGraphicsFamily != arda::ArdaRHIInvalidQueueFamily;
-const bool ComputeQueueFamilyIndex = C.mQueues.mComputeFamily != arda::ArdaRHIInvalidQueueFamily;
-const bool CopyQueueFamilyIndex = C.mQueues.mCopyFamily != arda::ArdaRHIInvalidQueueFamily;</code></pre><pre><code class="language-cpp">const FArdaRHICapabilities&amp; Capabilities = Device-&gt;GetCapabilities();
+<section id="feature-queuebreadth"><h2>Order work across queue families</h2><p>Queue availability, dedicated families and GPU waits are independent facts. Submit the producer first and pass its returned submission value to QueueWait before recording dependent execution. Vulkan queue-family transitions are required when ownership actually changes.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool GraphicsQueue = Features-&gt;Supports(&quot;queue.graphics&quot;);
+const bool ComputeQueue = Features-&gt;Supports(&quot;queue.compute&quot;);
+const bool CopyQueue = Features-&gt;Supports(&quot;queue.copy&quot;);
+const bool DedicatedComputeQueueFamily = Features-&gt;Supports(&quot;queue.dedicated-compute&quot;);
+const bool DedicatedCopyQueueFamily = Features-&gt;Supports(&quot;queue.dedicated-copy&quot;);
+const bool GpuQueueWaits = Features-&gt;Supports(&quot;queue.gpu-waits&quot;);
+const bool TimelineSynchronization = Features-&gt;Supports(&quot;synchronization.timeline-semaphore&quot;);
+const bool QueueFamilyOwnershipTransfer = Features-&gt;Supports(&quot;queue.family-ownership-transfer&quot;);
+const bool GraphicsQueueFamilyIndex = Device-&gt;GetQueueFamily(arda::EArdaRHIQueueType::Graphics) != arda::ArdaRHIInvalidQueueFamily;
+const bool ComputeQueueFamilyIndex = Device-&gt;GetQueueFamily(arda::EArdaRHIQueueType::Compute) != arda::ArdaRHIInvalidQueueFamily;
+const bool CopyQueueFamilyIndex = Device-&gt;GetQueueFamily(arda::EArdaRHIQueueType::Copy) != arda::ArdaRHIInvalidQueueFamily;</code></pre><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
 const bool bD3D12 = std::strcmp(BackendName, &quot;native-d3d12&quot;) == 0;
 if (bD3D12)
 {
 	FArdaRHIFeatureRequirements Requirements;
-	Requirements.mbRequireTimelineSynchronization = true;
-	Requirements.mbRequireGpuQueueWaits = true;
+	Requirements.Require(&quot;synchronization.timeline-semaphore&quot;);
+	Requirements.Require(&quot;queue.gpu-waits&quot;);
 	const auto Admission = Device-&gt;RequireFeatures(Requirements);
 	ASSERT_TRUE(Admission) &lt;&lt; Admission.mMessage.c_str();
 }
-if (Capabilities.mQueues.mbCopy)
+if (Features-&gt;Supports(&quot;queue.copy&quot;))
 {
 	FArdaRHIBufferDesc BufferDesc;
 	BufferDesc.mUsage = EArdaRHIBufferUsage::None;
@@ -412,15 +412,15 @@ if (Capabilities.mQueues.mbCopy)
 	auto Destination = Device-&gt;CreateBuffer(BufferDesc);
 	ASSERT_TRUE(Source);
 	ASSERT_TRUE(Destination);</code></pre><p><a href="gpu-examples.html#VerifyQueueBreadth">Complete usage and output checks: VerifyQueueBreadth</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-sparseresidency"><h2>Map reserved buffers and textures</h2><p>Reserved resources separate virtual address range from physical tile mappings. Query tile shape, packed mips and the sparse-binding queue before mapping. Unmapped regions and alias reuse need explicit lifetime policy; a budget query alone does not allocate or evict data.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool SparseBindingQueue = C.mQueues.mbSparseBindingQueue;
-const bool SparseBinding = C.mResidency.mbSparseBinding;
-const bool ReservedBuffers = C.mResidency.mbReservedBuffers;
-const bool ReservedTexture2D = C.mResidency.mbReservedTexture2D;
-const bool ReservedTexture3D = C.mResidency.mbReservedTexture3D;
-const bool AliasedSparseMappings = C.mResidency.mbAliasedMappings;
-const bool SparseTileSize = C.mResidency.mTileSizeInBytes &gt; 0;</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc BufferDesc;
-BufferDesc.mByteSize = Residency.mTileSizeInBytes * 2;
+<section id="feature-sparseresidency"><h2>Map reserved buffers and textures</h2><p>Reserved resources separate virtual address range from physical tile mappings. Query tile shape, packed mips and the sparse-binding queue before mapping. Unmapped regions and alias reuse need explicit lifetime policy; a budget query alone does not allocate or evict data.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool SparseBindingQueue = Features-&gt;Supports(&quot;queue.sparse-binding&quot;);
+const bool SparseBinding = Features-&gt;Supports(&quot;resource.sparse-binding&quot;);
+const bool ReservedBuffers = Features-&gt;Supports(&quot;resource.reserved-buffer&quot;);
+const bool ReservedTexture2D = Features-&gt;Supports(&quot;resource.reserved-texture-2d&quot;);
+const bool ReservedTexture3D = Features-&gt;Supports(&quot;resource.reserved-texture-3d&quot;);
+const bool AliasedSparseMappings = Features-&gt;Supports(&quot;resource.aliased-sparse-mapping&quot;);
+const bool SparseTileSize = Features-&gt;Supports(&quot;resource.sparse-tile-bytes&quot;);</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc BufferDesc;
+BufferDesc.mByteSize = Features-&gt;GetValueOr(&quot;resource.sparse-tile-bytes&quot;, 0) * 2;
 BufferDesc.mUsage = EArdaRHIBufferUsage::Raw | EArdaRHIBufferUsage::ShaderResource;
 BufferDesc.mbTiled = true;
 BufferDesc.mDebugName = &quot;Sparse parity buffer&quot;;
@@ -429,7 +429,7 @@ ASSERT_TRUE(Buffer) &lt;&lt; Buffer.mStatus.mMessage.c_str();
 auto BufferMemory = Device-&gt;GetBufferMemoryRequirements(Buffer.mValue);
 ASSERT_TRUE(BufferMemory);
 FArdaRHIHeapDesc HeapDesc;
-HeapDesc.mCapacity = eastl::max&lt;uint64_t&gt;(BufferMemory.mValue.mAlignment, Residency.mTileSizeInBytes * 2);
+HeapDesc.mCapacity = eastl::max&lt;uint64_t&gt;(BufferMemory.mValue.mAlignment, Features-&gt;GetValueOr(&quot;resource.sparse-tile-bytes&quot;, 0) * 2);
 HeapDesc.mMemoryTypeBits = BufferMemory.mValue.mMemoryTypeBits;
 HeapDesc.mDebugName = &quot;Sparse parity heap&quot;;
 auto Heap = Device-&gt;CreateHeap(HeapDesc);
@@ -462,26 +462,26 @@ std::memcpy(&amp;SparseActual, SparseReadback.data(), sizeof(SparseActual));
 EXPECT_EQ(SparseActual, SparseExpected);
 ASSERT_TRUE(
     Device-&gt;CommitReservedResource(FArdaRHIResourceRef(Buffer.mValue.Get()), 0, EArdaRHIQueueType::Graphics));</code></pre><p><a href="gpu-examples.html#VerifySparseResidencyAndStreamingBudget">Complete usage and output checks: VerifySparseResidencyAndStreamingBudget</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-streamingbudget"><h2>Observe and reserve a streaming budget</h2><p>Read local/nonlocal usage and budget, then request a reservation only when supported. Budget telemetry is a planning input, not a guarantee that every later allocation will succeed. Keep headroom and handle allocation failure.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool StreamingBudget = C.mResidency.mbStreamingBudget;
-const bool StreamingBudgetReservation = C.mResidency.mbBudgetReservation;</code></pre><pre><code class="language-cpp">auto Device = GetDevice();
+<section id="feature-streamingbudget"><h2>Observe and reserve a streaming budget</h2><p>Read local/nonlocal usage and budget, then request a reservation only when supported. Budget telemetry is a planning input, not a guarantee that every later allocation will succeed. Keep headroom and handle allocation failure.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool StreamingBudget = Features-&gt;Supports(&quot;memory.streaming-budget&quot;);
+const bool StreamingBudgetReservation = Features-&gt;Supports(&quot;memory.budget-reservation&quot;);</code></pre><pre><code class="language-cpp">auto Device = GetDevice();
 	ASSERT_TRUE(Device);
-	const auto&amp; Residency = Device-&gt;GetCapabilities().mResidency;
-	ASSERT_TRUE(Residency.mbStreamingBudget);
+	const auto Features = Device-&gt;GetFeatures();
+	ASSERT_TRUE(Features-&gt;Supports(&quot;memory.streaming-budget&quot;));
 	const auto Budget = Device-&gt;QueryStreamingBudget(true);
 	ASSERT_TRUE(Budget) &lt;&lt; Budget.mStatus.mMessage.c_str();
 	EXPECT_GT(Budget.mValue.mBudgetBytes, 0u);
 	EXPECT_TRUE(Budget.mValue.mbLocalMemory);
-	if (Residency.mbBudgetReservation)
+	if (Features-&gt;Supports(&quot;memory.budget-reservation&quot;))
 	{
 		ASSERT_TRUE(Device-&gt;SetStreamingBudgetReservation(Budget.mValue.mCurrentReservationBytes, true));
 	}
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre><p><a href="gpu-examples.html#VerifyStreamingBudgetExecution">Complete usage and output checks: VerifyStreamingBudgetExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-subgroup"><h2>Use subgroup arithmetic</h2><p>Use the subgroup capability and size bounds when selecting a shader variant; a subgroup size is not necessarily the number of threads in a group. The ArdaSubgroup/SubgroupCS shader is executed with a CPU-checked result.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool SubgroupOperations = C.mMachineLearning.mbSubgroupOperations;
-const bool MinimumSubgroupSize = C.mMachineLearning.mSubgroupMinSize &gt; 0;
-const bool MaximumSubgroupSize = C.mMachineLearning.mSubgroupMaxSize &gt; 0;</code></pre><pre><code class="language-cpp">void VerifyComputeArithmetic(const char* BackendName, const char* Artifact, const char* Entry)
+<section id="feature-subgroup"><h2>Use subgroup arithmetic</h2><p>Use the subgroup capability and size bounds when selecting a shader variant; a subgroup size is not necessarily the number of threads in a group. The ArdaSubgroup/SubgroupCS shader is executed with a CPU-checked result.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool SubgroupOperations = Features-&gt;Supports(&quot;shader.wave-operations&quot;);
+const bool MinimumSubgroupSize = Features-&gt;Supports(&quot;shader.subgroup-min-size&quot;);
+const bool MaximumSubgroupSize = Features-&gt;Supports(&quot;shader.subgroup-max-size&quot;);</code></pre><pre><code class="language-cpp">void VerifyComputeArithmetic(const char* BackendName, const char* Artifact, const char* Entry)
 {
 	using namespace arda;
 	ShutdownBackend();
@@ -545,12 +545,12 @@ const bool MaximumSubgroupSize = C.mMachineLearning.mSubgroupMaxSize &gt; 0;</co
 	std::memcpy(Values.data(), Bytes.data(), Bytes.size());
 	if (bSubgroup)
 	{
-		const auto&amp; Caps = Device-&gt;GetCapabilities().mMachineLearning;
+		const auto Features = Device-&gt;GetFeatures();
 		for (uint32_t Thread = 0; Thread &lt; 64; ++Thread)
 		{
 			const uint32_t Width = Values[Thread * 2 + 1];
-			ASSERT_GE(Width, Caps.mSubgroupMinSize);
-			ASSERT_LE(Width, Caps.mSubgroupMaxSize);
+			ASSERT_GE(Width, Features-&gt;GetValueOr(&quot;shader.subgroup-min-size&quot;, 0));
+			ASSERT_LE(Width, Features-&gt;GetValueOr(&quot;shader.subgroup-max-size&quot;, 0));
 			const uint32_t First = (Thread / Width) * Width;
 			const uint32_t Count = eastl::min(Width, 64u - First);
 			EXPECT_EQ(Values[Thread * 2], Count * (2 * First + Count + 1) / 2);
@@ -567,8 +567,8 @@ const bool MaximumSubgroupSize = C.mMachineLearning.mSubgroupMaxSize &gt; 0;</co
 	}
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre><p><a href="gpu-examples.html#VerifyComputeArithmetic">Complete usage and output checks: VerifyComputeArithmetic</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-float16"><h2>Select native half-precision arithmetic</h2><p>The native float16 flag describes shader arithmetic, not only half-format image storage. The ArdaFloat16/Float16CS workload checks executable arithmetic. Use a full-precision shader alternative when the flag is false.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool NativeFloat16 = C.mMachineLearning.mbNativeFloat16;</code></pre><pre><code class="language-cpp">void VerifyComputeArithmetic(const char* BackendName, const char* Artifact, const char* Entry)
+<section id="feature-float16"><h2>Select native half-precision arithmetic</h2><p>The native float16 flag describes shader arithmetic, not only half-format image storage. The ArdaFloat16/Float16CS workload checks executable arithmetic. Use a full-precision shader alternative when the flag is false.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool NativeFloat16 = Features-&gt;Supports(&quot;shader.float16&quot;);</code></pre><pre><code class="language-cpp">void VerifyComputeArithmetic(const char* BackendName, const char* Artifact, const char* Entry)
 {
 	using namespace arda;
 	ShutdownBackend();
@@ -632,12 +632,12 @@ const bool NativeFloat16 = C.mMachineLearning.mbNativeFloat16;</code></pre><pre>
 	std::memcpy(Values.data(), Bytes.data(), Bytes.size());
 	if (bSubgroup)
 	{
-		const auto&amp; Caps = Device-&gt;GetCapabilities().mMachineLearning;
+		const auto Features = Device-&gt;GetFeatures();
 		for (uint32_t Thread = 0; Thread &lt; 64; ++Thread)
 		{
 			const uint32_t Width = Values[Thread * 2 + 1];
-			ASSERT_GE(Width, Caps.mSubgroupMinSize);
-			ASSERT_LE(Width, Caps.mSubgroupMaxSize);
+			ASSERT_GE(Width, Features-&gt;GetValueOr(&quot;shader.subgroup-min-size&quot;, 0));
+			ASSERT_LE(Width, Features-&gt;GetValueOr(&quot;shader.subgroup-max-size&quot;, 0));
 			const uint32_t First = (Thread / Width) * Width;
 			const uint32_t Count = eastl::min(Width, 64u - First);
 			EXPECT_EQ(Values[Thread * 2], Count * (2 * First + Count + 1) / 2);
@@ -654,8 +654,8 @@ const bool NativeFloat16 = C.mMachineLearning.mbNativeFloat16;</code></pre><pre>
 	}
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre><p><a href="gpu-examples.html#VerifyComputeArithmetic">Complete usage and output checks: VerifyComputeArithmetic</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-int8"><h2>Select packed integer dot products</h2><p>The native int8 flag covers packed signed/unsigned 8-bit dot products with a 32-bit accumulator. It does not advertise arbitrary 8-bit scalar instructions. The ArdaInt8/Int8CS workload checks the packed result against a CPU oracle.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool NativeInt8 = C.mMachineLearning.mbNativeInt8;</code></pre><pre><code class="language-cpp">void VerifyComputeArithmetic(const char* BackendName, const char* Artifact, const char* Entry)
+<section id="feature-int8"><h2>Select packed integer dot products</h2><p>The native int8 flag covers packed signed/unsigned 8-bit dot products with a 32-bit accumulator. It does not advertise arbitrary 8-bit scalar instructions. The ArdaInt8/Int8CS workload checks the packed result against a CPU oracle.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool NativeInt8 = Features-&gt;Supports(&quot;shader.integer-dot-product&quot;);</code></pre><pre><code class="language-cpp">void VerifyComputeArithmetic(const char* BackendName, const char* Artifact, const char* Entry)
 {
 	using namespace arda;
 	ShutdownBackend();
@@ -719,12 +719,12 @@ const bool NativeInt8 = C.mMachineLearning.mbNativeInt8;</code></pre><pre><code 
 	std::memcpy(Values.data(), Bytes.data(), Bytes.size());
 	if (bSubgroup)
 	{
-		const auto&amp; Caps = Device-&gt;GetCapabilities().mMachineLearning;
+		const auto Features = Device-&gt;GetFeatures();
 		for (uint32_t Thread = 0; Thread &lt; 64; ++Thread)
 		{
 			const uint32_t Width = Values[Thread * 2 + 1];
-			ASSERT_GE(Width, Caps.mSubgroupMinSize);
-			ASSERT_LE(Width, Caps.mSubgroupMaxSize);
+			ASSERT_GE(Width, Features-&gt;GetValueOr(&quot;shader.subgroup-min-size&quot;, 0));
+			ASSERT_LE(Width, Features-&gt;GetValueOr(&quot;shader.subgroup-max-size&quot;, 0));
 			const uint32_t First = (Thread / Width) * Width;
 			const uint32_t Count = eastl::min(Width, 64u - First);
 			EXPECT_EQ(Values[Thread * 2], Count * (2 * First + Count + 1) / 2);
@@ -741,8 +741,8 @@ const bool NativeInt8 = C.mMachineLearning.mbNativeInt8;</code></pre><pre><code 
 	}
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre><p><a href="gpu-examples.html#VerifyComputeArithmetic">Complete usage and output checks: VerifyComputeArithmetic</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-instancebuffer"><h2>Build a TLAS from instance data</h2><p>The instance-buffer branch creates native-compatible instance records before building the TLAS. Distinguish GPU-provided instance data from indirect ray dispatch; they have different argument layouts and capability gates.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool BufferDeviceAddress = C.mMachineLearning.mbBufferDeviceAddress;</code></pre><pre><code class="language-cpp">// Keep the world-space hit/miss oracle fixed while exercising an asymmetric
+<section id="feature-instancebuffer"><h2>Build a TLAS from instance data</h2><p>The instance-buffer branch creates native-compatible instance records before building the TLAS. Distinguish GPU-provided instance data from indirect ray dispatch; they have different argument layouts and capability gates.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool BufferDeviceAddress = Features-&gt;Supports(&quot;resource.buffer-device-address&quot;);</code></pre><pre><code class="language-cpp">// Keep the world-space hit/miss oracle fixed while exercising an asymmetric
 // affine matrix at the Eigen-to-native TLAS instance boundary. Incorrect
 // column-major serialization leaves the triangle away from the hit ray.
 FArdaAffineTransform3f ObjectToWorld = FArdaAffineTransform3f::Identity();
@@ -764,8 +764,10 @@ VertexDesc.mInitialState = EArdaRHIResourceState::AccelStructBuildInput;
 VertexDesc.mDebugName = &quot;Known-result ray-scene vertices&quot;;
 auto VertexBuffer = Device-&gt;CreateBuffer(VertexDesc);
 ASSERT_TRUE(VertexBuffer) &lt;&lt; VertexBuffer.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">Complete usage and output checks: VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-meshshader"><h2>Rasterize mesh-shader output</h2><p>Admit a meshlet pipeline only when the mesh tier qualifies. Attachment formats and sample count still obey ordinary raster compatibility. The workload verifies actual pixels, including the optional mesh-bundle path.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool MeshShaders = C.mMeshShaderTier != arda::EArdaRHIMeshShaderTier::None;</code></pre><pre><code class="language-cpp">FArdaRHIMeshletPipelineDesc PipelineDesc;
+<section id="feature-meshshader"><h2>Rasterize mesh-shader output</h2><p>Admit a meshlet pipeline only when the mesh tier qualifies. Attachment formats and sample count still obey ordinary raster compatibility. The workload verifies actual pixels, including the optional mesh-bundle path.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool MeshShaders = Features-&gt;Supports(&quot;shader.mesh&quot;);
+const bool TaskShaders = Features-&gt;Supports(&quot;shader.task&quot;);
+const bool MeshShaderTier = Features-&gt;Supports(&quot;shader.mesh-tier&quot;);</code></pre><pre><code class="language-cpp">FArdaRHIMeshletPipelineDesc PipelineDesc;
 PipelineDesc.mDebugName = &quot;Mesh pipeline conformance&quot;;
 PipelineDesc.mMeshShader = MeshShader.mValue;
 PipelineDesc.mPixelShader = PixelShader.mValue;
@@ -800,15 +802,16 @@ if (bBundle)
 	ASSERT_TRUE(Device-&gt;WriteDescriptorTable(ColorTable, Item));
 }
 auto Pipeline = Device-&gt;CreateMeshletPipeline(PipelineDesc);
-if (Device-&gt;GetCapabilities().mMeshShaderTier == EArdaRHIMeshShaderTier::None)
+if (!Device-&gt;GetFeatures()-&gt;Supports(&quot;shader.mesh&quot;))
 {
 	EXPECT_FALSE(Pipeline);
 	EXPECT_EQ(Pipeline.mStatus.mCode, EArdaRHIResult::Unsupported);
 	return;
 }
 ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyMeshPipelineCapabilityAndExecution">Complete usage and output checks: VerifyMeshPipelineCapabilityAndExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-workgraph"><h2>Dispatch a D3D12 work graph</h2><p>The checked-in native work-graph implementation is D3D12 compute-node execution. Vulkan and unsupported D3D12 tiers return Unsupported. Entry-record layout comes from the compiled node library; a shader bundle can provide an application-chosen alternative.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool WorkGraphs = C.mWorkGraphTier != arda::EArdaRHIWorkGraphTier::None;</code></pre><pre><code class="language-cpp">auto Shader = CreateExtendedShader(*Device,
+<section id="feature-workgraph"><h2>Dispatch a D3D12 work graph</h2><p>The checked-in native work-graph implementation is D3D12 compute-node execution. Vulkan and unsupported D3D12 tiers return Unsupported. Entry-record layout comes from the compiled node library; a shader bundle can provide an application-chosen alternative.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool WorkGraphs = Features-&gt;Supports(&quot;work-graph.dispatch&quot;);
+const bool WorkGraphTier = Features-&gt;Supports(&quot;work-graph.tier&quot;);</code></pre><pre><code class="language-cpp">auto Shader = CreateExtendedShader(*Device,
     &quot;native-d3d12&quot;,
     &quot;ArdaWorkGraphTest&quot;,
     &quot;WorkGraphMain&quot;,
@@ -828,8 +831,9 @@ PipelineDesc.mMaxInputRecords = 4;
 PipelineDesc.mDebugName = &quot;Native D3D12 work graph&quot;;
 auto Pipeline = Device-&gt;CreateWorkGraphPipeline(PipelineDesc);
 ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyD3D12WorkGraphExecution">Complete usage and output checks: VerifyD3D12WorkGraphExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-samplerfeedback"><h2>Decode native sampler feedback</h2><p>The D3D12 path pairs a feedback map with a texture and supports the qualified tier's addressing/view restrictions. Run both minimum-mip and mip-region-used variants. Vulkan currently reports this feature unavailable.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool SamplerFeedback = C.mSamplerFeedbackTier != arda::EArdaRHISamplerFeedbackTier::None;</code></pre><pre><code class="language-cpp">FArdaRHITextureDesc PairedDesc;
+<section id="feature-samplerfeedback"><h2>Decode native sampler feedback</h2><p>The D3D12 path pairs a feedback map with a texture and supports the qualified tier's addressing/view restrictions. Run both minimum-mip and mip-region-used variants. Vulkan currently reports this feature unavailable.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool SamplerFeedback = Features-&gt;Supports(&quot;sampler.feedback&quot;);
+const bool SamplerFeedbackTier = Features-&gt;Supports(&quot;sampler.feedback-tier&quot;);</code></pre><pre><code class="language-cpp">FArdaRHITextureDesc PairedDesc;
 PairedDesc.mDebugName = &quot;Sampler feedback paired texture&quot;;
 PairedDesc.mWidth = 512;
 PairedDesc.mHeight = 512;
@@ -840,8 +844,8 @@ PairedDesc.mbTiled = false;
 PairedDesc.mInitialState = EArdaRHIResourceState::Common;
 auto Paired = Device-&gt;CreateTexture(PairedDesc);
 ASSERT_TRUE(Paired) &lt;&lt; Paired.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifySamplerFeedbackStateParity">Complete usage and output checks: VerifySamplerFeedbackStateParity</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-shaderbundle"><h2>Dispatch a shader bundle</h2><p>A bundle batches explicitly declared dispatch records. It is useful without native work graphs and uses its own support query. The sample checks execution and output rather than only successful creation.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool ShaderBundleDispatch = C.mbShaderBundleDispatch;</code></pre><pre><code class="language-cpp">auto Shader = CreateExtendedComputeShader(*Device, BackendName);
+<section id="feature-shaderbundle"><h2>Dispatch a shader bundle</h2><p>A bundle batches explicitly declared dispatch records. It is useful without native work graphs and uses its own support query. The sample checks execution and output rather than only successful creation.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool ShaderBundleDispatch = Features-&gt;Supports(&quot;shader.bundle-dispatch&quot;);</code></pre><pre><code class="language-cpp">auto Shader = CreateExtendedComputeShader(*Device, BackendName);
 ASSERT_TRUE(Shader) &lt;&lt; Shader.mStatus.mMessage.c_str();
 FArdaRHIBindingLayoutDesc LayoutDesc;
 LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
@@ -853,8 +857,8 @@ PipelineDesc.mComputeShader = Shader.mValue;
 PipelineDesc.mBindingLayouts.push_back(Layout.mValue);
 auto Pipeline = Device-&gt;CreateComputePipeline(PipelineDesc);
 ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyShaderBundleExecution">Complete usage and output checks: VerifyShaderBundleExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-custompresent"><h2>Integrate a custom presentation callback</h2><p>The callback can consume the acquired back buffer and choose whether native Present is needed. Its callback storage and image references must outlive use. Both native APIs have Windows examples; resize and repeated present are validated.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool CustomPresent = C.mbCustomPresent;</code></pre><pre><code class="language-cpp">void VerifyD3D12CustomPresentExecution()
+<section id="feature-custompresent"><h2>Integrate a custom presentation callback</h2><p>The callback can consume the acquired back buffer and choose whether native Present is needed. Its callback storage and image references must outlive use. Both native APIs have Windows examples; resize and repeated present are validated.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool CustomPresent = Features-&gt;Supports(&quot;presentation.custom-present&quot;);</code></pre><pre><code class="language-cpp">void VerifyD3D12CustomPresentExecution()
 {
 	using namespace arda;
 
@@ -922,16 +926,16 @@ const bool CustomPresent = C.mbCustomPresent;</code></pre><pre><code class="lang
 	ShutdownBackend();
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre><p><a href="gpu-examples.html#VerifyD3D12CustomPresentExecution">Complete usage and output checks: VerifyD3D12CustomPresentExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-contract"><h2>Unsupported raster policy</h2><p>These portable flags currently remain false: no executable variable-rate or conservative-raster path is advertised. Query the flag and select an ordinary raster pipeline. A true flag without a workload is deliberately a conformance failure.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool ConservativeRasterization = C.mbConservativeRasterization;
-const bool VariableRateShading = C.mbVariableRateShading;</code></pre><pre><code class="language-cpp">if (!C.mbConservativeRasterization || !C.mbVariableRateShading) {
-    // Use the ordinary raster pipeline; neither feature is currently advertised.
+<section id="feature-contract"><h2>Unsupported raster policy</h2><p>These portable flags currently remain false: no executable variable-rate or conservative-raster path is advertised. Query the flag and select an ordinary raster pipeline. A true flag without a workload is deliberately a conformance failure.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool ConservativeRasterization = Features-&gt;Supports(&quot;rendering.conservative-rasterization&quot;);
+const bool VariableRateShading = Features-&gt;Supports(&quot;rendering.variable-rate-shading&quot;);</code></pre><pre><code class="language-cpp">if (!ConservativeRasterization || !VariableRateShading) {
+    // Use the ordinary raster pipeline.
 }</code></pre><p><a href="gpu-examples.html#VerifyCapabilityInvariants">Complete usage and output checks: VerifyCapabilityInvariants</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-heapaliasing"><h2>Reuse explicit GPU memory</h2><p>Virtual resources are created before their memory is bound. Size and alignment come from native memory requirements, not guessed format sizes. An alias barrier changes which overlapping resource is valid; queue/fence ordering must ensure the previous user's lifetime has ended.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool VirtualResources = C.mbVirtualResources;
-const bool ExplicitHeaps = C.mbHeaps;
-const bool HeapCapacityAlignment = C.mHeapAllocationAlignment &gt; 0;
-const bool AliasingBarriers = C.mbAliasingBarriers;</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc BufferDesc;
+<section id="feature-heapaliasing"><h2>Reuse explicit GPU memory</h2><p>Virtual resources are created before their memory is bound. Size and alignment come from native memory requirements, not guessed format sizes. An alias barrier changes which overlapping resource is valid; queue/fence ordering must ensure the previous user's lifetime has ended.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool VirtualResources = Features-&gt;Supports(&quot;resource.virtual&quot;);
+const bool ExplicitHeaps = Features-&gt;Supports(&quot;memory.explicit-heap&quot;);
+const bool HeapCapacityAlignment = Features-&gt;Supports(&quot;memory.heap-capacity-alignment&quot;);
+const bool AliasingBarriers = Features-&gt;Supports(&quot;synchronization.aliasing-barrier&quot;);</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc BufferDesc;
 BufferDesc.mDebugName = &quot;Explicit heap alias A&quot;;
 BufferDesc.mByteSize = 256;
 BufferDesc.mStructureStride = sizeof(uint32_t);
@@ -952,12 +956,12 @@ EXPECT_GT(FirstRequirements.mValue.mSize, 0u);
 EXPECT_GT(FirstRequirements.mValue.mAlignment, 0u);
 EXPECT_EQ(FirstRequirements.mValue.mSize, SecondRequirements.mValue.mSize);
 EXPECT_EQ(FirstRequirements.mValue.mAlignment, SecondRequirements.mValue.mAlignment);</code></pre><p><a href="gpu-examples.html#VerifyExplicitHeapAliasing">Complete usage and output checks: VerifyExplicitHeapAliasing</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-extendedcommands"><h2>Copy, stage, transition and dispatch indirectly</h2><p>Copies preserve image subresource identity and native pitch. Explicit/split transitions require paired begin/end semantics, and indirect buffers must contain the API's argument layout. The workload uploads known bytes, records the operations and validates state and readback.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool StagingTextures = C.mbStagingTextures;
-const bool TextureCopies = C.mbTextureCopies;
-const bool ExplicitTransitions = C.mbExplicitTransitions;
-const bool SplitTransitions = C.mbSplitTransitions;
-const bool IndirectCommands = C.mbIndirectCommands;</code></pre><pre><code class="language-cpp">FArdaRHITextureDesc TextureDesc;
+<section id="feature-extendedcommands"><h2>Copy, stage, transition and dispatch indirectly</h2><p>Copies preserve image subresource identity and native pitch. Explicit/split transitions require paired begin/end semantics, and indirect buffers must contain the API's argument layout. The workload uploads known bytes, records the operations and validates state and readback.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool StagingTextures = Features-&gt;Supports(&quot;texture.staging&quot;);
+const bool TextureCopies = Features-&gt;Supports(&quot;texture.copy&quot;);
+const bool ExplicitTransitions = Features-&gt;Supports(&quot;synchronization.explicit-transition&quot;);
+const bool SplitTransitions = Features-&gt;Supports(&quot;synchronization.split-transition&quot;);
+const bool IndirectCommands = Features-&gt;Supports(&quot;command.indirect&quot;);</code></pre><pre><code class="language-cpp">FArdaRHITextureDesc TextureDesc;
 TextureDesc.mDebugName = &quot;Extended copy source&quot;;
 TextureDesc.mWidth = 4;
 TextureDesc.mHeight = 4;
@@ -969,8 +973,8 @@ TextureDesc.mDebugName = &quot;Extended copy destination&quot;;
 auto Destination = Device-&gt;CreateTexture(TextureDesc);
 ASSERT_TRUE(Source);
 ASSERT_TRUE(Destination);</code></pre><p><a href="gpu-examples.html#VerifyExtendedCommands">Complete usage and output checks: VerifyExtendedCommands</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-geometryshader"><h2>Generate geometry before rasterization</h2><p>Require geometry shaders and supply mGeometryShader in the graphics pipeline. The executable probe renders a full-screen triangle: its geometry stage changes the vertex color from red to green, and every readback pixel must be green. A successful vertex/pixel pipeline alone does not qualify this feature.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool GeometryShaders = C.mbGeometryShaders;</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
+<section id="feature-geometryshader"><h2>Generate geometry before rasterization</h2><p>Require geometry shaders and supply mGeometryShader in the graphics pipeline. The executable probe renders a full-screen triangle: its geometry stage changes the vertex color from red to green, and every readback pixel must be green. A successful vertex/pixel pipeline alone does not qualify this feature.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool GeometryShaders = Features-&gt;Supports(&quot;shader.geometry&quot;);</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
     BackendName,
     &quot;ArdaRasterStageVS&quot;,
     &quot;RasterStageVS&quot;,
@@ -1022,8 +1026,8 @@ else if (!bIndirectFirstInstance)
 }
 auto Pipeline = Device-&gt;CreateGraphicsPipeline(PipelineDesc);
 ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyRasterStageCapabilityAndExecution">Complete usage and output checks: VerifyRasterStageCapabilityAndExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-tessellationshaders"><h2>Evaluate tessellated patches</h2><p>Require tessellation shaders, provide both hull and domain stages, and use PatchList topology with matching mPatchControlPoints. The probe tessellates a three-control-point patch; its hull stage supplies green and its domain stage adds blue. Every readback pixel must be cyan, proving the selected stages execute.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool TessellationShaders = C.mbTessellationShaders;</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
+<section id="feature-tessellationshaders"><h2>Evaluate tessellated patches</h2><p>Require tessellation shaders, provide both hull and domain stages, and use PatchList topology with matching mPatchControlPoints. The probe tessellates a three-control-point patch; its hull stage supplies green and its domain stage adds blue. Every readback pixel must be cyan, proving the selected stages execute.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool TessellationShaders = Features-&gt;Supports(&quot;shader.tessellation&quot;);</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
     BackendName,
     &quot;ArdaRasterStageVS&quot;,
     &quot;RasterStageVS&quot;,
@@ -1075,8 +1079,8 @@ else if (!bIndirectFirstInstance)
 }
 auto Pipeline = Device-&gt;CreateGraphicsPipeline(PipelineDesc);
 ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyRasterStageCapabilityAndExecution">Complete usage and output checks: VerifyRasterStageCapabilityAndExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-vertexstorage"><h2>Write storage from a vertex shader</h2><p>Require mbVertexShaderStoresAndAtomics before using vertex-stage UAV stores or atomics. The probe exposes a structured buffer UAV only to the vertex shader, draws three vertices, and reads back both the atomic invocation counter and each written record. Storage capability does not remove resource-state or completion requirements.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool VertexShaderStoresAndAtomics = C.mbVertexShaderStoresAndAtomics;</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
+<section id="feature-vertexstorage"><h2>Write storage from a vertex shader</h2><p>Require mbVertexShaderStoresAndAtomics before using vertex-stage UAV stores or atomics. The probe exposes a structured buffer UAV only to the vertex shader, draws three vertices, and reads back both the atomic invocation counter and each written record. Storage capability does not remove resource-state or completion requirements.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool VertexShaderStoresAndAtomics = Features-&gt;Supports(&quot;shader.vertex-stores-and-atomics&quot;);</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
     BackendName,
     bPixelStage ? &quot;ArdaRasterStageVS&quot; : &quot;ArdaRasterStorageVS&quot;,
     bPixelStage ? &quot;RasterStageVS&quot; : &quot;RasterStorageVS&quot;,
@@ -1103,8 +1107,8 @@ PipelineDesc.mDepthStencilState.mbDepthTest = false;
 PipelineDesc.mDepthStencilState.mbDepthWrite = false;
 auto Pipeline = Device-&gt;CreateGraphicsPipeline(PipelineDesc);
 ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyRasterStorageAndAtomics">Complete usage and output checks: VerifyRasterStorageAndAtomics</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-fragmentstorage"><h2>Write storage from a pixel shader</h2><p>Require mbFragmentShaderStoresAndAtomics before using pixel-stage UAV stores or atomics. The probe exposes a structured buffer UAV only to the pixel shader and draws into a four-by-four attachment. Readback checks all sixteen pixel records and an atomic invocation counter; a rendered attachment alone does not prove the storage writes executed.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool FragmentShaderStoresAndAtomics = C.mbFragmentShaderStoresAndAtomics;</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
+<section id="feature-fragmentstorage"><h2>Write storage from a pixel shader</h2><p>Require mbFragmentShaderStoresAndAtomics before using pixel-stage UAV stores or atomics. The probe exposes a structured buffer UAV only to the pixel shader and draws into a four-by-four attachment. Readback checks all sixteen pixel records and an atomic invocation counter; a rendered attachment alone does not prove the storage writes executed.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool FragmentShaderStoresAndAtomics = Features-&gt;Supports(&quot;shader.fragment-stores-and-atomics&quot;);</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
     BackendName,
     bPixelStage ? &quot;ArdaRasterStageVS&quot; : &quot;ArdaRasterStorageVS&quot;,
     bPixelStage ? &quot;RasterStageVS&quot; : &quot;RasterStorageVS&quot;,
@@ -1131,8 +1135,8 @@ PipelineDesc.mDepthStencilState.mbDepthTest = false;
 PipelineDesc.mDepthStencilState.mbDepthWrite = false;
 auto Pipeline = Device-&gt;CreateGraphicsPipeline(PipelineDesc);
 ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyRasterStorageAndAtomics">Complete usage and output checks: VerifyRasterStorageAndAtomics</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-resolve"><h2>Resolve multisampling and select planes</h2><p>Resolve requires compatible formats and sample counts; copying bytes is not an MSAA resolve. Plane selection matters for depth/stencil views. The example validates both resolved pixels and the independently tracked native/facade states.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool TextureResolve = C.mbTextureResolve;</code></pre><pre><code class="language-cpp">FArdaRHITextureDesc SourceDesc;
+<section id="feature-resolve"><h2>Resolve multisampling and select planes</h2><p>Resolve requires compatible formats and sample counts; copying bytes is not an MSAA resolve. Plane selection matters for depth/stencil views. The example validates both resolved pixels and the independently tracked native/facade states.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool TextureResolve = Features-&gt;Supports(&quot;texture.resolve&quot;);</code></pre><pre><code class="language-cpp">FArdaRHITextureDesc SourceDesc;
 SourceDesc.mDebugName = &quot;Extended MSAA resolve source&quot;;
 SourceDesc.mWidth = 4;
 SourceDesc.mHeight = 4;
@@ -1148,8 +1152,8 @@ DestinationDesc.mSampleCount = 1;
 DestinationDesc.mUsage = EArdaRHITextureUsage::ShaderResource;
 auto Destination = Device-&gt;CreateTexture(DestinationDesc);
 ASSERT_TRUE(Destination);</code></pre><p><a href="gpu-examples.html#VerifyResolveAndPlaneTracking">Complete usage and output checks: VerifyResolveAndPlaneTracking</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-indirectfirstinstance"><h2>Draw indirect instances with a nonzero first instance</h2><p>Require mbIndirectFirstInstance when GPU indirect argument records may contain nonzero firstInstance values. The conformance branch uploads a draw record with firstInstance seven, records DrawIndirect and checks the rendered pixels. Capability admission does not inspect arbitrary GPU-written argument contents; the producer must honor this contract.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool IndirectFirstInstance = C.mbIndirectFirstInstance;</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
+<section id="feature-indirectfirstinstance"><h2>Draw indirect instances with a nonzero first instance</h2><p>Require mbIndirectFirstInstance when GPU indirect argument records may contain nonzero firstInstance values. The conformance branch uploads a draw record with firstInstance seven, records DrawIndirect and checks the rendered pixels. Capability admission does not inspect arbitrary GPU-written argument contents; the producer must honor this contract.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool IndirectFirstInstance = Features-&gt;Supports(&quot;command.indirect-first-instance&quot;);</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
     BackendName,
     &quot;ArdaRasterStageVS&quot;,
     &quot;RasterStageVS&quot;,
@@ -1201,9 +1205,9 @@ else if (!bIndirectFirstInstance)
 }
 auto Pipeline = Device-&gt;CreateGraphicsPipeline(PipelineDesc);
 ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyRasterStageCapabilityAndExecution">Complete usage and output checks: VerifyRasterStageCapabilityAndExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-resourceadmission"><h2>Admit resources using native limits and format facts</h2><p>Read mLimits before choosing resource dimensions and binding ranges. A zero limit is unreported. When mbFormatSupportReported is true, QueryFormatSupport supplies independent texture, filtering, storage, attachment, vertex and sample-count facts; unsupported formats report no native format. The probe creates a supported texture and verifies that oversized requests are rejected before native allocation.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool FormatSupport = C.mbFormatSupportReported;
-const bool ResourceLimits = C.mLimits.mMaxTexture1D || C.mLimits.mMaxTexture2D || C.mLimits.mMaxTexture3D || C.mLimits.mMaxTextureCube || C.mLimits.mMaxTextureArrayLayers || C.mLimits.mMaxColorAttachments || C.mLimits.mMaxViewports || C.mLimits.mMaxVertexAttributes || C.mLimits.mMaxVertexBindings || C.mLimits.mMaxVertexStride || C.mLimits.mMaxComputeWorkGroupInvocations || C.mLimits.mMaxBufferSize || C.mLimits.mMaxUniformBufferRange || C.mLimits.mMaxStorageBufferRange || C.mLimits.mMinUniformBufferOffsetAlignment || C.mLimits.mMinStorageBufferOffsetAlignment;</code></pre><pre><code class="language-cpp">void VerifyResourceAdmissionFacts(const char* BackendName)
+<section id="feature-resourceadmission"><h2>Admit resources using native limits and format facts</h2><p>Read mLimits before choosing resource dimensions and binding ranges. A zero limit is unreported. When mbFormatSupportReported is true, QueryFormatSupport supplies independent texture, filtering, storage, attachment, vertex and sample-count facts; unsupported formats report no native format. The probe creates a supported texture and verifies that oversized requests are rejected before native allocation.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool FormatSupport = Features-&gt;Supports(&quot;format.support-reported&quot;);
+const bool ResourceLimits = Device-&gt;GetLimits().mMaxTexture1D || Device-&gt;GetLimits().mMaxTexture2D || Device-&gt;GetLimits().mMaxTexture3D || Device-&gt;GetLimits().mMaxTextureCube || Device-&gt;GetLimits().mMaxTextureArrayLayers || Device-&gt;GetLimits().mMaxColorAttachments || Device-&gt;GetLimits().mMaxViewports || Device-&gt;GetLimits().mMaxVertexAttributes || Device-&gt;GetLimits().mMaxVertexBindings || Device-&gt;GetLimits().mMaxVertexStride || Device-&gt;GetLimits().mMaxComputeWorkGroupInvocations || Device-&gt;GetLimits().mMaxBufferSize || Device-&gt;GetLimits().mMaxUniformBufferRange || Device-&gt;GetLimits().mMaxStorageBufferRange || Device-&gt;GetLimits().mMinUniformBufferOffsetAlignment || Device-&gt;GetLimits().mMinStorageBufferOffsetAlignment;</code></pre><p>The same test compares each <code>GetLimits()</code> value with its corresponding named feature.</p><pre><code class="language-cpp">void VerifyResourceAdmissionFacts(const char* BackendName)
 {
 	using namespace arda;
 	ShutdownBackend();
@@ -1218,9 +1222,15 @@ const bool ResourceLimits = C.mLimits.mMaxTexture1D || C.mLimits.mMaxTexture2D |
 	ARDA_REQUIRE_BACKEND();
 	const auto Device = GetDevice();
 	ASSERT_TRUE(Device);
-	const auto&amp; Caps = Device-&gt;GetCapabilities();
-	const auto&amp; Limits = Caps.mLimits;
-	ASSERT_TRUE(Caps.mbFormatSupportReported);
+	const auto Features = Device-&gt;GetFeatures();
+	const auto&amp; Limits = Device-&gt;GetLimits();
+	ASSERT_TRUE(Features-&gt;Supports(&quot;format.support-reported&quot;));
+	for (const auto&amp; Fact : GetResourceLimitFacts(Limits))
+	{
+		const auto* Value = Features-&gt;Find(Fact.mName);
+		ASSERT_NE(Value, nullptr) &lt;&lt; Fact.mName;
+		EXPECT_EQ(*Value, Fact.mValue) &lt;&lt; Fact.mName;
+	}
 	EXPECT_GT(Limits.mMaxTexture1D, 0u);
 	EXPECT_GT(Limits.mMaxTexture2D, 0u);
 	EXPECT_GT(Limits.mMaxTexture3D, 0u);
@@ -1282,20 +1292,20 @@ const bool ResourceLimits = C.mLimits.mMaxTexture1D || C.mLimits.mMaxTexture2D |
 	}
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre><p><a href="gpu-examples.html#VerifyResourceAdmissionFacts">Complete usage and output checks: VerifyResourceAdmissionFacts</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-queries"><h2>Measure and observe submitted work</h2><p>Event/fence objects track completion; timer queries measure elapsed GPU time. Polling an unsignaled/reset object differs from waiting for submitted work. Reset only after the corresponding completion and keep queue provenance clear.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool Queries = C.mbQueries;</code></pre><pre><code class="language-cpp">auto Device = GetDevice();
+<section id="feature-queries"><h2>Measure and observe submitted work</h2><p>Event/fence objects track completion; timer queries measure elapsed GPU time. Polling an unsignaled/reset object differs from waiting for submitted work. Reset only after the corresponding completion and keep queue provenance clear.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool Queries = Features-&gt;Supports(&quot;query.gpu&quot;);</code></pre><pre><code class="language-cpp">auto Device = GetDevice();
 ASSERT_TRUE(Device);
-ASSERT_TRUE(Device-&gt;GetCapabilities().mbQueries);
+ASSERT_TRUE(Device-&gt;GetFeatures()-&gt;Supports(&quot;query.gpu&quot;));
 auto Event = Device-&gt;CreateEventQuery();
 auto Timer = Device-&gt;CreateTimerQuery();
 auto Fence = Device-&gt;CreateGpuFence();
 ASSERT_TRUE(Event) &lt;&lt; Event.mStatus.mMessage.c_str();
 ASSERT_TRUE(Timer) &lt;&lt; Timer.mStatus.mMessage.c_str();
 ASSERT_TRUE(Fence) &lt;&lt; Fence.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyQueryExecution">Complete usage and output checks: VerifyQueryExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-queuetimestamps"><h2>Poll per-queue GPU execution times</h2><p>SupportsTimestamps checks the selected queue, including native copy-queue limitations. PollTimerQuery never waits; GetTimerQuerySeconds reads a completed generation. Reuse queries only after completion. Vulkan transfer-only queues require enabled host query reset; unsupported timing never requires moving work to another queue.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool GraphicsTimestamps = C.mQueues.mGraphicsTimestampValidBits != 0;
-const bool ComputeTimestamps = C.mQueues.mComputeTimestampValidBits != 0;
-const bool CopyTimestamps = C.mQueues.mCopyTimestampValidBits != 0;</code></pre><pre><code class="language-cpp">void VerifyPerQueueTimerExecution(const char* BackendName)
+<section id="feature-queuetimestamps"><h2>Poll per-queue GPU execution times</h2><p>SupportsTimestamps checks the selected queue, including native copy-queue limitations. PollTimerQuery never waits; GetTimerQuerySeconds reads a completed generation. Reuse queries only after completion. Vulkan transfer-only queues require enabled host query reset; unsupported timing never requires moving work to another queue.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool GraphicsTimestamps = Features-&gt;Supports(&quot;queue.graphics.timestamp-bits&quot;);
+const bool ComputeTimestamps = Features-&gt;Supports(&quot;queue.compute.timestamp-bits&quot;);
+const bool CopyTimestamps = Features-&gt;Supports(&quot;queue.copy.timestamp-bits&quot;);</code></pre><pre><code class="language-cpp">void VerifyPerQueueTimerExecution(const char* BackendName)
 {
 	using namespace arda;
 	ShutdownBackend();
@@ -1311,7 +1321,7 @@ const bool CopyTimestamps = C.mQueues.mCopyTimestampValidBits != 0;</code></pre>
 	ASSERT_TRUE(Device);
 	auto Timer = Device-&gt;CreateTimerQuery();
 	ASSERT_TRUE(Timer) &lt;&lt; Timer.mStatus.mMessage.c_str();
-	const auto&amp; Caps = Device-&gt;GetCapabilities().mQueues;
+	const auto Features = Device-&gt;GetFeatures();
 	FArdaRHIBufferDesc Desc;
 	Desc.mUsage = EArdaRHIBufferUsage::None;
 	Desc.mByteSize = 2 * 1024 * 1024;
@@ -1326,7 +1336,7 @@ const bool CopyTimestamps = C.mQueues.mCopyTimestampValidBits != 0;</code></pre>
 	         EArdaRHIQueueType::Copy,
 	         EArdaRHIQueueType::Graphics})
 	{
-		if (!Caps.IsSupported(Queue))
+		if (!Device-&gt;IsQueueSupported(Queue))
 		{
 			continue;
 		}
@@ -1335,14 +1345,14 @@ const bool CopyTimestamps = C.mQueues.mCopyTimestampValidBits != 0;</code></pre>
 		ASSERT_TRUE(Commands) &lt;&lt; Commands.mStatus.mMessage.c_str();
 		EXPECT_EQ(Commands.mValue-&gt;BeginTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::InvalidState);
 		ASSERT_TRUE(Commands.mValue-&gt;Open());
-		if (!Caps.SupportsTimestamps(Queue))
+		if (Device-&gt;GetTimestampValidBits(Queue) == 0)
 		{
 			EXPECT_EQ(Commands.mValue-&gt;BeginTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::Unsupported);
 			ASSERT_TRUE(Commands.mValue-&gt;Close());
 			continue;
 		}
-		EXPECT_GT(Caps.GetTimestampValidBits(Queue), 0u);
-		EXPECT_LE(Caps.GetTimestampValidBits(Queue), 64u);
+		EXPECT_GT(Device-&gt;GetTimestampValidBits(Queue), 0u);
+		EXPECT_LE(Device-&gt;GetTimestampValidBits(Queue), 64u);
 		for (unsigned Generation = 0; Generation &lt; 2; ++Generation)
 		{
 			if (Generation)
@@ -1384,7 +1394,7 @@ const bool CopyTimestamps = C.mQueues.mCopyTimestampValidBits != 0;</code></pre>
 			EXPECT_FALSE(Device-&gt;PollTimerQuery(Timer.mValue).mValue);
 		}
 	}
-	if (Caps.SupportsTimestamps(EArdaRHIQueueType::Graphics))
+	if (Features-&gt;Supports(&quot;queue.graphics.timestamp-bits&quot;))
 	{
 		auto Old = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
 		ASSERT_TRUE(Old);
@@ -1396,10 +1406,10 @@ const bool CopyTimestamps = C.mQueues.mCopyTimestampValidBits != 0;</code></pre>
 		ASSERT_TRUE(Prior);
 		ASSERT_TRUE(Device-&gt;WaitForSubmission(Prior.mValue));
 		ASSERT_TRUE(Device-&gt;ResetTimerQuery(Timer.mValue));</code></pre><p><a href="gpu-examples.html#VerifyPerQueueTimerExecution">Complete usage and output checks: VerifyPerQueueTimerExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-shaderlibrary"><h2>Execute an entry point from a library</h2><p>A library is a retained bytecode container. Resolve an entry point and stage, build a matching pipeline and dispatch. Shader artifacts remain backend-specific even when the public creation API is shared.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool ShaderLibraries = C.mbShaderLibraries;</code></pre><pre><code class="language-cpp">auto Device = GetDevice();
+<section id="feature-shaderlibrary"><h2>Execute an entry point from a library</h2><p>A library is a retained bytecode container. Resolve an entry point and stage, build a matching pipeline and dispatch. Shader artifacts remain backend-specific even when the public creation API is shared.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool ShaderLibraries = Features-&gt;Supports(&quot;shader.library&quot;);</code></pre><pre><code class="language-cpp">auto Device = GetDevice();
 ASSERT_TRUE(Device);
-ASSERT_TRUE(Device-&gt;GetCapabilities().mbShaderLibraries);
+ASSERT_TRUE(Device-&gt;GetFeatures()-&gt;Supports(&quot;shader.library&quot;));
 const eastl::string FileName = eastl::string(&quot;ArdaShaderStructTest&quot;) + GetShaderArtifactExtension(BackendName);
 const std::vector&lt;uint8_t&gt; Bytecode = LoadExtendedShaderArtifact(FileName.c_str());
 ASSERT_FALSE(Bytecode.empty());
@@ -1410,10 +1420,10 @@ auto Shader = Device-&gt;GetShaderFromLibrary(Library.mValue,
     EArdaRHIShaderStage::Compute,
     &quot;Capability shader-library compute shader&quot;);
 ASSERT_TRUE(Shader) &lt;&lt; Shader.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyShaderLibraryExecution">Complete usage and output checks: VerifyShaderLibraryExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
-<section id="feature-pipelinecache"><h2>Persist native pipeline compilation</h2><p>Use a writable per-backend cache directory. The conformance workload executes a shader, checks that a cache file exists and repeats startup from it. Persistence accelerates compatible pipeline creation; it does not replace deployable shader artifacts.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
-const bool PipelineCachePersistence = C.mbPipelineCachePersistence;</code></pre><pre><code class="language-cpp">auto Device = GetDevice();
+<section id="feature-pipelinecache"><h2>Persist native pipeline compilation</h2><p>Use a writable per-backend cache directory. The conformance workload executes a shader, checks that a cache file exists and repeats startup from it. Persistence accelerates compatible pipeline creation; it does not replace deployable shader artifacts.</p><p>Read the named feature snapshot with <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a> and select the abilities used by your workload. The executable conformance matrix uses the following predicates.</p><pre><code class="language-cpp">const auto Features = Device-&gt;GetFeatures();
+const bool PipelineCachePersistence = Features-&gt;Supports(&quot;pipeline.cache-persistence&quot;);</code></pre><pre><code class="language-cpp">auto Device = GetDevice();
 ASSERT_TRUE(Device);
-ASSERT_TRUE(Device-&gt;GetCapabilities().mbShaderLibraries);
+ASSERT_TRUE(Device-&gt;GetFeatures()-&gt;Supports(&quot;shader.library&quot;));
 const eastl::string FileName = eastl::string(&quot;ArdaShaderStructTest&quot;) + GetShaderArtifactExtension(BackendName);
 const std::vector&lt;uint8_t&gt; Bytecode = LoadExtendedShaderArtifact(FileName.c_str());
 ASSERT_FALSE(Bytecode.empty());

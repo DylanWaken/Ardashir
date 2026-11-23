@@ -11,6 +11,8 @@ import re
 import struct
 from pathlib import Path
 
+from ArdaNativeKernelPackage import read_library, write_library
+
 
 class ExportError(ValueError):
     """The input cannot be represented by the closed export contract."""
@@ -52,8 +54,8 @@ def contiguous_strides(shape):
 def validate_package(package):
     """Check complete bindings and reject unresolved device-library references."""
     from ArdaDTypes import dtype_info
-    check(package.get("version") in (1, 2), "Unsupported package version")
-    check(package["modules"] and package["commands"], "Package has no executable work")
+    check(package.get("version") in (1, 2, 3), "Unsupported package version")
+    check(package["commands"], "Package has no executable work")
     check(isinstance(package["name"], str) and package["name"], "Model name must be nonempty")
     for items in (package["buffers"], package["tensors"]):
         names = [item["name"] for item in items]
@@ -141,7 +143,7 @@ def validate_package(package):
               "Tensor byte size disagrees with dtype and shape")
         check(tensor["offset"] % info.byte_size == 0, "Tensor offset is not aligned to its dtype")
         validate_range(package, tensor["buffer"], tensor["offset"], tensor["byte_size"])
-    check(package["version"] == 2 or not slots, "State slots require descriptor version 2")
+    check(package["version"] >= 2 or not slots, "State slots require descriptor version 2")
     names, buffers = set(), set()
     for slot in slots:
         check(isinstance(slot["name"], str) and slot["name"] and slot["name"] not in names,
@@ -168,6 +170,43 @@ def validate_range(package, index, offset, size):
           f"Buffer {index} range [{offset}, {offset + size}) is out of bounds")
 
 
+def _archive_string(value):
+    value = value.encode("utf-8")
+    return struct.pack("<Q", len(value)) + value
+
+
+def _pack_model_kernels(package, output):
+    """Give each kernel an ABI signature and put its implementation in an immutable sidecar."""
+    records, schemas = [], []
+    digest = hashlib.sha256()
+    for kernel in package["kernels"]:
+        schema = bytearray(struct.pack("<IIQ", kernel["parameter_size"], kernel["parameter_alignment"],
+                                       len(kernel["arguments"])))
+        for arg in kernel["arguments"]:
+            schema.extend(_archive_string(arg["name"]))
+            schema.extend(struct.pack("<BBIII", arg["access"], arg["kind"], arg["offset"],
+                                      arg["size"], arg["alignment"]))
+        signature = hashlib.sha256(schema).hexdigest()
+        module = package["modules"][kernel["module"]]
+        record = ("cuda", kernel["name"], signature, "ptx", kernel["entry"],
+                  (module["target_sm"] << 1,), module["image"])
+        for value in record[:5]:
+            digest.update(_archive_string(value))
+        digest.update(struct.pack("<I", record[5][0]))
+        digest.update(hashlib.sha256(record[6]).digest())
+        records.append(record)
+        schemas.append(schema)
+    library = "model-" + digest.hexdigest()
+    if records:
+        write_library(output.parent / (library + ".ardakernels"), library, records)
+    definitions = []
+    for record, schema in zip(records, schemas):
+        provider, name, signature = record[:3]
+        definitions.append(struct.pack("<I", 2) + _archive_string(name) + struct.pack("<I", 1)
+                           + b"".join(map(_archive_string, (library, provider, name, signature))) + schema)
+    return definitions, [library + ".ardakernels"] if records else []
+
+
 def write_package(package, output):
     """Write fixed-width little-endian .ardagpu and an inspectable JSON companion."""
     validate_package(package)
@@ -185,14 +224,9 @@ def write_package(package, output):
     def string(value):
         blob(value.encode("utf-8"))
 
-    number("I", package["version"])
+    definitions, libraries = _pack_model_kernels(package, output)
+    number("I", 3)
     string(package["name"])
-    number("Q", len(package["modules"]))
-    for module in package["modules"]:
-        number("B", module["format"])
-        number("I", module["target_sm"])
-        string(module["build_identity"])
-        blob(module["image"])
     number("Q", len(package["buffers"]))
     for buffer in package["buffers"]:
         string(buffer["name"])
@@ -211,18 +245,9 @@ def write_package(package, output):
         for stride in tensor["strides"]:
             number("q", stride)
         number("Q", tensor["offset"])
-    number("Q", len(package["kernels"]))
-    for kernel in package["kernels"]:
-        string(kernel["name"])
-        number("I", kernel["module"])
-        string(kernel["entry"])
-        number("I", kernel["parameter_size"])
-        number("I", kernel["parameter_alignment"])
-        number("Q", len(kernel["arguments"]))
-        for arg in kernel["arguments"]:
-            string(arg["name"])
-            for fmt, key in (("B", "kind"), ("B", "access"), ("I", "offset"), ("I", "size"), ("I", "alignment")):
-                number(fmt, arg[key])
+    number("Q", len(definitions))
+    for definition in definitions:
+        blob(definition)
     number("Q", len(package["commands"]))
     for command in package["commands"]:
         kind = command["kind"]
@@ -249,19 +274,18 @@ def write_package(package, output):
             number("I", command["destination"])
             number("Q", command["destination_offset"])
             number("Q", command["size"])
-    if package["version"] == 2:
-        number("Q", len(package.get("state_slots", [])))
-        for slot in package.get("state_slots", []):
-            string(slot["name"])
-            number("I", slot["buffer"])
-            number("H", slot["dtype"])
-            number("Q", len(slot["shape"]))
-            for dim in slot["shape"]:
-                number("Q", dim)
-            number("Q", len(slot["strides"]))
-            for stride in slot["strides"]:
-                number("q", stride)
-            number("Q", slot["offset"])
+    number("Q", len(package.get("state_slots", [])))
+    for slot in package.get("state_slots", []):
+        string(slot["name"])
+        number("I", slot["buffer"])
+        number("H", slot["dtype"])
+        number("Q", len(slot["shape"]))
+        for dim in slot["shape"]:
+            number("Q", dim)
+        number("Q", len(slot["strides"]))
+        for stride in slot["strides"]:
+            number("q", stride)
+        number("Q", slot["offset"])
     temporary = output.with_suffix(output.suffix + ".tmp")
     check(len(data) <= MAX_ARCHIVE_BYTES, "Package exceeds Arda graph archive's current 512 MiB limit")
     temporary.write_bytes(data)
@@ -277,42 +301,90 @@ def write_package(package, output):
             return [inspect(item) for item in value]
         return value
 
-    output.with_suffix(".json").write_text(json.dumps(inspect(package), indent=2) + "\n", encoding="utf-8")
+    output.with_suffix(".json").write_text(json.dumps(dict(inspect(package), version=3, kernel_libraries=libraries), indent=2) + "\n", encoding="utf-8")
+
+
+class _ArchiveReader:
+    def __init__(self, data):
+        self.data = data
+        self.cursor = 0
+
+    def number(self, fmt):
+        size = struct.calcsize("<" + fmt)
+        check(self.cursor + size <= len(self.data), "Truncated package")
+        result = struct.unpack_from("<" + fmt, self.data, self.cursor)[0]
+        self.cursor += size
+        return result
+
+    def count(self):
+        result = self.number("Q")
+        check(result <= len(self.data) - self.cursor, "Invalid package length")
+        return result
+
+    def blob(self):
+        size = self.count()
+        result = self.data[self.cursor:self.cursor + size]
+        self.cursor += size
+        return result
+
+    def string(self):
+        return decode_text(self.blob(), "package string")
+
+
+def _read_model_kernel(definition, directory, libraries, modules, module_indices):
+    archive = _ArchiveReader(definition)
+    version = archive.number("I")
+    check(version in (2, 3, 4), "Invalid portable kernel definition")
+    name = archive.string()
+    check(archive.number("I") == 1, "Unsupported model kernel schema")
+    library, provider, key, signature = (archive.string() for _ in range(4))
+    check(re.fullmatch(r"[A-Za-z0-9_.-]+", library) and library not in (".", ".."), "Invalid kernel library name")
+    kernel = {"name": name, "parameter_size": archive.number("I"), "parameter_alignment": archive.number("I")}
+    if version >= 4:
+        check(archive.number("B") == 0, "This descriptor needs its application-defined resource converters for replay")
+    kernel["arguments"] = []
+    for _ in range(archive.count()):
+        kernel["arguments"].append({"name": archive.string(), "access": archive.number("B"), "kind": archive.number("B"),
+                                    "offset": archive.number("I"), "size": archive.number("I"),
+                                    "alignment": archive.number("I")})
+        if version >= 3:
+            archive.number("I")  # RHI handoff state, only used when recording on a graphics queue.
+        if version >= 4:
+            graphics_binding, texture_format = archive.number("B"), archive.number("B")
+            check(graphics_binding in (0, 1) and texture_format == 0, "Offline CUDA replay requires plain buffer bindings")
+    check(archive.cursor == len(definition), "Trailing kernel definition bytes")
+    if library not in libraries:
+        try:
+            declared, records = read_library(directory / (library + ".ardakernels"))
+        except (OSError, ValueError) as error:
+            raise ExportError(f"Cannot load kernel library {library}: {error}") from error
+        check(declared == library, "Native kernel library identity mismatch")
+        libraries[library] = {row[:3]: row[3:] for row in records}
+    record = libraries[library].get((provider, key, signature))
+    check(record is not None, "Missing matching provider/kernel/signature")
+    fmt, kernel["entry"], attributes, image = record
+    check(provider == "cuda" and fmt == "ptx" and len(attributes) == 1 and attributes[0] % 2 == 0,
+          "Offline CUDA replay requires a PTX kernel with one minimum architecture")
+    identity = (attributes[0], image)
+    if identity not in module_indices:
+        module_indices[identity] = len(modules)
+        modules.append({"format": 0, "target_sm": attributes[0] >> 1, "image": image, "build_identity": library})
+    kernel["module"] = module_indices[identity]
+    return kernel
 
 
 def read_package(path):
     """Read the independent binary artifact with bounded lengths and no compiler import."""
     from ArdaDTypes import dtype_info
-    data, cursor = read_archive(path), 0
-
-    def number(fmt):
-        nonlocal cursor
-        size = struct.calcsize("<" + fmt)
-        check(cursor + size <= len(data), "Truncated package")
-        result = struct.unpack_from("<" + fmt, data, cursor)[0]
-        cursor += size
-        return result
-
-    def count():
-        result = number("Q")
-        check(result <= len(data) - cursor, "Invalid package length")
-        return result
-
-    def blob():
-        nonlocal cursor
-        size = count()
-        result = data[cursor:cursor + size]
-        cursor += size
-        return result
-
-    def string():
-        return decode_text(blob(), "package string")
+    archive = _ArchiveReader(read_archive(path))
+    data = archive.data
+    number, count, blob, string = archive.number, archive.count, archive.blob, archive.string
 
     check(data[:8] == b"ARDAGPU\0", "Invalid package magic")
-    cursor = 8
+    archive.cursor = 8
     package = {"version": number("I"), "name": string()}
-    check(package["version"] in (1, 2), "Unsupported package version")
-    package["modules"] = [{"format": number("B"), "target_sm": number("I"),
+    check(package["version"] in (1, 2, 3), "Unsupported package version")
+    package["modules"] = [] if package["version"] == 3 else [{"format": number("B"), "target_sm": number("I"),
                             "build_identity": string(), "image": blob()} for _ in range(count())]
     package["buffers"] = [{"name": string(), "byte_size": number("Q"), "initializer": blob()}
                            for _ in range(count())]
@@ -325,7 +397,12 @@ def read_package(path):
         tensor["byte_size"] = math.prod(tensor["shape"]) * dtype_info(tensor["dtype"]).byte_size
         package["tensors"].append(tensor)
     package["kernels"] = []
+    libraries, module_indices = {}, {}
     for _ in range(count()):
+        if package["version"] == 3:
+            package["kernels"].append(_read_model_kernel(blob(), Path(path).parent, libraries,
+                                                        package["modules"], module_indices))
+            continue
         kernel = {"name": string(), "module": number("I"), "entry": string(),
                   "parameter_size": number("I"), "parameter_alignment": number("I")}
         kernel["arguments"] = [{"name": string(), "kind": number("B"), "access": number("B"),
@@ -348,7 +425,7 @@ def read_package(path):
         else:
             raise ExportError("Unknown package command opcode")
         package["commands"].append(command)
-    if package["version"] == 2:
+    if package["version"] >= 2:
         package["state_slots"] = []
         for _ in range(count()):
             slot = {"name": string(), "buffer": number("I"), "dtype": number("H")}
@@ -357,7 +434,7 @@ def read_package(path):
             slot["offset"] = number("Q")
             slot["byte_size"] = math.prod(slot["shape"]) * dtype_info(slot["dtype"]).byte_size
             package["state_slots"].append(slot)
-    check(cursor == len(data), "Trailing package bytes")
+    check(archive.cursor == len(data), "Trailing package bytes")
     validate_package(package)
     return package
 
@@ -379,7 +456,7 @@ def validate_state_dict(state, package=None):
         entries[name] = entry
     if package is not None:
         validate_package(package)
-        check(package["version"] == 2, "Loading named state requires model descriptor version 2")
+        check(package["version"] >= 2, "Loading named state requires model descriptor version 2")
         slots = {slot["name"]: slot for slot in package["state_slots"]}
         check(entries.keys() == slots.keys(),
               f"State dict keys mismatch; missing={sorted(slots.keys() - entries.keys())}, "

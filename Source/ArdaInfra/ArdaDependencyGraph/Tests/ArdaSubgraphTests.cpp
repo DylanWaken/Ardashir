@@ -35,7 +35,10 @@ namespace arda
 			static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters& Parameters)
 			{
 				FArdaDependencyNodeRequirements Requirements;
-				Requirements.mFeatures.mbRequireGraphicsQueue = bRejectNestedSubgraphLeaf && !Parameters.mDepth;
+				if (bRejectNestedSubgraphLeaf && !Parameters.mDepth)
+				{
+					Requirements.mFeatures.Require("queue.graphics");
+				}
 				return Requirements;
 			}
 

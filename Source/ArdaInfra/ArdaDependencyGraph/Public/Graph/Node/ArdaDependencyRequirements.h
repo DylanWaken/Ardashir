@@ -54,7 +54,7 @@ namespace arda
 
 		/** Read-only admission, without GPU work or waits.
 		 * Returns Unsupported with all missing portable/CUDA abilities and named environment failures.
-		 * Malformed predicates or launch-mode declarations return InvalidArgument.
+		 * Malformed feature requirements, predicates or launch-mode declarations return InvalidArgument.
 		 * A throwing environment predicate returns BackendFailure with its diagnostic name.
 		 * A null device is useful only for requirements which do not request environment capabilities.
 		 */
@@ -68,5 +68,5 @@ namespace arda
 	void AddArdaNodeIntrinsicRequirements(FArdaDependencyNodeRequirements& Requirements,
 	    EArdaDependencyNodeKind Kind,
 	    EArdaGraphicsStage GraphicsStage,
-	    EArdaRHIShaderStage RayStage) noexcept;
+	    EArdaRHIShaderStage RayStage);
 }

@@ -10,6 +10,10 @@
 
 namespace arda
 {
+	// ================================
+	// Result codes and status
+	// ================================
+
 	/** Enumerates result values. */
 	enum class EArdaRHIResult : uint8_t
 	{
@@ -67,6 +71,10 @@ namespace arda
 			return {Code, Message ? Message : ""};
 		}
 	};
+
+	// ================================
+	// Results with a return value
+	// ================================
 
 	/** Describes result. */
 	template <typename T>

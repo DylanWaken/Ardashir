@@ -167,6 +167,7 @@ set_target_properties(ArdashirImGuiGlfw PROPERTIES FOLDER "ThirdParty/ImGui")
 # library is required on the build machine.
 if(ARDASHIR_BACKEND_VULKAN)
     set(ARDASHIR_VULKAN_INCLUDE_DIR "" CACHE PATH "Optional Vulkan SDK include directory supplied by SetupGraphicsSDK.py")
+    set(ARDASHIR_VULKAN_REGISTRY_FILE "" CACHE FILEPATH "Optional vk.xml matching the custom Vulkan SDK headers")
     if(ARDASHIR_VULKAN_INCLUDE_DIR)
         if(NOT EXISTS "${ARDASHIR_VULKAN_INCLUDE_DIR}/vulkan/vulkan.hpp")
             message(FATAL_ERROR "ARDASHIR_VULKAN_INCLUDE_DIR must contain vulkan/vulkan.hpp")
@@ -174,15 +175,26 @@ if(ARDASHIR_BACKEND_VULKAN)
         add_library(ArdaVulkanHeaders INTERFACE)
         add_library(Vulkan::Headers ALIAS ArdaVulkanHeaders)
         target_include_directories(ArdaVulkanHeaders INTERFACE "${ARDASHIR_VULKAN_INCLUDE_DIR}")
+        if(NOT ARDASHIR_VULKAN_REGISTRY_FILE)
+            find_file(_ardashir_vulkan_registry NAMES vk.xml
+                HINTS "${ARDASHIR_VULKAN_INCLUDE_DIR}/../registry"
+                    "${ARDASHIR_VULKAN_INCLUDE_DIR}/../share/vulkan/registry"
+                NO_DEFAULT_PATH NO_CACHE)
+            set(ARDASHIR_VULKAN_REGISTRY_FILE "${_ardashir_vulkan_registry}")
+        endif()
     else()
         FetchContent_Declare(
             ardashir_vulkan_headers
             GIT_REPOSITORY "https://github.com/KhronosGroup/Vulkan-Headers.git"
-            GIT_TAG "v1.4.357"
+            GIT_TAG "v1.4.369"
             GIT_SHALLOW TRUE)
         ardashir_fetch_content_resolve(
             ardashir_vulkan_headers
-            "https://github.com/KhronosGroup/Vulkan-Headers.git@v1.4.357")
+            "https://github.com/KhronosGroup/Vulkan-Headers.git@v1.4.369")
+        set(ARDASHIR_VULKAN_REGISTRY_FILE "${ardashir_vulkan_headers_SOURCE_DIR}/registry/vk.xml")
+    endif()
+    if(NOT EXISTS "${ARDASHIR_VULKAN_REGISTRY_FILE}")
+        message(FATAL_ERROR "Set ARDASHIR_VULKAN_REGISTRY_FILE to the vk.xml matching ARDASHIR_VULKAN_INCLUDE_DIR.")
     endif()
 endif()
 
@@ -191,11 +203,11 @@ endif()
 if(WIN32 AND ARDASHIR_BACKEND_D3D12)
     FetchContent_Declare(
         ardashir_d3d12_agility
-        URL "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.619.5"
-        URL_HASH "SHA256=0e9bcf32aac9a79343ede9b21e4864950ee54577e3d8e19bfcdf002bb4e9bfd6")
+        URL "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.620.2"
+        URL_HASH "SHA256=70489669c2bbeaf318b62d72b0ac3e753d521387bfc848c9763791c4e920bfcc")
     ardashir_fetch_content_resolve(
         ardashir_d3d12_agility
-        "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.619.5")
+        "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.620.2")
     set(ARDASHIR_D3D12_AGILITY_INCLUDE_DIR
         "${ardashir_d3d12_agility_SOURCE_DIR}/build/native/include"
         CACHE INTERNAL "Direct3D 12 Agility SDK include directory")
@@ -217,7 +229,7 @@ if(WIN32 AND ARDASHIR_BACKEND_D3D12)
                 "-DSOURCE=${ARDASHIR_D3D12_AGILITY_RUNTIME_DIR}/d3d12SDKLayers.dll"
                 "-DDESTINATION=$<TARGET_FILE_DIR:${Target}>/D3D12/d3d12SDKLayers.dll"
                 -P "${PROJECT_SOURCE_DIR}/Cmake/DeployDebugLayer.cmake"
-            COMMENT "Deploying Direct3D 12 Agility SDK 1.619.5 for ${Target}"
+            COMMENT "Deploying Direct3D 12 Agility SDK 1.620.2 for ${Target}"
             VERBATIM)
     endfunction()
 endif()

@@ -60,7 +60,9 @@ namespace arda
 		} Guard(Source.mRevisions->mbLocked, Source.mImpl->mbPreprocessing);
 
 		auto Graph = eastl::make_unique<FArdaDependencyGraph>();
-		Graph->mImpl = CloneArdaGraphConstruction(*Source.mImpl);
+		const auto& Admission = Source.mImpl->mAdmissionPreprocessed;
+		Graph->mImpl =
+		    Admission ? CloneArdaGraphConstruction(*Admission, true) : CloneArdaGraphConstruction(*Source.mImpl);
 		Graph->mRevisions->mbBuilding = true;
 		if (!Graph->mImpl->mResourceGenerationSource)
 		{

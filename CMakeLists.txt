@@ -34,6 +34,13 @@ set(ARDASHIR_BACKEND_MODULE_TARGETS "" CACHE STRING
     "Additional semicolon-separated CMake backend library targets")
 set(ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS "" CACHE STRING
     "Additional arda registration function names supplied by linked modules")
+option(ARDASHIR_NATIVE_COMPUTE_CUDA "Register the built-in native CUDA compute provider" ON)
+option(ARDASHIR_NATIVE_COMPUTE_CIG "Register the built-in CUDA in Graphics compute provider" ON)
+option(ARDASHIR_NATIVE_COMPUTE_NVAPI "Register the built-in NVAPI compute provider" ON)
+set(ARDASHIR_NATIVE_COMPUTE_MODULE_TARGETS "" CACHE STRING
+    "Additional semicolon-separated native compute provider library targets")
+set(ARDASHIR_NATIVE_COMPUTE_REGISTRATION_FUNCTIONS "" CACHE STRING
+    "Additional arda native compute registration functions supplied by linked modules")
 
 list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/Cmake")
 include(Platform)
@@ -41,6 +48,7 @@ include(Dependencies)
 include(ArdaModule)
 include(TestValidation)
 include(ArdaCudaKernels)
+include(ArdaNativeKernelLibrary)
 if(ARDASHIR_BUILD_CUDA_KERNELS)
     ardashir_enable_cuda_compiler()
 endif()
@@ -54,6 +62,13 @@ endif()
 add_subdirectory(Source/ArdaTrace)
 add_subdirectory(Source/ArdaInfra)
 
-if(ARDASHIR_BUILD_RHI_TEST OR ARDASHIR_BUILD_ARDG_EXAMPLE OR ARDASHIR_BUILD_CORNELL_BOX OR ARDASHIR_BUILD_PIXEL_SORT)
+set(_ardashir_cig_operand_example OFF)
+if(ARDASHIR_ENABLE_CUDA AND ARDASHIR_BUILD_CUDA_KERNELS AND ARDASHIR_NATIVE_COMPUTE_CIG AND
+        (ARDASHIR_BACKEND_VULKAN OR (WIN32 AND ARDASHIR_BACKEND_D3D12)))
+    set(_ardashir_cig_operand_example ON)
+endif()
+
+if(ARDASHIR_BUILD_RHI_TEST OR ARDASHIR_BUILD_ARDG_EXAMPLE OR ARDASHIR_BUILD_CORNELL_BOX OR
+        ARDASHIR_BUILD_PIXEL_SORT OR _ardashir_cig_operand_example)
     add_subdirectory(Source/ArdaTests)
 endif()

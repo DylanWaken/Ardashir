@@ -139,7 +139,7 @@ namespace arda
 			    Subresources,
 			    true,
 			    Handoff.mDestinationQueue,
-			    Graph.mDevice->GetCapabilities().mQueues.GetFamily(Handoff.mDestinationQueue));
+			    Graph.mDevice->GetQueueFamily(Handoff.mDestinationQueue));
 		}
 		return Status;
 	}

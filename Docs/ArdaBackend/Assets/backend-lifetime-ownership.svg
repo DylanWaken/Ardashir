@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1100" height="780" viewBox="0 0 1100 780" role="img" aria-labelledby="title desc">
   <title id="title">ArdaBackend lifetime and ownership graph</title>
-  <desc id="desc">The application lifecycle owner retains a diagnostic callback and renderer systems. Process backend state owns the private backend and a strong device context reference. Renderer systems own the swap chain, shader map, pipeline cache, command lists, and resources. Intrusive references retain the device and resources. Submitted GPU work imposes effective lifetime until completion. Numbered steps show reverse teardown order.</desc>
+  <desc id="desc">The application lifecycle owner retains a diagnostic callback and renderer systems. Process backend state owns the runtime and a strong reference for each initialized device. This diagram follows the device retained by one renderer. Renderer systems own the swap chain, shader map, pipeline cache, command lists, and resources. Submitted GPU work retains resources until completion. Numbered steps show reverse teardown order.</desc>
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#0b1220"/>
@@ -43,8 +43,8 @@
 
   <rect x="430" y="108" width="240" height="92" class="box process"/>
   <text x="550" y="138" class="label">Process backend state</text>
-  <text x="550" y="164" class="body">configuration &#183; context &#183; error &#183; mutex</text>
-  <text x="550" y="184" class="body">owns private backend runtime</text>
+  <text x="550" y="164" class="body">configuration &#183; device set &#183; active module</text>
+  <text x="550" y="184" class="body">owns the runtime for each device</text>
 
   <rect x="812" y="108" width="240" height="92" class="box caller"/>
   <text x="932" y="138" class="label">Diagnostic callback</text>
@@ -55,7 +55,7 @@
   <path d="M812 154 H674" class="uses"/>
 
   <rect x="430" y="250" width="240" height="96" class="box device"/>
-  <text x="550" y="280" class="label">Opaque RHI device</text>
+  <text x="550" y="280" class="label">One initialized RHI device</text>
   <text x="550" y="306" class="body">intrusive strong reference</text>
   <text x="550" y="326" class="body">pins concrete implementation lifetime</text>
   <path d="M550 200 V246" class="retain"/>

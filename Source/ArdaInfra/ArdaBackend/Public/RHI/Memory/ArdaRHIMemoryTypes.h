@@ -9,6 +9,10 @@
 
 namespace arda
 {
+	// ================================
+	// Allocation metadata and heap requirements
+	// ================================
+
 	/** Physical allocation retained by a resource. Placed objects identify their entire parent heap. */
 	struct FArdaRHIMemoryAllocationInfo
 	{

@@ -11,6 +11,10 @@
 
 namespace arda
 {
+	// ================================
+	// Resource requests and lifetime constraints
+	// ================================
+
 	enum class EArdaMemoryKind : uint8_t
 	{
 		Buffer,
@@ -78,6 +82,10 @@ namespace arda
 		void* mHappensBeforeContext = nullptr;
 	};
 
+	// ================================
+	// Heap plans and allocated resources
+	// ================================
+
 	struct FArdaMemorySlot
 	{
 		uint32_t mRepresentative = 0;
@@ -140,6 +148,10 @@ namespace arda
 		uint64_t mExternalBytes = 0;
 		uint64_t mTotalBytes = 0;
 	};
+
+	// ================================
+	// Planning and materialization
+	// ================================
 
 	/**
 	 * Queries native sizes without committing storage. External resources are queried directly.

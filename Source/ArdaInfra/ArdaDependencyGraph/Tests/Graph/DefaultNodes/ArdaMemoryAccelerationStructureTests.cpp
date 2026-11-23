@@ -36,8 +36,11 @@ namespace arda::memoryaccelerationstructure_tests
 			ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 			mDevice = GetDevice();
 			ASSERT_TRUE(mDevice);
-			const auto& Ray = mDevice->GetCapabilities().mRayTracing;
-			if (!Ray.mbAccelerationStructures || !Ray.mbBottomLevel || !Ray.mbTopLevel || !Ray.mbCompaction)
+			const auto Features = mDevice->GetFeatures();
+			if (!Features->Supports("ray-tracing.acceleration-structure") ||
+			    !Features->Supports("ray-tracing.bottom-level-acceleration-structure") ||
+			    !Features->Supports("ray-tracing.top-level-acceleration-structure") ||
+			    !Features->Supports("ray-tracing.acceleration-structure-compaction"))
 			{
 				GTEST_SKIP() << "Native BLAS/TLAS compaction unavailable";
 			}
@@ -199,7 +202,7 @@ namespace arda::memoryaccelerationstructure_tests
 
 	TEST_P(FArdaMemoryAccelerationStructuresGpu, CloneBothKindsPreservesTriangleContentsAndWholeObjectHazards)
 	{
-		if (!mDevice->GetCapabilities().mRayTracing.mbInlineRayQueries)
+		if (!mDevice->GetFeatures()->Supports("ray-tracing.inline-query"))
 		{
 			GTEST_SKIP() << "Inline ray queries unavailable";
 		}
@@ -266,7 +269,7 @@ namespace arda::memoryaccelerationstructure_tests
 
 	TEST_P(FArdaMemoryAccelerationStructuresGpu, CompactsBothKindsAndClonesCompactedState)
 	{
-		if (!mDevice->GetCapabilities().mRayTracing.mbInlineRayQueries)
+		if (!mDevice->GetFeatures()->Supports("ray-tracing.inline-query"))
 		{
 			GTEST_SKIP() << "Inline ray queries unavailable";
 		}

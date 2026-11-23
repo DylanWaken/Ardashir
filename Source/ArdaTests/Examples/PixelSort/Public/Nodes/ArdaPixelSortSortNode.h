@@ -4,22 +4,17 @@
 namespace arda
 {
 	class FArdaPixelSortSortNode final
-	    : public TArdaNodeDefinition<FArdaPixelSortSortNode, FArdaPixelSortSortParameters, EArdaNodeType::Cuda>
+	    : public TArdaNodeDefinition<FArdaPixelSortSortNode, FArdaPixelSortSortParameters, EArdaNodeType::Native>
 	{
 	public:
-		struct FArdaState;
 		static FArdaDependencyNodeMetadata GetMetadata();
-		static bool UsesComputeAlternative(const IArdaRHIDevice* Device);
+		static TArdaRHIResult<EArdaNativeExecutionMode> SelectNativeExecutionMode(
+		    const FArdaNativeComputeContext& Context,
+		    eastl::string& ProviderId);
 		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P);
 		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
 		static FArdaRHIStatus Validate(const FArdaParameters& Parameters);
-		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device);
-		static FArdaRHIStatus PrepareCuda(FArdaDependencyExecutionContext& Context,
-		    const FArdaParameters& Parameters,
-		    const FArdaState& State,
-		    FArdaInstanceState& Instance,
-		    FArdaCudaSequence& Sequence);
-		static FArdaRHIStatus RecordComputeAlternative(FArdaDependencyExecutionContext& Context,
+		static TArdaRHIResult<FArdaNativeComputePlan> PrepareNative(FArdaDependencyExecutionContext& Context,
 		    const FArdaParameters& Parameters,
 		    const FArdaState& State,
 		    FArdaInstanceState& Instance);

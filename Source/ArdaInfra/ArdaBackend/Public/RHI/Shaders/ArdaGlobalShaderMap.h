@@ -14,6 +14,10 @@
 
 namespace arda
 {
+	// ================================
+	// Shader map diagnostics
+	// ================================
+
 	/** Identifies failures while loading or creating global shaders. */
 	enum class EArdaGlobalShaderMapError : uint8_t
 	{
@@ -47,6 +51,10 @@ namespace arda
 		eastl::string mMessage;
 	};
 
+	// ================================
+	// Shader bytecode loading
+	// ================================
+
 	/** Contains loaded shader bytecode or a failure diagnostic. */
 	struct FArdaShaderBytecodeResult
 	{
@@ -71,6 +79,10 @@ namespace arda
      * @return Loaded bytes or a diagnostic describing the failure.
      */
 	[[nodiscard]] FArdaShaderBytecodeResult LoadShaderBytecode(const std::filesystem::path& Path);
+
+	// ================================
+	// Global shader instances
+	// ================================
 
 	/** Owns one created global shader and its binding layouts. */
 	class FArdaGlobalShaderInstance final
@@ -124,6 +136,10 @@ namespace arda
 		eastl::vector<arda::FArdaRHIBindingLayoutRef> mBindingLayouts;
 	};
 
+	// ================================
+	// Global shader map
+	// ================================
+
 	/** Loads, creates, and indexes all committed global shaders for one device. */
 	class FArdaGlobalShaderMap final
 	{
@@ -148,6 +164,10 @@ namespace arda
 
 		/** @return True when the map contains initialized global shaders. */
 		[[nodiscard]] bool IsInitialized() const noexcept;
+
+		// ================================
+		// Shader lookup and enumeration
+		// ================================
 
 		/**
          * Finds a shader instance by registered type.

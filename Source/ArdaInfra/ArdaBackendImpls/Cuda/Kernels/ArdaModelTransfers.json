@@ -1,0 +1,27 @@
+{
+  "library": "arda-model-transfers-v1",
+  "kernels": [
+    {
+      "provider": "cuda",
+      "name": "fill",
+      "signature": "fill-v1",
+      "format": "ptx",
+      "entryPoint": "ArdaPackageFill",
+      "attributes": [
+        100
+      ],
+      "file": "ArdaPackageFill.ptx"
+    },
+    {
+      "provider": "cuda",
+      "name": "copy",
+      "signature": "copy-v1",
+      "format": "ptx",
+      "entryPoint": "ArdaPackageCopy",
+      "attributes": [
+        100
+      ],
+      "file": "ArdaPackageCopy.ptx"
+    }
+  ]
+}

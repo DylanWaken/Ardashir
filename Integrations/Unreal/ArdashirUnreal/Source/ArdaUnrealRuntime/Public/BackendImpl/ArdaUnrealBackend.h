@@ -5,6 +5,12 @@
 #include "RHI/Device/ArdaRHIDevice.h"
 #include <EASTL/functional.h>
 
+#if __has_include("CUDA/ArdaRHICuda.h")
+#include "CUDA/ArdaRHICuda.h"
+#else
+#include "RHI/CUDA/ArdaRHICuda.h"
+#endif
+
 class FRHICommandListImmediate;
 class FRHIComputeShader;
 class FRHITexture;

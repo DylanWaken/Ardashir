@@ -5,7 +5,8 @@ import unittest
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from unittest.mock import patch
 
-from sync_api_inventories import COMPLETE_BACKEND_SOURCE_ROOTS, backend_specs, make_symbols, preserve_symbol_ids, rdg_specs, reconcile_backend_sources, select_missing
+from sync_api_inventories import COMPLETE_BACKEND_SOURCE_ROOTS, backend_specs, make_symbols, native_compute_specs, preserve_symbol_ids, rdg_specs, reconcile_backend_sources, select_missing
+from validate_docs import NATIVE_COMPUTE_FACADE_HEADERS
 
 
 class HeaderOrderingTest(unittest.TestCase):
@@ -47,20 +48,30 @@ class HeaderOrderingTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             repo = Path(directory)
             cases = (
-                (backend_specs, "Source/ArdaInfra/ArdaBackend/Public", (
-                    "RHI/Config/ArdaConfig.h", "RHI/CUDA/ArdaKernel.cuh",
-                    "RHI/Context/ArdaContext.h", "ArdaBackend.h",
+                (backend_specs, (
+                    "Source/ArdaInfra/ArdaBackend/Public/RHI/Config/ArdaConfig.h",
+                    "Source/ArdaInfra/ArdaBackend/Public/RHI/Context/ArdaContext.h",
+                    "Source/ArdaInfra/ArdaBackend/Public/ArdaBackend.h",
+                    "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/RHI/Scheduling/ArdaCudaSequence.h",
+                    "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/RHI/Providers/ArdaNvapiShaderExtension.h",
                 )),
-                (rdg_specs, "Source/ArdaInfra/ArdaDependencyGraph/Public", (
-                    "ArdaGraph.h", "ArdaGPU.h", "ArdaGraph/ArdaNode.h",
+                (native_compute_specs, (
+                    *NATIVE_COMPUTE_FACADE_HEADERS,
+                    "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaKernel.cuh",
+                    "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
+                )),
+                (rdg_specs, (
+                    "Source/ArdaInfra/ArdaDependencyGraph/Public/ArdaGraph.h",
+                    "Source/ArdaInfra/ArdaDependencyGraph/Public/ArdaGPU.h",
+                    "Source/ArdaInfra/ArdaDependencyGraph/Public/ArdaGraph/ArdaNode.h",
                 )),
             )
-            for discover, public_root, names in cases:
-                for name in names:
-                    header = repo / public_root / name
+            for discover, sources in cases:
+                for source in sources:
+                    header = repo / source
                     header.parent.mkdir(parents=True, exist_ok=True)
                     header.write_text("#pragma once\n", encoding="utf-8")
-                expected = sorted(f"{public_root}/{name}" for name in names)
+                expected = sorted(sources)
                 for flavour in (PureWindowsPath, PurePosixPath):
                     def platform_sorted(items, *, key=None, reverse=False):
                         values = list(items)
@@ -68,7 +79,7 @@ class HeaderOrderingTest(unittest.TestCase):
                             key = lambda path: flavour(path.as_posix())
                         return builtins.sorted(values, key=key, reverse=reverse)
 
-                    with self.subTest(module=public_root, platform=flavour.__name__):
+                    with self.subTest(module=discover.__name__, platform=flavour.__name__):
                         # Simulate both pathlib comparison rules on every CI host.
                         with patch("sync_api_inventories.sorted", platform_sorted, create=True):
                             self.assertEqual([source for source, _, _ in discover(repo)], expected)

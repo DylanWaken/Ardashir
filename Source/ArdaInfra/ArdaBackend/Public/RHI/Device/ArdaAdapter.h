@@ -6,6 +6,10 @@
 
 namespace arda
 {
+	// ================================
+	// Adapter identity and properties
+	// ================================
+
 	/** Opaque physical-adapter identity. Obtain it from EnumerateAdapters; do not use list positions as IDs. */
 	struct FArdaAdapterId
 	{

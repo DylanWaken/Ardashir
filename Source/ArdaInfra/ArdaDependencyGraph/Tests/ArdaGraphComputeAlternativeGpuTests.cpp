@@ -1,5 +1,5 @@
 #include "ArdaBackend.h"
-#include "ArdaNativeCompute.h"
+#include "NativeCompute/ArdaNativeCompute.h"
 #include "ArdaTestBackend.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
 #include "Graph/Node/ArdaNodeDefinition.h"
@@ -167,6 +167,7 @@ namespace arda
 				Operand.mId = "test.graph.state-qualified-operand";
 				Operand.mResources = {{"output", EArdaRHIResourceType::Buffer, EArdaComputeAccess::Write}};
 				Operand.mVariants.push_back({"test", eastl::make_shared<FArdaGraphStateTestSource>()});
+				UseArdaNativeDirectResources(Operand);
 				const auto* Pipeline = Context.GetPipeline();
 				if (!Pipeline || !Pipeline->mCompute)
 				{

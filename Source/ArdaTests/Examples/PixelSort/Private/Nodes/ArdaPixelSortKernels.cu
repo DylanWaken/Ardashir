@@ -1,23 +1,16 @@
-#include "Nodes/ArdaPixelSortOperand.h"
-// Generated for this CMake profile: namespace, build identity, native SM coverage
-// and compiler-policy metadata. Do not fabricate coverage in the binding function.
-#include "ArdaCudaBuildInfo.h"
-// Include the nvcc binding adapter only in CUDA translation units. It wraps the
-// compiled entry and later launches it with cudaLaunchKernel on a provider stream.
-#include "RHI/CUDA/ArdaCudaKernelBinding.cuh"
+#include "Nodes/ArdaPixelSortKernelParameters.h"
+#include <cuda_runtime.h>
 
-namespace ARDA_CUDA_BUILD_NAMESPACE
+namespace
 {
 	// A stable least-significant-digit (LSD) radix sort of (run ID, channel key).
 	// Dark pixels delimit bright runs and remain at their original positions.
 	// Sorting stops at tile edges: this is an image effect, not a whole-image sort.
 	// Independent tiles need no cross-block synchronization or second kernel launch.
 	//
-	// Every registered entry takes exactly FArdaPixelSortParameters::FArdaCuda by value.
-	// P's texture members are provider-resolved CUDA surface objects, not pointers
-	// to the host RHI wrappers. All variants share this ABI despite template choices.
+	// Both exported entries share the surface handles and scalar ABI.
 	template <int Threads, bool Vertical>
-	__global__ void RadixSort(arda::FArdaPixelSortParameters::FArdaCuda P)
+	__device__ __forceinline__ void RadixSort(arda::FArdaPixelSortKernelParameters P)
 	{
 		constexpr int Items = arda::ArdaPixelSortItemsPerThread, Tile = Threads * Items, Warps = Threads / 32;
 
@@ -34,7 +27,7 @@ namespace ARDA_CUDA_BUILD_NAMESPACE
 		const uint32_t Thread = threadIdx.x, Lane = Thread & 31;
 		const uint32_t PriorLanes = (1u << Lane) - 1u;
 		uint32_t Pixels[Items], Masks[Items];
-		const uint32_t Length = Vertical ? P.mHeight : P.mWidth;
+		const uint32_t Length = Vertical ? P.mConstants.mHeight : P.mConstants.mWidth;
 		const uint32_t Start = blockIdx.x * Tile;
 
 		// 1. Load pixels and find boundaries. All threads participate even in a
@@ -54,7 +47,7 @@ namespace ARDA_CUDA_BUILD_NAMESPACE
 			// Integer luminance matches the CPU reference exactly. Invalid tail
 			// lanes count as boundaries now and receive maximal keys below.
 			const uint32_t Luma = (54 * (Pixel & 255) + 183 * ((Pixel >> 8) & 255) + 19 * ((Pixel >> 16) & 255)) >> 8;
-			Masks[I] = __ballot_sync(0xffffffffu, Position >= Length || Luma < P.mThreshold);
+			Masks[I] = __ballot_sync(0xffffffffu, Position >= Length || Luma < P.mConstants.mThreshold);
 			if (Lane == 0)
 			{
 				Prefix[I * Warps + Thread / 32] = __popc(Masks[I]);
@@ -90,7 +83,7 @@ namespace ARDA_CUDA_BUILD_NAMESPACE
 			// Padding's low Bits bits are all ones, after every valid composite key.
 			Keys[Index] = Start + Index >= Length
 			    ? 0xffffffffu
-			    : (Run << 9) | (Boundary ? 0u : 1u + ((Pixels[I] >> (P.mChannel * 8)) & 255));
+			    : (Run << 9) | (Boundary ? 0u : 1u + ((Pixels[I] >> (P.mConstants.mChannel * 8)) & 255));
 		}
 		__syncthreads();
 
@@ -162,15 +155,24 @@ namespace ARDA_CUDA_BUILD_NAMESPACE
 		}
 	}
 
-	eastl::shared_ptr<const arda::IArdaCudaKernelEntry> GetPixelSortRowEntry()
-	{
-		return arda::BindArdaCudaKernel<&RadixSort<arda::ArdaPixelSortRowThreads, false>>("rows.128", 0, GetBuildInfo())
-		    .mEntry;
-	}
+}
 
-	eastl::shared_ptr<const arda::IArdaCudaKernelEntry> GetPixelSortColumnEntry()
-	{
-		return arda::BindArdaCudaKernel<&RadixSort<arda::ArdaPixelSortColumnThreads, true>>("columns.256", 0, GetBuildInfo())
-		    .mEntry;
-	}
+extern "C" __global__ void ArdaPixelSortRows(cudaSurfaceObject_t Input,
+    cudaSurfaceObject_t Output,
+    uint32_t Width,
+    uint32_t Height,
+    uint32_t Channel,
+    uint32_t Threshold)
+{
+	RadixSort<arda::ArdaPixelSortRowThreads, false>({Input, Output, {Width, Height, Channel, Threshold}});
+}
+
+extern "C" __global__ void ArdaPixelSortColumns(cudaSurfaceObject_t Input,
+    cudaSurfaceObject_t Output,
+    uint32_t Width,
+    uint32_t Height,
+    uint32_t Channel,
+    uint32_t Threshold)
+{
+	RadixSort<arda::ArdaPixelSortColumnThreads, true>({Input, Output, {Width, Height, Channel, Threshold}});
 }

@@ -12,6 +12,10 @@
 
 namespace arda
 {
+	// ================================
+	// Texture regions and buffer footprints
+	// ================================
+
 	/** Describes texture slice. */
 	struct FArdaRHITextureSlice
 	{
@@ -68,6 +72,10 @@ namespace arda
 		/** Minimum allocation size, excluding padding after the final row. */
 		uint64_t mByteSize = 0;
 	};
+
+	// ================================
+	// Copy and resolve validation
+	// ================================
 
 	/**
      * Validates matching texture slices and resolves sentinel source extents.

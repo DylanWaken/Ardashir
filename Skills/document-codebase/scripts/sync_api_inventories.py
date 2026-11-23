@@ -14,7 +14,12 @@ import subprocess
 from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Tuple
 
-from validate_docs import Validator
+from validate_docs import (
+    BACKEND_COMPATIBILITY_HEADER_ROOTS,
+    NATIVE_COMPUTE_FACADE_HEADERS,
+    NATIVE_COMPUTE_PROVIDER_HEADER_ROOTS,
+    Validator,
+)
 from glossary_html import synchronize_glossary_page
 
 
@@ -22,6 +27,7 @@ BACKEND_BEGIN = "/* BEGIN GENERATED BACKEND PROVIDER API */"
 BACKEND_END = "/* END GENERATED BACKEND PROVIDER API */"
 RDG_BEGIN = "/* BEGIN GENERATED ARDA RDG API GAPS */"
 RDG_END = "/* END GENERATED ARDA RDG API GAPS */"
+BACKEND_FACADE_HEADER = "Source/ArdaInfra/ArdaBackend/Public/ArdaBackend.h"
 
 CONTRACT_HEADERS = (
     (
@@ -47,6 +53,7 @@ CONTRACT_HEADERS = (
 COMPLETE_BACKEND_SOURCE_ROOTS = (
     "Source/ArdaInfra/ArdaBackend/Public/RHI/",
     "Source/ArdaInfra/ArdaBackend/Public/FileOperations/",
+    *(root + "/" for root in BACKEND_COMPATIBILITY_HEADER_ROOTS),
 )
 
 CALLABLE_KINDS = {
@@ -397,12 +404,12 @@ def description(name: str, kind: str, domain: str) -> Tuple[str, str]:
 def backend_specs(repo: Path) -> List[Tuple[str, str, str]]:
     overrides = {item[0]: item for item in CONTRACT_HEADERS}
     specs: List[Tuple[str, str, str]] = []
+    roots = ("Source/ArdaInfra/ArdaBackend/Public", *BACKEND_COMPATIBILITY_HEADER_ROOTS)
     # pathlib compares Windows paths without case, unlike POSIX. Use the exact
     # repository-relative spelling so generated order and duplicate ownership
     # remain the same on developer machines and Linux CI.
     for header in sorted(
-        (p for p in (repo / "Source/ArdaInfra/ArdaBackend/Public").rglob("*")
-         if p.suffix in {".h", ".cuh"}),
+        (p for root in roots for p in (repo / root).rglob("*") if p.suffix in {".h", ".cuh"}),
         key=lambda path: path.relative_to(repo).as_posix(),
     ):
         source = header.relative_to(repo).as_posix()
@@ -413,7 +420,6 @@ def backend_specs(repo: Path) -> List[Tuple[str, str, str]]:
             namespace = "arda"
             module = source.split("/RHI/", 1)[1].split("/", 1)[0]
             component = {
-                "CUDA": "shaders",
                 "Config": "rhi-types",
                 "Context": "rhi-device",
                 "Device": "rhi-device",
@@ -478,12 +484,14 @@ def rdg_specs(repo: Path) -> List[Tuple[str, str, str]]:
 
 
 def native_compute_specs(repo: Path) -> List[Tuple[str, str, str]]:
-    public = repo / "Source/ArdaInfra/ArdaNativeCompute/Public"
-    provider_components = {"CUDA": "cuda", "NVAPI": "nvapi"}
-    return [
-        (header.relative_to(repo).as_posix(), "arda", provider_components.get(header.parent.name, "core"))
-        for header in sorted(public.rglob("*.h"), key=lambda path: path.relative_to(public).as_posix())
-    ]
+    specs = [(source, "arda", "core") for source in NATIVE_COMPUTE_FACADE_HEADERS if (repo / source).is_file()]
+    specs.extend(
+        (header.relative_to(repo).as_posix(), "arda", component)
+        for root, component in NATIVE_COMPUTE_PROVIDER_HEADER_ROOTS
+        for header in (repo / root).rglob("*")
+        if header.suffix in {".h", ".cuh"}
+    )
+    return sorted(specs, key=lambda item: item[0])
 
 
 def make_symbols(
@@ -501,13 +509,20 @@ def make_symbols(
         raw = header.read_text(encoding="utf-8-sig")
         text = validator.strip_cpp_comments(raw)
         ranges = type_ranges(text)
+        namespace_ranges = [
+            (match.end() - 1, find_matching_brace(text, match.end() - 1), match[1])
+            for match in re.finditer(r"\bnamespace\s+([A-Za-z_]\w*)\s*\{", text)
+            if match[1] not in namespace.split("::")
+        ]
         declarations = validator.extract_public_declarations([header])
         for name, _header, line, declared_kind in sorted(declarations, key=lambda item: (item[2], item[0], item[3])):
             offset = name_offset(text, name, line)
             owner = enum_owner_at(offset, ranges) if declared_kind == "enumerator" else owner_at(offset, ranges)
             signature = declaration_signature(text, name, line, declared_kind)
             kind = api_kind(declared_kind, name, signature, owner)
-            qualified = "::".join(item for item in (namespace, owner, name) if item)
+            lexical_namespaces = [name for start, end, name in namespace_ranges if start < offset < end]
+            scope = "::".join(item for item in (namespace, *lexical_namespaces, owner) if item)
+            qualified = "::".join(item for item in (scope, name) if item)
             key = (qualified, kind, signature_identity(signature))
             if key in semantic:
                 continue
@@ -532,7 +547,7 @@ def make_symbols(
                     "ownership": "",
                     "errors": "",
                     "threading": "",
-                    "related": ["::".join(item for item in (namespace, owner) if item)],
+                    "related": [scope],
                 }
             )
             if generic_contracts:
@@ -669,12 +684,7 @@ def generated_block(
 """
 
 
-def synchronize_backend(asset: str, block: str, public_header_count: int) -> str:
-    asset = re.sub(
-        r'"generatedFrom": "Source/ArdaInfra/ArdaBackend/Public \(all \d+ unique public headers\)"',
-        f'"generatedFrom": "Source/ArdaInfra/ArdaBackend/Public (all {public_header_count} unique public headers)"',
-        asset,
-    )
+def synchronize_backend(asset: str, block: str) -> str:
     provenance_end = asset.index("\n  ],", asset.index('"headerProvenance"'))
     for source, _namespace, _component in CONTRACT_HEADERS:
         literal = f'    "{source}"'
@@ -765,9 +775,20 @@ def main() -> int:
     )
     backend_source_specs = backend_specs(repo)
     backend_declarations = make_symbols(repo, backend_source_specs, "backend and RHI")
-    preserve_symbol_ids(backend_declarations, evaluate_api(backend_current, "ArdaBackendApi"))
+    backend_previous = evaluate_api(backend_current, "ArdaBackendApi")
+    preserve_symbol_ids(backend_declarations, backend_previous)
+    previous_components = {symbol["id"]: symbol["component"] for symbol in backend_previous["symbols"]}
+    # A facade declaration can move here from several distinct lifecycle domains.
+    # Keep its published section when it moves.
+    for declaration in backend_declarations:
+        if declaration["source"] == BACKEND_FACADE_HEADER:
+            declaration["component"] = previous_components.get(declaration["id"], declaration["component"])
     backend_authored = evaluate_api(backend_base, "ArdaBackendApi")
     reconcile_backend_sources(backend_authored, backend_declarations, repo)
+    backend_authored["generatedFrom"] = (
+        "ArdaBackend public headers and provider compatibility headers "
+        f"(all {len(backend_source_specs)} unique public headers)"
+    )
     backend_base = (
         "/* Machine-checkable public source inventory for ArdaBackend.\n"
         " * Source declarations own signatures and provenance; authored contracts retain their anchors.\n"
@@ -777,7 +798,8 @@ def main() -> int:
         backend_declarations,
         evaluate_api(backend_base, "ArdaBackendApi"),
         [source for source, _namespace, _component in backend_source_specs
-            if source.startswith(COMPLETE_BACKEND_SOURCE_ROOTS)],
+            if (source == BACKEND_FACADE_HEADER or source.startswith(COMPLETE_BACKEND_SOURCE_ROOTS)
+                or source in NATIVE_COMPUTE_FACADE_HEADERS)],
     )
     # Rich header contracts supersede older authored boilerplate while preserving
     # canonical IDs and related links. Generic one-line comments do not replace prose.
@@ -806,10 +828,7 @@ def main() -> int:
     backend_block = generated_block(
         backend_symbols, "ArdaBackendApi", BACKEND_BEGIN, BACKEND_END, contracts
     )
-    header_count = len(backend_source_specs)
-    backend_updated = synchronize_backend(
-        backend_base, backend_block, header_count
-    )
+    backend_updated = synchronize_backend(backend_base, backend_block)
     provenance = [source for source, _namespace, _component in backend_source_specs]
     backend_updated = re.sub(r'"headerProvenance": \[.*?\n  \]',
         '"headerProvenance": ' + json.dumps(provenance, indent=2).replace("\n", "\n  "),
@@ -827,7 +846,7 @@ def main() -> int:
     rdg_provenance = [source for source, _namespace, _component in rdg_specs(repo)]
     rdg_inventory = {
         "module": {"id": "arda-rdg", "name": "ArdaDependencyGraph", "namespace": "arda",
-            "summary": "Persistent dependency graphs compiled by ArdaInductor for graphics, CUDA, and transfer work."},
+            "summary": "Persistent dependency graphs compiled by ArdaInductor for graphics, native compute, and transfer work."},
         "generatedFrom": f"Source/ArdaInfra/ArdaDependencyGraph/Public (all {len(rdg_provenance)} unique public headers)",
         "headerProvenance": rdg_provenance,
         "components": [{"id": "core", "name": "Persistent graph API", "page": "api-reference.html",
@@ -850,7 +869,7 @@ def main() -> int:
     native_inventory = {
         "module": {"id": "arda-native-compute", "name": "ArdaNativeCompute", "namespace": "arda",
             "summary": "Select and record native GPU kernels or equivalent shader implementations."},
-        "generatedFrom": "Source/ArdaInfra/ArdaNativeCompute/Public",
+        "generatedFrom": "The ArdaBackend native compute facade and public CUDA and NVAPI headers in ArdaBackendImpls",
         "headerProvenance": [header for header, _, _ in native_specs],
         "components": [
             {"id": "core", "name": "Registration, selection, and recording", "page": "api-reference.html",

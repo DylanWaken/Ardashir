@@ -11,6 +11,10 @@ ARDA_DECLARE_LOG_CATEGORY_EXTERN(LogArdaAssert);
 
 namespace arda
 {
+	// ================================
+	// Ensure behavior and failure reporting
+	// ================================
+
 	/** Controls how failed ensure assertions are handled at runtime. */
 	enum class EArdaEnsureBehavior : std::uint8_t
 	{
@@ -83,6 +87,10 @@ namespace arda
 	    const char* format,
 	    ...) noexcept;
 }
+
+// ================================
+// Build settings and check macros
+// ================================
 
 #if !defined(NDEBUG) || defined(ARDA_ENABLE_CHECKS)
 /** Indicates that fatal check evaluation is compiled in. */
@@ -169,6 +177,10 @@ namespace arda
 /** Evaluates a condition and ignores its formatted diagnostic when checks are disabled. */
 #define ARDA_VERIFYF(Condition, Format, ...) (!!(Condition))
 #endif
+
+// ================================
+// Ensure and diagnostic message macros
+// ================================
 
 /**
  * Evaluates a recoverable assertion and reports failures.

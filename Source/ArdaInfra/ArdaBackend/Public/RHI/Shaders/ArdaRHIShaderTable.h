@@ -15,6 +15,10 @@
 
 namespace arda
 {
+	// ================================
+	// Ray tracing shader table descriptors
+	// ================================
+
 	/** Describes shader table desc. */
 	struct FArdaRHIShaderTableDesc
 	{
@@ -51,6 +55,10 @@ namespace arda
 		FArdaRHIAccelStructRef mGeometry;
 		uint32_t mGeometrySegment = 0;
 	};
+
+	// ================================
+	// Shader table resource
+	// ================================
 
 	/** Interface for shader table. */
 	class IArdaRHIShaderTable : public virtual IArdaRHIResource

@@ -14,6 +14,10 @@ namespace arda
 	/** Maximum number of simultaneous render targets. */
 	inline constexpr uint32_t ArdaRHIMaxRenderTargets = 8;
 
+	// ================================
+	// Fixed-function state options
+	// ================================
+
 	/** Enumerates primitive topology values. */
 	enum class EArdaRHIPrimitiveTopology : uint8_t
 	{
@@ -67,6 +71,10 @@ namespace arda
 		DestinationColor,
 		InverseDestinationColor
 	};
+
+	// ================================
+	// Raster, depth, and blend state descriptors
+	// ================================
 
 	/** Describes raster state. */
 	struct FArdaRHIRasterState
@@ -173,6 +181,10 @@ namespace arda
 		}
 	};
 
+	// ================================
+	// State hashing
+	// ================================
+
 	/**
      * Tests for the requested h value.
      * @param Value The value.
@@ -200,6 +212,10 @@ namespace arda
      * @return The requested numeric value.
      */
 	[[nodiscard]] size_t HashValue(const FArdaRHIBlendState& Value) noexcept;
+
+	// ================================
+	// Fixed-function state resources
+	// ================================
 
 	/** Interface for raster state. */
 	class IArdaRHIRasterState : public virtual IArdaRHIResource

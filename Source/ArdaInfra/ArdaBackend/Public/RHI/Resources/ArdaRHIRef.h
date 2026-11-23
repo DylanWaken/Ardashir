@@ -12,11 +12,19 @@
 
 namespace arda
 {
+	// ================================
+	// Intrusive RHI references
+	// ================================
+
 	/** Intrusive smart reference that retains RHI objects through AddRef and Release. */
 	template <typename T>
 	class TArdaRHIRef
 	{
 	public:
+		// ================================
+		// Construction and destruction
+		// ================================
+
 		/** Constructs an empty or retained RHI object reference. */
 		constexpr TArdaRHIRef() noexcept = default;
 
@@ -81,6 +89,10 @@ namespace arda
 			Release();
 		}
 
+		// ================================
+		// Assignment
+		// ================================
+
 		/**
          * Assigns another reference to this reference.
          * @param Other The other.
@@ -114,6 +126,10 @@ namespace arda
 			Reset();
 			return *this;
 		}
+
+		// ================================
+		// Pointer access
+		// ================================
 
 		/**
          * Returns the RHI object.
@@ -151,6 +167,10 @@ namespace arda
 			return mPointer != nullptr;
 		}
 
+		// ================================
+		// Ownership changes
+		// ================================
+
 		/**
          * Performs the reset operation.
          * @param Pointer The pointer.
@@ -181,6 +201,10 @@ namespace arda
 			eastl::swap(mPointer, Other.mPointer);
 		}
 
+		// ================================
+		// Reference comparison
+		// ================================
+
 		/**
          * Compares two values for equality.
          * @param A The a.
@@ -204,6 +228,10 @@ namespace arda
 		}
 
 	private:
+		// ================================
+		// Reference counting
+		// ================================
+
 		/** Performs the add operation. */
 		void AddRef() noexcept
 		{

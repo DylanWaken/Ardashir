@@ -334,6 +334,7 @@ namespace arda
 		friend class FArdaDependencyGraph;
 		friend class FArdaGraphAccess;
 		friend class FArdaGraphOperation;
+		friend class FArdaGraphSerialization;
 		friend class FArdaSubgraphPreprocessor;
 		friend class FArdaInductorGraph;
 		FArdaGraphEdit(FArdaDependencyGraph& Graph, eastl::string Prefix, bool bSubgraphContent = true);
@@ -352,6 +353,7 @@ namespace arda
 		bool mbOwnsEdit = false;
 		bool mbSubgraphContent = false;
 		bool mbPreprocessContent = false;
+		bool mbArchiveRestore = false;
 		eastl::string mNamePrefix;
 		size_t mFirstSubgraphResource = 0;
 		uint64_t mFirstSubgraphAttachmentOrder = 0;

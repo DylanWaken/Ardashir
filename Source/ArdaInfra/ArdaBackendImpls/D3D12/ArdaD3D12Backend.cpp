@@ -1,11 +1,12 @@
 #include "../ArdaGpuTimestamp.h"
 #include "../ArdaSparseMapping.h"
+#include "ArdaBackend.h"
+#include "CUDA/ArdaCudaProviderCommands.h"
 #include "RHI/Resources/ArdaRHISubresources.h"
 #include "RHI/Providers/ArdaRHIProviderDevice.h"
 #include "RHI/Providers/ArdaCudaContextProvider.h"
 #include "RHI/Pipelines/ArdaRHIProviderPipelineCache.h"
 #include "RHI/Providers/ArdaBackendProvider.h"
-#include "../ArdaBackendRequirements.h"
 #include "RHI/Interop/ArdaExternalInterop.h"
 #include "RHI/Providers/ArdaExternalDeviceProvider.h"
 #include "RHI/Scheduling/ArdaSwapChain.h"
@@ -19,7 +20,8 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <windows.h>
-#include "ArdaD3D12Nvapi.h"
+#include "../NVAPI/ArdaD3D12Nvapi.h"
+#include "ArdaD3D12Features.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/array.h>
@@ -29,6 +31,7 @@
 #include <EASTL/vector.h>
 
 #include <atomic>
+#include <cstring>
 #include <filesystem>
 #include <mutex>
 #include <functional>
@@ -38,7 +41,7 @@
 
 extern "C"
 {
-	__declspec(dllexport) extern const UINT D3D12SDKVersion = 619;
+	__declspec(dllexport) extern const UINT D3D12SDKVersion = 620;
 	__declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\";
 }
 
@@ -1659,7 +1662,8 @@ namespace arda
 			    std::filesystem::path PipelineCacheDirectory,
 			    IArdaDiagnosticCallback* DiagnosticCallback,
 			    eastl::shared_ptr<void> LifetimeToken,
-			    EArdaCudaExecutionMode CudaExecutionMode)
+			    EArdaCudaExecutionMode CudaExecutionMode,
+			    const FArdaAdapterInfo& Adapter)
 			    : mD3DDevice(eastl::move(Device)),
 			      mQueue(eastl::move(GraphicsQueue)),
 			      mComputeQueue(eastl::move(ComputeQueue)),
@@ -1667,7 +1671,9 @@ namespace arda
 			      mPipelineCacheDirectory(eastl::move(PipelineCacheDirectory)),
 			      mDiagnosticCallback(DiagnosticCallback),
 			      mLifetimeToken(eastl::move(LifetimeToken)),
-			      mCudaExecutionMode(CudaExecutionMode)
+			      mCudaExecutionMode(CudaExecutionMode),
+			      mbNvidiaAdapter(Adapter.mVendorId == 0x10de && !Adapter.mbSoftware),
+			      mbHardwareAdapter(!Adapter.mbSoftware)
 			{
 			}
 
@@ -1679,7 +1685,21 @@ namespace arda
 			FArdaRHIFormatSupport QueryFormatSupport(EArdaRHIFormat Format) const noexcept override;
 			FArdaRHIStatus CheckComputePipelineExtension(const FArdaRHIComputePipelineExtension& Extension) const override
 			{
+				if (auto Status = CheckComputePipelineExtensionAvailability(Extension.mId.c_str()); !Status)
+				{
+					return Status;
+				}
 				return FArdaD3D12Nvapi::Get().Check(mD3DDevice.Get(), Extension);
+			}
+			FArdaRHIStatus CheckComputePipelineExtensionAvailability(const char* Id) const override
+			{
+				if (!Id || std::strcmp(Id, ArdaNvapiShaderExtensionId) != 0 ||
+				    !mbNvidiaAdapter || !FArdaD3D12Nvapi::Get().IsAvailable())
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+					    "The selected D3D12 adapter and driver do not expose this compute pipeline extension.");
+				}
+				return {};
 			}
 			TArdaRHIResult<FArdaRHIDiagnosticSnapshot> CaptureDiagnosticSnapshot() const override;
 
@@ -1691,6 +1711,8 @@ namespace arda
 			eastl::shared_ptr<IArdaCudaContext> mCudaContext;
 			FArdaCudaCapabilities mCudaCapabilities;
 			EArdaCudaExecutionMode mCudaExecutionMode;
+			const bool mbNvidiaAdapter;
+			const bool mbHardwareAdapter;
 			std::mutex mExecutionMutex;
 			TArdaRHIResult<eastl::shared_ptr<IArdaCudaMapping>> MapCudaResource(ID3D12Resource*,
 			    uint64_t,
@@ -2261,7 +2283,7 @@ namespace arda
 			{
 				auto& Ray = mCapabilities.mRayTracing;
 				Ray.mbInfrastructure = true;
-				Ray.mbHardwareAccelerated = true;
+				Ray.mbHardwareAccelerated = mbHardwareAdapter;
 				Ray.mbPipelineShaders = true;
 				Ray.mbAccelerationStructures = true;
 				Ray.mbBottomLevel = true;
@@ -2318,6 +2340,7 @@ namespace arda
 			mCapabilities.mMachineLearning.mbBufferDeviceAddress = true;
 			InitializePipelineCache();
 			mCapabilities.mbPipelineCachePersistence = mPipelineLibrary != nullptr;
+			mCapabilities.PublishBackendFeatures(DiscoverD3D12Features(*mD3DDevice.Get()));
 			return {};
 		}
 
@@ -9594,14 +9617,15 @@ namespace arda
 				                                                                  Configuration.mPipelineCacheDirectory,
 				                                                                  Configuration.mMessageCallback,
 				                                                                  mLifetimeToken,
-				                                                                  Configuration.mCudaExecutionMode),
+				                                                                  Configuration.mCudaExecutionMode,
+				                                                                  mAdapter),
 				    ReleaseD3D12ProviderDevice);
 				if (auto Status = mProviderDevice->Initialize(); !Status)
 				{
 					mError = Status.mMessage;
 					return EArdaInitializeResult::Failure;
 				}
-				if (auto Status = ValidateArdaBackendRequirements(mProviderDevice->GetCapabilities(), Configuration);
+				if (auto Status = Configuration.EvaluateDevice(*mProviderDevice->GetCapabilities().GetBackendFeatureList()).ToStatus();
 				    !Status)
 				{
 					mError = Status.mMessage;
@@ -9808,7 +9832,7 @@ namespace arda
 			FArdaD3D12BackendModule()
 			{
 				mDescriptor.mName = "native-d3d12";
-				mDescriptor.mDisplayName = "Native Direct3D 12 (Agility SDK 1.619.5)";
+				mDescriptor.mDisplayName = "Native Direct3D 12 (Agility SDK 1.620.2)";
 				mDescriptor.mShaderBinaryFormat = EArdaShaderBinaryFormat::Dxil;
 				mDescriptor.mShaderArtifactExtension = ".dxil";
 				mDescriptor.mbSupportsOwnedDevice = true;

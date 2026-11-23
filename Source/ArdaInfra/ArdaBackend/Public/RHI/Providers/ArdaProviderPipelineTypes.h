@@ -13,6 +13,10 @@
 
 namespace arda
 {
+	// ================================
+	// Graphics, compute and meshlet pipelines
+	// ================================
+
 	struct FArdaProviderGraphicsPipelineCreateInfo
 	{
 		const FArdaRHIGraphicsPipelineDesc& mDesc;
@@ -41,12 +45,20 @@ namespace arda
 		eastl::vector<FArdaProviderObjectRef> mBindingLayouts;
 	};
 
+	// ================================
+	// Work graph pipelines
+	// ================================
+
 	struct FArdaProviderWorkGraphPipelineCreateInfo
 	{
 		FArdaRHIWorkGraphPipelineDesc mDesc;
 		eastl::vector<FArdaProviderObjectRef> mShaders;
 		eastl::vector<FArdaProviderObjectRef> mBindingLayouts;
 	};
+
+	// ================================
+	// Ray tracing shader and pipeline creation
+	// ================================
 
 	struct FArdaProviderRayTracingShader
 	{

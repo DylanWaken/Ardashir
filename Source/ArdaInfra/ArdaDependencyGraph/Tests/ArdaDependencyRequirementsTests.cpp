@@ -1,10 +1,10 @@
 #include "Graph/Node/ArdaNodeDefinition.h"
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
-#include "RHI/Cuda/ArdaCudaParameters.h"
+#include "CUDA/ArdaCudaParameters.h"
 #include "Graph/Node/ArdaDependencyGraphImpl.h"
 #include "Inductor/Compiler/ArdaInductor.h"
 #include "Inductor/Rules/ArdaInductorRequirementsRules.h"
-#include "../../ArdaBackend/Private/RHI/Device/ArdaRHIDevicePrivate.h"
+#include "ArdaGraphAdmissionTestDevice.h"
 #include <gtest/gtest.h>
 #include <string>
 #include <type_traits>
@@ -18,163 +18,6 @@ namespace arda::requirements_tests
 		ARDA_NODE_PARAMETER(uint32_t, mValue)
 	ARDA_END_NODE_PARAMETER_STRUCT()
 
-	/** Admission uses a real facade and capability snapshots; every native operation is counted and rejected. */
-	class FArdaAdmissionProvider final : public IArdaRHIProviderDevice
-	{
-	public:
-		FArdaRHICapabilities mCapabilities;
-		FArdaCudaCapabilities mCuda;
-		uint32_t mNativeAttempts = 0, mWaits = 0, mBufferQueries = 0;
-
-		static FArdaRHIStatus Unexpected()
-		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, "Admission must not perform native GPU work.");
-		}
-
-		const FArdaRHICapabilities& GetCapabilities() const noexcept override
-		{
-			return mCapabilities;
-		}
-
-		FArdaCudaCapabilities GetCudaCapabilities() const override
-		{
-			return mCuda;
-		}
-
-		EArdaRHINativeResourceType GetTextureImportType() const noexcept override
-		{
-			return {};
-		}
-
-		EArdaRHINativeResourceType GetBufferImportType() const noexcept override
-		{
-			return {};
-		}
-
-#define ARDA_ADMISSION_NO_OBJECT(Method, Parameter)                                                                    \
-	FArdaProviderObjectResult Method(const Parameter&) override                                                        \
-	{                                                                                                                  \
-		++mNativeAttempts;                                                                                             \
-		return {{}, Unexpected()};                                                                                     \
-	}
-		ARDA_ADMISSION_NO_OBJECT(CreateTexture, FArdaRHITextureDesc)
-		ARDA_ADMISSION_NO_OBJECT(CreateBuffer, FArdaRHIBufferDesc)
-		ARDA_ADMISSION_NO_OBJECT(CreateHeap, FArdaRHIHeapDesc)
-		ARDA_ADMISSION_NO_OBJECT(CreateStagingTexture, FArdaRHIStagingTextureDesc)
-		ARDA_ADMISSION_NO_OBJECT(ImportTexture, FArdaRHINativeTextureImportDesc)
-		ARDA_ADMISSION_NO_OBJECT(ImportBuffer, FArdaRHINativeBufferImportDesc)
-		ARDA_ADMISSION_NO_OBJECT(CreateSampler, FArdaRHISamplerDesc)
-		ARDA_ADMISSION_NO_OBJECT(CreateShader, FArdaRHIShaderDesc)
-		ARDA_ADMISSION_NO_OBJECT(CreateBindingLayout, FArdaRHIBindingLayoutDesc)
-		ARDA_ADMISSION_NO_OBJECT(CreateFramebuffer, FArdaProviderFramebufferCreateInfo)
-		ARDA_ADMISSION_NO_OBJECT(CreateGraphicsPipeline, FArdaProviderGraphicsPipelineCreateInfo)
-		ARDA_ADMISSION_NO_OBJECT(CreateComputePipeline, FArdaProviderComputePipelineCreateInfo)
-#undef ARDA_ADMISSION_NO_OBJECT
-
-		TArdaRHIResult<FArdaRHIMemoryRequirements> QueryBufferMemoryRequirements(
-		    const FArdaRHIBufferDesc& Desc) override
-		{
-			++mBufferQueries;
-			return {{Desc.mByteSize, 1, 1}, {}};
-		}
-
-		TArdaRHIResult<FArdaRHIMemoryRequirements> GetTextureMemoryRequirements(const FArdaProviderObjectRef&,
-		    const FArdaRHITextureDesc&) override
-		{
-			++mNativeAttempts;
-			return {{}, Unexpected()};
-		}
-
-		TArdaRHIResult<FArdaRHIMemoryRequirements> GetBufferMemoryRequirements(const FArdaProviderObjectRef&,
-		    const FArdaRHIBufferDesc&) override
-		{
-			++mNativeAttempts;
-			return {{}, Unexpected()};
-		}
-
-		FArdaRHIStatus BindTextureMemory(const FArdaProviderObjectRef&,
-		    const FArdaRHITextureDesc&,
-		    const FArdaProviderObjectRef&,
-		    uint64_t) override
-		{
-			++mNativeAttempts;
-			return Unexpected();
-		}
-
-		FArdaRHIStatus BindBufferMemory(const FArdaProviderObjectRef&,
-		    const FArdaRHIBufferDesc&,
-		    const FArdaProviderObjectRef&,
-		    uint64_t) override
-		{
-			++mNativeAttempts;
-			return Unexpected();
-		}
-
-		FArdaProviderObjectResult CreateBindingSet(const FArdaRHIBindingSetDesc&,
-		    const FArdaProviderObjectRef&,
-		    const eastl::vector<FArdaProviderBinding>&) override
-		{
-			++mNativeAttempts;
-			return {{}, Unexpected()};
-		}
-
-		TArdaRHIResult<FArdaRHIStagingTextureMapping> MapStagingTexture(const FArdaProviderObjectRef&,
-		    const FArdaRHITextureSlice&,
-		    EArdaRHICpuAccess) override
-		{
-			++mNativeAttempts;
-			return {{}, Unexpected()};
-		}
-
-		FArdaRHIStatus UnmapStagingTexture(const FArdaProviderObjectRef&) override
-		{
-			++mNativeAttempts;
-			return Unexpected();
-		}
-
-		TArdaRHIResult<void*> MapBuffer(const FArdaProviderObjectRef&, uint64_t, size_t) override
-		{
-			++mNativeAttempts;
-			return {{}, Unexpected()};
-		}
-
-		void UnmapBuffer(const FArdaProviderObjectRef&) noexcept override
-		{
-			++mNativeAttempts;
-		}
-
-		TArdaRHIResult<eastl::unique_ptr<IArdaProviderCommandList>> CreateCommandList(EArdaRHIQueueType, bool) override
-		{
-			++mNativeAttempts;
-			return {{}, Unexpected()};
-		}
-
-		TArdaRHIResult<uint64_t> ExecuteCommandList(IArdaProviderCommandList&, EArdaRHIQueueType) override
-		{
-			++mNativeAttempts;
-			return {{}, Unexpected()};
-		}
-
-		FArdaRHIStatus WaitForIdle() override
-		{
-			++mWaits;
-			return {};
-		}
-
-		FArdaRHIStatus WaitForSubmission(uint64_t) override
-		{
-			++mWaits;
-			return Unexpected();
-		}
-
-		void RunGarbageCollection() override
-		{
-		}
-
-		void FlushPipelineCache() noexcept override
-		{
-		}
-	};
 
 	ARDA_BEGIN_NODE_PARAMETER_STRUCT(FArdaAdmissionParameters)
 		ARDA_NODE_BUFFER(mOutput, EArdaDependencyAccess::Write, EArdaRHIResourceState::UnorderedAccess)
@@ -197,7 +40,10 @@ namespace arda::requirements_tests
 		{
 			++mChecks;
 			FArdaDependencyNodeRequirements R;
-			R.mFeatures.mbRequireMeshShaders = P.mbMesh;
+			if (P.mbMesh)
+			{
+				R.mFeatures.Require("shader.mesh");
+			}
 			if (P.mbEnvironment)
 			{
 				R.mEnvironment.push_back({"example-library",
@@ -264,7 +110,15 @@ namespace arda::requirements_tests
 	protected:
 		eastl::shared_ptr<FArdaAdmissionProvider> mProvider;
 		FArdaRHIDeviceRef mDevice;
+		eastl::vector<FArdaRHIDeviceRef> mPreviousDevices;
 		eastl::vector<eastl::string> mDefinitions;
+
+		void RefreshDeviceFeatures()
+		{
+			// Keep previous fixtures alive so teardown waits are excluded from admission assertions.
+			mPreviousDevices.push_back(eastl::move(mDevice));
+			mDevice = CreateArdaRHIDevice(mProvider);
+		}
 
 		void SetUp() override
 		{
@@ -320,7 +174,7 @@ namespace arda::requirements_tests
 			    return Admission(Edit, {}, "typed");
 		    });
 		EXPECT_EQ(Typed.mCode, EArdaRHIResult::Unsupported);
-		EXPECT_NE(Typed.mMessage.find("mesh shaders"), eastl::string::npos);
+		EXPECT_NE(Typed.mMessage.find("shader.mesh"), eastl::string::npos);
 		EXPECT_NE(Typed.mMessage.find("typed"), eastl::string::npos);
 		const auto Named = RejectAdmission(Graph,
 		    [](FArdaGraphEdit& Edit)
@@ -346,6 +200,7 @@ namespace arda::requirements_tests
 	{
 
 		mProvider->mCapabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+		RefreshDeviceFeatures();
 		FArdaDependencyGraph Graph(mDevice);
 		FArdaGraphEdit Edit(Graph);
 		const FArdaAdmissionParameters Input{{}, true, true};
@@ -354,7 +209,7 @@ namespace arda::requirements_tests
 		ASSERT_TRUE(First.GetBuffer("Output"));
 		const auto& Payload = Graph.GetTopology().TryGetNode(First.GetHandle())->mPayload;
 		EXPECT_NE(Payload.mDefinition->mParameterType, Payload.mDefinition->mPreparedParameterType);
-		EXPECT_TRUE(Graph.GetNodeDescription(Payload.mHandle).mRequirements.mFeatures.mbRequireMeshShaders);
+		EXPECT_TRUE(Graph.GetNodeDescription(Payload.mHandle).mRequirements.mFeatures.Contains("shader.mesh"));
 		EXPECT_EQ(Graph.GetNodeDescription(Payload.mHandle).mRequirements.mEnvironment.size(), 1u);
 		const auto Again = Edit.Invoke(FArdaAdmissionNode::GetMetadata().mName, Input, "supported again");
 		ASSERT_TRUE(Again);
@@ -383,6 +238,7 @@ namespace arda::requirements_tests
 	{
 
 		mProvider->mCapabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+		RefreshDeviceFeatures();
 		FArdaDependencyGraph First(mDevice);
 		FArdaGraphEdit FirstEdit(First);
 		ASSERT_TRUE(Admission(FirstEdit, {}, "mesh"));
@@ -420,8 +276,8 @@ namespace arda::requirements_tests
 			++mChecks;
 			EXPECT_EQ(P.mValue, 41u);
 			FArdaDependencyNodeRequirements Requirements;
-			Requirements.mFeatures.mbRequireMeshShaders = true;
-			Requirements.mFeatures.mbRequireWorkGraphs = true;
+			Requirements.mFeatures.Require("shader.mesh");
+			Requirements.mFeatures.Require("work-graph.dispatch");
 			return Requirements;
 		}
 
@@ -471,8 +327,8 @@ namespace arda::requirements_tests
 
 		// Preserve every missing feature in the diagnostic without inserting a partially prepared node.
 		EXPECT_EQ(Edit.GetStatus().mCode, EArdaRHIResult::Unsupported);
-		EXPECT_NE(Edit.GetStatus().mMessage.find("mesh shaders"), eastl::string::npos);
-		EXPECT_NE(Edit.GetStatus().mMessage.find("work graphs"), eastl::string::npos);
+		EXPECT_NE(Edit.GetStatus().mMessage.find("shader.mesh"), eastl::string::npos);
+		EXPECT_NE(Edit.GetStatus().mMessage.find("work-graph.dispatch"), eastl::string::npos);
 		EXPECT_EQ(FArdaNamedAdmissionNode::mChecks, 1u);
 		EXPECT_EQ(FArdaNamedAdmissionNode::mSetup, 0u);
 		EXPECT_EQ(Graph.GetTopology().GetNodeCount(), 0u);
@@ -496,7 +352,7 @@ namespace arda::requirements_tests
 			++mChecks;
 			EXPECT_EQ(P.mValue, 17u);
 			FArdaDependencyNodeRequirements Requirements;
-			Requirements.mFeatures.mbRequireNativeFloat16 = true;
+			Requirements.mFeatures.Require("shader.float16");
 			return Requirements;
 		}
 
@@ -547,7 +403,9 @@ namespace arda::requirements_tests
 		EXPECT_EQ(Failed.mCode, EArdaRHIResult::Unsupported);
 		EXPECT_EQ(FArdaPreparedAdmissionNode::mPrepared, 0u);
 		mProvider->mCapabilities.mMachineLearning.mbNativeFloat16 = true;
-		FArdaGraphEdit Edit(Graph);
+		RefreshDeviceFeatures();
+		FArdaDependencyGraph SupportedGraph(mDevice);
+		FArdaGraphEdit Edit(SupportedGraph);
 		const auto Node = PreparedAdmission(Edit, uint32_t(17));
 		ASSERT_TRUE(Node);
 		const auto Again = Edit.Invoke(mDefinitions.back(), FArdaAdmissionValueParameters{17});
@@ -619,7 +477,7 @@ namespace arda::requirements_tests
 		ASSERT_TRUE(Resource);
 		const auto Node = WorkAdmission(Edit, FArdaWorkAdmissionParameters{Resource}, "inferred");
 		EXPECT_EQ(Edit.GetStatus().mCode, EArdaRHIResult::Unsupported);
-		EXPECT_NE(Edit.GetStatus().mMessage.find("work graphs"), eastl::string::npos);
+		EXPECT_NE(Edit.GetStatus().mMessage.find("work-graph.dispatch"), eastl::string::npos);
 		EXPECT_EQ(Graph.GetTopology().GetNodeCount(), 0u);
 		EXPECT_EQ(mProvider->mNativeAttempts, 0u);
 	}
@@ -685,10 +543,11 @@ namespace arda::requirements_tests
 		const auto PreparationCount = FArdaAdmissionNode::mPreparations;
 		auto Compiled = FArdaInductor::Compile(*Restored.mValue, mDevice);
 		EXPECT_EQ(Compiled.mStatus.mCode, EArdaRHIResult::Unsupported);
-		EXPECT_NE(Compiled.mStatus.mMessage.find("mesh shaders"), eastl::string::npos);
+		EXPECT_NE(Compiled.mStatus.mMessage.find("shader.mesh"), eastl::string::npos);
 		EXPECT_EQ(FArdaAdmissionNode::mPreparations, PreparationCount);
 		EXPECT_EQ(mProvider->mBufferQueries, 0u);
 		mProvider->mCapabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+		RefreshDeviceFeatures();
 		FArdaAdmissionNode::mbEnvironmentReady = false;
 		Compiled = FArdaInductor::Compile(*Restored.mValue, mDevice);
 		EXPECT_EQ(Compiled.mStatus.mCode, EArdaRHIResult::Unsupported);
@@ -707,7 +566,7 @@ namespace arda::requirements_tests
 		mDefinitions.push_back(FArdaOfflineAdmissionNode::GetMetadata().mName);
 		const auto Node = OfflineAdmission(Edit, FArdaAdmissionValueParameters{uint32_t(0)}, "offline work");
 		ASSERT_TRUE(Node);
-		EXPECT_TRUE(Analysis.GetNodeDescription(Node.GetHandle()).mRequirements.mFeatures.mbRequireWorkGraphs);
+		EXPECT_TRUE(Analysis.GetNodeDescription(Node.GetHandle()).mRequirements.mFeatures.Contains("work-graph.dispatch"));
 	}
 
 	struct FArdaCudaAdmissionNode
@@ -774,7 +633,7 @@ namespace arda::requirements_tests
 	TEST_F(FArdaDependencyRequirementsTest, CudaLimitsModesAndNamedEnvironmentFailuresAreReportedTogether)
 	{
 		FArdaDependencyNodeRequirements R;
-		R.mFeatures.mbRequireMeshShaders = true;
+		R.mFeatures.Require("shader.mesh");
 		R.mbRequireCudaLayeredSurfaces = true;
 		R.mMinCudaComputeCapability = 120;
 		R.mMinCudaThreadsPerBlock = 1024;
@@ -793,7 +652,7 @@ namespace arda::requirements_tests
 		    }}};
 		auto Status = R.Check(mDevice.Get());
 		EXPECT_EQ(Status.mCode, EArdaRHIResult::Unsupported);
-		for (const char* Name : {"mesh shaders",
+		for (const char* Name : {"shader.mesh",
 		         "CUDA launch support",
 		         "CUDA layered surface access",
 		         "minimum CUDA compute capability",
@@ -807,6 +666,7 @@ namespace arda::requirements_tests
 		}
 		EXPECT_EQ(PredicateCalls, 1u);
 		mProvider->mCapabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+		RefreshDeviceFeatures();
 		mProvider->mCuda.mLaunchMode = EArdaCudaLaunchMode::D3D12CiG;
 		mProvider->mCuda.mbSurfaceAccess = mProvider->mCuda.mbLayeredSurfaceAccess = true;
 		mProvider->mCuda.mComputeCapability = 120;
@@ -980,6 +840,7 @@ namespace arda::requirements_tests
 	{
 		mProvider->mCapabilities.mQueues.mbGraphics = false;
 		mProvider->mCapabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+		RefreshDeviceFeatures();
 		mDefinitions.push_back(FArdaInferenceProbeNode::GetMetadata().mName);
 		ASSERT_TRUE(FArdaInferenceProbeNode::Register());
 		for (const auto Kind : {EArdaPipelineStateKind::Graphics, EArdaPipelineStateKind::Meshlet})
@@ -994,7 +855,7 @@ namespace arda::requirements_tests
 				    return InferenceProbe(Rejected, P, "needs graphics");
 			    });
 			EXPECT_EQ(Node.mCode, EArdaRHIResult::Unsupported);
-			EXPECT_NE(Node.mMessage.find("graphics queue"), eastl::string::npos);
+			EXPECT_NE(Node.mMessage.find("queue.graphics"), eastl::string::npos);
 			EXPECT_EQ(Graph.GetTopology().GetNodeCount(), 0u);
 			FArdaRHIBufferDesc Probe;
 			Probe.mByteSize = 4;
@@ -1015,6 +876,7 @@ namespace arda::requirements_tests
 			{
 				SCOPED_TRACE(std::to_string(uint32_t(Stage)) + (Seeded ? " seeded" : " contribution"));
 				mProvider->mCapabilities.mbGeometryShaders = mProvider->mCapabilities.mbTessellationShaders = false;
+				RefreshDeviceFeatures();
 				FArdaDependencyGraph Graph(mDevice);
 
 				FArdaInferenceProbeParameters P;
@@ -1050,20 +912,22 @@ namespace arda::requirements_tests
 				    });
 				EXPECT_EQ(Unsupported.mCode, EArdaRHIResult::Unsupported);
 				EXPECT_NE(Unsupported.mMessage.find(
-				              Stage == EArdaRHIShaderStage::Geometry ? "geometry shaders" : "tessellation shaders"),
+				              Stage == EArdaRHIShaderStage::Geometry ? "shader.geometry" : "shader.tessellation"),
 				    eastl::string::npos);
 				EXPECT_EQ(Graph.GetTopology().GetNodeCount(), 0u);
 
 				mProvider->mCapabilities.mbGeometryShaders = Stage == EArdaRHIShaderStage::Geometry;
 				mProvider->mCapabilities.mbTessellationShaders = Stage != EArdaRHIShaderStage::Geometry;
-				FArdaGraphEdit Edit(Graph);
+				RefreshDeviceFeatures();
+				FArdaDependencyGraph SupportedGraph(mDevice);
+				FArdaGraphEdit Edit(SupportedGraph);
 				const auto Supported = InferenceProbe(Edit, P, "stage");
 				ASSERT_TRUE(Supported) << Edit.GetStatus().mMessage.c_str();
-				const auto& R = Graph.GetNodeDescription(Supported.GetHandle()).mRequirements.mFeatures;
-				EXPECT_EQ(R.mbRequireGeometryShaders, Stage == EArdaRHIShaderStage::Geometry);
-				EXPECT_EQ(R.mbRequireTessellationShaders, Stage != EArdaRHIShaderStage::Geometry);
+				const auto& R = SupportedGraph.GetNodeDescription(Supported.GetHandle()).mRequirements.mFeatures;
+				EXPECT_EQ(R.Contains("shader.geometry"), Stage == EArdaRHIShaderStage::Geometry);
+				EXPECT_EQ(R.Contains("shader.tessellation"), Stage != EArdaRHIShaderStage::Geometry);
 				// Admission failure discarded the provisional logical output.
-				EXPECT_EQ(Graph.FindOutput(Supported.GetHandle(), "Output").mIndex, 0u);
+				EXPECT_EQ(SupportedGraph.FindOutput(Supported.GetHandle(), "Output").mIndex, 0u);
 			}
 		}
 	}
@@ -1073,6 +937,7 @@ namespace arda::requirements_tests
 		auto& Ray = mProvider->mCapabilities.mRayTracing;
 		Ray.mbPipelineShaders = Ray.mbPersistentShaderTables = true;
 		Ray.mMaxRecursionDepth = 1;
+		RefreshDeviceFeatures();
 		mDefinitions.push_back(FArdaInferenceProbeNode::GetMetadata().mName);
 		ASSERT_TRUE(FArdaInferenceProbeNode::Register());
 		FArdaDependencyGraph Graph(mDevice);
@@ -1088,14 +953,16 @@ namespace arda::requirements_tests
 			    return InferenceProbe(Rejected, P, "ray");
 		    });
 		EXPECT_EQ(Unsupported.mCode, EArdaRHIResult::Unsupported);
-		EXPECT_NE(Unsupported.mMessage.find("opacity micromaps"), eastl::string::npos);
+		EXPECT_NE(Unsupported.mMessage.find("ray-tracing.opacity-micromap"), eastl::string::npos);
 		EXPECT_EQ(Graph.GetTopology().GetNodeCount(), 0u);
 		Ray.mbOpacityMicromaps = true;
-		FArdaGraphEdit Edit(Graph);
+		RefreshDeviceFeatures();
+		FArdaDependencyGraph SupportedGraph(mDevice);
+		FArdaGraphEdit Edit(SupportedGraph);
 		const auto Supported = InferenceProbe(Edit, P, "ray");
 		ASSERT_TRUE(Supported) << Edit.GetStatus().mMessage.c_str();
-		EXPECT_TRUE(Graph.GetNodeDescription(Supported.GetHandle()).mRequirements.mFeatures.mbRequireOpacityMicromaps);
-		EXPECT_EQ(Graph.FindOutput(Supported.GetHandle(), "Output").mIndex, 0u);
+		EXPECT_TRUE(SupportedGraph.GetNodeDescription(Supported.GetHandle()).mRequirements.mFeatures.Contains("ray-tracing.opacity-micromap"));
+		EXPECT_EQ(SupportedGraph.FindOutput(Supported.GetHandle(), "Output").mIndex, 0u);
 	}
 
 	TEST_F(FArdaDependencyRequirementsTest, NativeBindlessBankHolesRejectBeforeLayoutAllocationAndRollbackResources)
@@ -1103,6 +970,7 @@ namespace arda::requirements_tests
 		auto& Descriptors = mProvider->mCapabilities.mDescriptors;
 		Descriptors.mbBindless = Descriptors.mbVariableDescriptorCount = true;
 		Descriptors.mMaxResourceDescriptors = 4096;
+		RefreshDeviceFeatures();
 		mDefinitions.push_back(FArdaInferenceProbeNode::GetMetadata().mName);
 		ASSERT_TRUE(FArdaInferenceProbeNode::Register());
 		for (const bool VariableMultipleBanks : {false, true})
@@ -1117,7 +985,7 @@ namespace arda::requirements_tests
 				    return InferenceProbe(Rejected, P, "holes");
 			    });
 			EXPECT_EQ(Node.mCode, EArdaRHIResult::Unsupported);
-			EXPECT_NE(Node.mMessage.find("partially bound descriptors"), eastl::string::npos);
+			EXPECT_NE(Node.mMessage.find("descriptor.partially-bound"), eastl::string::npos);
 			EXPECT_EQ(mProvider->mNativeAttempts, 0u);
 			EXPECT_EQ(Graph.GetTopology().GetNodeCount(), 0u);
 			FArdaRHIBufferDesc Probe;
@@ -1134,6 +1002,7 @@ namespace arda::requirements_tests
 		auto& Descriptors = mProvider->mCapabilities.mDescriptors;
 		Descriptors.mbBindless = Descriptors.mbVariableDescriptorCount = true;
 		Descriptors.mMaxResourceDescriptors = 4096;
+		RefreshDeviceFeatures();
 		FArdaDependencyGraph::FArdaImpl Graph;
 		Graph.mCompile.mExecution->mDevice = mDevice;
 
@@ -1155,7 +1024,7 @@ namespace arda::requirements_tests
 			auto Desc =
 			    MakeBindlessInferenceProbe(Case.mMaximum, Case.mActual, Case.mbVariable, Case.mBanks, Case.mPopulated);
 			InferArdaNodeRequirements(Graph, EArdaDependencyNodeKind::Compute, Desc);
-			EXPECT_EQ(Desc.mRequirements.mFeatures.mbRequirePartiallyBoundDescriptors, Case.mbNeedsPartials);
+			EXPECT_EQ(Desc.mRequirements.mFeatures.Contains("descriptor.partially-bound"), Case.mbNeedsPartials);
 			const auto Status = Desc.mRequirements.Check(mDevice.Get());
 			EXPECT_EQ(bool(Status), !Case.mbNeedsPartials) << Status.mMessage.c_str();
 		}
@@ -1167,6 +1036,7 @@ namespace arda::requirements_tests
 		Descriptors.mbBindless = Descriptors.mbUnboundedArrays = Descriptors.mbRuntimeDescriptorArrays = true;
 		Descriptors.mMaxResourceDescriptors = 4;
 		Descriptors.mMaxSamplerDescriptors = 2;
+		RefreshDeviceFeatures();
 		FArdaDependencyGraph::FArdaImpl Graph;
 		Graph.mCompile.mExecution->mDevice = mDevice;
 		for (const bool Sampler : {false, true})
@@ -1186,7 +1056,7 @@ namespace arda::requirements_tests
 					}
 				}
 				InferArdaNodeRequirements(Graph, EArdaDependencyNodeKind::Compute, Desc);
-				EXPECT_EQ(Desc.mRequirements.mFeatures.mbRequirePartiallyBoundDescriptors, !FullyPopulated);
+				EXPECT_EQ(Desc.mRequirements.mFeatures.Contains("descriptor.partially-bound"), !FullyPopulated);
 				EXPECT_EQ(bool(Desc.mRequirements.Check(mDevice.Get())), FullyPopulated);
 			}
 		}
@@ -1513,16 +1383,39 @@ TEST_F(FArdaDependencyRequirementsTest, MalformedEnvironmentAndLaunchModeDeclara
 	EXPECT_EQ(R.Check(mDevice.Get()).mCode, EArdaRHIResult::InvalidArgument);
 }
 
+TEST_F(FArdaDependencyRequirementsTest, InvalidFeatureRequirementsAreRejectedBeforeDeviceEvaluation)
+{
+	for (const auto& Invalid : {FArdaBackendFeatureRequirement{"Shader.Mesh"},
+	         FArdaBackendFeatureRequirement{"test.limit", 5, 0, 4},
+	         FArdaBackendFeatureRequirement{"test.mask", 5, 2, 5}})
+	{
+		FArdaDependencyNodeRequirements Requirements;
+		Requirements.mFeatures = {Invalid};
+		const auto Status = Requirements.Check(mDevice.Get());
+		EXPECT_EQ(Status.mCode, EArdaRHIResult::InvalidArgument);
+		EXPECT_NE(Status.mMessage.find(Invalid.mName), eastl::string::npos);
+	}
+}
+
+TEST_F(FArdaDependencyRequirementsTest, AZeroMinimumStillRequiresAnAdvertisedDeviceFeature)
+{
+	FArdaDependencyNodeRequirements Requirements;
+	Requirements.mFeatures.Require("shader.mesh", 0);
+	EXPECT_TRUE(Requirements.Check(mDevice.Get()));
+	EXPECT_EQ(Requirements.Check(nullptr).mCode, EArdaRHIResult::Unsupported);
+}
+
 TEST_F(FArdaDependencyRequirementsTest, PublicFeatureCheckDoesNotPrepareOrRegisterANode)
 {
 	const auto Missing = FArdaAdmissionNode::CheckRequiredFeatures(mDevice.Get(), {});
 	EXPECT_EQ(Missing.mCode, EArdaRHIResult::Unsupported);
-	EXPECT_NE(Missing.mMessage.find("mesh shaders"), eastl::string::npos);
+	EXPECT_NE(Missing.mMessage.find("shader.mesh"), eastl::string::npos);
 	EXPECT_FALSE(FArdaNodeRegistry::Get().Find(FArdaAdmissionNode::GetMetadata().mName));
 	ExpectNoSetup();
 	EXPECT_EQ(FArdaAdmissionNode::CheckRequiredFeatures(nullptr, {}).mCode, EArdaRHIResult::Unsupported);
 	EXPECT_TRUE(FArdaAdmissionNode::CheckRequiredFeatures(nullptr, {{}, false, false}));
 	mProvider->mCapabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+	RefreshDeviceFeatures();
 	EXPECT_TRUE(FArdaAdmissionNode::CheckRequiredFeatures(mDevice.Get(), {}));
 	ExpectNoSetup();
 }
@@ -1587,6 +1480,7 @@ TEST_F(FArdaDependencyRequirementsTest, TypedStageIntrinsicFeaturesRejectBeforeP
 	Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::RayGeneration>{});
 	Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::RayMiss>{});
 	mProvider->mCapabilities.mQueues.mbGraphics = false;
+	RefreshDeviceFeatures();
 	Reject(TArdaIntrinsicFeatureNode<EArdaNodeType::Graphics>{});
 }
 
@@ -1615,7 +1509,10 @@ struct FArdaOptionalCudaNode
 	static FArdaDependencyNodeRequirements GetComputeAlternativeRequirements(const FArdaParameters& Parameters)
 	{
 		FArdaDependencyNodeRequirements Requirements;
-		Requirements.mFeatures.mbRequireNativeFloat16 = Parameters.mValue == 13;
+		if (Parameters.mValue == 13)
+		{
+			Requirements.mFeatures.Require("shader.float16");
+		}
 		return Requirements;
 	}
 

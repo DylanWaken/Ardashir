@@ -9,6 +9,10 @@
 
 namespace arda
 {
+	// ================================
+	// Native operations and resource bindings
+	// ================================
+
 	/** Immutable, backend-defined command payload. */
 	class IArdaRHINativeOperation
 	{

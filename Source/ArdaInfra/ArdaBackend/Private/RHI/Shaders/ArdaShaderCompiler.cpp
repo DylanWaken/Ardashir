@@ -1,3 +1,4 @@
+#include "ArdaBackend.h"
 #include "RHI/Shaders/ArdaShaderCompiler.h"
 
 #include "RHI/Providers/ArdaBackendProvider.h"

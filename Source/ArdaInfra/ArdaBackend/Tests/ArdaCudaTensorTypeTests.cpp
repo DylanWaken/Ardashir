@@ -1,5 +1,5 @@
-#include "RHI/CUDA/ArdaCudaModule.h"
-#include "RHI/CUDA/ArdaRHICuda.h"
+#include "CUDA/ArdaCudaModule.h"
+#include "CUDA/ArdaRHICuda.h"
 
 #include <gtest/gtest.h>
 

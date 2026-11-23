@@ -6,7 +6,7 @@
 #include "Misc/Paths.h"
 #include "RenderingThread.h"
 
-#include "RHI/Device/ArdaBackendDevice.h"
+#include "ArdaBackend.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogArdaUnreal, Log, All);
 

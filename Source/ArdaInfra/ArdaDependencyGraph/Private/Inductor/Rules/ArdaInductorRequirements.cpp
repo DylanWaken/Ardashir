@@ -15,20 +15,40 @@ namespace arda
 			{
 				return;
 			}
-			R.mbRequireVertexShaderStoresAndAtomics |= HasAnyFlags(Visibility,
+			if (HasAnyFlags(Visibility,
 			    EArdaRHIShaderStage::Vertex | EArdaRHIShaderStage::Hull | EArdaRHIShaderStage::Domain |
-			        EArdaRHIShaderStage::Geometry);
-			R.mbRequireFragmentShaderStoresAndAtomics |= HasAnyFlags(Visibility, EArdaRHIShaderStage::Pixel);
+			        EArdaRHIShaderStage::Geometry))
+			{
+				R.Require("shader.vertex-stores-and-atomics");
+			}
+			if (HasAnyFlags(Visibility, EArdaRHIShaderStage::Pixel))
+			{
+				R.Require("shader.fragment-stores-and-atomics");
+			}
 		}
 
 		void RequirePipeline(FArdaRHIFeatureRequirements& R, EArdaPipelineStateKind Kind)
 		{
-			R.mbRequireGraphicsQueue |=
-			    Kind == EArdaPipelineStateKind::Graphics || Kind == EArdaPipelineStateKind::Meshlet;
-			R.mbRequireMeshShaders |= Kind == EArdaPipelineStateKind::Meshlet;
-			R.mbRequireWorkGraphs |= Kind == EArdaPipelineStateKind::WorkGraph;
-			R.mbRequireRayTracingPipelines |= Kind == EArdaPipelineStateKind::RayTracing;
-			R.mbRequirePersistentShaderTables |= Kind == EArdaPipelineStateKind::RayTracing;
+			if (Kind == EArdaPipelineStateKind::Graphics || Kind == EArdaPipelineStateKind::Meshlet)
+			{
+				R.Require("queue.graphics");
+			}
+			if (Kind == EArdaPipelineStateKind::Meshlet)
+			{
+				R.Require("shader.mesh");
+			}
+			if (Kind == EArdaPipelineStateKind::WorkGraph)
+			{
+				R.Require("work-graph.dispatch");
+			}
+			if (Kind == EArdaPipelineStateKind::RayTracing)
+			{
+				R.Require("ray-tracing.pipeline");
+			}
+			if (Kind == EArdaPipelineStateKind::RayTracing)
+			{
+				R.Require("ray-tracing.persistent-shader-tables");
+			}
 		}
 
 		void RequireShader(FArdaRHIFeatureRequirements& R, const FArdaRHIShaderRef& Shader)
@@ -38,29 +58,67 @@ namespace arda
 				return;
 			}
 			const auto S = Shader->GetStage();
-			R.mbRequireGeometryShaders |= S == EArdaRHIShaderStage::Geometry;
-			R.mbRequireTessellationShaders |= S == EArdaRHIShaderStage::Hull || S == EArdaRHIShaderStage::Domain;
-			R.mbRequireMeshShaders |= S == EArdaRHIShaderStage::Mesh || S == EArdaRHIShaderStage::Amplification;
-			R.mbRequireWorkGraphs |= S == EArdaRHIShaderStage::WorkGraph;
-			R.mbRequireRayTracingPipelines |= IsArdaRHIRayTracingShaderStage(S);
+			if (S == EArdaRHIShaderStage::Geometry)
+			{
+				R.Require("shader.geometry");
+			}
+			if (S == EArdaRHIShaderStage::Hull || S == EArdaRHIShaderStage::Domain)
+			{
+				R.Require("shader.tessellation");
+			}
+			if (S == EArdaRHIShaderStage::Mesh || S == EArdaRHIShaderStage::Amplification)
+			{
+				R.Require("shader.mesh");
+			}
+			if (S == EArdaRHIShaderStage::WorkGraph)
+			{
+				R.Require("work-graph.dispatch");
+			}
+			if (IsArdaRHIRayTracingShaderStage(S))
+			{
+				R.Require("ray-tracing.pipeline");
+			}
 		}
 
 		void RequireBindless(FArdaRHIFeatureRequirements& R, const FArdaRHIBindlessLayoutDesc& B)
 		{
-			R.mbRequireBindless = true;
-			R.mbRequireUnboundedDescriptors |= B.mbUnbounded;
-			R.mbRequireRuntimeDescriptorArrays |= B.mbUnbounded;
-			R.mbRequireUpdateAfterBind |= B.mbUpdateAfterBind;
-			R.mbRequireVariableDescriptorCount |= B.mbVariableDescriptorCount;
-			R.mbRequireDescriptorBuffer |= B.mbDescriptorBuffer;
+			R.Require("descriptor.bindless");
+			if (B.mbUnbounded)
+			{
+				R.Require("descriptor.unbounded-arrays");
+			}
+			if (B.mbUnbounded)
+			{
+				R.Require("descriptor.runtime-arrays");
+			}
+			if (B.mbUpdateAfterBind)
+			{
+				R.Require("descriptor.update-after-bind");
+			}
+			if (B.mbVariableDescriptorCount)
+			{
+				R.Require("descriptor.variable-count");
+			}
+			if (B.mbDescriptorBuffer)
+			{
+				R.Require("descriptor.buffer");
+			}
 			for (const auto& Bank : B.mRegisterSpaces)
 			{
 				RequireShaderStorage(R, Bank.mType, B.mVisibility);
 				const bool Sampler = Bank.mType == EArdaRHIBindingType::Sampler;
-				R.mbRequireDirectSamplerHeapIndexing |= B.mbDirectHeapIndexing && Sampler;
-				R.mbRequireDirectDescriptorIndexing |= B.mbDirectHeapIndexing && !Sampler;
-				auto& Count = Sampler ? R.mMinSamplerDescriptors : R.mMinResourceDescriptors;
-				Count = eastl::max(Count, B.mMaxCapacity);
+				if (B.mbDirectHeapIndexing && Sampler)
+				{
+					R.Require("descriptor.direct-sampler-heap-indexing");
+				}
+				if (B.mbDirectHeapIndexing && !Sampler)
+				{
+					R.Require("descriptor.direct-resource-heap-indexing");
+				}
+				if (B.mMaxCapacity)
+				{
+					R.Require(Sampler ? "descriptor.sampler-capacity" : "descriptor.resource-capacity", B.mMaxCapacity);
+				}
 			}
 		}
 
@@ -77,7 +135,10 @@ namespace arda
 			for (const auto& I : Layout->GetDesc().mItems)
 			{
 				RequireShaderStorage(R, I.mType, Layout->GetDesc().mVisibility);
-				R.mbRequireAccelerationStructures |= I.mType == EArdaRHIBindingType::RayTracingAccelStruct;
+				if (I.mType == EArdaRHIBindingType::RayTracingAccelStruct)
+				{
+					R.Require("ray-tracing.acceleration-structure");
+				}
 			}
 		}
 
@@ -92,7 +153,7 @@ namespace arda
 
 		void RequireConfiguration(FArdaRHIFeatureRequirements& R,
 		    const eastl::shared_ptr<const FArdaInductorPipelineConfiguration>& Config,
-		    const FArdaRHICapabilities* Capabilities)
+		    bool HasRayPayloadLimit)
 		{
 			if (!Config)
 			{
@@ -120,23 +181,35 @@ namespace arda
 			case EArdaPipelineStateKind::RayTracing:
 			{
 				const auto& Ray = Config->mRayTracing.mDesc;
-				R.mbRequireOpacityMicromaps |= Ray.mbAllowOpacityMicromaps;
-				RequireLayouts(R, Ray.mGlobalBindingLayouts);
-				R.mMinRayRecursionDepth = eastl::max(R.mMinRayRecursionDepth, Ray.mMaxRecursionDepth);
-				// An unqueryable native payload limit is checked by pipeline creation, not invented here.
-				if (Capabilities && Capabilities->mRayTracing.mMaxRayPayloadSize)
+				if (Ray.mbAllowOpacityMicromaps)
 				{
-					R.mMinRayPayloadSize = eastl::max(R.mMinRayPayloadSize, Ray.mMaxPayloadSize);
+					R.Require("ray-tracing.opacity-micromap");
+				}
+				RequireLayouts(R, Ray.mGlobalBindingLayouts);
+				if (Ray.mMaxRecursionDepth)
+				{
+					R.Require("ray-tracing.recursion-depth", Ray.mMaxRecursionDepth);
+				}
+				// An unqueryable native payload limit is checked by pipeline creation, not invented here.
+				if (HasRayPayloadLimit && Ray.mMaxPayloadSize)
+				{
+					R.Require("ray-tracing.max-payload-bytes", Ray.mMaxPayloadSize);
 				}
 				for (const auto& S : Ray.mShaders)
 				{
 					RequireLayout(R, S.mLocalBindingLayout);
-					R.mbRequireLocalShaderTableArguments |= bool(S.mLocalBindingLayout);
+					if (bool(S.mLocalBindingLayout))
+					{
+						R.Require("ray-tracing.local-shader-table-arguments");
+					}
 				}
 				for (const auto& H : Ray.mHitGroups)
 				{
 					RequireLayout(R, H.mLocalBindingLayout);
-					R.mbRequireLocalShaderTableArguments |= bool(H.mLocalBindingLayout);
+					if (bool(H.mLocalBindingLayout))
+					{
+						R.Require("ray-tracing.local-shader-table-arguments");
+					}
 				}
 				break;
 			}
@@ -150,8 +223,9 @@ namespace arda
 	{
 		auto& R = D.mRequirements.mFeatures;
 		AddArdaNodeIntrinsicRequirements(D.mRequirements, Kind, D.mGraphicsStage, D.mRayStage);
-		const auto* Caps =
-		    G.mCompile.mExecution->mDevice ? &G.mCompile.mExecution->mDevice->GetCapabilities() : nullptr;
+		const auto& Device = G.mCompile.mExecution->mDevice;
+		const auto Features = Device ? Device->GetFeatures() : FArdaBackendFeatureListRef{};
+		const bool HasRayPayloadLimit = Features && Features->Supports("ray-tracing.max-payload-bytes");
 		const auto Resource = [&](FArdaDependencyResourceHandle H)
 		{
 			H = G.ResolveResource(H);
@@ -162,40 +236,75 @@ namespace arda
 			const auto& V = G.mResources[H.mIndex];
 			if (V.mExternalKind == EArdaGraphExternalResourceKind::AccelerationStructure)
 			{
-				R.mbRequireAccelerationStructures = true;
+				R.Require("ray-tracing.acceleration-structure");
 			}
 			else if (V.mbTexture)
 			{
-				R.mbRequireVirtualResources |= V.mTexture.mbVirtual;
-				R.mbRequireSparseResidency |= V.mTexture.mbTiled;
-				R.mbRequireReservedTexture3D |=
-				    V.mTexture.mbTiled && V.mTexture.mDimension == EArdaRHITextureDimension::Texture3D;
-				R.mbRequireReservedTexture2D |=
-				    V.mTexture.mbTiled && V.mTexture.mDimension != EArdaRHITextureDimension::Texture3D;
+				if (V.mTexture.mbVirtual)
+				{
+					R.Require("resource.virtual");
+				}
+				if (V.mTexture.mbTiled)
+				{
+					R.Require("resource.sparse-binding");
+				}
+				if (V.mTexture.mbTiled && V.mTexture.mDimension == EArdaRHITextureDimension::Texture3D)
+				{
+					R.Require("resource.reserved-texture-3d");
+				}
+				if (V.mTexture.mbTiled && V.mTexture.mDimension != EArdaRHITextureDimension::Texture3D)
+				{
+					R.Require("resource.reserved-texture-2d");
+				}
 			}
 			else
 			{
-				R.mbRequireVirtualResources |= V.mBuffer.mbVirtual;
-				R.mbRequireSparseResidency |= V.mBuffer.mbTiled;
-				R.mbRequireReservedBuffers |= V.mBuffer.mbTiled;
+				if (V.mBuffer.mbVirtual)
+				{
+					R.Require("resource.virtual");
+				}
+				if (V.mBuffer.mbTiled)
+				{
+					R.Require("resource.sparse-binding");
+				}
+				if (V.mBuffer.mbTiled)
+				{
+					R.Require("resource.reserved-buffer");
+				}
 			}
 		};
 		for (const auto& A : D.mAccesses)
 		{
 			Resource(A.mResource);
-			R.mbRequireIndirectCommands |= HasAnyFlags(A.mState, EArdaRHIResourceState::IndirectArgument);
-			R.mbRequireVariableRateShading |= HasAnyFlags(A.mState, EArdaRHIResourceState::ShadingRateSource);
-			R.mbRequireOpacityMicromaps |= HasAnyFlags(A.mState,
-			    EArdaRHIResourceState::OpacityMicromapWrite | EArdaRHIResourceState::OpacityMicromapBuildInput);
-			R.mbRequireAccelerationStructures |= HasAnyFlags(A.mState,
+			if (HasAnyFlags(A.mState, EArdaRHIResourceState::IndirectArgument))
+			{
+				R.Require("command.indirect");
+			}
+			if (HasAnyFlags(A.mState, EArdaRHIResourceState::ShadingRateSource))
+			{
+				R.Require("rendering.variable-rate-shading");
+			}
+			if (HasAnyFlags(A.mState,
+			    EArdaRHIResourceState::OpacityMicromapWrite | EArdaRHIResourceState::OpacityMicromapBuildInput))
+			{
+				R.Require("ray-tracing.opacity-micromap");
+			}
+			if (HasAnyFlags(A.mState,
 			    EArdaRHIResourceState::AccelStructRead | EArdaRHIResourceState::AccelStructWrite |
-			        EArdaRHIResourceState::AccelStructBuildInput | EArdaRHIResourceState::AccelStructBuildBlas);
+			        EArdaRHIResourceState::AccelStructBuildInput | EArdaRHIResourceState::AccelStructBuildBlas))
+			{
+				R.Require("ray-tracing.acceleration-structure");
+			}
 			if (G.HasResource(A.mResource) && G.mResources[A.mResource.mIndex].mbTexture)
 			{
-				R.mbRequireTextureCopies |=
-				    HasAnyFlags(A.mState, EArdaRHIResourceState::CopySource | EArdaRHIResourceState::CopyDest);
-				R.mbRequireTextureResolve |=
-				    HasAnyFlags(A.mState, EArdaRHIResourceState::ResolveSource | EArdaRHIResourceState::ResolveDest);
+				if (HasAnyFlags(A.mState, EArdaRHIResourceState::CopySource | EArdaRHIResourceState::CopyDest))
+				{
+					R.Require("texture.copy");
+				}
+				if (HasAnyFlags(A.mState, EArdaRHIResourceState::ResolveSource | EArdaRHIResourceState::ResolveDest))
+				{
+					R.Require("texture.resolve");
+				}
 			}
 		}
 		for (const auto& B : D.mShaderBindings)
@@ -233,11 +342,11 @@ namespace arda
 			if (!B.mLayout.mbVariableDescriptorCount || B.mLayout.mRegisterSpaces.size() > 1)
 			{
 				uint64_t LayoutCapacity = B.mLayout.mMaxCapacity;
-				if (!LayoutCapacity && Caps && !B.mLayout.mRegisterSpaces.empty())
+				if (!LayoutCapacity && Features && !B.mLayout.mRegisterSpaces.empty())
 				{
-					LayoutCapacity = B.mLayout.mRegisterSpaces.front().mType == EArdaRHIBindingType::Sampler
-					    ? Caps->mDescriptors.mMaxSamplerDescriptors
-					    : Caps->mDescriptors.mMaxResourceDescriptors;
+					const bool IsSampler = B.mLayout.mRegisterSpaces.front().mType == EArdaRHIBindingType::Sampler;
+					LayoutCapacity = Features->GetValueOr(
+					    IsSampler ? "descriptor.sampler-capacity" : "descriptor.resource-capacity", 0);
 				}
 				Capacity = eastl::max(Capacity, LayoutCapacity);
 			}
@@ -251,7 +360,10 @@ namespace arda
 						Populated.insert(E.mArrayElement);
 					}
 				}
-				R.mbRequirePartiallyBoundDescriptors |= Populated.size() < Capacity;
+				if (Populated.size() < Capacity)
+				{
+					R.Require("descriptor.partially-bound");
+				}
 			}
 			for (const auto& E : B.mEntries)
 			{
@@ -260,11 +372,14 @@ namespace arda
 		}
 		for (const auto& T : D.mShaderTables)
 		{
-			R.mbRequireRayTracingPipelines = R.mbRequirePersistentShaderTables = true;
+			R.Require("ray-tracing.pipeline");
+			R.Require("ray-tracing.persistent-shader-tables");
 			for (const auto& Record : T.mRecords)
 			{
-				R.mbRequireLocalShaderTableArguments |=
-				    Record.mLocalBindings.mMetadata != nullptr || !Record.mLocalArguments.empty();
+				if (Record.mLocalBindings.mMetadata != nullptr || !Record.mLocalArguments.empty())
+				{
+					R.Require("ray-tracing.local-shader-table-arguments");
+				}
 				for (const auto& A : Record.mLocalBindings.mResources)
 				{
 					Resource(A.mResource);
@@ -277,8 +392,11 @@ namespace arda
 			RequireShader(R, S.mShader);
 			RequireLayouts(R, S.mBindingLayouts);
 			RequireLayout(R, S.mLocalBindingLayout);
-			R.mbRequireLocalShaderTableArguments |= bool(S.mLocalBindingLayout);
-			RequireConfiguration(R, S.mConfiguration, Caps);
+			if (bool(S.mLocalBindingLayout))
+			{
+				R.Require("ray-tracing.local-shader-table-arguments");
+			}
+			RequireConfiguration(R, S.mConfiguration, HasRayPayloadLimit);
 		}
 		for (const auto& P : D.mPipelines)
 		{
@@ -287,9 +405,9 @@ namespace arda
 			for (const auto& L : P.mLocalBindingLayouts)
 			{
 				RequireLayout(R, L.second);
-				R.mbRequireLocalShaderTableArguments = true;
+				R.Require("ray-tracing.local-shader-table-arguments");
 			}
-			RequireConfiguration(R, P.mConfiguration, Caps);
+			RequireConfiguration(R, P.mConfiguration, HasRayPayloadLimit);
 		}
 	}
 }

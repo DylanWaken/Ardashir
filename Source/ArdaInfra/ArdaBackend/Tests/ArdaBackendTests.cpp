@@ -612,6 +612,14 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
 	EXPECT_EQ(GetBackendConfiguration().mBackendName, "native-d3d12");
 	EXPECT_EQ(GetBackendConfiguration().mDeviceSource, EArdaDeviceSource::ExternalProvider);
 
+	D3D12_FEATURE_DATA_D3D12_OPTIONS Options{};
+	ASSERT_TRUE(SUCCEEDED(NativeDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &Options, sizeof(Options))));
+	const auto Features = GetBackendFeatures();
+	ASSERT_TRUE(Features);
+	const auto* Reported = Features->Find(ArdaBackendFeature::ShaderFloat64);
+	ASSERT_NE(Reported, nullptr);
+	EXPECT_EQ(*Reported, static_cast<uint64_t>(Options.DoublePrecisionFloatShaderOps != FALSE));
+
 	FArdaRHIDeviceRef Device = GetDevice();
 	FArdaRHIDeviceRef SurvivingDevice = Device;
 	ASSERT_TRUE(Device);
@@ -832,11 +840,11 @@ namespace
 	{
 		using namespace arda;
 
-		const auto& Capabilities = Device.GetCapabilities();
-		const bool bWorkGraphs = Capabilities.mWorkGraphTier != EArdaRHIWorkGraphTier::None;
-		const bool bShaderBundles = Capabilities.mbShaderBundleDispatch;
-		EXPECT_EQ(static_cast<bool>(Device.QueryWorkGraphSupport()), bWorkGraphs);
-		EXPECT_EQ(static_cast<bool>(Device.QueryShaderBundleSupport()), bShaderBundles);
+		const auto Features = Device.GetFeatures();
+		EXPECT_EQ(bool(Device.QueryWorkGraphSupport()), Features->Supports("work-graph.dispatch"));
+		EXPECT_EQ(bool(Device.QueryShaderBundleSupport()), Features->Supports("shader.bundle-dispatch"));
+		EXPECT_EQ(bool(Device.QueryCustomPresentSupport()), Features->Supports("presentation.custom-present"));
+		EXPECT_EQ(bool(Device.QueryStreamSourceSupport()), Features->Supports("presentation.stream-source"));
 
 		auto Event = Device.CreateEventQuery();
 		auto Timer = Device.CreateTimerQuery();
@@ -863,7 +871,7 @@ namespace
 		StagingDesc.mCpuAccess = EArdaRHICpuAccess::Read;
 		EXPECT_TRUE(Device.CreateStagingTexture(StagingDesc));
 
-		if (Capabilities.mbHeaps)
+		if (Features->Supports("memory.explicit-heap"))
 		{
 			FArdaRHIBufferDesc BufferDesc;
 			BufferDesc.mUsage = EArdaRHIBufferUsage::None;
@@ -882,7 +890,7 @@ namespace
 			EXPECT_TRUE(Device.BindBufferMemory(Buffer.mValue, Heap.mValue, 0));
 		}
 
-		if (Capabilities.mDescriptors.mbBindless)
+		if (Features->Supports("descriptor.bindless"))
 		{
 			FArdaRHIBindlessLayoutDesc LayoutDesc;
 			LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
@@ -896,7 +904,7 @@ namespace
 			EXPECT_GE(Table.mValue->GetCapacity(), 8u);
 		}
 
-		if (Capabilities.mRayTracing.mbAccelerationStructures)
+		if (Features->Supports("ray-tracing.acceleration-structure"))
 		{
 			FArdaRHIAccelStructDesc Desc;
 			Desc.mDebugName = "EmptyTLAS";
@@ -905,7 +913,7 @@ namespace
 			EXPECT_TRUE(Device.CreateAccelStruct(Desc));
 		}
 
-		if (Capabilities.mRayTracing.mbPipelineShaders)
+		if (Features->Supports("ray-tracing.pipeline"))
 		{
 			const arda::IArdaBackendModule* ActiveModule = arda::GetActiveBackendModule();
 			ASSERT_NE(ActiveModule, nullptr);
@@ -986,7 +994,14 @@ namespace
 		using namespace arda;
 
 		ShutdownBackend();
-		ASSERT_TRUE(ConfigureBackend(BackendName));
+		auto Configuration = MakeArdaTestBackendConfiguration();
+		Configuration.mBackendName = BackendName;
+		Configuration.mRequiredFeatures.Require("queue.graphics");
+		if (Configuration.mbEnableValidation)
+		{
+			Configuration.mRequiredFeatures.Require("diagnostics.validation-enabled");
+		}
+		ASSERT_TRUE(ConfigureBackend(Configuration));
 		ARDA_REQUIRE_BACKEND();
 
 		EXPECT_TRUE(IsBackendInitialized());
@@ -994,14 +1009,21 @@ namespace
 		EXPECT_EQ(GetBackendConfiguration().mBackendName, BackendName);
 
 		arda::FArdaRHIDeviceRef Device = GetDevice();
-		const auto& Capabilities = Device->GetCapabilities().mQueues;
-		EXPECT_TRUE(Capabilities.mbGraphics);
-		EXPECT_EQ(Capabilities.mbCompute, Device->GetCapabilities().mQueues.mbCompute);
-		EXPECT_EQ(Capabilities.mbCopy, Device->GetCapabilities().mQueues.mbCopy);
+		const auto Features = GetBackendFeatures();
+		ASSERT_TRUE(Features);
+		EXPECT_EQ(Features, Device->GetFeatures());
+		EXPECT_TRUE(Features->Supports("queue.graphics"));
+		EXPECT_TRUE(Device->RequireFeatures(Configuration.mRequiredFeatures));
+		EXPECT_NE(Features->Find(ArdaBackendFeature::ShaderFloat64), nullptr);
+		EXPECT_NE(Features->Find(ArdaBackendFeature::GeometryShader), nullptr);
+		for (const auto& Entry : Features->GetEntries())
+		{
+			EXPECT_TRUE(IsArdaBackendFeatureName(Entry.first)) << Entry.first.c_str();
+		}
 		if (bRequireComputeAndCopy)
 		{
-			EXPECT_TRUE(Capabilities.mbCompute);
-			EXPECT_TRUE(Capabilities.mbCopy);
+			EXPECT_TRUE(Features->Supports("queue.compute"));
+			EXPECT_TRUE(Features->Supports("queue.copy"));
 		}
 
 		arda::FArdaRHIDeviceRef SharedDevice = Device;
@@ -1012,7 +1034,7 @@ namespace
 		    arda::EArdaRHIQueueType::Copy};
 		for (const arda::EArdaRHIQueueType Queue : Queues)
 		{
-			if (!Capabilities.IsSupported(Queue))
+			if (!Device->IsQueueSupported(Queue))
 			{
 				continue;
 			}
@@ -1034,7 +1056,7 @@ namespace
 
 		ShutdownBackend();
 		EXPECT_TRUE(SharedDevice);
-		EXPECT_TRUE(SharedDevice->GetCapabilities().mQueues.mbGraphics);
+		EXPECT_TRUE(SharedDevice->GetFeatures()->Supports("queue.graphics"));
 		arda::FArdaRHISamplerDesc PostShutdownSampler;
 		EXPECT_TRUE(SharedDevice->CreateSampler(PostShutdownSampler));
 		EXPECT_FALSE(IsBackendInitialized());

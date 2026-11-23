@@ -22,6 +22,10 @@
 
 namespace arda
 {
+	// ================================
+	// Meshlet pipeline descriptor
+	// ================================
+
 	/** Describes meshlet pipeline desc. */
 	struct FArdaRHIMeshletPipelineDesc
 	{
@@ -71,6 +75,10 @@ namespace arda
 		}
 	};
 
+	// ================================
+	// Meshlet pipeline resource and draw state
+	// ================================
+
 	/** Interface for meshlet pipeline. */
 	class IArdaRHIMeshletPipeline : public virtual IArdaRHIResource
 	{
@@ -96,6 +104,10 @@ namespace arda
 		/** Stores the scissors. */
 		eastl::vector<FArdaRHIRect> mScissors;
 	};
+
+	// ================================
+	// Descriptor hashing and validation
+	// ================================
 
 	/**
      * Tests for the requested h value.

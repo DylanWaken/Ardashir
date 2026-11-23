@@ -1,9 +1,16 @@
 #include "BackendImpl/ArdaUnrealBackend.h"
 
+#include "ArdaBackend.h"
 #include "BackendImpl/ArdaUnrealUnsupportedCommands.h"
 #include "BackendImpl/ArdaUnrealUnsupportedDevice.h"
 #include "RHI/Providers/ArdaBackendProvider.h"
 #include "RHI/Providers/ArdaExternalDeviceProvider.h"
+
+#if __has_include("CUDA/ArdaCudaProviderCommands.h")
+#include "CUDA/ArdaCudaProviderCommands.h"
+#else
+#include "RHI/Providers/ArdaProviderCommandTypes.h"
+#endif
 
 #include "DynamicRHI.h"
 #include "PipelineStateCache.h"
@@ -890,6 +897,10 @@ namespace arda
 				mCapabilities.mLimits.mMaxComputeWorkGroupCount[0] = 65535;
 				mCapabilities.mLimits.mMaxComputeWorkGroupCount[1] = 65535;
 				mCapabilities.mLimits.mMaxComputeWorkGroupCount[2] = 65535;
+#if __has_include("RHI/Config/ArdaBackendFeatures.h")
+				// Older pinned Arda SDKs predate the provider feature list.
+				mCapabilities.PublishBackendFeatures({});
+#endif
 			}
 
 			const FArdaRHICapabilities& GetCapabilities() const noexcept override

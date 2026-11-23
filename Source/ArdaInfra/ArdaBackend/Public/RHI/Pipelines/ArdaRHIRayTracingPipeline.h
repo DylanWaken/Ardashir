@@ -19,6 +19,10 @@
 
 namespace arda
 {
+	// ================================
+	// Shader exports and hit groups
+	// ================================
+
 	/** Describes ray tracing pipeline shader desc. */
 	struct FArdaRHIRayTracingPipelineShaderDesc
 	{
@@ -69,6 +73,10 @@ namespace arda
 		}
 	};
 
+	// ================================
+	// Ray tracing pipeline descriptor
+	// ================================
+
 	/** Describes ray tracing pipeline desc. */
 	struct FArdaRHIRayTracingPipelineDesc
 	{
@@ -106,6 +114,10 @@ namespace arda
 		}
 	};
 
+	// ================================
+	// Ray tracing pipeline resource and dispatch state
+	// ================================
+
 	/** Interface for ray tracing pipeline. */
 	class IArdaRHIRayTracingPipeline : public virtual IArdaRHIResource
 	{
@@ -125,6 +137,10 @@ namespace arda
 		/** Stores the bindings. */
 		eastl::vector<FArdaRHIBindingSetRef> mBindings;
 	};
+
+	// ================================
+	// Descriptor hashing and validation
+	// ================================
 
 	/**
      * Tests for the requested h value.

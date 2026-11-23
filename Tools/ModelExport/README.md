@@ -1,10 +1,11 @@
 # Offline model export
 
-This toolchain compiles supported static models into an `.ardagpu` model descriptor:
-PTX, kernel parameter layouts, launch dimensions, buffer allocation sizes, tensor
-ports, an ordered dispatch/fill/copy program, and typed, named state slots. A separate
-`.ardastate` checkpoint stores parameter and persistent-buffer values. Graph constants
-that are not model state remain in the descriptor.
+This toolchain compiles supported static models into a version 3 `.ardagpu` model
+descriptor with kernel keys and parameter layouts, launch dimensions, buffer
+allocation sizes, tensor ports, an ordered dispatch/fill/copy program, and named
+state slots. A content-addressed `.ardakernels` sidecar stores the PTX. A separate
+`.ardastate` checkpoint stores parameter and persistent-buffer values. Structural
+graph constants remain in the descriptor.
 Arda imports those commands into its ordinary dependency graph. The package contains
 no ONNX session, PyTorch code, IREE VM bytecode, TensorRT engine, or vendor math-library
 calls. GPU execution requires the CUDA driver.
@@ -48,14 +49,15 @@ offline. CPU PyTorch is sufficient:
 .venv/model-export/Scripts/python -m pip install -e Tools/ModelExport
 ```
 
-No Python environment is deployed with `.ardagpu` and `.ardastate`. `ArdaCudaReplay.py` is an independent
-validation tool: its execution class uses Python's standard library and `nvcuda.dll`
+The deployment files are the `.ardagpu` descriptor, its `.ardakernels` sidecars and
+the `.ardastate` checkpoint. `ArdaCudaReplay.py` is an independent validation tool.
+Its execution class uses Python's standard library and `nvcuda.dll`
 (or `libcuda.so.1`). The CLI uses NumPy for reference arrays and error measurements.
 
 Compilation does not require the export machine to have a CUDA GPU. Numerical
 driver replay requires a compatible NVIDIA GPU and installed CUDA driver. Use the
 same virtual environment for export and validation; the C++ application only loads
-the resulting `.ardagpu` descriptor and its `.ardastate` checkpoint.
+the resulting model descriptor, kernel sidecars and checkpoint.
 
 ## Export a PyTorch module
 
@@ -174,11 +176,14 @@ image_filter.sm_80.json
 image_filter.sm_86.ardagpu
 image_filter.sm_86.ardastate
 image_filter.sm_86.json
+model-<content-hash>.ardakernels
 ```
 
-Verification adds per-target `.actual.npz` and `.actual.json` results. Only the
-selected `.ardagpu` and a compatible `.ardastate` are needed at runtime. All requested variants are staged before
-publication; a failed compile does not publish a partial bundle.
+Verification adds per-target `.actual.npz` and `.actual.json` results. Deploy the
+selected `.ardagpu`, its `kernel_libraries` entries from the bundle manifest, and
+a compatible `.ardastate`. Keep the sidecars beside the descriptor so
+`FArdaGraphPackage::Load` can discover them. The exporter stages all requested
+variants before publishing the bundle.
 
 ## Load and replace model state
 
@@ -494,17 +499,18 @@ cannot be folded into PTX. Structural constants can still be folded. Compilation
 with hashes and a producer record. `--keep-ir` preserves imported and lowered IR for
 diagnostics. These build artifacts are not needed by the runtime.
 
-The current archive limit is 512 MiB. The `.ardagpu` transport stores each PTX module
-once, and native CUDA modules are shared across kernel entries. Expanded runtime
-definitions still retain a portable PTX payload per entry, so host memory and graph
-archive size can exceed the compact package size. Shared code assets in the graph
-archive and streaming weight storage remain scaling work for larger models.
+The current descriptor and checkpoint limit is 512 MiB each. Kernel references
+in graph archives and model descriptors use keys and layouts. The CUDA provider
+shares compatible native modules across kernel entries in the execution context.
 
 ## Binary transports
 
 All numbers are little endian. Strings and blobs are `u64 length` followed by bytes;
-vectors begin with `u64 count`. The descriptor header is `ARDAGPU\0`, `u32 version=2`, and name.
-Following vectors contain modules, buffers, tensors, kernels and commands in that order.
+vectors begin with `u64 count`. The descriptor header is `ARDAGPU\0`, `u32 version=3`,
+and name. The descriptor then stores vectors of buffers, tensors, portable kernel
+definitions, commands and state slots in that order. Kernel definitions reference
+an `.ardakernels` library by library ID, provider ID, kernel name and ABI signature.
+Versions 1 and 2 carry embedded CUDA module tables and remain readable.
 `ArdaModelPackage.py` is the executable format specification, paired with the C++
 `FArdaGraphPackage` reader. Tensor dtype IDs match `EArdaRHIDataType`.
 
@@ -513,17 +519,16 @@ Commands are dispatch (opcode0), fill (opcode1), or copy (opcode2). Fill carries
 destination index, destination offset, byte size. Scalar dispatch arguments use buffer
 index `UINT32_MAX` and exact little-endian scalar bytes. Buffers include optional full
 initializers. Kernel argument layouts separately record scalar versus pointer values,
-read/write access, packed offsets, sizes and alignment. Version two appends a state
-slot vector after commands: name, `u32 buffer`, `u16 dtype`, dimensions (`u64` vector),
+read/write access, packed offsets, sizes and alignment. In versions 2 and 3, each
+state slot stores a name, `u32 buffer`, `u16 dtype`, dimensions (`u64` vector),
 strides (`i64` vector), and `u64 byte offset`. Slots occupy dedicated dense buffers
 at offset zero with no embedded initializer. Scalar state uses an empty shape.
 
 Checkpoints have the eight-byte magic `ARDASTAT`, `u32 version=1`, then a vector of
 entries: name, `u16 dtype`, dimensions (`u64` vector), and a raw byte blob. Entries
 match descriptor slots by name, independent of order. Duplicate, missing or extra
-keys and incompatible metadata fail before state is applied. Readers retain support
-for version-one `.ardagpu` files. Descriptor and checkpoint readers each enforce
-the current 512 MiB limit.
+keys and incompatible metadata fail before state is applied. Descriptor and
+checkpoint readers each enforce the current 512 MiB limit.
 
 Run contract regression checks with:
 

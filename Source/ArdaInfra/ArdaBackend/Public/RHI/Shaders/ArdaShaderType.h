@@ -14,6 +14,10 @@
 
 namespace arda
 {
+	// ================================
+	// Global shader base and registration diagnostics
+	// ================================
+
 	/** Base class for globally registered shader declarations. */
 	class FArdaGlobalShader
 	{
@@ -63,6 +67,10 @@ namespace arda
 			return mCode == EArdaShaderRegistrationError::None;
 		}
 	};
+
+	// ================================
+	// Shader type metadata
+	// ================================
 
 	/** Stores immutable identity and parameter metadata for a shader type. */
 	class FArdaShaderType final
@@ -117,6 +125,10 @@ namespace arda
 			return mIdentityHash;
 		}
 
+		// ================================
+		// Shader permutation settings
+		// ================================
+
 		/** @return Number of encoded permutations declared by the shader class. */
 		[[nodiscard]] uint32_t GetPermutationCount() const noexcept
 		{
@@ -163,6 +175,10 @@ namespace arda
 		uint64_t mIdentityHash = 0;
 	};
 
+	// ================================
+	// Global shader registration
+	// ================================
+
 	/** Deferred registration node; construction only appends to a pending list. */
 	class FArdaShaderTypeRegistration final
 	{
@@ -204,6 +220,10 @@ namespace arda
 			return *mType;
 		}
 
+		// ================================
+		// Registry publication and lookup
+		// ================================
+
 		/** @return Status from validating and publishing every pending shader type. */
 		[[nodiscard]] static FArdaShaderRegistrationStatus CommitAll();
 
@@ -227,6 +247,10 @@ namespace arda
 		/** Shader type populated and published by this registration node. */
 		eastl::shared_ptr<FArdaShaderType> mType;
 	};
+
+	// ================================
+	// Permutation traits and compilation hooks
+	// ================================
 
 	template <typename ShaderClass, typename = void>
 	struct TArdaShaderPermutationTraits
@@ -329,6 +353,10 @@ namespace arda
 	}
 
 }
+
+// ================================
+// Global shader registration macros
+// ================================
 
 /**
  * Declares the static type API and registration node for a global shader class.

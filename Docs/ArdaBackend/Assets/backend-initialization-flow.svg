@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="760" viewBox="0 0 900 760" role="img" aria-labelledby="backend-init-title backend-init-desc">
   <title id="backend-init-title">ArdaBackend initialization and rollback flow</title>
-  <desc id="backend-init-desc">Flow from public configuration through linked-module selection, shader directory freeze, shader registration commit, backend-runtime and RHI-device creation, publication, and failure rollback.</desc>
+  <desc id="backend-init-desc">Flow from configuration through module selection, shader registration and startup compilation, creation of the configured devices and optional swap chain, and publication of the device set and active module together. Failure releases provisional devices.</desc>
   <defs>
     <marker id="call-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#7dd3fc"/></marker>
     <marker id="data-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#34d399"/></marker>
@@ -20,7 +20,7 @@
   <rect class="api" x="52" y="122" width="220" height="70" rx="8"/>
   <text class="publicTag" x="162" y="138">PUBLIC API</text>
   <text class="label" x="162" y="157">ConfigureBackend(configuration)</text>
-  <text class="small" x="162" y="178">store module name/class, callback, validation</text>
+  <text class="small" x="162" y="178">backend, adapters, default index</text>
 
   <rect class="api" x="340" y="122" width="220" height="70" rx="8"/>
   <text class="publicTag" x="450" y="138">PUBLIC API</text>
@@ -30,16 +30,16 @@
 
   <rect class="guard" x="628" y="122" width="220" height="70" rx="8"/>
   <text class="tag" x="738" y="138">PRIVATE IMPLEMENTATION DETAIL</text>
-  <text class="label" x="738" y="157">BeginShaderDirectoryUse</text>
-  <text class="small" x="738" y="178">registry must be available</text>
+  <text class="label" x="738" y="157">Select and validate module</text>
+  <text class="small" x="738" y="178">exact name or highest priority</text>
   <path class="call" d="M560 157 H624"/>
 
-  <text class="tag" x="450" y="216">PRIVATE STATE: FArdaBackendState (mutex-serialized)</text>
+  <text class="tag" x="450" y="216">FArdaBackendState HOLDS THE LIFECYCLE LOCK DURING INITIALIZATION</text>
 
   <rect class="guard" x="628" y="232" width="220" height="76" rx="8"/>
   <text class="tag" x="738" y="248">PRIVATE IMPLEMENTATION DETAIL</text>
-  <text class="method" x="738" y="269">ScanAndFreezeShaderSourceDirectoriesForBackend</text>
-  <text class="small" x="738" y="296">resolve mappings; freeze manifest</text>
+  <text class="label" x="738" y="269">Acquire shader directory use</text>
+  <text class="small" x="738" y="296">scan sources and freeze manifest</text>
   <path class="call" d="M738 192 V228"/>
 
   <rect class="guard" x="340" y="232" width="220" height="76" rx="8"/>
@@ -51,30 +51,30 @@
 
   <rect class="native" x="52" y="232" width="220" height="76" rx="8"/>
   <text class="tag" x="162" y="248">PRIVATE IMPLEMENTATION DETAIL</text>
-  <text class="label" x="162" y="269">Select registered module</text>
-  <text class="small" x="162" y="286">exact stable name or highest-priority</text>
-  <text class="small" x="162" y="301">compatible descriptor</text>
+  <text class="label" x="162" y="269">Ensure startup shaders</text>
+  <text class="small" x="162" y="289">validate selected artifacts</text>
+  <text class="small" x="162" y="304">compile when policy allows</text>
   <path class="call" d="M340 270 H276"/>
 
   <rect class="native" x="52" y="350" width="220" height="82" rx="8"/>
   <text class="tag" x="162" y="366">PRIVATE IMPLEMENTATION DETAIL</text>
-  <text class="label" x="162" y="385">IArdaBackendModule::CreateDevice</text>
-  <text class="small" x="162" y="403">create provider device + backend runtime</text>
-  <text class="small" x="162" y="420">wrap provider as FArdaRHIDeviceRef</text>
+  <text class="label" x="162" y="385">Create configured devices</text>
+  <text class="small" x="162" y="403">runtime and device per adapter</text>
+  <text class="small" x="162" y="420">retain locally until all succeed</text>
   <path class="call" d="M162 308 V346"/>
 
   <rect class="native" x="340" y="350" width="220" height="82" rx="8"/>
   <text class="tag" x="450" y="366">PRIVATE IMPLEMENTATION DETAIL</text>
   <text class="label" x="450" y="385">Presentation path only</text>
-  <text class="small" x="450" y="403">CreateSwapChain(width, height)</text>
+  <text class="small" x="450" y="403">create swap chain on default device</text>
   <text class="small" x="450" y="420">must succeed before publication</text>
   <path class="call" d="M272 391 H336"/>
 
   <rect class="data" x="628" y="350" width="220" height="82" rx="8"/>
   <text class="tag" x="738" y="366">PRIVATE IMPLEMENTATION DETAIL</text>
-  <text class="label" x="738" y="385">PublishInitializedDevice</text>
-  <text class="small" x="738" y="403">FArdaDeviceContext: device, module name,</text>
-  <text class="small" x="738" y="420">module identity, runtime capabilities</text>
+  <text class="label" x="738" y="385">Publish devices and module</text>
+  <text class="small" x="738" y="403">install the complete device set</text>
+  <text class="small" x="738" y="420">under the registry lock</text>
   <path class="output" d="M560 391 H624"/>
 
   <rect class="data" x="628" y="476" width="220" height="62" rx="8"/>
@@ -85,8 +85,8 @@
 
   <rect class="guard" x="52" y="476" width="508" height="62" rx="8"/>
   <text class="tag" x="306" y="491">PRIVATE ROLLBACK DETAIL</text>
-  <text class="label" x="306" y="510">Any failure after BeginShaderDirectoryUse</text>
-  <text class="small" x="306" y="528">reset device if created; CompleteShaderDirectoryRegistryUse(false)</text>
+  <text class="label" x="306" y="510">Failure after acquiring shader directory use</text>
+  <text class="small" x="306" y="528">release provisional devices and directory use</text>
   <path class="rollback" d="M628 270 C590 270 590 507 564 507"/>
   <path class="rollback" d="M162 432 V472"/>
   <path class="rollback" d="M450 432 V472"/>
@@ -94,8 +94,8 @@
   <rect class="guard" x="24" y="594" width="852" height="98" rx="10"/>
   <text class="label" x="450" y="620">Nearby invariants</text>
   <text class="note" x="48" y="646">&#8226; Configure before initialize; configuration cannot change after a backend runtime exists.</text>
-  <text class="note" x="48" y="668">&#8226; Shader mappings remain immutable while live; mbInitialized is published only after context (and optional swap chain) succeeds.</text>
-  <text class="note" x="48" y="686">&#8226; Failure releases directory use for correction and retry; it never publishes a partial FArdaDeviceContext.</text>
+  <text class="note" x="48" y="668">&#8226; Device snapshots and the active module become visible together after successful initialization.</text>
+  <text class="note" x="48" y="686">&#8226; Failure releases provisional state for correction and retry.</text>
 
   <rect class="panel" x="24" y="710" width="852" height="34" rx="7"/>
   <path class="call" d="M48 727 H94"/><text class="note" x="103" y="731">call</text>

@@ -363,16 +363,17 @@ namespace arda
 		}
 		// Publish queried sizes together, so a failed query cannot leave mixed old/new metadata.
 		auto Described = Requests;
+		const auto Features = Device.GetFeatures();
+		const bool CanPlace = Features->Supports("memory.explicit-heap") && Features->Supports("resource.virtual") &&
+		    Features->Supports("synchronization.aliasing-barrier");
 		for (auto& Request : Described)
 		{
 			if (!Request.mbUsed)
 			{
 				continue;
 			}
-			const auto& Caps = Device.GetCapabilities();
-			Request.mbUseHeapPlacement = Caps.mbHeaps && Caps.mbVirtualResources && Caps.mbAliasingBarriers &&
-			    PlacementDescriptorAllowed(Request);
-			Request.mHeapAllocationAlignment = Caps.mHeapAllocationAlignment;
+			Request.mbUseHeapPlacement = CanPlace && PlacementDescriptorAllowed(Request);
+			Request.mHeapAllocationAlignment = Features->GetValueOr("memory.heap-capacity-alignment", 0);
 			TArdaRHIResult<FArdaRHIMemoryRequirements> Requirements;
 			if (Request.mExternalBuffer)
 			{

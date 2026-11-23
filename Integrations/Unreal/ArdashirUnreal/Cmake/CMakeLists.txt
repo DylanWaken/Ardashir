@@ -38,11 +38,27 @@ file(WRITE "${CMAKE_BINARY_DIR}/ArdaEABaseInclude.txt" "${ARDA_EABASE_INCLUDE}")
 # editing their source files or putting Ardashir implementation in UE modules.
 add_library(ArdaUnrealCore SHARED)
 set(ARDA_CORE_MODULES ArdaBackend ArdaMath ArdaGraph ArdaDependencyGraph)
-# Older pinned upstream revisions predate the registered native compute module.
+# Upstream revisions with a separate compiled native compute module have their
+# facade sources on that target. Newer revisions compile them into ArdaBackend.
+set(ARDA_NATIVE_COMPUTE_PUBLIC "")
 if(TARGET ArdaNativeCompute)
-    list(APPEND ARDA_CORE_MODULES ArdaNativeCompute)
+    get_target_property(ARDA_NATIVE_COMPUTE_TYPE ArdaNativeCompute TYPE)
+    if(ARDA_NATIVE_COMPUTE_TYPE STREQUAL "INTERFACE_LIBRARY")
+        get_target_property(ARDA_NATIVE_COMPUTE_PUBLIC ArdaNativeComputeHeaders INTERFACE_INCLUDE_DIRECTORIES)
+    else()
+        list(APPEND ARDA_CORE_MODULES ArdaNativeCompute)
+    endif()
 endif()
-foreach(ARDA_MODULE IN LISTS ARDA_CORE_MODULES ITEMS ArdaTrace EASTL)
+get_target_property(ARDA_NATIVE_COMPUTE_PROVIDERS ArdaBackend ARDA_NATIVE_COMPUTE_PROVIDER_TARGETS)
+if(ARDA_NATIVE_COMPUTE_PROVIDERS)
+    if("Ardashir::ArdaNativeComputeCiG" IN_LIST ARDA_NATIVE_COMPUTE_PROVIDERS)
+        list(APPEND ARDA_NATIVE_COMPUTE_PROVIDERS Ardashir::ArdaNativeComputeCuda)
+        list(REMOVE_DUPLICATES ARDA_NATIVE_COMPUTE_PROVIDERS)
+    endif()
+else()
+    set(ARDA_NATIVE_COMPUTE_PROVIDERS "")
+endif()
+foreach(ARDA_MODULE IN LISTS ARDA_CORE_MODULES ARDA_NATIVE_COMPUTE_PROVIDERS ITEMS ArdaTrace EASTL)
     get_target_property(ARDA_MODULE_SOURCES ${ARDA_MODULE} SOURCES)
     get_target_property(ARDA_MODULE_SOURCE_DIR ${ARDA_MODULE} SOURCE_DIR)
     foreach(ARDA_MODULE_SOURCE IN LISTS ARDA_MODULE_SOURCES)
@@ -57,8 +73,13 @@ foreach(ARDA_MODULE IN LISTS ARDA_CORE_MODULES ITEMS ArdaTrace EASTL)
     if(ARDA_MODULE_INCLUDES)
         target_include_directories(ArdaUnrealCore PRIVATE ${ARDA_MODULE_INCLUDES})
     endif()
+    get_target_property(ARDA_MODULE_BUILD_DEPENDENCIES ${ARDA_MODULE} ARDA_NATIVE_COMPUTE_BUILD_DEPENDENCIES)
+    if(ARDA_MODULE_BUILD_DEPENDENCIES)
+        add_dependencies(ArdaUnrealCore ${ARDA_MODULE_BUILD_DEPENDENCIES})
+    endif()
 endforeach()
 target_include_directories(ArdaUnrealCore PRIVATE
+    ${ARDA_NATIVE_COMPUTE_PUBLIC}
     "${ARDA_UNREAL_SOURCE}/Cmake"
     "${ARDA_UNREAL_SOURCE}/ThirdParty/Eigen"
     ${ARDA_EABASE_INCLUDE})
@@ -86,6 +107,7 @@ foreach(ARDA_MODULE IN LISTS ARDA_CORE_MODULES)
     target_include_directories(ArdaUnrealAbiTests PRIVATE "${ARDA_MODULE_SOURCE_DIR}/Public")
 endforeach()
 target_include_directories(ArdaUnrealAbiTests PRIVATE
+    ${ARDA_NATIVE_COMPUTE_PUBLIC}
     "${ARDA_UNREAL_SOURCE}/Cmake"
     "${ARDA_UNREAL_SOURCE}/ThirdParty/Eigen"
     "${ARDA_UNREAL_SOURCE}/ThirdParty/EASTL/include"

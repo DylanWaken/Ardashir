@@ -7,6 +7,10 @@
 
 namespace arda
 {
+	// ================================
+	// Allocator options and statistics
+	// ================================
+
 	/** Idle storage is retained across graphs; active leases are never evicted.
 	 * Collection cycles advance through IArdaRHIDevice::RunGarbageCollection.
 	 */

@@ -167,7 +167,8 @@ class ArdaExportTests(unittest.TestCase):
         manifest = json.loads(self.result.manifest_path.read_text(encoding="utf-8"))
         self.assertEqual(manifest["version"], 2)
         self.assertEqual(set(manifest["runtime_files"]),
-                         {path.name for path in [*self.result.descriptors.values(), *self.result.checkpoints.values()]})
+                         {path.name for path in [*self.result.descriptors.values(), *self.result.checkpoints.values()]}
+                         | {name for variant in manifest["artifacts"] for name in variant["kernel_libraries"]})
         self.assertIn("not_run", json.dumps(manifest))
         for artifact in self.result.artifacts:
             with self.subTest(architecture=artifact.target_sm):
@@ -177,7 +178,7 @@ class ArdaExportTests(unittest.TestCase):
                 self.assertEqual(artifact.descriptor_path, artifact.package_path)
                 self.assertEqual(self.result.packages[f"sm_{artifact.target_sm}"], artifact.package_path)
                 package = read_package(artifact.package_path)
-                self.assertEqual(package["version"], 2)
+                self.assertEqual(package["version"], 3)
                 self.assertEqual({slot["name"] for slot in package["state_slots"]}, {"scale", "bias"})
                 self.assertTrue(all(not package["buffers"][slot["buffer"]]["initializer"]
                                     for slot in package["state_slots"]))

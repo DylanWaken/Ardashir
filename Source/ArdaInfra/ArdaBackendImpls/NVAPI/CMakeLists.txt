@@ -1,0 +1,6 @@
+add_library(ArdaNativeComputeNvapi STATIC EXCLUDE_FROM_ALL ArdaNativeNvapiProvider.cpp)
+add_library(Ardashir::ArdaNativeComputeNvapi ALIAS ArdaNativeComputeNvapi)
+target_include_directories(ArdaNativeComputeNvapi PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Public")
+target_link_libraries(ArdaNativeComputeNvapi PUBLIC Ardashir::ArdaBackend)
+set_target_properties(ArdaNativeComputeNvapi PROPERTIES FOLDER "Ardashir/NativeCompute")
+ardashir_add_header_checks(ArdaNativeComputeNvapi Public Ardashir::ArdaBackend)

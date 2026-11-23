@@ -121,7 +121,7 @@
     <article class="prose" data-doc-article>
 <header class="page-header">
           <h1>Getting started</h1>
-          <p>Backend startup is a transaction: choose policy, register immutable inputs, create a native <a class="term" data-term="device" href="../glossary.html#term-device">device</a>, publish one coherent context, run GPU work, then reverse ownership in a controlled teardown.</p>
+          <p>Backend startup follows one process lifecycle. Choose policy and register shader inputs, then initialize the devices and publish the completed set with the selected module. Retain a device to run GPU work and release dependent objects before shutdown.</p>
         </header>
 
 
@@ -159,11 +159,11 @@
             <dd>An ordered stream of GPU submissions. Graphics is required. Distinct compute and copy queues are optional capabilities rather than portable assumptions.</dd>
           </dl>
 
-          <p>ArdaBackend owns adapter policy inside each private native backend. D3D12 enumerates high-performance adapters that can create the required device and may fall back to WARP; Vulkan selects a physical device that satisfies required extensions, features, and queue-family constraints. There is no public adapter-index field in <a href="api-reference.html#api-arda-backend-fardabackendconfiguration-b6f71e2e"><code>FArdaBackendConfiguration</code></a>, so do not imply that callers can select a particular GPU through this API.</p>
+          <p>Use <code>EnumerateAdapters()</code> to obtain stable adapter IDs for a backend and place the selected IDs in <code>FArdaBackendConfiguration::mAdapters</code>. With an empty list, the module chooses one device automatically. Select the starting default with <code>mDefaultDeviceIndex</code>. The index addresses the configured device list, and presentation starts on that device. <a href="api-reference.html#api-arda-enumerateadapters-47068c00">EnumerateAdapters</a></p>
 
           <aside class="callout">
             <h3>Derivation: why queue capabilities are published</h3>
-            <p>A device can support compute commands without exposing a distinct compute queue. Publishing <a href="api-reference.html#api-arda-backend-fardaqueuecapabilities-a54ce0dd"><code>FArdaQueueCapabilities</code></a> separates “the operation exists” from “a specialized submission stream exists,” allowing portable fallback to graphics.</p>
+            <p>A device can support compute commands without exposing a distinct compute queue. Use <code>Device-&gt;IsQueueSupported</code> to choose an available submission queue.</p>
           </aside>
         </section>
 
@@ -234,21 +234,21 @@ for (const auto&amp; module : arda::EnumerateBackendModules())
         <section id="phases">
           <h2>Initialization phases and commit point</h2>
           <figure>
-            <img src="Assets/backend-initialization-flow.svg" alt="Initialization transaction from configuration through shader registry gates, native device and optional swap-chain creation, context publication, and failure rollback.">
-            <figcaption>The process-wide context is published only after every required phase succeeds. Failure releases provisional state so callers can diagnose, correct inputs, and retry.</figcaption>
+            <img src="Assets/backend-initialization-flow.svg" alt="Initialization from module selection through shader registry checks, creation of the configured devices and optional swap chain, publication of the device set and active module, and failure rollback.">
+            <figcaption>Initialization publishes all configured devices and the selected module together. Failure releases provisional devices so callers can correct inputs and retry.</figcaption>
           </figure>
 
           <ol>
             <li><strong>Accept configuration.</strong> The selected backend, validation flag, and callback become process policy.</li>
+            <li><strong>Select the linked backend.</strong> Resolve the requested module or choose the highest-priority registered module, then validate the device source and adapter IDs.</li>
             <li><strong>Acquire shader-directory use.</strong> Initialization ensures that the registry is available for a live backend.</li>
             <li><strong>Scan and freeze shader sources.</strong> Virtual mappings become an immutable manifest; collisions and invalid paths fail before device publication.</li>
             <li><strong>Commit shader types.</strong> Deferred global-shader registrations are validated into a deterministic set.</li>
             <li><strong>Ensure startup shaders when selected.</strong> Every active-backend registered permutation is checked against its persistent sidecar and compiled if policy allows. Failure occurs before a native device is created.</li>
-            <li><strong>Select and create the linked backend.</strong> Core resolves the exact stable module name or globally highest-priority descriptor, validates the requested device source, and asks the module to allocate its backend runtime and RHI provider.</li>
-            <li><strong>Initialize implementation state.</strong> The module creates or adopts its native/engine device and queues, checks required capabilities, and constructs the opaque RHI device.</li>
+            <li><strong>Create configured devices.</strong> The module creates or adopts the native or engine devices and queues. The facade retains each runtime and RHI device locally until all required creation succeeds.</li>
             <li><strong>Load native pipeline-cache data.</strong> The checked-in modules validate a wrapper keyed by exact module name, initialize their provider cache, safely fall back to an empty cache, and report support through <code>FArdaRHICapabilities::mbPipelineCachePersistence</code>.</li>
-            <li><strong>Create presentation state, if requested.</strong> The window surface and swap chain must succeed before publication.</li>
-            <li><strong>Publish.</strong> Device, selected module name, source, and runtime capabilities become stable process state; initialized state is released atomically afterward.</li>
+            <li><strong>Create presentation state, if requested.</strong> The configured default device must create a swap chain before publication.</li>
+            <li><strong>Publish.</strong> The completed device set and active module become visible together under the registry mutex. Device lookups copy retained references under that lock.</li>
           </ol>
 
           <p>This ordering is a design derivation: publishing early would force every caller to handle half-initialized states. A late commit point makes success mean “the complete selected startup mode is ready.”</p>
@@ -288,8 +288,7 @@ int RunHeadlessGpuJob()
         return 3;
     }
 
-    const FArdaQueueCapabilities queues = GetQueueCapabilities();
-    if (!queues.mbGraphics)
+    if (!device-&gt;IsQueueSupported(arda::EArdaRHIQueueType::Graphics))
     {
         device = nullptr;
         ShutdownBackend();
@@ -347,7 +346,7 @@ arda::FArdaRHIDeviceRef device = arda::GetDevice();
           </figure>
 
           <h3>Why references can outlive shutdown</h3>
-          <p>The process context owns one intrusive device reference. <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a> invokes the device's flush-and-disable entry point first; a module with native persistence writes dirty cache data, while an unsupported implementation performs no disk operation. Shutdown then clears the context reference and queue capabilities, resets private backend state, and releases shader-directory use. Other copied <a class="term" data-term="intrusive-reference-counting" href="../glossary.html#term-intrusive-reference-counting">intrusive references</a> remain owners and retain the backend or external lifetime token. Clearing a global slot is therefore not the same operation as forcibly invalidating every object.</p>
+          <p><code>ShutdownBackend()</code> flushes and disables pipeline-cache persistence on each device, removes the published device set and active module, and releases shader-directory use. Copied intrusive device references continue to own those devices and their implementation lifetime. <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995">ShutdownBackend</a></p>
           <p>Flush-and-disable is essential for retained references: after shutdown they may still create resources and pipelines, but they cannot write another cache blob through a path or diagnostic callback owned by the retired process configuration.</p>
 
           <h3>Production teardown sequence</h3>
@@ -375,7 +374,7 @@ arda::FArdaRHIDeviceRef device = arda::GetDevice();
             <dt>Initialization returns unavailable</dt>
             <dd>The requested presentation backend cannot be provided. Treat this separately from malformed configuration and log the selected API plus platform details.</dd>
             <dt>Device creation fails</dt>
-            <dd>Capture the callback stream and latest backend error. Driver support, required native features, validation setup, or adapter suitability may be responsible.</dd>
+            <dd>Capture the callback stream and latest backend error. Check the configured <a href="rhi-feature-guide.html#admission">feature requirements</a>, driver support, validation setup, and adapter selection.</dd>
             <dt>Startup succeeds but a queue is absent</dt>
             <dd>This is a capability outcome, not failed initialization. Query <code>IsQueueAvailable</code> and fall back to the graphics queue where the algorithm permits.</dd>
             <dt>Startup succeeds but a feature is absent</dt>
@@ -410,7 +409,7 @@ arda::FArdaRHIDeviceRef device = arda::GetDevice();
             <li>The backend chooses an implementation; the adapter is physical capability; the logical device creates objects; queues execute ordered submissions.</li>
             <li>Configuration is process-wide and includes shader timing plus persistent shader and pipeline cache paths.</li>
             <li>Headless and presentation startup share prerequisite gates but have different outputs and result types.</li>
-            <li>The live device context is published only after all required work succeeds.</li>
+            <li>All configured devices and the selected module are published together after successful initialization.</li>
             <li>Shutdown invokes the optional native pipeline persistence flush-and-disable contract before clearing process ownership; copied intrusive references can still retain objects and backend lifetime.</li>
           </ul>
 

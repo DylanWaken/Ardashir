@@ -11,6 +11,10 @@
 
 namespace arda
 {
+	// ================================
+	// Pipeline masks and transition flags
+	// ================================
+
 	/** Pipeline domains participating in a resource transition. */
 	enum class EArdaRHIPipeline : uint8_t
 	{
@@ -66,6 +70,10 @@ namespace arda
 		return static_cast<uint32_t>(Value & Flags) != 0;
 	}
 
+	// ================================
+	// Resource states
+	// ================================
+
 	/** Enumerates resource state values. */
 	enum class EArdaRHIResourceState : uint32_t
 	{
@@ -115,6 +123,10 @@ namespace arda
 	{
 		return static_cast<uint32_t>(Value & Flags) != 0;
 	}
+
+	// ================================
+	// Tracked state snapshots
+	// ================================
 
 	/** Describes the state independently tracked by a native backend. */
 	struct FArdaRHINativeResourceState

@@ -6,12 +6,21 @@ window.ArdaNativeComputeApi = {
     "namespace": "arda",
     "summary": "Select and record native GPU kernels or equivalent shader implementations."
   },
-  "generatedFrom": "Source/ArdaInfra/ArdaNativeCompute/Public",
+  "generatedFrom": "The ArdaBackend native compute facade and public CUDA and NVAPI headers in ArdaBackendImpls",
   "headerProvenance": [
-    "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-    "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaParameters.h",
-    "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
-    "Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h"
+    "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+    "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+    "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+    "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaExternalCall.h",
+    "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+    "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+    "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+    "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+    "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaProviderCommands.h",
+    "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaParameters.h",
+    "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
+    "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+    "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h"
   ],
   "components": [
     {
@@ -35,100 +44,16 @@ window.ArdaNativeComputeApi = {
   ],
   "symbols": [
     {
-      "id": "api-arda-eardanativecomputepreference-d0128340",
-      "name": "EArdaNativeComputePreference",
-      "qualifiedName": "arda::EArdaNativeComputePreference",
-      "kind": "enum",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "enum class EArdaNativeComputePreference : uint8_t",
-      "summary": "Choose which implementation routes the resolver may try.",
-      "details": "Choose which implementation routes the resolver may try.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 14
-    },
-    {
-      "id": "api-arda-eardanativecomputepreference-prefernative-6e8b8624",
-      "name": "PreferNative",
-      "qualifiedName": "arda::EArdaNativeComputePreference::PreferNative",
-      "kind": "enumerator",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "PreferNative",
-      "summary": "Try native variants in declaration order, then the shader fallback.",
-      "details": "Try native variants in declaration order, then the shader fallback.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::EArdaNativeComputePreference"
-      ],
-      "sourceLine": 17
-    },
-    {
-      "id": "api-arda-eardanativecomputepreference-nativeonly-1b5219dc",
-      "name": "NativeOnly",
-      "qualifiedName": "arda::EArdaNativeComputePreference::NativeOnly",
-      "kind": "enumerator",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "NativeOnly",
-      "summary": "Require an eligible native provider and variant.",
-      "details": "Require an eligible native provider and variant.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::EArdaNativeComputePreference"
-      ],
-      "sourceLine": 19
-    },
-    {
-      "id": "api-arda-eardanativecomputepreference-shaderonly-709efc2b",
-      "name": "ShaderOnly",
-      "qualifiedName": "arda::EArdaNativeComputePreference::ShaderOnly",
-      "kind": "enumerator",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "ShaderOnly",
-      "summary": "Use the registered shader implementation.",
-      "details": "Use the registered shader implementation.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::EArdaNativeComputePreference"
-      ],
-      "sourceLine": 21
-    },
-    {
-      "id": "api-arda-fardanativecomputecontext-8755b900",
-      "name": "FArdaNativeComputeContext",
-      "qualifiedName": "arda::FArdaNativeComputeContext",
+      "id": "api-arda-fardanativeresourcecategory-eb0809eb",
+      "name": "FArdaNativeResourceCategory",
+      "qualifiedName": "arda::FArdaNativeResourceCategory",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
-      "signature": "struct FArdaNativeComputeContext",
-      "summary": "Device, queue, and route preference for support checks and preparation.",
-      "details": "Device, queue, and route preference for support checks and preparation.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "signature": "struct FArdaNativeResourceCategory",
+      "summary": "A provider-owned resource representation, scoped by the provider ID.",
+      "details": "A provider-owned resource representation, scoped by the provider ID.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -137,1088 +62,70 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 25
+      "sourceLine": 15
     },
     {
-      "id": "api-arda-fardanativecomputecontext-mdevice-972ba489",
-      "name": "mDevice",
-      "qualifiedName": "arda::FArdaNativeComputeContext::mDevice",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "FArdaRHIDeviceRef mDevice",
-      "summary": "Device on which the prepared work will record.",
-      "details": "Device on which the prepared work will record.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeComputeContext"
-      ],
-      "sourceLine": 28
-    },
-    {
-      "id": "api-arda-fardanativecomputecontext-mqueue-d8ab00bd",
-      "name": "mQueue",
-      "qualifiedName": "arda::FArdaNativeComputeContext::mQueue",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics",
-      "summary": "Queue the command list must use when it records the prepared plan.",
-      "details": "Queue the command list must use when it records the prepared plan.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeComputeContext"
-      ],
-      "sourceLine": 30
-    },
-    {
-      "id": "api-arda-fardanativecomputecontext-mpreference-c48cf7fc",
-      "name": "mPreference",
-      "qualifiedName": "arda::FArdaNativeComputeContext::mPreference",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "EArdaNativeComputePreference mPreference = EArdaNativeComputePreference::PreferNative",
-      "summary": "Routes the resolver may try.",
-      "details": "Routes the resolver may try.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeComputeContext"
-      ],
-      "sourceLine": 32
-    },
-    {
-      "id": "api-arda-fardanativecomputecontext-mrequiredproviderid-45e7d622",
-      "name": "mRequiredProviderId",
-      "qualifiedName": "arda::FArdaNativeComputeContext::mRequiredProviderId",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "eastl::string mRequiredProviderId",
-      "summary": "Require a particular native provider ID. Empty leaves the choice to the operand.",
-      "details": "Require a particular native provider ID. Empty leaves the choice to the operand.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeComputeContext"
-      ],
-      "sourceLine": 34
-    },
-    {
-      "id": "api-arda-fardanativecomputecontext-mallowedproviderids-37cb8f2d",
-      "name": "mAllowedProviderIds",
-      "qualifiedName": "arda::FArdaNativeComputeContext::mAllowedProviderIds",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "eastl::vector<eastl::string> mAllowedProviderIds",
-      "summary": "Optional scheduler restriction. Admit only these provider IDs, preserving the operand's variant order.",
-      "details": "Optional scheduler restriction. Admit only these provider IDs, preserving the operand's variant order.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeComputeContext"
-      ],
-      "sourceLine": 36
-    },
-    {
-      "id": "api-arda-fardanativeresourceslot-bc618999",
-      "name": "FArdaNativeResourceSlot",
-      "qualifiedName": "arda::FArdaNativeResourceSlot",
-      "kind": "struct",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "struct FArdaNativeResourceSlot",
-      "summary": "All implementations of an operand consume these slots in declaration order.",
-      "details": "All implementations of an operand consume these slots in declaration order.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 40
-    },
-    {
-      "id": "api-arda-fardanativeresourceslot-mname-1b65f21e",
-      "name": "mName",
-      "qualifiedName": "arda::FArdaNativeResourceSlot::mName",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "eastl::string mName",
-      "summary": "Nonempty name unique within the operand.",
-      "details": "Nonempty name unique within the operand.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeResourceSlot"
-      ],
-      "sourceLine": 43
-    },
-    {
-      "id": "api-arda-fardanativeresourceslot-mtype-b1ab8942",
-      "name": "mType",
-      "qualifiedName": "arda::FArdaNativeResourceSlot::mType",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "EArdaRHIResourceType mType = EArdaRHIResourceType::Buffer",
-      "summary": "RHI resource kind required by this slot.",
-      "details": "RHI resource kind required by this slot.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeResourceSlot"
-      ],
-      "sourceLine": 45
-    },
-    {
-      "id": "api-arda-fardanativeresourceslot-maccess-e1acee09",
-      "name": "mAccess",
-      "qualifiedName": "arda::FArdaNativeResourceSlot::mAccess",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "EArdaComputeAccess mAccess = EArdaComputeAccess::Read",
-      "summary": "Read, write, or read/write access required by every route.",
-      "details": "Read, write, or read/write access required by every route.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeResourceSlot"
-      ],
-      "sourceLine": 47
-    },
-    {
-      "id": "api-arda-fardanativeresourceslot-mformat-0f9ce331",
-      "name": "mFormat",
-      "qualifiedName": "arda::FArdaNativeResourceSlot::mFormat",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown",
-      "summary": "Required texture storage format. Unknown leaves the format unconstrained.",
-      "details": "Required texture storage format. Unknown leaves the format unconstrained.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeResourceSlot"
-      ],
-      "sourceLine": 49
-    },
-    {
-      "id": "api-arda-fardanativeresourceview-0f854574",
-      "name": "FArdaNativeResourceView",
-      "qualifiedName": "arda::FArdaNativeResourceView",
-      "kind": "struct",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "struct FArdaNativeResourceView",
-      "summary": "Physical resource bound to one declared operand slot.",
-      "details": "Physical resource bound to one declared operand slot.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 53
-    },
-    {
-      "id": "api-arda-fardanativeresourceview-mresource-a8139edd",
-      "name": "mResource",
-      "qualifiedName": "arda::FArdaNativeResourceView::mResource",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "FArdaRHIResourceRef mResource",
-      "summary": "Retained RHI resource. Its kind must match the slot.",
-      "details": "Retained RHI resource. Its kind must match the slot.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeResourceView"
-      ],
-      "sourceLine": 56
-    },
-    {
-      "id": "api-arda-fardanativeresourceview-mbufferrange-6ea338b8",
-      "name": "mBufferRange",
-      "qualifiedName": "arda::FArdaNativeResourceView::mBufferRange",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "FArdaRHIBufferRange mBufferRange",
-      "summary": "Nonempty range inside a bound buffer.",
-      "details": "Nonempty range inside a bound buffer.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeResourceView"
-      ],
-      "sourceLine": 58
-    },
-    {
-      "id": "api-arda-fardanativeresourceview-mmiplevel-9fe0776a",
-      "name": "mMipLevel",
-      "qualifiedName": "arda::FArdaNativeResourceView::mMipLevel",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "uint32_t mMipLevel = 0",
-      "summary": "Mip index for a bound texture.",
-      "details": "Mip index for a bound texture.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeResourceView"
-      ],
-      "sourceLine": 60
-    },
-    {
-      "id": "api-arda-fardanativelaunch-e57ef7db",
-      "name": "FArdaNativeLaunch",
-      "qualifiedName": "arda::FArdaNativeLaunch",
-      "kind": "struct",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "struct FArdaNativeLaunch",
-      "summary": "Three-dimensional group count and group size for one native dispatch.",
-      "details": "Three-dimensional group count and group size for one native dispatch.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 64
-    },
-    {
-      "id": "api-arda-fardanativelaunch-mgridsize-ccf5a35c",
-      "name": "mGridSize",
-      "qualifiedName": "arda::FArdaNativeLaunch::mGridSize",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "uint32_t mGridSize[3] = {1, 1, 1}",
-      "summary": "Work-group counts in X, Y, and Z.",
-      "details": "Work-group counts in X, Y, and Z.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeLaunch"
-      ],
-      "sourceLine": 67
-    },
-    {
-      "id": "api-arda-fardanativelaunch-mblocksize-25e37fbb",
-      "name": "mBlockSize",
-      "qualifiedName": "arda::FArdaNativeLaunch::mBlockSize",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "uint32_t mBlockSize[3] = {1, 1, 1}",
-      "summary": "Threads per group in X, Y, and Z.",
-      "details": "Threads per group in X, Y, and Z.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeLaunch"
-      ],
-      "sourceLine": 69
-    },
-    {
-      "id": "api-arda-fardanativelaunch-msharedmemorybytes-872d4479",
-      "name": "mSharedMemoryBytes",
-      "qualifiedName": "arda::FArdaNativeLaunch::mSharedMemoryBytes",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "uint32_t mSharedMemoryBytes = 0",
-      "summary": "Dynamic shared memory requested per group, in bytes.",
-      "details": "Dynamic shared memory requested per group, in bytes.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeLaunch"
-      ],
-      "sourceLine": 71
-    },
-    {
-      "id": "api-arda-fardanativeinvocation-c4a8346d",
-      "name": "FArdaNativeInvocation",
-      "qualifiedName": "arda::FArdaNativeInvocation",
-      "kind": "struct",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "struct FArdaNativeInvocation",
-      "summary": "Resource bindings and parameter bytes for one invocation.",
-      "details": "Resource bindings and parameter bytes for one invocation.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 75
-    },
-    {
-      "id": "api-arda-fardanativeinvocation-mresources-9fe63af6",
-      "name": "mResources",
-      "qualifiedName": "arda::FArdaNativeInvocation::mResources",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "eastl::vector<FArdaNativeResourceView> mResources",
-      "summary": "Physical views in the operand's slot order.",
-      "details": "Physical views in the operand's slot order.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeInvocation"
-      ],
-      "sourceLine": 78
-    },
-    {
-      "id": "api-arda-fardanativeinvocation-mparameters-a02d7caf",
-      "name": "mParameters",
-      "qualifiedName": "arda::FArdaNativeInvocation::mParameters",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "eastl::vector<uint8_t> mParameters",
-      "summary": "Parameter block with exactly the operand's declared byte count.",
-      "details": "Parameter block with exactly the operand's declared byte count.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeInvocation"
-      ],
-      "sourceLine": 80
-    },
-    {
-      "id": "api-arda-fardanativeinvocation-mlaunch-b34f1c85",
-      "name": "mLaunch",
-      "qualifiedName": "arda::FArdaNativeInvocation::mLaunch",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "FArdaNativeLaunch mLaunch",
-      "summary": "Launch geometry for a variant without a custom selection policy.",
-      "details": "Launch geometry for a variant without a custom selection policy.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeInvocation"
-      ],
-      "sourceLine": 82
-    },
-    {
-      "id": "api-arda-iardanativekernelsource-6625cdc7",
-      "name": "IArdaNativeKernelSource",
-      "qualifiedName": "arda::IArdaNativeKernelSource",
-      "kind": "class",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "class IArdaNativeKernelSource",
-      "summary": "Source objects own their artifact or linked entry and its provider-specific ABI.",
-      "details": "Source objects own their artifact or linked entry and its provider-specific ABI.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 86
-    },
-    {
-      "id": "api-arda-iardanativekernelsource-iardanativekernelsource-29c7a42c",
-      "name": "~IArdaNativeKernelSource",
-      "qualifiedName": "arda::IArdaNativeKernelSource::~IArdaNativeKernelSource",
-      "kind": "destructor",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "virtual ~IArdaNativeKernelSource() = default",
-      "summary": "Release ownership of the source artifact or linked entry.",
-      "details": "Release ownership of the source artifact or linked entry.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::IArdaNativeKernelSource"
-      ],
-      "sourceLine": 90
-    },
-    {
-      "id": "api-arda-iardanativekernelsource-getproviderid-9d57f12a",
-      "name": "GetProviderId",
-      "qualifiedName": "arda::IArdaNativeKernelSource::GetProviderId",
-      "kind": "method",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "virtual const char* GetProviderId() const noexcept = 0",
-      "summary": "Return the registry ID of the default provider for this source.",
-      "details": "Return the registry ID of the default provider for this source.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::IArdaNativeKernelSource"
-      ],
-      "sourceLine": 92
-    },
-    {
-      "id": "api-arda-iardanativekernelsource-getformat-34d07e8d",
-      "name": "GetFormat",
-      "qualifiedName": "arda::IArdaNativeKernelSource::GetFormat",
-      "kind": "method",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "virtual const char* GetFormat() const noexcept = 0",
-      "summary": "Return the format ID used to match the provider's supported formats.",
-      "details": "Return the format ID used to match the provider's supported formats.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::IArdaNativeKernelSource"
-      ],
-      "sourceLine": 94
-    },
-    {
-      "id": "api-arda-iardanativepreparedwork-c5301881",
-      "name": "IArdaNativePreparedWork",
-      "qualifiedName": "arda::IArdaNativePreparedWork",
-      "kind": "class",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "class IArdaNativePreparedWork",
-      "summary": "Prepared, immutable work for one implementation route.",
-      "details": "Prepared, immutable work for one implementation route.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 98
-    },
-    {
-      "id": "api-arda-iardanativepreparedwork-iardanativepreparedwork-f76c21d8",
-      "name": "~IArdaNativePreparedWork",
-      "qualifiedName": "arda::IArdaNativePreparedWork::~IArdaNativePreparedWork",
-      "kind": "destructor",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "virtual ~IArdaNativePreparedWork() = default",
-      "summary": "Release the captured state held by this work.",
-      "details": "Release the captured state held by this work.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::IArdaNativePreparedWork"
-      ],
-      "sourceLine": 102
-    },
-    {
-      "id": "api-arda-iardanativepreparedwork-record-bf1dfc61",
-      "name": "Record",
-      "qualifiedName": "arda::IArdaNativePreparedWork::Record",
-      "kind": "method",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "virtual FArdaRHIStatus Record(IArdaRHICommandList& Commands) const = 0",
-      "summary": "Append work to an open command list without submitting it.",
-      "details": "Append work to an open command list without submitting it.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [
-        {
-          "name": "Commands",
-          "description": "Open list for the prepared device and queue."
-        }
-      ],
-      "returns": "Recording status.",
-      "ownership": "The RHI retains submitted dependencies through GPU completion.",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::IArdaNativePreparedWork"
-      ],
-      "sourceLine": 109
-    },
-    {
-      "id": "api-arda-fardanativeworkref-478ca5f0",
-      "name": "FArdaNativeWorkRef",
-      "qualifiedName": "arda::FArdaNativeWorkRef",
-      "kind": "alias",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "using FArdaNativeWorkRef = eastl::shared_ptr<const IArdaNativePreparedWork>",
-      "summary": "Shared ownership of immutable work prepared for a specific invocation.",
-      "details": "Shared ownership of immutable work prepared for a specific invocation.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 113
-    },
-    {
-      "id": "api-arda-makeardanativework-0bc256b8",
-      "name": "MakeArdaNativeWork",
-      "qualifiedName": "arda::MakeArdaNativeWork",
-      "kind": "function",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "[[nodiscard]] FArdaNativeWorkRef MakeArdaNativeWork(eastl::function<FArdaRHIStatus(IArdaRHICommandList&)> Record)",
-      "summary": "Wrap a command-list recording callback as prepared work.",
-      "details": "Wrap a command-list recording callback as prepared work.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [
-        {
-          "name": "Record",
-          "description": "Callback that appends commands. Capture pipeline state, bindings, and constants by value."
-        }
-      ],
-      "returns": "Prepared work, or an empty reference for an empty callback.",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 119
-    },
-    {
-      "id": "api-arda-fardanativekernelvariant-32df6848",
-      "name": "FArdaNativeKernelVariant",
-      "qualifiedName": "arda::FArdaNativeKernelVariant",
-      "kind": "struct",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "struct FArdaNativeKernelVariant",
-      "summary": "One native implementation and its optional launch policy.",
-      "details": "One native implementation and its optional launch policy.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 122
-    },
-    {
-      "id": "api-arda-fardanativekernelvariant-mname-fc7f6b40",
-      "name": "mName",
-      "qualifiedName": "arda::FArdaNativeKernelVariant::mName",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "eastl::string mName",
-      "summary": "Variant name unique within the operand, returned by a native plan.",
-      "details": "Variant name unique within the operand, returned by a native plan.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeKernelVariant"
-      ],
-      "sourceLine": 125
-    },
-    {
-      "id": "api-arda-fardanativekernelvariant-msource-c8c9faac",
-      "name": "mSource",
-      "qualifiedName": "arda::FArdaNativeKernelVariant::mSource",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "eastl::shared_ptr<const IArdaNativeKernelSource> mSource",
-      "summary": "Source retained by the registration. Its provider and format IDs must be nonempty.",
-      "details": "Source retained by the registration. Its provider and format IDs must be nonempty.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeKernelVariant"
-      ],
-      "sourceLine": 127
-    },
-    {
-      "id": "api-arda-fardanativekernelvariant-mselect-d39fb58e",
-      "name": "mSelect",
-      "qualifiedName": "arda::FArdaNativeKernelVariant::mSelect",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "eastl::function<TArdaRHIResult<FArdaNativeLaunch>(const FArdaNativeComputeContext&, const FArdaNativeInvocation&)> mSelect",
-      "summary": "Return geometry, or Unsupported when another variant should handle this input.",
-      "details": "Return geometry, or Unsupported when another variant should handle this input.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeKernelVariant"
-      ],
-      "sourceLine": 129
-    },
-    {
-      "id": "api-arda-fardanativekernelvariant-mproviderid-e5813250",
-      "name": "mProviderId",
-      "qualifiedName": "arda::FArdaNativeKernelVariant::mProviderId",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "eastl::string mProviderId",
-      "summary": "Optional provider override. Allows compatible providers to share the same compiled source and ABI.",
-      "details": "Optional provider override. Allows compatible providers to share the same compiled source and ABI.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeKernelVariant"
-      ],
-      "sourceLine": 131
-    },
-    {
-      "id": "api-arda-eardanativecomputeroute-21d3c2b7",
-      "name": "EArdaNativeComputeRoute",
-      "qualifiedName": "arda::EArdaNativeComputeRoute",
-      "kind": "enum",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "enum class EArdaNativeComputeRoute : uint8_t",
-      "summary": "Implementation selected for a prepared plan.",
-      "details": "Implementation selected for a prepared plan.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 135
-    },
-    {
-      "id": "api-arda-eardanativecomputeroute-native-54839cc2",
-      "name": "Native",
-      "qualifiedName": "arda::EArdaNativeComputeRoute::Native",
-      "kind": "enumerator",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "Native",
-      "summary": "Kernel or external call prepared by a registered native provider.",
-      "details": "Kernel or external call prepared by a registered native provider.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::EArdaNativeComputeRoute"
-      ],
-      "sourceLine": 138
-    },
-    {
-      "id": "api-arda-eardanativecomputeroute-computeshader-cf52cae7",
-      "name": "ComputeShader",
-      "qualifiedName": "arda::EArdaNativeComputeRoute::ComputeShader",
-      "kind": "enumerator",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "ComputeShader",
-      "summary": "Fallback that records a compute shader.",
-      "details": "Fallback that records a compute shader.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::EArdaNativeComputeRoute"
-      ],
-      "sourceLine": 140
-    },
-    {
-      "id": "api-arda-eardanativecomputeroute-graphicsshader-8972ab9a",
-      "name": "GraphicsShader",
-      "qualifiedName": "arda::EArdaNativeComputeRoute::GraphicsShader",
-      "kind": "enumerator",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "GraphicsShader",
-      "summary": "Fallback that records a graphics shader on a graphics list.",
-      "details": "Fallback that records a graphics shader on a graphics list.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::EArdaNativeComputeRoute"
-      ],
-      "sourceLine": 142
-    },
-    {
-      "id": "api-arda-fardanativeshaderfallback-9df605e1",
-      "name": "FArdaNativeShaderFallback",
-      "qualifiedName": "arda::FArdaNativeShaderFallback",
-      "kind": "struct",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "struct FArdaNativeShaderFallback",
-      "summary": "Optional shader implementation of the same operation and resource access contract.",
-      "details": "Optional shader implementation of the same operation and resource access contract.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 146
-    },
-    {
-      "id": "api-arda-fardanativeshaderfallback-mroute-708ed555",
-      "name": "mRoute",
-      "qualifiedName": "arda::FArdaNativeShaderFallback::mRoute",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "EArdaNativeComputeRoute mRoute = EArdaNativeComputeRoute::ComputeShader",
-      "summary": "Compute or graphics shader route. A graphics route requires a graphics queue.",
-      "details": "Compute or graphics shader route. A graphics route requires a graphics queue.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeShaderFallback"
-      ],
-      "sourceLine": 149
-    },
-    {
-      "id": "api-arda-fardanativeshaderfallback-mprepare-a1b70070",
-      "name": "mPrepare",
-      "qualifiedName": "arda::FArdaNativeShaderFallback::mPrepare",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "eastl::function<TArdaRHIResult<FArdaNativeWorkRef>(const FArdaNativeComputeContext&, const FArdaNativeInvocation&)> mPrepare",
-      "summary": "Freeze the resources, bindings, and arguments into work without submitting it.",
-      "details": "Freeze the resources, bindings, and arguments into work without submitting it.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeShaderFallback"
-      ],
-      "sourceLine": 151
-    },
-    {
-      "id": "api-arda-fardanativeshaderfallback-mrequiredfeatures-abff4798",
-      "name": "mRequiredFeatures",
-      "qualifiedName": "arda::FArdaNativeShaderFallback::mRequiredFeatures",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "FArdaRHIFeatureRequirements mRequiredFeatures",
-      "summary": "Device features required by this shader implementation.",
-      "details": "Device features required by this shader implementation.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeShaderFallback"
-      ],
-      "sourceLine": 153
-    },
-    {
-      "id": "api-arda-fardanativeoperanddesc-f82ee605",
-      "name": "FArdaNativeOperandDesc",
-      "qualifiedName": "arda::FArdaNativeOperandDesc",
-      "kind": "struct",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "struct FArdaNativeOperandDesc",
-      "summary": "Register one resource and parameter contract with at least one implementation.",
-      "details": "Register one resource and parameter contract with at least one implementation.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 157
-    },
-    {
-      "id": "api-arda-fardanativeoperanddesc-mid-fc548502",
+      "id": "api-arda-fardanativeresourcecategory-mid-fcbe1d78",
       "name": "mId",
-      "qualifiedName": "arda::FArdaNativeOperandDesc::mId",
+      "qualifiedName": "arda::FArdaNativeResourceCategory::mId",
       "kind": "member variable",
       "component": "core",
       "page": "api-reference.html",
       "signature": "eastl::string mId",
-      "summary": "Nonempty ID unique in the registry.",
-      "details": "Nonempty ID unique in the registry.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "summary": "Stores id in this public native compute value.",
+      "details": "Stores id in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::FArdaNativeOperandDesc"
+        "arda::FArdaNativeResourceCategory"
       ],
-      "sourceLine": 160
+      "sourceLine": 17
     },
     {
-      "id": "api-arda-fardanativeoperanddesc-mresources-365ab390",
-      "name": "mResources",
-      "qualifiedName": "arda::FArdaNativeOperandDesc::mResources",
+      "id": "api-arda-fardanativeresourcecategory-mtype-eeffde4c",
+      "name": "mType",
+      "qualifiedName": "arda::FArdaNativeResourceCategory::mType",
       "kind": "member variable",
       "component": "core",
       "page": "api-reference.html",
-      "signature": "eastl::vector<FArdaNativeResourceSlot> mResources",
-      "summary": "Ordered resource slots shared by every implementation.",
-      "details": "Ordered resource slots shared by every implementation.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "signature": "EArdaRHIResourceType mType = EArdaRHIResourceType::Buffer",
+      "summary": "Use Count for native-only storage owned by an IArdaNativeResource.",
+      "details": "Use Count for native-only storage owned by an IArdaNativeResource.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::FArdaNativeOperandDesc"
+        "arda::FArdaNativeResourceCategory"
       ],
-      "sourceLine": 162
+      "sourceLine": 19
     },
     {
-      "id": "api-arda-fardanativeoperanddesc-mparametersize-ef2d0929",
-      "name": "mParameterSize",
-      "qualifiedName": "arda::FArdaNativeOperandDesc::mParameterSize",
-      "kind": "member variable",
+      "id": "api-arda-ardanativecomputeproviderinterfaceversion-6016dab6",
+      "name": "ArdaNativeComputeProviderInterfaceVersion",
+      "qualifiedName": "arda::ArdaNativeComputeProviderInterfaceVersion",
+      "kind": "constant",
       "component": "core",
       "page": "api-reference.html",
-      "signature": "size_t mParameterSize = 0",
-      "summary": "Exact invocation parameter size in bytes.",
-      "details": "Exact invocation parameter size in bytes.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "signature": "inline constexpr uint32_t ArdaNativeComputeProviderInterfaceVersion = 2",
+      "summary": "Defines arda native compute provider interface version in the public native compute contract.",
+      "details": "Defines arda native compute provider interface version in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::FArdaNativeOperandDesc"
+        "arda"
       ],
-      "sourceLine": 164
-    },
-    {
-      "id": "api-arda-fardanativeoperanddesc-mvariants-0db21388",
-      "name": "mVariants",
-      "qualifiedName": "arda::FArdaNativeOperandDesc::mVariants",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "eastl::vector<FArdaNativeKernelVariant> mVariants",
-      "summary": "First eligible variant wins. Different variants can use different providers.",
-      "details": "First eligible variant wins. Different variants can use different providers.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeOperandDesc"
-      ],
-      "sourceLine": 166
-    },
-    {
-      "id": "api-arda-fardanativeoperanddesc-mfallback-5bfb5f82",
-      "name": "mFallback",
-      "qualifiedName": "arda::FArdaNativeOperandDesc::mFallback",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "FArdaNativeShaderFallback mFallback",
-      "summary": "Shader implementation eligible when the preference permits a fallback.",
-      "details": "Shader implementation eligible when the preference permits a fallback.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeOperandDesc"
-      ],
-      "sourceLine": 168
-    },
-    {
-      "id": "api-arda-fardanativeoperanddesc-mvalidate-7130ac45",
-      "name": "mValidate",
-      "qualifiedName": "arda::FArdaNativeOperandDesc::mValidate",
-      "kind": "member variable",
-      "component": "core",
-      "page": "api-reference.html",
-      "signature": "eastl::function<FArdaRHIStatus(const FArdaNativeInvocation&)> mValidate",
-      "summary": "Check algorithm invariants shared by every implementation before selection.",
-      "details": "Check algorithm invariants shared by every implementation before selection.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda::FArdaNativeOperandDesc"
-      ],
-      "sourceLine": 170
+      "sourceLine": 22
     },
     {
       "id": "api-arda-fardanativeproviderdesc-ef67eb62",
@@ -1230,7 +137,7 @@ window.ArdaNativeComputeApi = {
       "signature": "struct FArdaNativeProviderDesc",
       "summary": "Registry identity and compatibility boundaries of a native provider.",
       "details": "Registry identity and compatibility boundaries of a native provider.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1239,7 +146,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 174
+      "sourceLine": 25
     },
     {
       "id": "api-arda-fardanativeproviderdesc-mid-5f57f531",
@@ -1251,7 +158,7 @@ window.ArdaNativeComputeApi = {
       "signature": "eastl::string mId",
       "summary": "Nonempty provider ID unique in the registry.",
       "details": "Nonempty provider ID unique in the registry.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1260,7 +167,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeProviderDesc"
       ],
-      "sourceLine": 177
+      "sourceLine": 28
     },
     {
       "id": "api-arda-fardanativeproviderdesc-mgraphicsapis-61073541",
@@ -1272,7 +179,7 @@ window.ArdaNativeComputeApi = {
       "signature": "eastl::vector<eastl::string> mGraphicsApis",
       "summary": "Registered graphics module names, such as native-vulkan.",
       "details": "Registered graphics module names, such as native-vulkan.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1281,7 +188,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeProviderDesc"
       ],
-      "sourceLine": 179
+      "sourceLine": 30
     },
     {
       "id": "api-arda-fardanativeproviderdesc-msourceformats-9843a5e4",
@@ -1293,7 +200,7 @@ window.ArdaNativeComputeApi = {
       "signature": "eastl::vector<eastl::string> mSourceFormats",
       "summary": "Source format IDs the provider recognizes.",
       "details": "Source format IDs the provider recognizes.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1302,7 +209,49 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeProviderDesc"
       ],
-      "sourceLine": 181
+      "sourceLine": 32
+    },
+    {
+      "id": "api-arda-fardanativeproviderdesc-minterfaceversion-8a8b214d",
+      "name": "mInterfaceVersion",
+      "qualifiedName": "arda::FArdaNativeProviderDesc::mInterfaceVersion",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint32_t mInterfaceVersion = ArdaNativeComputeProviderInterfaceVersion",
+      "summary": "Provider SPI version. Checked before publishing a linked module.",
+      "details": "Provider SPI version. Checked before publishing a linked module.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeProviderDesc"
+      ],
+      "sourceLine": 34
+    },
+    {
+      "id": "api-arda-fardanativeproviderdesc-mresourcecategories-53a87af0",
+      "name": "mResourceCategories",
+      "qualifiedName": "arda::FArdaNativeProviderDesc::mResourceCategories",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaNativeResourceCategory> mResourceCategories",
+      "summary": "Stores resource categories in this public native compute value.",
+      "details": "Stores resource categories in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeProviderDesc"
+      ],
+      "sourceLine": 35
     },
     {
       "id": "api-arda-eardanativehandoff-4c69eb11",
@@ -1314,7 +263,7 @@ window.ArdaNativeComputeApi = {
       "signature": "enum class EArdaNativeHandoff : uint8_t",
       "summary": "Whether a provider can use the bound resource as supplied.",
       "details": "Whether a provider can use the bound resource as supplied.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1323,7 +272,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 185
+      "sourceLine": 39
     },
     {
       "id": "api-arda-eardanativehandoff-direct-5dfa2d46",
@@ -1335,7 +284,7 @@ window.ArdaNativeComputeApi = {
       "signature": "Direct",
       "summary": "The provider can access the selected view directly.",
       "details": "The provider can access the selected view directly.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1344,7 +293,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::EArdaNativeHandoff"
       ],
-      "sourceLine": 188
+      "sourceLine": 42
     },
     {
       "id": "api-arda-eardanativehandoff-conversionrequired-c33bd6cf",
@@ -1356,7 +305,7 @@ window.ArdaNativeComputeApi = {
       "signature": "ConversionRequired",
       "summary": "Add a conversion/copy pass and bind its output to use this provider.",
       "details": "Add a conversion/copy pass and bind its output to use this provider.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1365,7 +314,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::EArdaNativeHandoff"
       ],
-      "sourceLine": 190
+      "sourceLine": 44
     },
     {
       "id": "api-arda-fardanativeresourcehandoff-fe3d28ca",
@@ -1377,7 +326,7 @@ window.ArdaNativeComputeApi = {
       "signature": "struct FArdaNativeResourceHandoff",
       "summary": "Representation and graphics resource state that the provider expects at a handoff.",
       "details": "Representation and graphics resource state that the provider expects at a handoff.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1386,7 +335,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 194
+      "sourceLine": 48
     },
     {
       "id": "api-arda-fardanativeresourcehandoff-mkind-1fb06e3d",
@@ -1398,7 +347,7 @@ window.ArdaNativeComputeApi = {
       "signature": "EArdaNativeHandoff mKind = EArdaNativeHandoff::Direct",
       "summary": "Direct access or a request for an explicit copy/conversion pass.",
       "details": "Direct access or a request for an explicit copy/conversion pass.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1407,7 +356,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeResourceHandoff"
       ],
-      "sourceLine": 197
+      "sourceLine": 51
     },
     {
       "id": "api-arda-fardanativeresourcehandoff-mrequiredstate-22438afc",
@@ -1419,7 +368,7 @@ window.ArdaNativeComputeApi = {
       "signature": "EArdaRHIResourceState mRequiredState = EArdaRHIResourceState::Common",
       "summary": "State required on entry to a direct handoff. The provider records its native synchronization.",
       "details": "State required on entry to a direct handoff. The provider records its native synchronization.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1428,7 +377,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeResourceHandoff"
       ],
-      "sourceLine": 199
+      "sourceLine": 53
     },
     {
       "id": "api-arda-fardanativeroutecheck-722cfeeb",
@@ -1440,7 +389,7 @@ window.ArdaNativeComputeApi = {
       "signature": "using FArdaNativeRouteCheck = eastl::function<FArdaRHIStatus(EArdaNativeComputeRoute, const IArdaNativeKernelSource*, const eastl::vector<EArdaRHIResourceState>&)>",
       "summary": "A scheduler may decline a route whose resource states conflict with the pass it compiled. Native routes supply the source and one required state per operand slot. Shader routes supply a null source and no native states. Return Unsupported to continue selection.",
       "details": "A scheduler may decline a route whose resource states conflict with the pass it compiled. Native routes supply the source and one required state per operand slot. Shader routes supply a null source and no native states. Return Unsupported to continue selection.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1449,7 +398,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 206
+      "sourceLine": 60
     },
     {
       "id": "api-arda-iardanativecomputeprovider-4cfb5709",
@@ -1461,7 +410,7 @@ window.ArdaNativeComputeApi = {
       "signature": "class IArdaNativeComputeProvider",
       "summary": "Validate and prepare native work for one provider and its supported sources.",
       "details": "Validate and prepare native work for one provider and its supported sources.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1470,7 +419,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 210
+      "sourceLine": 68
     },
     {
       "id": "api-arda-iardanativecomputeprovider-iardanativecomputeprovider-1bacca56",
@@ -1482,7 +431,7 @@ window.ArdaNativeComputeApi = {
       "signature": "virtual ~IArdaNativeComputeProvider() = default",
       "summary": "Release provider-owned state.",
       "details": "Release provider-owned state.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1491,7 +440,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::IArdaNativeComputeProvider"
       ],
-      "sourceLine": 214
+      "sourceLine": 72
     },
     {
       "id": "api-arda-iardanativecomputeprovider-getdesc-ae81ff1d",
@@ -1503,7 +452,7 @@ window.ArdaNativeComputeApi = {
       "signature": "virtual const FArdaNativeProviderDesc& GetDesc() const noexcept = 0",
       "summary": "Return the provider metadata, valid for the lifetime of the provider.",
       "details": "Return the provider metadata, valid for the lifetime of the provider.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1512,7 +461,112 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::IArdaNativeComputeProvider"
       ],
-      "sourceLine": 216
+      "sourceLine": 74
+    },
+    {
+      "id": "api-arda-iardanativecomputeprovider-probedevice-d8280f1d",
+      "name": "ProbeDevice",
+      "qualifiedName": "arda::IArdaNativeComputeProvider::ProbeDevice",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual TArdaRHIResult<FArdaNativeProviderSupport> ProbeDevice(const IArdaRHIDevice&) const",
+      "summary": "Called once per provider/device pair. A failed probe disables this route on this device.",
+      "details": "Called once per provider/device pair. A failed probe disables this route on this device.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeComputeProvider"
+      ],
+      "sourceLine": 76
+    },
+    {
+      "id": "api-arda-iardanativecomputeprovider-loadkernel-d78653cd",
+      "name": "LoadKernel",
+      "qualifiedName": "arda::IArdaNativeComputeProvider::LoadKernel",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual TArdaRHIResult<eastl::shared_ptr<const IArdaNativeKernelSource>> LoadKernel( const FArdaNativeKernelBinary&, const FArdaNativeKernelLayout&) const",
+      "summary": "Decode provider-owned artifact metadata. Shader fallback remains eligible for unsupported artifacts.",
+      "details": "Decode provider-owned artifact metadata. Shader fallback remains eligible for unsupported artifacts.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeComputeProvider"
+      ],
+      "sourceLine": 78
+    },
+    {
+      "id": "api-arda-iardanativecomputeprovider-configurebuffer-bb545fbf",
+      "name": "ConfigureBuffer",
+      "qualifiedName": "arda::IArdaNativeComputeProvider::ConfigureBuffer",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual void ConfigureBuffer(FArdaRHIBufferDesc&) const",
+      "summary": "Performs configure buffer through the public native compute contract.",
+      "details": "Performs configure buffer through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeComputeProvider"
+      ],
+      "sourceLine": 83
+    },
+    {
+      "id": "api-arda-iardanativecomputeprovider-configuretexture-79212595",
+      "name": "ConfigureTexture",
+      "qualifiedName": "arda::IArdaNativeComputeProvider::ConfigureTexture",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual void ConfigureTexture(FArdaRHITextureDesc&) const",
+      "summary": "Performs configure texture through the public native compute contract.",
+      "details": "Performs configure texture through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeComputeProvider"
+      ],
+      "sourceLine": 84
+    },
+    {
+      "id": "api-arda-iardanativecomputeprovider-recordbatch-faf84dcc",
+      "name": "RecordBatch",
+      "qualifiedName": "arda::IArdaNativeComputeProvider::RecordBatch",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus RecordBatch(IArdaRHICommandList&, const eastl::vector<FArdaNativeWorkRef>&) const",
+      "summary": "Submit this sequence with one graphics/compute handoff. Required for context-switching providers.",
+      "details": "Submit this sequence with one graphics/compute handoff. Required for context-switching providers.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeComputeProvider"
+      ],
+      "sourceLine": 86
     },
     {
       "id": "api-arda-iardanativecomputeprovider-checksupport-c806e25b",
@@ -1521,10 +575,10 @@ window.ArdaNativeComputeApi = {
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
-      "signature": "virtual FArdaRHIStatus CheckSupport(const FArdaNativeComputeContext&, const FArdaNativeOperandDesc&, const IArdaNativeKernelSource&) const = 0",
+      "signature": "virtual FArdaRHIStatus CheckSupport(const FArdaNativeComputeContext&, const FArdaNativeOperand&, const IArdaNativeKernelSource&) const = 0",
       "summary": "Check architecture, source ABI, queue and schema without allocating or recording work.",
       "details": "Check architecture, source ABI, queue and schema without allocating or recording work.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1533,7 +587,28 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::IArdaNativeComputeProvider"
       ],
-      "sourceLine": 218
+      "sourceLine": 91
+    },
+    {
+      "id": "api-arda-iardanativecomputeprovider-getrequiredstate-dd1d471e",
+      "name": "GetRequiredState",
+      "qualifiedName": "arda::IArdaNativeComputeProvider::GetRequiredState",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual EArdaRHIResourceState GetRequiredState(const FArdaNativeResourceSlot&) const",
+      "summary": "Unknown defers resource state qualification to the physical view at preparation.",
+      "details": "Unknown defers resource state qualification to the physical view at preparation.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeComputeProvider"
+      ],
+      "sourceLine": 94
     },
     {
       "id": "api-arda-iardanativecomputeprovider-queryhandoff-0a7750c9",
@@ -1545,7 +620,7 @@ window.ArdaNativeComputeApi = {
       "signature": "virtual TArdaRHIResult<FArdaNativeResourceHandoff> QueryHandoff(const FArdaNativeComputeContext&, const FArdaNativeResourceSlot&, const FArdaNativeResourceView&) const = 0",
       "summary": "Inspect the physical view and report whether the caller must add a conversion pass.",
       "details": "Inspect the physical view and report whether the caller must add a conversion pass.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1554,7 +629,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::IArdaNativeComputeProvider"
       ],
-      "sourceLine": 221
+      "sourceLine": 99
     },
     {
       "id": "api-arda-iardanativecomputeprovider-prepare-c82d0f90",
@@ -1563,10 +638,10 @@ window.ArdaNativeComputeApi = {
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
-      "signature": "virtual TArdaRHIResult<FArdaNativeWorkRef> Prepare(const FArdaNativeComputeContext&, const FArdaNativeOperandDesc&, const IArdaNativeKernelSource&, const FArdaNativeInvocation&, const FArdaNativeLaunch&) const = 0",
+      "signature": "virtual TArdaRHIResult<FArdaNativeWorkRef> Prepare(const FArdaNativeComputeContext&, const FArdaNativeOperand&, const IArdaNativeKernelSource&, const FArdaNativeInvocation&, const FArdaNativeLaunch&) const = 0",
       "summary": "Freeze arguments and resolve the source. Preparation must never enqueue work.",
       "details": "Freeze arguments and resolve the source. Preparation must never enqueue work.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1575,7 +650,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::IArdaNativeComputeProvider"
       ],
-      "sourceLine": 224
+      "sourceLine": 102
     },
     {
       "id": "api-arda-fardanativecomputeplan-e7e68aab",
@@ -1587,7 +662,7 @@ window.ArdaNativeComputeApi = {
       "signature": "class FArdaNativeComputePlan final : public IArdaRHIComputeCommand",
       "summary": "A resolved implementation and frozen work tied to its preparation device and queue.",
       "details": "A resolved implementation and frozen work tied to its preparation device and queue.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1596,7 +671,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 229
+      "sourceLine": 111
     },
     {
       "id": "api-arda-fardanativecomputeplan-getroute-e00d35af",
@@ -1608,7 +683,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] EArdaNativeComputeRoute GetRoute() const noexcept",
       "summary": "Return the selected native, compute shader, or graphics shader route.",
       "details": "Return the selected native, compute shader, or graphics shader route.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1617,7 +692,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeComputePlan"
       ],
-      "sourceLine": 233
+      "sourceLine": 115
     },
     {
       "id": "api-arda-fardanativecomputeplan-getvariantname-efb38020",
@@ -1629,7 +704,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] const eastl::string& GetVariantName() const noexcept",
       "summary": "Return the chosen native variant name, or an empty string for a shader route.",
       "details": "Return the chosen native variant name, or an empty string for a shader route.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1638,7 +713,70 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeComputePlan"
       ],
-      "sourceLine": 235
+      "sourceLine": 117
+    },
+    {
+      "id": "api-arda-fardanativecomputeplan-getexecutionmode-2e5f1d32",
+      "name": "GetExecutionMode",
+      "qualifiedName": "arda::FArdaNativeComputePlan::GetExecutionMode",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] EArdaNativeExecutionMode GetExecutionMode() const noexcept",
+      "summary": "Performs get execution mode through the public native compute contract.",
+      "details": "Performs get execution mode through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputePlan"
+      ],
+      "sourceLine": 118
+    },
+    {
+      "id": "api-arda-fardanativecomputeplan-getproviderid-87106553",
+      "name": "GetProviderId",
+      "qualifiedName": "arda::FArdaNativeComputePlan::GetProviderId",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] const eastl::string& GetProviderId() const noexcept",
+      "summary": "Performs get provider id through the public native compute contract.",
+      "details": "Performs get provider id through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputePlan"
+      ],
+      "sourceLine": 119
+    },
+    {
+      "id": "api-arda-fardanativecomputeplan-hasboundarywork-f8eede54",
+      "name": "HasBoundaryWork",
+      "qualifiedName": "arda::FArdaNativeComputePlan::HasBoundaryWork",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool HasBoundaryWork() const noexcept",
+      "summary": "True when recording needs graphics commands before or after the native dispatch.",
+      "details": "True when recording needs graphics commands before or after the native dispatch.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputePlan"
+      ],
+      "sourceLine": 121
     },
     {
       "id": "api-arda-fardanativecomputeplan-getwork-36c16e79",
@@ -1648,9 +786,9 @@ window.ArdaNativeComputeApi = {
       "component": "core",
       "page": "api-reference.html",
       "signature": "[[nodiscard]] const FArdaNativeWorkRef& GetWork() const noexcept",
-      "summary": "Borrow the shared work reference for low-level integration. Copy it to retain ownership.",
-      "details": "Borrow the shared work reference for low-level integration. Copy it to retain ownership.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "summary": "Borrow the provider work for typed integration. Use Record or a session for plans with boundary work.",
+      "details": "Borrow the provider work for typed integration. Use Record or a session for plans with boundary work.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1659,7 +797,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeComputePlan"
       ],
-      "sourceLine": 237
+      "sourceLine": 123
     },
     {
       "id": "api-arda-fardanativecomputeplan-record-d7cc26dd",
@@ -1671,7 +809,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] FArdaRHIStatus Record(IArdaRHICommandList& Commands) const",
       "summary": "Record the frozen work without submitting it.",
       "details": "Record the frozen work without submitting it.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [
         {
           "name": "Commands",
@@ -1685,7 +823,70 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeComputePlan"
       ],
-      "sourceLine": 244
+      "sourceLine": 130
+    },
+    {
+      "id": "api-arda-fardanativecomputesession-6994be86",
+      "name": "FArdaNativeComputeSession",
+      "qualifiedName": "arda::FArdaNativeComputeSession",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaNativeComputeSession",
+      "summary": "A command-list-local group of compatible, ordered context-switching operands.",
+      "details": "A command-list-local group of compatible, ordered context-switching operands.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 147
+    },
+    {
+      "id": "api-arda-fardanativecomputesession-append-2a83def0",
+      "name": "Append",
+      "qualifiedName": "arda::FArdaNativeComputeSession::Append",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus Append(FArdaNativeComputePlan Plan, IArdaRHICommandList& Commands)",
+      "summary": "Performs append through the public native compute contract.",
+      "details": "Performs append through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeSession"
+      ],
+      "sourceLine": 150
+    },
+    {
+      "id": "api-arda-fardanativecomputesession-flush-fc7f557d",
+      "name": "Flush",
+      "qualifiedName": "arda::FArdaNativeComputeSession::Flush",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus Flush(IArdaRHICommandList& Commands)",
+      "summary": "Performs flush through the public native compute contract.",
+      "details": "Performs flush through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeSession"
+      ],
+      "sourceLine": 151
     },
     {
       "id": "api-arda-fardanativecomputeregistry-9539f736",
@@ -1697,7 +898,7 @@ window.ArdaNativeComputeApi = {
       "signature": "class FArdaNativeComputeRegistry",
       "summary": "Own native providers and immutable operand definitions.",
       "details": "Own native providers and immutable operand definitions.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1706,7 +907,28 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 259
+      "sourceLine": 166
+    },
+    {
+      "id": "api-arda-fardanativecomputeregistry-fardanativecomputeregistry-1535576c",
+      "name": "FArdaNativeComputeRegistry",
+      "qualifiedName": "arda::FArdaNativeComputeRegistry::FArdaNativeComputeRegistry",
+      "kind": "constructor",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "explicit FArdaNativeComputeRegistry(bool UseGlobalProviders = false) : mbUseGlobalProviders(UseGlobalProviders)",
+      "summary": "A graph-local operand registry can resolve providers installed in the backend, including later registrations.",
+      "details": "A graph-local operand registry can resolve providers installed in the backend, including later registrations.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeRegistry"
+      ],
+      "sourceLine": 170
     },
     {
       "id": "api-arda-fardanativecomputeregistry-registerprovider-4cccd1a9",
@@ -1718,7 +940,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] FArdaRHIStatus RegisterProvider(eastl::shared_ptr<const IArdaNativeComputeProvider> Provider)",
       "summary": "Register a provider with a unique ID and nonempty, distinct compatibility names.",
       "details": "Register a provider with a unique ID and nonempty, distinct compatibility names.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [
         {
           "name": "Provider",
@@ -1732,7 +954,112 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeComputeRegistry"
       ],
-      "sourceLine": 268
+      "sourceLine": 178
+    },
+    {
+      "id": "api-arda-fardanativecomputeregistry-findresourcecategory-7dc518e9",
+      "name": "FindResourceCategory",
+      "qualifiedName": "arda::FArdaNativeComputeRegistry::FindResourceCategory",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] TArdaRHIResult<FArdaNativeResourceCategory> FindResourceCategory( const char* ProviderId, const char* CategoryId) const",
+      "summary": "Look up a provider's native representation and its RHI resource kind.",
+      "details": "Look up a provider's native representation and its RHI resource kind.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeRegistry"
+      ],
+      "sourceLine": 180
+    },
+    {
+      "id": "api-arda-fardanativecomputeregistry-queryprovidersupport-50bb7e0b",
+      "name": "QueryProviderSupport",
+      "qualifiedName": "arda::FArdaNativeComputeRegistry::QueryProviderSupport",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] TArdaRHIResult<FArdaNativeProviderSupport> QueryProviderSupport( const char* ProviderId, const FArdaNativeComputeContext& Context) const",
+      "summary": "Single authoritative device/driver probe, including negative results and JIT availability.",
+      "details": "Single authoritative device/driver probe, including negative results and JIT availability.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeRegistry"
+      ],
+      "sourceLine": 183
+    },
+    {
+      "id": "api-arda-fardanativecomputeregistry-probedeviceproviders-7882ba67",
+      "name": "ProbeDeviceProviders",
+      "qualifiedName": "arda::FArdaNativeComputeRegistry::ProbeDeviceProviders",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "void ProbeDeviceProviders(const FArdaRHIDeviceRef& Device) const",
+      "summary": "Probe all registered modules at device startup; individual failures leave other routes available.",
+      "details": "Probe all registered modules at device startup; individual failures leave other routes available.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeRegistry"
+      ],
+      "sourceLine": 186
+    },
+    {
+      "id": "api-arda-fardanativecomputeregistry-getproviderids-17cf62a5",
+      "name": "GetProviderIds",
+      "qualifiedName": "arda::FArdaNativeComputeRegistry::GetProviderIds",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] eastl::vector<eastl::string> GetProviderIds() const",
+      "summary": "Performs get provider ids through the public native compute contract.",
+      "details": "Performs get provider ids through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeRegistry"
+      ],
+      "sourceLine": 187
+    },
+    {
+      "id": "api-arda-fardanativecomputeregistry-queryexecutionmode-6df55a7f",
+      "name": "QueryExecutionMode",
+      "qualifiedName": "arda::FArdaNativeComputeRegistry::QueryExecutionMode",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] TArdaRHIResult<EArdaNativeExecutionMode> QueryExecutionMode( const char* Id, const FArdaNativeComputeContext& Context, eastl::string* OutProviderId = nullptr, const FArdaNativeRouteCheck& CheckRoute = {}) const",
+      "summary": "Performs query execution mode through the public native compute contract.",
+      "details": "Performs query execution mode through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeRegistry"
+      ],
+      "sourceLine": 188
     },
     {
       "id": "api-arda-fardanativecomputeregistry-registeroperand-e335ce82",
@@ -1741,10 +1068,10 @@ window.ArdaNativeComputeApi = {
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] FArdaRHIStatus RegisterOperand(FArdaNativeOperandDesc Operand)",
+      "signature": "[[nodiscard]] FArdaRHIStatus RegisterOperand(FArdaNativeOperand Operand)",
       "summary": "Publish an operand with at least one native variant or shader implementation.",
       "details": "Publish an operand with at least one native variant or shader implementation.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [
         {
           "name": "Operand",
@@ -1758,7 +1085,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeComputeRegistry"
       ],
-      "sourceLine": 275
+      "sourceLine": 197
     },
     {
       "id": "api-arda-fardanativecomputeregistry-findprovider-43e38b75",
@@ -1770,7 +1097,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] eastl::shared_ptr<const IArdaNativeComputeProvider> FindProvider(const char* Id) const",
       "summary": "Look up a registered provider by ID.",
       "details": "Look up a registered provider by ID.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [
         {
           "name": "Id",
@@ -1784,7 +1111,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeComputeRegistry"
       ],
-      "sourceLine": 281
+      "sourceLine": 203
     },
     {
       "id": "api-arda-fardanativecomputeregistry-findoperand-a2e7b912",
@@ -1793,10 +1120,10 @@ window.ArdaNativeComputeApi = {
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] eastl::shared_ptr<const FArdaNativeOperandDesc> FindOperand(const char* Id) const",
+      "signature": "[[nodiscard]] eastl::shared_ptr<const FArdaNativeOperand> FindOperand(const char* Id) const",
       "summary": "Look up a registered operand by ID.",
       "details": "Look up a registered operand by ID.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [
         {
           "name": "Id",
@@ -1810,7 +1137,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeComputeRegistry"
       ],
-      "sourceLine": 287
+      "sourceLine": 209
     },
     {
       "id": "api-arda-fardanativecomputeregistry-checksupport-d8bb205b",
@@ -1822,7 +1149,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] FArdaRHIStatus CheckSupport(const char* Id, const FArdaNativeComputeContext& Context) const",
       "summary": "Check device, queue, and provider or shader eligibility before supplying frame inputs.",
       "details": "Check device, queue, and provider or shader eligibility before supplying frame inputs.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [
         {
           "name": "Id",
@@ -1840,7 +1167,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeComputeRegistry"
       ],
-      "sourceLine": 294
+      "sourceLine": 221
     },
     {
       "id": "api-arda-fardanativecomputeregistry-prepare-35172c0f",
@@ -1850,9 +1177,9 @@ window.ArdaNativeComputeApi = {
       "component": "core",
       "page": "api-reference.html",
       "signature": "[[nodiscard]] TArdaRHIResult<FArdaNativeComputePlan> Prepare(const char* Id, const FArdaNativeComputeContext& Context, const FArdaNativeInvocation& Invocation, const FArdaNativeRouteCheck& CheckRoute = {}) const",
-      "summary": "Validate bindings, choose an implementation, and freeze one invocation. A native Unsupported or BackendFailure can advance to another eligible variant or the shader fallback. An invalid invocation fails before any implementation runs. Preparation does not submit work.",
-      "details": "Validate bindings, choose an implementation, and freeze one invocation. A native Unsupported or BackendFailure can advance to another eligible variant or the shader fallback. An invalid invocation fails before any implementation runs. Preparation does not submit work.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/ArdaNativeCompute.h",
+      "summary": "Validate bindings, choose an implementation, and freeze one invocation. A native Unsupported or BackendFailure can advance to another eligible variant or shader fallback. An invalid invocation fails before any implementation runs. Preparation does not submit work.",
+      "details": "Validate bindings, choose an implementation, and freeze one invocation. A native Unsupported or BackendFailure can advance to another eligible variant or shader fallback. An invalid invocation fails before any implementation runs. Preparation does not submit work.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
       "params": [
         {
           "name": "Id",
@@ -1878,7 +1205,5582 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeComputeRegistry"
       ],
-      "sourceLine": 307
+      "sourceLine": 234
+    },
+    {
+      "id": "api-arda-registerlinkedardanativecomputeproviders-2b1febb6",
+      "name": "RegisterLinkedArdaNativeComputeProviders",
+      "qualifiedName": "arda::RegisterLinkedArdaNativeComputeProviders",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus RegisterLinkedArdaNativeComputeProviders(FArdaNativeComputeRegistry&)",
+      "summary": "Register all linked provider modules atomically. Local registries can opt in.",
+      "details": "Register all linked provider modules atomically. Local registries can opt in.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 255
+    },
+    {
+      "id": "api-arda-getardanativecomputeregistry-08e4ca95",
+      "name": "GetArdaNativeComputeRegistry",
+      "qualifiedName": "arda::GetArdaNativeComputeRegistry",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeComputeRegistry& GetArdaNativeComputeRegistry()",
+      "summary": "Process-wide registry used by the backend and by graph artifact references.",
+      "details": "Process-wide registry used by the backend and by graph artifact references.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 257
+    },
+    {
+      "id": "api-arda-getardanativecomputemodulestatus-ea615193",
+      "name": "GetArdaNativeComputeModuleStatus",
+      "qualifiedName": "arda::GetArdaNativeComputeModuleStatus",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus GetArdaNativeComputeModuleStatus()",
+      "summary": "Performs get arda native compute module status through the public native compute contract.",
+      "details": "Performs get arda native compute module status through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 258
+    },
+    {
+      "id": "api-arda-makeardapackagednativeoperand-3af6d268",
+      "name": "MakeArdaPackagedNativeOperand",
+      "qualifiedName": "arda::MakeArdaPackagedNativeOperand",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] TArdaRHIResult<FArdaNativeOperand> MakeArdaPackagedNativeOperand( const FArdaNativeKernelKey&, const FArdaNativeKernelLayout&, FArdaNativeOperand Operand)",
+      "summary": "Resolve the artifact lazily, allowing a matching registered shader even when the provider is unavailable.",
+      "details": "Resolve the artifact lazily, allowing a matching registered shader even when the provider is unavailable.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeCompute.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 261
+    },
+    {
+      "id": "api-arda-fardanativekernelkey-7fa9ccc0",
+      "name": "FArdaNativeKernelKey",
+      "qualifiedName": "arda::FArdaNativeKernelKey",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeKernelKey",
+      "summary": "Defines f arda native kernel key in the public native compute contract.",
+      "details": "Defines f arda native kernel key in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 15
+    },
+    {
+      "id": "api-arda-fardanativekernelkey-mlibrary-0f76ca00",
+      "name": "mLibrary",
+      "qualifiedName": "arda::FArdaNativeKernelKey::mLibrary",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mLibrary",
+      "summary": "Stores library in this public native compute value.",
+      "details": "Stores library in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelKey"
+      ],
+      "sourceLine": 17
+    },
+    {
+      "id": "api-arda-fardanativekernelkey-mprovider-d65e6b01",
+      "name": "mProvider",
+      "qualifiedName": "arda::FArdaNativeKernelKey::mProvider",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mProvider",
+      "summary": "Stores provider in this public native compute value.",
+      "details": "Stores provider in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelKey"
+      ],
+      "sourceLine": 18
+    },
+    {
+      "id": "api-arda-fardanativekernelkey-mname-6cfab0ae",
+      "name": "mName",
+      "qualifiedName": "arda::FArdaNativeKernelKey::mName",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mName",
+      "summary": "Stores name in this public native compute value.",
+      "details": "Stores name in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelKey"
+      ],
+      "sourceLine": 19
+    },
+    {
+      "id": "api-arda-fardanativekernelkey-msignature-c612dee4",
+      "name": "mSignature",
+      "qualifiedName": "arda::FArdaNativeKernelKey::mSignature",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mSignature",
+      "summary": "Stores signature in this public native compute value.",
+      "details": "Stores signature in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelKey"
+      ],
+      "sourceLine": 20
+    },
+    {
+      "id": "api-arda-fardanativekernelbinary-9fd65bc6",
+      "name": "FArdaNativeKernelBinary",
+      "qualifiedName": "arda::FArdaNativeKernelBinary",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeKernelBinary",
+      "summary": "The provider interprets the format, entry point and attributes. The catalog owns the bytes.",
+      "details": "The provider interprets the format, entry point and attributes. The catalog owns the bytes.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 24
+    },
+    {
+      "id": "api-arda-fardanativekernelbinary-mformat-af0f02f3",
+      "name": "mFormat",
+      "qualifiedName": "arda::FArdaNativeKernelBinary::mFormat",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mFormat",
+      "summary": "Stores format in this public native compute value.",
+      "details": "Stores format in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelBinary"
+      ],
+      "sourceLine": 26
+    },
+    {
+      "id": "api-arda-fardanativekernelbinary-mentrypoint-8d156f45",
+      "name": "mEntryPoint",
+      "qualifiedName": "arda::FArdaNativeKernelBinary::mEntryPoint",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mEntryPoint",
+      "summary": "Stores entry point in this public native compute value.",
+      "details": "Stores entry point in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelBinary"
+      ],
+      "sourceLine": 27
+    },
+    {
+      "id": "api-arda-fardanativekernelbinary-mattributes-3f64bbc2",
+      "name": "mAttributes",
+      "qualifiedName": "arda::FArdaNativeKernelBinary::mAttributes",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<uint32_t> mAttributes",
+      "summary": "Stores attributes in this public native compute value.",
+      "details": "Stores attributes in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelBinary"
+      ],
+      "sourceLine": 28
+    },
+    {
+      "id": "api-arda-fardanativekernelbinary-mbytes-f17b94af",
+      "name": "mBytes",
+      "qualifiedName": "arda::FArdaNativeKernelBinary::mBytes",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<uint8_t> mBytes",
+      "summary": "Stores bytes in this public native compute value.",
+      "details": "Stores bytes in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelBinary"
+      ],
+      "sourceLine": 29
+    },
+    {
+      "id": "api-arda-eardanativeargumentkind-buffer-2d932722",
+      "name": "Buffer",
+      "qualifiedName": "arda::EArdaNativeArgumentKind::Buffer",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "Buffer",
+      "summary": "Selects the buffer native compute value.",
+      "details": "Selects the buffer native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaNativeArgumentKind"
+      ],
+      "sourceLine": 36
+    },
+    {
+      "id": "api-arda-eardanativeargumentkind-d0d26a3f",
+      "name": "EArdaNativeArgumentKind",
+      "qualifiedName": "arda::EArdaNativeArgumentKind",
+      "kind": "enum",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaNativeArgumentKind : uint8_t",
+      "summary": "Defines e arda native argument kind in the public native compute contract.",
+      "details": "Defines e arda native argument kind in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 36
+    },
+    {
+      "id": "api-arda-eardanativeargumentkind-surface-26e03dfd",
+      "name": "Surface",
+      "qualifiedName": "arda::EArdaNativeArgumentKind::Surface",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "Surface",
+      "summary": "Selects the surface native compute value.",
+      "details": "Selects the surface native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaNativeArgumentKind"
+      ],
+      "sourceLine": 36
+    },
+    {
+      "id": "api-arda-eardanativeargumentkind-value-9f443ee5",
+      "name": "Value",
+      "qualifiedName": "arda::EArdaNativeArgumentKind::Value",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "Value",
+      "summary": "Selects the value native compute value.",
+      "details": "Selects the value native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaNativeArgumentKind"
+      ],
+      "sourceLine": 36
+    },
+    {
+      "id": "api-arda-fardanativeargumentlayout-d8ab9f0f",
+      "name": "FArdaNativeArgumentLayout",
+      "qualifiedName": "arda::FArdaNativeArgumentLayout",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeArgumentLayout",
+      "summary": "Defines f arda native argument layout in the public native compute contract.",
+      "details": "Defines f arda native argument layout in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 38
+    },
+    {
+      "id": "api-arda-fardanativeargumentlayout-moffset-49c09a1b",
+      "name": "mOffset",
+      "qualifiedName": "arda::FArdaNativeArgumentLayout::mOffset",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "size_t mOffset = 0",
+      "summary": "Stores offset in this public native compute value.",
+      "details": "Stores offset in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeArgumentLayout"
+      ],
+      "sourceLine": 40
+    },
+    {
+      "id": "api-arda-fardanativeargumentlayout-msize-0cfad7d4",
+      "name": "mSize",
+      "qualifiedName": "arda::FArdaNativeArgumentLayout::mSize",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "size_t mSize = 0",
+      "summary": "Stores size in this public native compute value.",
+      "details": "Stores size in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeArgumentLayout"
+      ],
+      "sourceLine": 41
+    },
+    {
+      "id": "api-arda-fardanativeargumentlayout-malignment-8462806c",
+      "name": "mAlignment",
+      "qualifiedName": "arda::FArdaNativeArgumentLayout::mAlignment",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "size_t mAlignment = 1",
+      "summary": "Stores alignment in this public native compute value.",
+      "details": "Stores alignment in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeArgumentLayout"
+      ],
+      "sourceLine": 42
+    },
+    {
+      "id": "api-arda-fardanativeargumentlayout-mkind-eed0f611",
+      "name": "mKind",
+      "qualifiedName": "arda::FArdaNativeArgumentLayout::mKind",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "EArdaNativeArgumentKind mKind = EArdaNativeArgumentKind::Value",
+      "summary": "Stores kind in this public native compute value.",
+      "details": "Stores kind in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeArgumentLayout"
+      ],
+      "sourceLine": 43
+    },
+    {
+      "id": "api-arda-fardanativekernellayout-cf39b744",
+      "name": "FArdaNativeKernelLayout",
+      "qualifiedName": "arda::FArdaNativeKernelLayout",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeKernelLayout",
+      "summary": "Defines f arda native kernel layout in the public native compute contract.",
+      "details": "Defines f arda native kernel layout in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 46
+    },
+    {
+      "id": "api-arda-fardanativekernellayout-mparametersize-5f4eef4b",
+      "name": "mParameterSize",
+      "qualifiedName": "arda::FArdaNativeKernelLayout::mParameterSize",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint32_t mParameterSize = 0",
+      "summary": "Stores parameter size in this public native compute value.",
+      "details": "Stores parameter size in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelLayout"
+      ],
+      "sourceLine": 48
+    },
+    {
+      "id": "api-arda-fardanativekernellayout-mparameteralignment-26705957",
+      "name": "mParameterAlignment",
+      "qualifiedName": "arda::FArdaNativeKernelLayout::mParameterAlignment",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint32_t mParameterAlignment = 1",
+      "summary": "Stores parameter alignment in this public native compute value.",
+      "details": "Stores parameter alignment in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelLayout"
+      ],
+      "sourceLine": 49
+    },
+    {
+      "id": "api-arda-fardanativekernellayout-marguments-51056e0c",
+      "name": "mArguments",
+      "qualifiedName": "arda::FArdaNativeKernelLayout::mArguments",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaNativeArgumentLayout> mArguments",
+      "summary": "Stores arguments in this public native compute value.",
+      "details": "Stores arguments in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelLayout"
+      ],
+      "sourceLine": 50
+    },
+    {
+      "id": "api-arda-isvalidardanativekernelkey-a3ab4dc3",
+      "name": "IsValidArdaNativeKernelKey",
+      "qualifiedName": "arda::IsValidArdaNativeKernelKey",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool IsValidArdaNativeKernelKey(const FArdaNativeKernelKey&)",
+      "summary": "Performs is valid arda native kernel key through the public native compute contract.",
+      "details": "Performs is valid arda native kernel key through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 57
+    },
+    {
+      "id": "api-arda-stageardanativekernellibrary-fffe260b",
+      "name": "StageArdaNativeKernelLibrary",
+      "qualifiedName": "arda::StageArdaNativeKernelLibrary",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus StageArdaNativeKernelLibrary(const eastl::string& Library, const std::filesystem::path& Directory)",
+      "summary": "Copy a deployed sidecar or persist in-memory kernels when saving a graph to a new directory. Unavailable deployment references are preserved by the graph and may resolve on another device.",
+      "details": "Copy a deployed sidecar or persist in-memory kernels when saving a graph to a new directory. Unavailable deployment references are preserved by the graph and may resolve on another device.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 60
+    },
+    {
+      "id": "api-arda-saveardanativekernellibrary-d47c1b4f",
+      "name": "SaveArdaNativeKernelLibrary",
+      "qualifiedName": "arda::SaveArdaNativeKernelLibrary",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus SaveArdaNativeKernelLibrary(const eastl::string& Library, const std::filesystem::path& Directory)",
+      "summary": "Persist generated kernels as an indexed library beside a saved graph.",
+      "details": "Persist generated kernels as an indexed library beside a saved graph.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 62
+    },
+    {
+      "id": "api-arda-addardanativekerneldirectory-2442028c",
+      "name": "AddArdaNativeKernelDirectory",
+      "qualifiedName": "arda::AddArdaNativeKernelDirectory",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "void AddArdaNativeKernelDirectory(std::filesystem::path Directory)",
+      "summary": "Add a deployment directory searched for <library>.ardakernels on a catalog miss.",
+      "details": "Add a deployment directory searched for <library>.ardakernels on a catalog miss.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 64
+    },
+    {
+      "id": "api-arda-loadardanativekernellibrary-303c0473",
+      "name": "LoadArdaNativeKernelLibrary",
+      "qualifiedName": "arda::LoadArdaNativeKernelLibrary",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus LoadArdaNativeKernelLibrary(const std::filesystem::path& File)",
+      "summary": "Load and validate the complete index before publishing any entries.",
+      "details": "Load and validate the complete index before publishing any entries.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 66
+    },
+    {
+      "id": "api-arda-loadardanativekernellibrary-4af71414",
+      "name": "LoadArdaNativeKernelLibrary",
+      "qualifiedName": "arda::LoadArdaNativeKernelLibrary",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus LoadArdaNativeKernelLibrary(const uint8_t* Bytes, size_t Size)",
+      "summary": "Load a build-packaged library shipped inside a provider module.",
+      "details": "Load a build-packaged library shipped inside a provider module.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 68
+    },
+    {
+      "id": "api-arda-registerardanativekernelbinary-17dc5aa2",
+      "name": "RegisterArdaNativeKernelBinary",
+      "qualifiedName": "arda::RegisterArdaNativeKernelBinary",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus RegisterArdaNativeKernelBinary(const FArdaNativeKernelKey&, FArdaNativeKernelBinary)",
+      "summary": "Publish an in-memory artifact, for application-generated kernels and legacy package importers.",
+      "details": "Publish an in-memory artifact, for application-generated kernels and legacy package importers.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 70
+    },
+    {
+      "id": "api-arda-findardanativekernelbinary-b6dee897",
+      "name": "FindArdaNativeKernelBinary",
+      "qualifiedName": "arda::FindArdaNativeKernelBinary",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] TArdaRHIResult<eastl::shared_ptr<const FArdaNativeKernelBinary>> FindArdaNativeKernelBinary( const FArdaNativeKernelKey&)",
+      "summary": "Performs find arda native kernel binary through the public native compute contract.",
+      "details": "Performs find arda native kernel binary through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeKernelLibrary.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 71
+    },
+    {
+      "id": "api-arda-eardanativecomputepreference-d0128340",
+      "name": "EArdaNativeComputePreference",
+      "qualifiedName": "arda::EArdaNativeComputePreference",
+      "kind": "enum",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaNativeComputePreference : uint8_t",
+      "summary": "Choose which implementation routes the resolver may try.",
+      "details": "Choose which implementation routes the resolver may try.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 20
+    },
+    {
+      "id": "api-arda-eardanativecomputepreference-prefernative-6e8b8624",
+      "name": "PreferNative",
+      "qualifiedName": "arda::EArdaNativeComputePreference::PreferNative",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "PreferNative",
+      "summary": "Try native variants in declaration order, then shader fallbacks in declaration order.",
+      "details": "Try native variants in declaration order, then shader fallbacks in declaration order.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaNativeComputePreference"
+      ],
+      "sourceLine": 23
+    },
+    {
+      "id": "api-arda-eardanativecomputepreference-nativeonly-1b5219dc",
+      "name": "NativeOnly",
+      "qualifiedName": "arda::EArdaNativeComputePreference::NativeOnly",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "NativeOnly",
+      "summary": "Require an eligible native provider and variant.",
+      "details": "Require an eligible native provider and variant.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaNativeComputePreference"
+      ],
+      "sourceLine": 25
+    },
+    {
+      "id": "api-arda-eardanativecomputepreference-shaderonly-709efc2b",
+      "name": "ShaderOnly",
+      "qualifiedName": "arda::EArdaNativeComputePreference::ShaderOnly",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "ShaderOnly",
+      "summary": "Try the registered shader implementations in declaration order.",
+      "details": "Try the registered shader implementations in declaration order.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaNativeComputePreference"
+      ],
+      "sourceLine": 27
+    },
+    {
+      "id": "api-arda-eardanativeexecutionmode-contextswitching-13569b8d",
+      "name": "ContextSwitching",
+      "qualifiedName": "arda::EArdaNativeExecutionMode::ContextSwitching",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "ContextSwitching",
+      "summary": "How this provider records work on this particular graphics device.",
+      "details": "How this provider records work on this particular graphics device.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaNativeExecutionMode"
+      ],
+      "sourceLine": 31
+    },
+    {
+      "id": "api-arda-eardanativeexecutionmode-direct-9b879363",
+      "name": "Direct",
+      "qualifiedName": "arda::EArdaNativeExecutionMode::Direct",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "Direct",
+      "summary": "How this provider records work on this particular graphics device.",
+      "details": "How this provider records work on this particular graphics device.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaNativeExecutionMode"
+      ],
+      "sourceLine": 31
+    },
+    {
+      "id": "api-arda-eardanativeexecutionmode-dd55a9e2",
+      "name": "EArdaNativeExecutionMode",
+      "qualifiedName": "arda::EArdaNativeExecutionMode",
+      "kind": "enum",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaNativeExecutionMode : uint8_t",
+      "summary": "How this provider records work on this particular graphics device.",
+      "details": "How this provider records work on this particular graphics device.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 31
+    },
+    {
+      "id": "api-arda-iardanativedevicecontext-1db4e229",
+      "name": "IArdaNativeDeviceContext",
+      "qualifiedName": "arda::IArdaNativeDeviceContext",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class IArdaNativeDeviceContext",
+      "summary": "Optional state allocated by a provider when it probes a device. Released with that device.",
+      "details": "Optional state allocated by a provider when it probes a device. Released with that device.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 34
+    },
+    {
+      "id": "api-arda-iardanativedevicecontext-iardanativedevicecontext-dc61888c",
+      "name": "~IArdaNativeDeviceContext",
+      "qualifiedName": "arda::IArdaNativeDeviceContext::~IArdaNativeDeviceContext",
+      "kind": "destructor",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual ~IArdaNativeDeviceContext() = default",
+      "summary": "Destroys the native compute object after dependent work is released.",
+      "details": "Destroys the native compute object after dependent work is released. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeDeviceContext"
+      ],
+      "sourceLine": 37
+    },
+    {
+      "id": "api-arda-fardanativeprovidersupport-737d1123",
+      "name": "FArdaNativeProviderSupport",
+      "qualifiedName": "arda::FArdaNativeProviderSupport",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeProviderSupport",
+      "summary": "Defines f arda native provider support in the public native compute contract.",
+      "details": "Defines f arda native provider support in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 40
+    },
+    {
+      "id": "api-arda-fardanativeprovidersupport-mmode-dc108752",
+      "name": "mMode",
+      "qualifiedName": "arda::FArdaNativeProviderSupport::mMode",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "EArdaNativeExecutionMode mMode = EArdaNativeExecutionMode::Direct",
+      "summary": "Stores mode in this public native compute value.",
+      "details": "Stores mode in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeProviderSupport"
+      ],
+      "sourceLine": 42
+    },
+    {
+      "id": "api-arda-fardanativeprovidersupport-mbruntimecompilation-9a1d6249",
+      "name": "mbRuntimeCompilation",
+      "qualifiedName": "arda::FArdaNativeProviderSupport::mbRuntimeCompilation",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "bool mbRuntimeCompilation = false",
+      "summary": "Stores runtime compilation in this public native compute value.",
+      "details": "Stores runtime compilation in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeProviderSupport"
+      ],
+      "sourceLine": 43
+    },
+    {
+      "id": "api-arda-fardanativeprovidersupport-mcontext-5c866bc9",
+      "name": "mContext",
+      "qualifiedName": "arda::FArdaNativeProviderSupport::mContext",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const IArdaNativeDeviceContext> mContext",
+      "summary": "Stores context in this public native compute value.",
+      "details": "Stores context in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeProviderSupport"
+      ],
+      "sourceLine": 44
+    },
+    {
+      "id": "api-arda-fardanativecomputecontext-8755b900",
+      "name": "FArdaNativeComputeContext",
+      "qualifiedName": "arda::FArdaNativeComputeContext",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeComputeContext",
+      "summary": "Device, queue, and route preference for support checks and preparation.",
+      "details": "Device, queue, and route preference for support checks and preparation.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 48
+    },
+    {
+      "id": "api-arda-fardanativecomputecontext-mdevice-972ba489",
+      "name": "mDevice",
+      "qualifiedName": "arda::FArdaNativeComputeContext::mDevice",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIDeviceRef mDevice",
+      "summary": "Device on which the prepared work will record.",
+      "details": "Device on which the prepared work will record.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeContext"
+      ],
+      "sourceLine": 51
+    },
+    {
+      "id": "api-arda-fardanativecomputecontext-mqueue-d8ab00bd",
+      "name": "mQueue",
+      "qualifiedName": "arda::FArdaNativeComputeContext::mQueue",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics",
+      "summary": "Queue the command list must use when it records the prepared plan.",
+      "details": "Queue the command list must use when it records the prepared plan.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeContext"
+      ],
+      "sourceLine": 53
+    },
+    {
+      "id": "api-arda-fardanativecomputecontext-mpreference-c48cf7fc",
+      "name": "mPreference",
+      "qualifiedName": "arda::FArdaNativeComputeContext::mPreference",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "EArdaNativeComputePreference mPreference = EArdaNativeComputePreference::PreferNative",
+      "summary": "Routes the resolver may try.",
+      "details": "Routes the resolver may try.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeContext"
+      ],
+      "sourceLine": 55
+    },
+    {
+      "id": "api-arda-fardanativecomputecontext-mrequiredproviderid-45e7d622",
+      "name": "mRequiredProviderId",
+      "qualifiedName": "arda::FArdaNativeComputeContext::mRequiredProviderId",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mRequiredProviderId",
+      "summary": "Require a particular native provider ID. Empty leaves the choice to the operand.",
+      "details": "Require a particular native provider ID. Empty leaves the choice to the operand.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeContext"
+      ],
+      "sourceLine": 57
+    },
+    {
+      "id": "api-arda-fardanativecomputecontext-mallowedproviderids-37cb8f2d",
+      "name": "mAllowedProviderIds",
+      "qualifiedName": "arda::FArdaNativeComputeContext::mAllowedProviderIds",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<eastl::string> mAllowedProviderIds",
+      "summary": "Optional scheduler restriction. Admit only these provider IDs, preserving the operand's variant order.",
+      "details": "Optional scheduler restriction. Admit only these provider IDs, preserving the operand's variant order.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeContext"
+      ],
+      "sourceLine": 59
+    },
+    {
+      "id": "api-arda-fardanativecomputecontext-mprovidercontext-82284ddd",
+      "name": "mProviderContext",
+      "qualifiedName": "arda::FArdaNativeComputeContext::mProviderContext",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const IArdaNativeDeviceContext> mProviderContext",
+      "summary": "Filled by the resolver with the selected provider's device state.",
+      "details": "Filled by the resolver with the selected provider's device state.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeComputeContext"
+      ],
+      "sourceLine": 61
+    },
+    {
+      "id": "api-arda-fardanativeresourceslot-bc618999",
+      "name": "FArdaNativeResourceSlot",
+      "qualifiedName": "arda::FArdaNativeResourceSlot",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeResourceSlot",
+      "summary": "All implementations of an operand consume these slots in declaration order.",
+      "details": "All implementations of an operand consume these slots in declaration order.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 69
+    },
+    {
+      "id": "api-arda-fardanativeresourceslot-mname-1b65f21e",
+      "name": "mName",
+      "qualifiedName": "arda::FArdaNativeResourceSlot::mName",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mName",
+      "summary": "Nonempty name unique within the operand.",
+      "details": "Nonempty name unique within the operand.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceSlot"
+      ],
+      "sourceLine": 72
+    },
+    {
+      "id": "api-arda-fardanativeresourceslot-mtype-b1ab8942",
+      "name": "mType",
+      "qualifiedName": "arda::FArdaNativeResourceSlot::mType",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "EArdaRHIResourceType mType = EArdaRHIResourceType::Buffer",
+      "summary": "RHI resource kind required by this slot.",
+      "details": "RHI resource kind required by this slot.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceSlot"
+      ],
+      "sourceLine": 74
+    },
+    {
+      "id": "api-arda-fardanativeresourceslot-maccess-e1acee09",
+      "name": "mAccess",
+      "qualifiedName": "arda::FArdaNativeResourceSlot::mAccess",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "EArdaComputeAccess mAccess = EArdaComputeAccess::Read",
+      "summary": "Read, write, or read/write access required by every route.",
+      "details": "Read, write, or read/write access required by every route.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceSlot"
+      ],
+      "sourceLine": 76
+    },
+    {
+      "id": "api-arda-fardanativeresourceslot-mformat-0f9ce331",
+      "name": "mFormat",
+      "qualifiedName": "arda::FArdaNativeResourceSlot::mFormat",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown",
+      "summary": "Required texture storage format. Unknown leaves the format unconstrained.",
+      "details": "Required texture storage format. Unknown leaves the format unconstrained.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceSlot"
+      ],
+      "sourceLine": 78
+    },
+    {
+      "id": "api-arda-fardanativeresourceslot-mcategory-df3d1131",
+      "name": "mCategory",
+      "qualifiedName": "arda::FArdaNativeResourceSlot::mCategory",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mCategory",
+      "summary": "Optional provider-local category of a native slot.",
+      "details": "Optional provider-local category of a native slot.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceSlot"
+      ],
+      "sourceLine": 80
+    },
+    {
+      "id": "api-arda-fardanativeresourceslotscreator-eea7c51d",
+      "name": "FArdaNativeResourceSlotsCreator",
+      "qualifiedName": "arda::FArdaNativeResourceSlotsCreator",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class FArdaNativeResourceSlotsCreator",
+      "summary": "Collect an operand's resource slots in binding order. RegisterOperand validates the completed schema.",
+      "details": "Collect an operand's resource slots in binding order. RegisterOperand validates the completed schema.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 84
+    },
+    {
+      "id": "api-arda-fardanativeresourceslotscreator-addbuffer-1e68e3f9",
+      "name": "AddBuffer",
+      "qualifiedName": "arda::FArdaNativeResourceSlotsCreator::AddBuffer",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeResourceSlotsCreator& AddBuffer(eastl::string Name, EArdaComputeAccess Access, eastl::string Category = {})",
+      "summary": "Append a buffer with the declared access and optional provider category.",
+      "details": "Append a buffer with the declared access and optional provider category.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceSlotsCreator"
+      ],
+      "sourceLine": 88
+    },
+    {
+      "id": "api-arda-fardanativeresourceslotscreator-addtexture-4fa8be89",
+      "name": "AddTexture",
+      "qualifiedName": "arda::FArdaNativeResourceSlotsCreator::AddTexture",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeResourceSlotsCreator& AddTexture(eastl::string Name, EArdaComputeAccess Access, EArdaRHIFormat Format = EArdaRHIFormat::Unknown, eastl::string Category = {})",
+      "summary": "Append a texture. Unknown format accepts any format supported by the operand.",
+      "details": "Append a texture. Unknown format accepts any format supported by the operand.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceSlotsCreator"
+      ],
+      "sourceLine": 96
+    },
+    {
+      "id": "api-arda-fardanativeresourceslotscreator-addslot-d47f0da7",
+      "name": "AddSlot",
+      "qualifiedName": "arda::FArdaNativeResourceSlotsCreator::AddSlot",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeResourceSlotsCreator& AddSlot(FArdaNativeResourceSlot Slot)",
+      "summary": "Append a fully specified slot, including an opaque provider resource.",
+      "details": "Append a fully specified slot, including an opaque provider resource.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceSlotsCreator"
+      ],
+      "sourceLine": 103
+    },
+    {
+      "id": "api-arda-fardanativeresourceslotscreator-finalize-38aab4c9",
+      "name": "Finalize",
+      "qualifiedName": "arda::FArdaNativeResourceSlotsCreator::Finalize",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] eastl::vector<FArdaNativeResourceSlot> Finalize()",
+      "summary": "Transfer the slots in registration order and leave the creator empty for reuse.",
+      "details": "Transfer the slots in registration order and leave the creator empty for reuse.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceSlotsCreator"
+      ],
+      "sourceLine": 110
+    },
+    {
+      "id": "api-arda-iardanativeresource-aac6477d",
+      "name": "IArdaNativeResource",
+      "qualifiedName": "arda::IArdaNativeResource",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class IArdaNativeResource",
+      "summary": "A provider can retain a native allocation that has no RHI buffer or texture representation.",
+      "details": "A provider can retain a native allocation that has no RHI buffer or texture representation.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 122
+    },
+    {
+      "id": "api-arda-iardanativeresource-iardanativeresource-7f8e8487",
+      "name": "~IArdaNativeResource",
+      "qualifiedName": "arda::IArdaNativeResource::~IArdaNativeResource",
+      "kind": "destructor",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual ~IArdaNativeResource() = default",
+      "summary": "Destroys the native compute object after dependent work is released.",
+      "details": "Destroys the native compute object after dependent work is released. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeResource"
+      ],
+      "sourceLine": 125
+    },
+    {
+      "id": "api-arda-iardanativeresource-getproviderid-e0760a97",
+      "name": "GetProviderId",
+      "qualifiedName": "arda::IArdaNativeResource::GetProviderId",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual const char* GetProviderId() const noexcept = 0",
+      "summary": "Performs get provider id through the public native compute contract.",
+      "details": "Performs get provider id through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeResource"
+      ],
+      "sourceLine": 126
+    },
+    {
+      "id": "api-arda-iardanativeresource-getcategoryid-f03da4dc",
+      "name": "GetCategoryId",
+      "qualifiedName": "arda::IArdaNativeResource::GetCategoryId",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual const char* GetCategoryId() const noexcept = 0",
+      "summary": "Performs get category id through the public native compute contract.",
+      "details": "Performs get category id through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeResource"
+      ],
+      "sourceLine": 127
+    },
+    {
+      "id": "api-arda-fardanativeresourceview-0f854574",
+      "name": "FArdaNativeResourceView",
+      "qualifiedName": "arda::FArdaNativeResourceView",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeResourceView",
+      "summary": "Physical resource bound to one declared operand slot.",
+      "details": "Physical resource bound to one declared operand slot.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 131
+    },
+    {
+      "id": "api-arda-fardanativeresourceview-mresource-a8139edd",
+      "name": "mResource",
+      "qualifiedName": "arda::FArdaNativeResourceView::mResource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIResourceRef mResource",
+      "summary": "Retained RHI resource. Its kind must match the slot.",
+      "details": "Retained RHI resource. Its kind must match the slot.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceView"
+      ],
+      "sourceLine": 134
+    },
+    {
+      "id": "api-arda-fardanativeresourceview-mbufferrange-6ea338b8",
+      "name": "mBufferRange",
+      "qualifiedName": "arda::FArdaNativeResourceView::mBufferRange",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIBufferRange mBufferRange",
+      "summary": "Nonempty range inside a bound buffer.",
+      "details": "Nonempty range inside a bound buffer.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceView"
+      ],
+      "sourceLine": 136
+    },
+    {
+      "id": "api-arda-fardanativeresourceview-mmiplevel-9fe0776a",
+      "name": "mMipLevel",
+      "qualifiedName": "arda::FArdaNativeResourceView::mMipLevel",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint32_t mMipLevel = 0",
+      "summary": "Mip index for a bound texture.",
+      "details": "Mip index for a bound texture.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceView"
+      ],
+      "sourceLine": 138
+    },
+    {
+      "id": "api-arda-fardanativeresourceview-mnativeresource-e76f7558",
+      "name": "mNativeResource",
+      "qualifiedName": "arda::FArdaNativeResourceView::mNativeResource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const IArdaNativeResource> mNativeResource",
+      "summary": "Native-only storage produced by a conversion for a provider-local opaque category.",
+      "details": "Native-only storage produced by a conversion for a provider-local opaque category.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeResourceView"
+      ],
+      "sourceLine": 140
+    },
+    {
+      "id": "api-arda-fardanativelaunch-e57ef7db",
+      "name": "FArdaNativeLaunch",
+      "qualifiedName": "arda::FArdaNativeLaunch",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeLaunch",
+      "summary": "Three-dimensional group count and group size for one native dispatch.",
+      "details": "Three-dimensional group count and group size for one native dispatch.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 148
+    },
+    {
+      "id": "api-arda-fardanativelaunch-mgridsize-ccf5a35c",
+      "name": "mGridSize",
+      "qualifiedName": "arda::FArdaNativeLaunch::mGridSize",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint32_t mGridSize[3] = {1, 1, 1}",
+      "summary": "Work-group counts in X, Y, and Z.",
+      "details": "Work-group counts in X, Y, and Z.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeLaunch"
+      ],
+      "sourceLine": 151
+    },
+    {
+      "id": "api-arda-fardanativelaunch-mblocksize-25e37fbb",
+      "name": "mBlockSize",
+      "qualifiedName": "arda::FArdaNativeLaunch::mBlockSize",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint32_t mBlockSize[3] = {1, 1, 1}",
+      "summary": "Threads per group in X, Y, and Z.",
+      "details": "Threads per group in X, Y, and Z.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeLaunch"
+      ],
+      "sourceLine": 153
+    },
+    {
+      "id": "api-arda-fardanativelaunch-msharedmemorybytes-872d4479",
+      "name": "mSharedMemoryBytes",
+      "qualifiedName": "arda::FArdaNativeLaunch::mSharedMemoryBytes",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "uint32_t mSharedMemoryBytes = 0",
+      "summary": "Dynamic shared memory requested per group, in bytes.",
+      "details": "Dynamic shared memory requested per group, in bytes.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeLaunch"
+      ],
+      "sourceLine": 155
+    },
+    {
+      "id": "api-arda-fardanativeinvocation-c4a8346d",
+      "name": "FArdaNativeInvocation",
+      "qualifiedName": "arda::FArdaNativeInvocation",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeInvocation",
+      "summary": "Resource bindings and parameter bytes for one invocation.",
+      "details": "Resource bindings and parameter bytes for one invocation.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 159
+    },
+    {
+      "id": "api-arda-fardanativeinvocation-mresources-9fe63af6",
+      "name": "mResources",
+      "qualifiedName": "arda::FArdaNativeInvocation::mResources",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaNativeResourceView> mResources",
+      "summary": "Physical views in the operand's slot order.",
+      "details": "Physical views in the operand's slot order.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeInvocation"
+      ],
+      "sourceLine": 162
+    },
+    {
+      "id": "api-arda-fardanativeinvocation-mparameters-a02d7caf",
+      "name": "mParameters",
+      "qualifiedName": "arda::FArdaNativeInvocation::mParameters",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<uint8_t> mParameters",
+      "summary": "Parameter block with exactly the operand's declared byte count.",
+      "details": "Parameter block with exactly the operand's declared byte count.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeInvocation"
+      ],
+      "sourceLine": 164
+    },
+    {
+      "id": "api-arda-fardanativeinvocation-mlaunch-b34f1c85",
+      "name": "mLaunch",
+      "qualifiedName": "arda::FArdaNativeInvocation::mLaunch",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeLaunch mLaunch",
+      "summary": "Launch geometry for a variant without a custom selection policy.",
+      "details": "Launch geometry for a variant without a custom selection policy.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeInvocation"
+      ],
+      "sourceLine": 166
+    },
+    {
+      "id": "api-arda-iardanativekernelsource-6625cdc7",
+      "name": "IArdaNativeKernelSource",
+      "qualifiedName": "arda::IArdaNativeKernelSource",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class IArdaNativeKernelSource",
+      "summary": "Source objects own their artifact or linked entry and its provider-specific ABI.",
+      "details": "Source objects own their artifact or linked entry and its provider-specific ABI.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 174
+    },
+    {
+      "id": "api-arda-iardanativekernelsource-iardanativekernelsource-29c7a42c",
+      "name": "~IArdaNativeKernelSource",
+      "qualifiedName": "arda::IArdaNativeKernelSource::~IArdaNativeKernelSource",
+      "kind": "destructor",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual ~IArdaNativeKernelSource() = default",
+      "summary": "Release ownership of the source artifact or linked entry.",
+      "details": "Release ownership of the source artifact or linked entry.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeKernelSource"
+      ],
+      "sourceLine": 178
+    },
+    {
+      "id": "api-arda-iardanativekernelsource-getproviderid-9d57f12a",
+      "name": "GetProviderId",
+      "qualifiedName": "arda::IArdaNativeKernelSource::GetProviderId",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual const char* GetProviderId() const noexcept = 0",
+      "summary": "Return the registry ID of the default provider for this source.",
+      "details": "Return the registry ID of the default provider for this source.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeKernelSource"
+      ],
+      "sourceLine": 180
+    },
+    {
+      "id": "api-arda-iardanativekernelsource-getformat-34d07e8d",
+      "name": "GetFormat",
+      "qualifiedName": "arda::IArdaNativeKernelSource::GetFormat",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual const char* GetFormat() const noexcept = 0",
+      "summary": "Return the format ID used to match the provider's supported formats.",
+      "details": "Return the format ID used to match the provider's supported formats.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativeKernelSource"
+      ],
+      "sourceLine": 182
+    },
+    {
+      "id": "api-arda-iardanativepreparedwork-c5301881",
+      "name": "IArdaNativePreparedWork",
+      "qualifiedName": "arda::IArdaNativePreparedWork",
+      "kind": "class",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "class IArdaNativePreparedWork",
+      "summary": "Prepared, immutable work for one implementation route.",
+      "details": "Prepared, immutable work for one implementation route.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 186
+    },
+    {
+      "id": "api-arda-iardanativepreparedwork-iardanativepreparedwork-f76c21d8",
+      "name": "~IArdaNativePreparedWork",
+      "qualifiedName": "arda::IArdaNativePreparedWork::~IArdaNativePreparedWork",
+      "kind": "destructor",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual ~IArdaNativePreparedWork() = default",
+      "summary": "Release the captured state held by this work.",
+      "details": "Release the captured state held by this work.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativePreparedWork"
+      ],
+      "sourceLine": 190
+    },
+    {
+      "id": "api-arda-iardanativepreparedwork-record-bf1dfc61",
+      "name": "Record",
+      "qualifiedName": "arda::IArdaNativePreparedWork::Record",
+      "kind": "method",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus Record(IArdaRHICommandList& Commands) const = 0",
+      "summary": "Append work to an open command list without submitting it.",
+      "details": "Append work to an open command list without submitting it.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [
+        {
+          "name": "Commands",
+          "description": "Open list for the prepared device and queue."
+        }
+      ],
+      "returns": "Recording status.",
+      "ownership": "The RHI retains submitted dependencies through GPU completion.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaNativePreparedWork"
+      ],
+      "sourceLine": 197
+    },
+    {
+      "id": "api-arda-fardanativeworkref-478ca5f0",
+      "name": "FArdaNativeWorkRef",
+      "qualifiedName": "arda::FArdaNativeWorkRef",
+      "kind": "alias",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "using FArdaNativeWorkRef = eastl::shared_ptr<const IArdaNativePreparedWork>",
+      "summary": "Shared ownership of immutable work prepared for a specific invocation.",
+      "details": "Shared ownership of immutable work prepared for a specific invocation.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 201
+    },
+    {
+      "id": "api-arda-makeardanativework-0bc256b8",
+      "name": "MakeArdaNativeWork",
+      "qualifiedName": "arda::MakeArdaNativeWork",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaNativeWorkRef MakeArdaNativeWork(eastl::function<FArdaRHIStatus(IArdaRHICommandList&)> Record)",
+      "summary": "Wrap a command-list recording callback as prepared work.",
+      "details": "Wrap a command-list recording callback as prepared work.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [
+        {
+          "name": "Record",
+          "description": "Callback that appends commands. Capture pipeline state, bindings, and constants by value."
+        }
+      ],
+      "returns": "Prepared work, or an empty reference for an empty callback.",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 207
+    },
+    {
+      "id": "api-arda-fardanativeconversioncontext-4750b43c",
+      "name": "FArdaNativeConversionContext",
+      "qualifiedName": "arda::FArdaNativeConversionContext",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeConversionContext",
+      "summary": "Borrowed schema and application views for a single native route under preparation.",
+      "details": "Borrowed schema and application views for a single native route under preparation.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 214
+    },
+    {
+      "id": "api-arda-fardanativeconversioncontext-mcontext-9372668b",
+      "name": "mContext",
+      "qualifiedName": "arda::FArdaNativeConversionContext::mContext",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "const FArdaNativeComputeContext& mContext",
+      "summary": "Stores context in this public native compute value.",
+      "details": "Stores context in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeConversionContext"
+      ],
+      "sourceLine": 216
+    },
+    {
+      "id": "api-arda-fardanativeconversioncontext-mprovider-2168958d",
+      "name": "mProvider",
+      "qualifiedName": "arda::FArdaNativeConversionContext::mProvider",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "const IArdaNativeComputeProvider& mProvider",
+      "summary": "Stores provider in this public native compute value.",
+      "details": "Stores provider in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeConversionContext"
+      ],
+      "sourceLine": 217
+    },
+    {
+      "id": "api-arda-fardanativeconversioncontext-mgraphicsslots-cebc59ac",
+      "name": "mGraphicsSlots",
+      "qualifiedName": "arda::FArdaNativeConversionContext::mGraphicsSlots",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "const eastl::vector<FArdaNativeResourceSlot>& mGraphicsSlots",
+      "summary": "Stores graphics slots in this public native compute value.",
+      "details": "Stores graphics slots in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeConversionContext"
+      ],
+      "sourceLine": 218
+    },
+    {
+      "id": "api-arda-fardanativeconversioncontext-mnativeslots-7a859eed",
+      "name": "mNativeSlots",
+      "qualifiedName": "arda::FArdaNativeConversionContext::mNativeSlots",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "const eastl::vector<FArdaNativeResourceSlot>& mNativeSlots",
+      "summary": "Stores native slots in this public native compute value.",
+      "details": "Stores native slots in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeConversionContext"
+      ],
+      "sourceLine": 219
+    },
+    {
+      "id": "api-arda-fardanativeconversioncontext-mgraphics-0180474b",
+      "name": "mGraphics",
+      "qualifiedName": "arda::FArdaNativeConversionContext::mGraphics",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "const FArdaNativeInvocation& mGraphics",
+      "summary": "Stores graphics in this public native compute value.",
+      "details": "Stores graphics in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeConversionContext"
+      ],
+      "sourceLine": 220
+    },
+    {
+      "id": "api-arda-fardanativeconversion-541a62ed",
+      "name": "FArdaNativeConversion",
+      "qualifiedName": "arda::FArdaNativeConversion",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeConversion",
+      "summary": "Owned native bindings and frozen graphics commands on each side of the native dispatch.",
+      "details": "Owned native bindings and frozen graphics commands on each side of the native dispatch.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 224
+    },
+    {
+      "id": "api-arda-fardanativeconversion-mnative-d140062c",
+      "name": "mNative",
+      "qualifiedName": "arda::FArdaNativeConversion::mNative",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeInvocation mNative",
+      "summary": "Stores native in this public native compute value.",
+      "details": "Stores native in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeConversion"
+      ],
+      "sourceLine": 226
+    },
+    {
+      "id": "api-arda-fardanativeconversion-mgraphicsstates-e6792119",
+      "name": "mGraphicsStates",
+      "qualifiedName": "arda::FArdaNativeConversion::mGraphicsStates",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<EArdaRHIResourceState> mGraphicsStates",
+      "summary": "Stores graphics states in this public native compute value.",
+      "details": "Stores graphics states in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeConversion"
+      ],
+      "sourceLine": 227
+    },
+    {
+      "id": "api-arda-fardanativegraphicstonative-f5c1664d",
+      "name": "FArdaNativeGraphicsToNative",
+      "qualifiedName": "arda::FArdaNativeGraphicsToNative",
+      "kind": "alias",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "using FArdaNativeGraphicsToNative = eastl::function<FArdaRHIStatus(const FArdaNativeConversionContext&, FArdaNativeConversion&)>",
+      "summary": "Bind native views and freeze any commands needed to populate them.",
+      "details": "Bind native views and freeze any commands needed to populate them.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 232
+    },
+    {
+      "id": "api-arda-fardanativenativetographics-9f730ede",
+      "name": "FArdaNativeNativeToGraphics",
+      "qualifiedName": "arda::FArdaNativeNativeToGraphics",
+      "kind": "alias",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "using FArdaNativeNativeToGraphics = eastl::function<FArdaRHIStatus(const FArdaNativeConversionContext&, FArdaNativeConversion&)>",
+      "summary": "Freeze commands that publish native writes back to the graphics views.",
+      "details": "Freeze commands that publish native writes back to the graphics views.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 234
+    },
+    {
+      "id": "api-arda-fardanativekernelvariant-32df6848",
+      "name": "FArdaNativeKernelVariant",
+      "qualifiedName": "arda::FArdaNativeKernelVariant",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeKernelVariant",
+      "summary": "One native implementation and its optional launch policy.",
+      "details": "One native implementation and its optional launch policy.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 241
+    },
+    {
+      "id": "api-arda-fardanativekernelvariant-mname-fc7f6b40",
+      "name": "mName",
+      "qualifiedName": "arda::FArdaNativeKernelVariant::mName",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mName",
+      "summary": "Variant name unique within the operand, returned by a native plan.",
+      "details": "Variant name unique within the operand, returned by a native plan.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelVariant"
+      ],
+      "sourceLine": 244
+    },
+    {
+      "id": "api-arda-fardanativekernelvariant-msource-c8c9faac",
+      "name": "mSource",
+      "qualifiedName": "arda::FArdaNativeKernelVariant::mSource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const IArdaNativeKernelSource> mSource",
+      "summary": "Source retained by the registration. Its provider and format IDs must be nonempty.",
+      "details": "Source retained by the registration. Its provider and format IDs must be nonempty.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelVariant"
+      ],
+      "sourceLine": 246
+    },
+    {
+      "id": "api-arda-fardanativekernelvariant-mselect-d39fb58e",
+      "name": "mSelect",
+      "qualifiedName": "arda::FArdaNativeKernelVariant::mSelect",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::function<TArdaRHIResult<FArdaNativeLaunch>(const FArdaNativeComputeContext&, const FArdaNativeInvocation&)> mSelect",
+      "summary": "Return geometry, or Unsupported when another variant should handle this input.",
+      "details": "Return geometry, or Unsupported when another variant should handle this input.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelVariant"
+      ],
+      "sourceLine": 248
+    },
+    {
+      "id": "api-arda-fardanativekernelvariant-mproviderid-e5813250",
+      "name": "mProviderId",
+      "qualifiedName": "arda::FArdaNativeKernelVariant::mProviderId",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mProviderId",
+      "summary": "Optional provider override. Allows compatible providers to share the same compiled source and ABI.",
+      "details": "Optional provider override. Allows compatible providers to share the same compiled source and ABI.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelVariant"
+      ],
+      "sourceLine": 250
+    },
+    {
+      "id": "api-arda-fardanativekernelvariant-mnativeresources-94366b20",
+      "name": "mNativeResources",
+      "qualifiedName": "arda::FArdaNativeKernelVariant::mNativeResources",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaNativeResourceSlot> mNativeResources",
+      "summary": "Native-side representations in graphics slot order. Empty uses the operand slots.",
+      "details": "Native-side representations in graphics slot order. Empty uses the operand slots.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelVariant"
+      ],
+      "sourceLine": 252
+    },
+    {
+      "id": "api-arda-fardanativekernelvariant-mgraphicsstates-09a4677b",
+      "name": "mGraphicsStates",
+      "qualifiedName": "arda::FArdaNativeKernelVariant::mGraphicsStates",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<EArdaRHIResourceState> mGraphicsStates",
+      "summary": "Graphics-side entry and return states. Converters restore these states after recording.",
+      "details": "Graphics-side entry and return states. Converters restore these states after recording.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeKernelVariant"
+      ],
+      "sourceLine": 254
+    },
+    {
+      "id": "api-arda-eardanativecomputeroute-21d3c2b7",
+      "name": "EArdaNativeComputeRoute",
+      "qualifiedName": "arda::EArdaNativeComputeRoute",
+      "kind": "enum",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaNativeComputeRoute : uint8_t",
+      "summary": "Implementation selected for a prepared plan.",
+      "details": "Implementation selected for a prepared plan.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 258
+    },
+    {
+      "id": "api-arda-eardanativecomputeroute-native-54839cc2",
+      "name": "Native",
+      "qualifiedName": "arda::EArdaNativeComputeRoute::Native",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "Native",
+      "summary": "Kernel or external call prepared by a registered native provider.",
+      "details": "Kernel or external call prepared by a registered native provider.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaNativeComputeRoute"
+      ],
+      "sourceLine": 261
+    },
+    {
+      "id": "api-arda-eardanativecomputeroute-computeshader-cf52cae7",
+      "name": "ComputeShader",
+      "qualifiedName": "arda::EArdaNativeComputeRoute::ComputeShader",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "ComputeShader",
+      "summary": "Fallback that records a compute shader.",
+      "details": "Fallback that records a compute shader.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaNativeComputeRoute"
+      ],
+      "sourceLine": 263
+    },
+    {
+      "id": "api-arda-eardanativecomputeroute-graphicsshader-8972ab9a",
+      "name": "GraphicsShader",
+      "qualifiedName": "arda::EArdaNativeComputeRoute::GraphicsShader",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "GraphicsShader",
+      "summary": "Fallback that records a graphics shader on a graphics list.",
+      "details": "Fallback that records a graphics shader on a graphics list.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaNativeComputeRoute"
+      ],
+      "sourceLine": 265
+    },
+    {
+      "id": "api-arda-fardanativeshaderfallback-9df605e1",
+      "name": "FArdaNativeShaderFallback",
+      "qualifiedName": "arda::FArdaNativeShaderFallback",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeShaderFallback",
+      "summary": "Optional shader implementation of the same operation and resource access contract.",
+      "details": "Optional shader implementation of the same operation and resource access contract.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 269
+    },
+    {
+      "id": "api-arda-fardanativeshaderfallback-mroute-708ed555",
+      "name": "mRoute",
+      "qualifiedName": "arda::FArdaNativeShaderFallback::mRoute",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "EArdaNativeComputeRoute mRoute = EArdaNativeComputeRoute::ComputeShader",
+      "summary": "Compute or graphics shader route. A graphics route requires a graphics queue.",
+      "details": "Compute or graphics shader route. A graphics route requires a graphics queue.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeShaderFallback"
+      ],
+      "sourceLine": 272
+    },
+    {
+      "id": "api-arda-fardanativeshaderfallback-mprepare-a1b70070",
+      "name": "mPrepare",
+      "qualifiedName": "arda::FArdaNativeShaderFallback::mPrepare",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::function<TArdaRHIResult<FArdaNativeWorkRef>(const FArdaNativeComputeContext&, const FArdaNativeInvocation&)> mPrepare",
+      "summary": "Freeze the resources, bindings, and arguments into work without submitting it.",
+      "details": "Freeze the resources, bindings, and arguments into work without submitting it.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeShaderFallback"
+      ],
+      "sourceLine": 274
+    },
+    {
+      "id": "api-arda-fardanativeshaderfallback-mrequiredfeatures-abff4798",
+      "name": "mRequiredFeatures",
+      "qualifiedName": "arda::FArdaNativeShaderFallback::mRequiredFeatures",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIFeatureRequirements mRequiredFeatures",
+      "summary": "Device features required by this shader implementation.",
+      "details": "Device features required by this shader implementation.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeShaderFallback"
+      ],
+      "sourceLine": 276
+    },
+    {
+      "id": "api-arda-fardanativeoperand-cced0f69",
+      "name": "FArdaNativeOperand",
+      "qualifiedName": "arda::FArdaNativeOperand",
+      "kind": "struct",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeOperand",
+      "summary": "One resource and parameter contract shared by ordered native variants and shader fallbacks.",
+      "details": "One resource and parameter contract shared by ordered native variants and shader fallbacks.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 284
+    },
+    {
+      "id": "api-arda-fardanativeoperand-mid-71dbc522",
+      "name": "mId",
+      "qualifiedName": "arda::FArdaNativeOperand::mId",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mId",
+      "summary": "Nonempty ID unique in the registry.",
+      "details": "Nonempty ID unique in the registry.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeOperand"
+      ],
+      "sourceLine": 287
+    },
+    {
+      "id": "api-arda-fardanativeoperand-mresources-aa064e59",
+      "name": "mResources",
+      "qualifiedName": "arda::FArdaNativeOperand::mResources",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaNativeResourceSlot> mResources",
+      "summary": "Ordered resource slots shared by every implementation.",
+      "details": "Ordered resource slots shared by every implementation.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeOperand"
+      ],
+      "sourceLine": 289
+    },
+    {
+      "id": "api-arda-fardanativeoperand-mparametersize-86c1b74f",
+      "name": "mParameterSize",
+      "qualifiedName": "arda::FArdaNativeOperand::mParameterSize",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "size_t mParameterSize = 0",
+      "summary": "Exact invocation parameter size in bytes.",
+      "details": "Exact invocation parameter size in bytes.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeOperand"
+      ],
+      "sourceLine": 291
+    },
+    {
+      "id": "api-arda-fardanativeoperand-mvariants-4e2a77fa",
+      "name": "mVariants",
+      "qualifiedName": "arda::FArdaNativeOperand::mVariants",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaNativeKernelVariant> mVariants",
+      "summary": "First eligible variant wins. Different variants can use different providers.",
+      "details": "First eligible variant wins. Different variants can use different providers.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeOperand"
+      ],
+      "sourceLine": 293
+    },
+    {
+      "id": "api-arda-fardanativeoperand-mfallback-efc69dd4",
+      "name": "mFallback",
+      "qualifiedName": "arda::FArdaNativeOperand::mFallback",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeShaderFallback mFallback",
+      "summary": "Single fallback shorthand. Tried after the ordered shader fallbacks.",
+      "details": "Single fallback shorthand. Tried after the ordered shader fallbacks.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeOperand"
+      ],
+      "sourceLine": 295
+    },
+    {
+      "id": "api-arda-fardanativeoperand-mvalidate-d737d288",
+      "name": "mValidate",
+      "qualifiedName": "arda::FArdaNativeOperand::mValidate",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::function<FArdaRHIStatus(const FArdaNativeInvocation&)> mValidate",
+      "summary": "Check algorithm invariants shared by every implementation before selection.",
+      "details": "Check algorithm invariants shared by every implementation before selection.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeOperand"
+      ],
+      "sourceLine": 297
+    },
+    {
+      "id": "api-arda-fardanativeoperand-msignature-4aa3f42c",
+      "name": "mSignature",
+      "qualifiedName": "arda::FArdaNativeOperand::mSignature",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mSignature",
+      "summary": "Stable ABI identity shared by packaged kernels and their shader fallbacks.",
+      "details": "Stable ABI identity shared by packaged kernels and their shader fallbacks.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeOperand"
+      ],
+      "sourceLine": 299
+    },
+    {
+      "id": "api-arda-fardanativeoperand-mshaderfallbacks-6873762b",
+      "name": "mShaderFallbacks",
+      "qualifiedName": "arda::FArdaNativeOperand::mShaderFallbacks",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaNativeShaderFallback> mShaderFallbacks",
+      "summary": "Shader fallbacks in preference order, evaluated after eligible native variants.",
+      "details": "Shader fallbacks in preference order, evaluated after eligible native variants.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeOperand"
+      ],
+      "sourceLine": 301
+    },
+    {
+      "id": "api-arda-fardanativeoperand-mgraphicstonative-e7ed480a",
+      "name": "mGraphicsToNative",
+      "qualifiedName": "arda::FArdaNativeOperand::mGraphicsToNative",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeGraphicsToNative mGraphicsToNative",
+      "summary": "Both boundary hooks are required for native variants. Hooks prepare work without submitting it.",
+      "details": "Both boundary hooks are required for native variants. Hooks prepare work without submitting it.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeOperand"
+      ],
+      "sourceLine": 303
+    },
+    {
+      "id": "api-arda-fardanativeoperand-mnativetographics-fcfe51b6",
+      "name": "mNativeToGraphics",
+      "qualifiedName": "arda::FArdaNativeOperand::mNativeToGraphics",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeNativeToGraphics mNativeToGraphics",
+      "summary": "Stores native to graphics in this public native compute value.",
+      "details": "Stores native to graphics in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeOperand"
+      ],
+      "sourceLine": 304
+    },
+    {
+      "id": "api-arda-fardanativeoperand-mbrequiresregisteredconversions-c8e82cf3",
+      "name": "mbRequiresRegisteredConversions",
+      "qualifiedName": "arda::FArdaNativeOperand::mbRequiresRegisteredConversions",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "bool mbRequiresRegisteredConversions = false",
+      "summary": "An archived application-defined conversion must be restored from its registered operand.",
+      "details": "An archived application-defined conversion must be restored from its registered operand.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaNativeOperand"
+      ],
+      "sourceLine": 306
+    },
+    {
+      "id": "api-arda-useardanativedirectresources-31efd718",
+      "name": "UseArdaNativeDirectResources",
+      "qualifiedName": "arda::UseArdaNativeDirectResources",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "void UseArdaNativeDirectResources(FArdaNativeOperand& Operand)",
+      "summary": "Explicitly use direct views in both directions. The provider still qualifies every physical binding.",
+      "details": "Explicitly use direct views in both directions. The provider still qualifies every physical binding.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 310
+    },
+    {
+      "id": "api-arda-hasardanativeresourceconversions-4967ed14",
+      "name": "HasArdaNativeResourceConversions",
+      "qualifiedName": "arda::HasArdaNativeResourceConversions",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool HasArdaNativeResourceConversions(const FArdaNativeOperand& Operand)",
+      "summary": "True when the operand declares application/provider conversion hooks beyond direct views.",
+      "details": "True when the operand declares application/provider conversion hooks beyond direct views.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 312
+    },
+    {
+      "id": "api-arda-fardanativeoperanddesc-b1b7eb69",
+      "name": "FArdaNativeOperandDesc",
+      "qualifiedName": "arda::FArdaNativeOperandDesc",
+      "kind": "alias",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "using FArdaNativeOperandDesc = FArdaNativeOperand",
+      "summary": "Compatibility name for existing operand declarations.",
+      "details": "Compatibility name for existing operand declarations.",
+      "source": "Source/ArdaInfra/ArdaBackend/Public/NativeCompute/ArdaNativeOperand.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 315
+    },
+    {
+      "id": "api-arda-tardacudaexternalcall-6e71d5a3",
+      "name": "TArdaCudaExternalCall",
+      "qualifiedName": "arda::TArdaCudaExternalCall",
+      "kind": "class",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class ParameterType> class TArdaCudaExternalCall : public IArdaCudaExternalCall",
+      "summary": "Supplies the parameter signature and aligned typed copy for a library factory. Override PrepareCall to construct exclusive native state under the provider context. The existing operand BindKernelVariants/SelectKernel hooks also select library calls.",
+      "details": "Supplies the parameter signature and aligned typed copy for a library factory. Override PrepareCall to construct exclusive native state under the provider context. The existing operand BindKernelVariants/SelectKernel hooks also select library calls.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaExternalCall.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 17
+    },
+    {
+      "id": "api-arda-tardacudaexternalcall-fcuda-8edbd106",
+      "name": "FArdaCuda",
+      "qualifiedName": "arda::TArdaCudaExternalCall::FArdaCuda",
+      "kind": "alias",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "using FArdaCuda = typename ParameterType::FArdaCuda",
+      "summary": "Patched plain parameter object, using pointers/surfaces instead of RHI references.",
+      "details": "Patched plain parameter object, using pointers/surfaces instead of RHI references.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaExternalCall.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaExternalCall"
+      ],
+      "sourceLine": 21
+    },
+    {
+      "id": "api-arda-tardacudaexternalcall-getsignature-258319e6",
+      "name": "GetSignature",
+      "qualifiedName": "arda::TArdaCudaExternalCall::GetSignature",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaCudaKernelSignature GetSignature() const noexcept final",
+      "summary": "Reports exact parameter identity without initializing CUDA.",
+      "details": "Reports exact parameter identity without initializing CUDA.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaExternalCall.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaExternalCall"
+      ],
+      "sourceLine": 24
+    },
+    {
+      "id": "api-arda-tardacudaexternalcall-prepare-eb08c3b3",
+      "name": "Prepare",
+      "qualifiedName": "arda::TArdaCudaExternalCall::Prepare",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "TArdaRHIResult<eastl::unique_ptr<IArdaCudaPreparedCall>> Prepare(const FArdaCudaExternalCallContext& Context, const void* Parameters, size_t ParameterSize) const final",
+      "summary": "Validates borrowed inputs and copies them into an aligned typed value before preparation.",
+      "details": "Validates borrowed inputs and copies them into an aligned typed value before preparation.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaExternalCall.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaExternalCall"
+      ],
+      "sourceLine": 33
+    },
+    {
+      "id": "api-arda-tardacudaexternalcall-preparecall-32110682",
+      "name": "PrepareCall",
+      "qualifiedName": "arda::TArdaCudaExternalCall::PrepareCall",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual TArdaRHIResult<eastl::unique_ptr<IArdaCudaPreparedCall>> PrepareCall( const FArdaCudaExternalCallContext& Context, const FArdaCuda& Parameters) const = 0",
+      "summary": "Creates per-recording library state. Copy any needed values; Parameters is temporary. Resource addresses are resolved, but their contents must not be touched until Enqueue.",
+      "details": "Creates per-recording library state. Copy any needed values; Parameters is temporary. Resource addresses are resolved, but their contents must not be touched until Enqueue.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaExternalCall.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaExternalCall"
+      ],
+      "sourceLine": 54
+    },
+    {
+      "id": "api-arda-bindardacudaexternalcall-ceddccde",
+      "name": "BindArdaCudaExternalCall",
+      "qualifiedName": "arda::BindArdaCudaExternalCall",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class Payload> TArdaCudaExternalCallVariant<Payload> BindArdaCudaExternalCall(const char* Name, Payload Info, eastl::shared_ptr<const IArdaCudaExternalCall> Call, FArdaCudaKernelRequirements Requirements = {})",
+      "summary": "Binds a library factory to an operand registry without requiring nvcc or a build manifest.",
+      "details": "Binds a library factory to an operand registry without requiring nvcc or a build manifest.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaExternalCall.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 61
+    },
+    {
+      "id": "api-arda-fardacudabindinghelpers-17a8e7d5",
+      "name": "FArdaCudaBindingHelpers",
+      "qualifiedName": "arda::FArdaCudaBindingHelpers",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaBindingHelpers",
+      "summary": "Defines f arda cuda binding helpers in the public native compute contract.",
+      "details": "Defines f arda cuda binding helpers in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 9
+    },
+    {
+      "id": "api-arda-fardacudabindinghelpers-tardasignature-859c96ae",
+      "name": "TArdaSignature",
+      "qualifiedName": "arda::FArdaCudaBindingHelpers::TArdaSignature",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class T> struct TArdaSignature",
+      "summary": "Defines t arda signature in the public native compute contract.",
+      "details": "Defines t arda signature in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaBindingHelpers"
+      ],
+      "sourceLine": 12
+    },
+    {
+      "id": "api-arda-tardasignature-get-46efeb83",
+      "name": "Get",
+      "qualifiedName": "arda::TArdaSignature::Get",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "static FArdaCudaKernelSignature Get()",
+      "summary": "Performs get through the public native compute contract.",
+      "details": "Performs get through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaSignature"
+      ],
+      "sourceLine": 14
+    },
+    {
+      "id": "api-arda-fardacudabindinghelpers-tardasignature-caa9e3df",
+      "name": "TArdaSignature",
+      "qualifiedName": "arda::FArdaCudaBindingHelpers::TArdaSignature",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class P> struct TArdaSignature<void (*)(P)>",
+      "summary": "Defines t arda signature in the public native compute contract.",
+      "details": "Defines t arda signature in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaBindingHelpers"
+      ],
+      "sourceLine": 21
+    },
+    {
+      "id": "api-arda-fardacudabindinghelpers-check-e37370dc",
+      "name": "Check",
+      "qualifiedName": "arda::FArdaCudaBindingHelpers::Check",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "static FArdaRHIStatus Check(cudaError_t Error)",
+      "summary": "Performs check through the public native compute contract.",
+      "details": "Performs check through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaBindingHelpers"
+      ],
+      "sourceLine": 32
+    },
+    {
+      "id": "api-arda-fardacudabindinghelpers-tardaentry-319743c0",
+      "name": "TArdaEntry",
+      "qualifiedName": "arda::FArdaCudaBindingHelpers::TArdaEntry",
+      "kind": "class",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <auto Kernel> class TArdaEntry final : public IArdaCudaKernelEntry",
+      "summary": "Defines t arda entry in the public native compute contract.",
+      "details": "Defines t arda entry in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaBindingHelpers"
+      ],
+      "sourceLine": 40
+    },
+    {
+      "id": "api-arda-tardaentry-tardaentry-37ebf072",
+      "name": "TArdaEntry",
+      "qualifiedName": "arda::TArdaEntry::TArdaEntry",
+      "kind": "constructor",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "explicit TArdaEntry(FArdaCudaBuildInfo Build) : mBuild(eastl::move(Build))",
+      "summary": "Constructs the native compute value from the declared inputs.",
+      "details": "Constructs the native compute value from the declared inputs. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaEntry"
+      ],
+      "sourceLine": 43
+    },
+    {
+      "id": "api-arda-tardaentry-getsignature-d9776089",
+      "name": "GetSignature",
+      "qualifiedName": "arda::TArdaEntry::GetSignature",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaCudaKernelSignature GetSignature() const noexcept override",
+      "summary": "Performs get signature through the public native compute contract.",
+      "details": "Performs get signature through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaEntry"
+      ],
+      "sourceLine": 48
+    },
+    {
+      "id": "api-arda-tardaentry-getbuildinfo-fd3bb63b",
+      "name": "GetBuildInfo",
+      "qualifiedName": "arda::TArdaEntry::GetBuildInfo",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "const FArdaCudaBuildInfo& GetBuildInfo() const noexcept override",
+      "summary": "Performs get build info through the public native compute contract.",
+      "details": "Performs get build info through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaEntry"
+      ],
+      "sourceLine": 53
+    },
+    {
+      "id": "api-arda-tardaentry-getlimits-ba274a78",
+      "name": "GetLimits",
+      "qualifiedName": "arda::TArdaEntry::GetLimits",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "TArdaRHIResult<FArdaCudaKernelLimits> GetLimits() const override",
+      "summary": "Performs get limits through the public native compute contract.",
+      "details": "Performs get limits through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaEntry"
+      ],
+      "sourceLine": 58
+    },
+    {
+      "id": "api-arda-tardaentry-launch-cdc811cd",
+      "name": "Launch",
+      "qualifiedName": "arda::TArdaEntry::Launch",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus Launch(void* Stream, const FArdaCudaLaunchConfig& C, const void* Parameters, size_t Size) const override",
+      "summary": "Performs launch through the public native compute contract.",
+      "details": "Performs launch through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaEntry"
+      ],
+      "sourceLine": 77
+    },
+    {
+      "id": "api-arda-bindardacudakernel-0d454f59",
+      "name": "BindArdaCudaKernel",
+      "qualifiedName": "arda::BindArdaCudaKernel",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <auto Kernel, class Payload> TArdaCudaKernelVariant<Kernel, Payload> BindArdaCudaKernel(const char* Name, Payload Info, FArdaCudaBuildInfo Build, FArdaCudaKernelRequirements Requirements = {})",
+      "summary": "Binds a precompiled symbol. Registry initialization reports incompatible signatures at runtime.",
+      "details": "Binds a precompiled symbol. Registry initialization reports incompatible signatures at runtime.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelBinding.cuh",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 104
+    },
+    {
+      "id": "api-arda-fardacudakernelrequirements-e3fa97cc",
+      "name": "FArdaCudaKernelRequirements",
+      "qualifiedName": "arda::FArdaCudaKernelRequirements",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaKernelRequirements",
+      "summary": "Algorithm restrictions, independent of native binary coverage.",
+      "details": "Algorithm restrictions, independent of native binary coverage.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 11
+    },
+    {
+      "id": "api-arda-fardacudakernelrequirements-mminimumcomputecapability-94bd3733",
+      "name": "mMinimumComputeCapability",
+      "qualifiedName": "arda::FArdaCudaKernelRequirements::mMinimumComputeCapability",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mMinimumComputeCapability = 0",
+      "summary": "Stores minimum compute capability in this public native compute value.",
+      "details": "Stores minimum compute capability in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernelRequirements"
+      ],
+      "sourceLine": 13
+    },
+    {
+      "id": "api-arda-fardacudakernelrequirements-mlaunchmodes-c75e0036",
+      "name": "mLaunchModes",
+      "qualifiedName": "arda::FArdaCudaKernelRequirements::mLaunchModes",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mLaunchModes = 0",
+      "summary": "Bit mask over EArdaCudaLaunchMode; zero accepts all admitted modes.",
+      "details": "Bit mask over EArdaCudaLaunchMode; zero accepts all admitted modes.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernelRequirements"
+      ],
+      "sourceLine": 15
+    },
+    {
+      "id": "api-arda-tardacudakernelvariant-ead6eac2",
+      "name": "TArdaCudaKernelVariant",
+      "qualifiedName": "arda::TArdaCudaKernelVariant",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <auto Kernel, class Payload> struct TArdaCudaKernelVariant",
+      "summary": "Each compiled symbol has its own wrapper type and user-owned host policy payload.",
+      "details": "Each compiled symbol has its own wrapper type and user-owned host policy payload.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 20
+    },
+    {
+      "id": "api-arda-tardacudakernelvariant-mentry-cbcc75e6",
+      "name": "mEntry",
+      "qualifiedName": "arda::TArdaCudaKernelVariant::mEntry",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const IArdaCudaKernelEntry> mEntry",
+      "summary": "Stores entry in this public native compute value.",
+      "details": "Stores entry in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaKernelVariant"
+      ],
+      "sourceLine": 22
+    },
+    {
+      "id": "api-arda-tardacudakernelvariant-mpayload-b2a35a42",
+      "name": "mPayload",
+      "qualifiedName": "arda::TArdaCudaKernelVariant::mPayload",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "Payload mPayload",
+      "summary": "Stores payload in this public native compute value.",
+      "details": "Stores payload in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaKernelVariant"
+      ],
+      "sourceLine": 23
+    },
+    {
+      "id": "api-arda-tardacudakernelvariant-mname-97276ad9",
+      "name": "mName",
+      "qualifiedName": "arda::TArdaCudaKernelVariant::mName",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::string mName",
+      "summary": "Stores name in this public native compute value.",
+      "details": "Stores name in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaKernelVariant"
+      ],
+      "sourceLine": 24
+    },
+    {
+      "id": "api-arda-tardacudakernelvariant-mrequirements-bc24dc7d",
+      "name": "mRequirements",
+      "qualifiedName": "arda::TArdaCudaKernelVariant::mRequirements",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaCudaKernelRequirements mRequirements",
+      "summary": "Stores requirements in this public native compute value.",
+      "details": "Stores requirements in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaKernelVariant"
+      ],
+      "sourceLine": 25
+    },
+    {
+      "id": "api-arda-tardacudaexternalcallvariant-9d056835",
+      "name": "TArdaCudaExternalCallVariant",
+      "qualifiedName": "arda::TArdaCudaExternalCallVariant",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class Payload> struct TArdaCudaExternalCallVariant",
+      "summary": "A library operation variant with the same typed resource schema and selection payload as kernels.",
+      "details": "A library operation variant with the same typed resource schema and selection payload as kernels.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 30
+    },
+    {
+      "id": "api-arda-tardacudaexternalcallvariant-mcall-a9db80e6",
+      "name": "mCall",
+      "qualifiedName": "arda::TArdaCudaExternalCallVariant::mCall",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const IArdaCudaExternalCall> mCall",
+      "summary": "Retained host-side factory; native state is prepared separately for each recording.",
+      "details": "Retained host-side factory; native state is prepared separately for each recording.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaExternalCallVariant"
+      ],
+      "sourceLine": 33
+    },
+    {
+      "id": "api-arda-tardacudaexternalcallvariant-mpayload-837c3914",
+      "name": "mPayload",
+      "qualifiedName": "arda::TArdaCudaExternalCallVariant::mPayload",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "Payload mPayload",
+      "summary": "User-owned selection policy data.",
+      "details": "User-owned selection policy data.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaExternalCallVariant"
+      ],
+      "sourceLine": 35
+    },
+    {
+      "id": "api-arda-tardacudaexternalcallvariant-mname-71e7d0a0",
+      "name": "mName",
+      "qualifiedName": "arda::TArdaCudaExternalCallVariant::mName",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::string mName",
+      "summary": "Unique diagnostic name within the operand registry.",
+      "details": "Unique diagnostic name within the operand registry.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaExternalCallVariant"
+      ],
+      "sourceLine": 37
+    },
+    {
+      "id": "api-arda-tardacudaexternalcallvariant-mrequirements-f8780788",
+      "name": "mRequirements",
+      "qualifiedName": "arda::TArdaCudaExternalCallVariant::mRequirements",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaCudaKernelRequirements mRequirements",
+      "summary": "Additional algorithm restrictions beyond the factory's capability check.",
+      "details": "Additional algorithm restrictions beyond the factory's capability check.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaExternalCallVariant"
+      ],
+      "sourceLine": 39
+    },
+    {
+      "id": "api-arda-tardacudakernelregistry-17cd772b",
+      "name": "TArdaCudaKernelRegistry",
+      "qualifiedName": "arda::TArdaCudaKernelRegistry",
+      "kind": "class",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class Parameters, class Payload> class TArdaCudaKernelRegistry",
+      "summary": "Immutable-after-binding registry; signature and resource eligibility checks occur at runtime.",
+      "details": "Immutable-after-binding registry; signature and resource eligibility checks occur at runtime.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 44
+    },
+    {
+      "id": "api-arda-tardacudakernelregistry-fvariant-9ac7dec9",
+      "name": "FArdaVariant",
+      "qualifiedName": "arda::TArdaCudaKernelRegistry::FArdaVariant",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaVariant",
+      "summary": "Defines f arda variant in the public native compute contract.",
+      "details": "Defines f arda variant in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaKernelRegistry"
+      ],
+      "sourceLine": 47
+    },
+    {
+      "id": "api-arda-fvariant-mid-18d6167b",
+      "name": "mId",
+      "qualifiedName": "arda::FArdaVariant::mId",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mId = 0",
+      "summary": "Stores id in this public native compute value.",
+      "details": "Stores id in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaVariant"
+      ],
+      "sourceLine": 49
+    },
+    {
+      "id": "api-arda-fvariant-mentry-7cce4ae7",
+      "name": "mEntry",
+      "qualifiedName": "arda::FArdaVariant::mEntry",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const IArdaCudaKernelEntry> mEntry",
+      "summary": "Stores entry in this public native compute value.",
+      "details": "Stores entry in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaVariant"
+      ],
+      "sourceLine": 50
+    },
+    {
+      "id": "api-arda-fvariant-mpayload-926be985",
+      "name": "mPayload",
+      "qualifiedName": "arda::FArdaVariant::mPayload",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "Payload mPayload",
+      "summary": "Stores payload in this public native compute value.",
+      "details": "Stores payload in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaVariant"
+      ],
+      "sourceLine": 51
+    },
+    {
+      "id": "api-arda-fvariant-mname-c4cff3d0",
+      "name": "mName",
+      "qualifiedName": "arda::FArdaVariant::mName",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::string mName",
+      "summary": "Stores name in this public native compute value.",
+      "details": "Stores name in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaVariant"
+      ],
+      "sourceLine": 52
+    },
+    {
+      "id": "api-arda-fvariant-mrequirements-591ac147",
+      "name": "mRequirements",
+      "qualifiedName": "arda::FArdaVariant::mRequirements",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaCudaKernelRequirements mRequirements",
+      "summary": "Stores requirements in this public native compute value.",
+      "details": "Stores requirements in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaVariant"
+      ],
+      "sourceLine": 53
+    },
+    {
+      "id": "api-arda-fvariant-mexternalcall-babab920",
+      "name": "mExternalCall",
+      "qualifiedName": "arda::FArdaVariant::mExternalCall",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const IArdaCudaExternalCall> mExternalCall",
+      "summary": "Populated for external calls instead of mEntry.",
+      "details": "Populated for external calls instead of mEntry.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaVariant"
+      ],
+      "sourceLine": 55
+    },
+    {
+      "id": "api-arda-tardacudakernelregistry-fvariants-a4ace94e",
+      "name": "FArdaVariants",
+      "qualifiedName": "arda::TArdaCudaKernelRegistry::FArdaVariants",
+      "kind": "alias",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "using FArdaVariants = eastl::vector<FArdaVariant>",
+      "summary": "Defines f arda variants in the public native compute contract.",
+      "details": "Defines f arda variants in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaKernelRegistry"
+      ],
+      "sourceLine": 58
+    },
+    {
+      "id": "api-arda-tardacudakernelregistry-add-2ecfa1d0",
+      "name": "Add",
+      "qualifiedName": "arda::TArdaCudaKernelRegistry::Add",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <auto Kernel> FArdaRHIStatus Add(TArdaCudaKernelVariant<Kernel, Payload> Variant)",
+      "summary": "Adds a symbol, retaining the first validation failure even if the caller ignores it.",
+      "details": "Adds a symbol, retaining the first validation failure even if the caller ignores it.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaKernelRegistry"
+      ],
+      "sourceLine": 62
+    },
+    {
+      "id": "api-arda-tardacudakernelregistry-add-e742c2cb",
+      "name": "Add",
+      "qualifiedName": "arda::TArdaCudaKernelRegistry::Add",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus Add(TArdaCudaExternalCallVariant<Payload> Variant)",
+      "summary": "Registers an external library factory without calling CUDA or requiring a native-code manifest.",
+      "details": "Registers an external library factory without calling CUDA or requiring a native-code manifest.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaKernelRegistry"
+      ],
+      "sourceLine": 73
+    },
+    {
+      "id": "api-arda-tardacudakernelregistry-freeze-6c728f0c",
+      "name": "Freeze",
+      "qualifiedName": "arda::TArdaCudaKernelRegistry::Freeze",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus Freeze(bool bAllowEmpty = false)",
+      "summary": "Seals bindings without initializing CUDA. Empty registries are allowed only for an explicit compute alternative.",
+      "details": "Seals bindings without initializing CUDA. Empty registries are allowed only for an explicit compute alternative.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaKernelRegistry"
+      ],
+      "sourceLine": 84
+    },
+    {
+      "id": "api-arda-tardacudakernelregistry-getstatus-850f1b5a",
+      "name": "GetStatus",
+      "qualifiedName": "arda::TArdaCudaKernelRegistry::GetStatus",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "const FArdaRHIStatus& GetStatus() const noexcept",
+      "summary": "Performs get status through the public native compute contract.",
+      "details": "Performs get status through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaKernelRegistry"
+      ],
+      "sourceLine": 94
+    },
+    {
+      "id": "api-arda-tardacudakernelregistry-getvariants-8daa90d6",
+      "name": "GetVariants",
+      "qualifiedName": "arda::TArdaCudaKernelRegistry::GetVariants",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "const FArdaVariants& GetVariants() const noexcept",
+      "summary": "Performs get variants through the public native compute contract.",
+      "details": "Performs get variants through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaKernelRegistry"
+      ],
+      "sourceLine": 99
+    },
+    {
+      "id": "api-arda-tardacudakernelregistry-getcompatiblevariants-0dedf1de",
+      "name": "GetCompatibleVariants",
+      "qualifiedName": "arda::TArdaCudaKernelRegistry::GetCompatibleVariants",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaVariants GetCompatibleVariants(const FArdaCudaCapabilities& C, FArdaRHIStatus* OutStatus = nullptr) const",
+      "summary": "Filters native targets and execution requirements without launching work. OutStatus preserves registry and external support-hook errors; Unsupported variants are simply excluded.",
+      "details": "Filters native targets and execution requirements without launching work. OutStatus preserves registry and external support-hook errors; Unsupported variants are simply excluded.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::TArdaCudaKernelRegistry"
+      ],
+      "sourceLine": 107
+    },
+    {
+      "id": "api-arda-foreachardacudapermutation-73777c63",
+      "name": "ForEachArdaCudaPermutation",
+      "qualifiedName": "arda::ForEachArdaCudaPermutation",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class T, T... Values, class Visitor> void ForEachArdaCudaPermutation(eastl::integer_sequence<T, Values...>, Visitor&& Visit)",
+      "summary": "Enumerates template values with a C++17 callable. Use if constexpr to prune combinations.",
+      "details": "Enumerates template values with a C++17 callable. Use if constexpr to prune combinations.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 220
+    },
+    {
+      "id": "api-arda-fardacudakernelselection-af4ca8b4",
+      "name": "FArdaCudaKernelSelection",
+      "qualifiedName": "arda::FArdaCudaKernelSelection",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaKernelSelection",
+      "summary": "One immutable selection decision.",
+      "details": "One immutable selection decision.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 226
+    },
+    {
+      "id": "api-arda-fardacudakernelselection-mvariantid-054e23fe",
+      "name": "mVariantId",
+      "qualifiedName": "arda::FArdaCudaKernelSelection::mVariantId",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mVariantId = UINT32_MAX",
+      "summary": "Stores variant id in this public native compute value.",
+      "details": "Stores variant id in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernelSelection"
+      ],
+      "sourceLine": 228
+    },
+    {
+      "id": "api-arda-fardacudakernelselection-mlaunch-11154ebc",
+      "name": "mLaunch",
+      "qualifiedName": "arda::FArdaCudaKernelSelection::mLaunch",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaCudaLaunchConfig mLaunch",
+      "summary": "Stores launch in this public native compute value.",
+      "details": "Stores launch in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernelSelection"
+      ],
+      "sourceLine": 229
+    },
+    {
+      "id": "api-arda-fardacudakernelselection-mbnowork-2c062b29",
+      "name": "mbNoWork",
+      "qualifiedName": "arda::FArdaCudaKernelSelection::mbNoWork",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbNoWork = false",
+      "summary": "Allowed only when the operand's mathematical contract permits an empty operation.",
+      "details": "Allowed only when the operand's mathematical contract permits an empty operation.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernelSelection"
+      ],
+      "sourceLine": 231
+    },
+    {
+      "id": "api-arda-eardacomputedispatchroute-8703d5d2",
+      "name": "EArdaComputeDispatchRoute",
+      "qualifiedName": "arda::EArdaComputeDispatchRoute",
+      "kind": "enum",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaComputeDispatchRoute : uint8_t",
+      "summary": "The selected implementation is fixed before resource preparation and command recording.",
+      "details": "The selected implementation is fixed before resource preparation and command recording.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 235
+    },
+    {
+      "id": "api-arda-eardacomputedispatchroute-cuda-05897ac5",
+      "name": "Cuda",
+      "qualifiedName": "arda::EArdaComputeDispatchRoute::Cuda",
+      "kind": "enumerator",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "Cuda",
+      "summary": "Selects the cuda native compute value.",
+      "details": "Selects the cuda native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaComputeDispatchRoute"
+      ],
+      "sourceLine": 237
+    },
+    {
+      "id": "api-arda-eardacomputedispatchroute-computealternative-8332cb07",
+      "name": "ComputeAlternative",
+      "qualifiedName": "arda::EArdaComputeDispatchRoute::ComputeAlternative",
+      "kind": "enumerator",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "ComputeAlternative",
+      "summary": "Selects the compute alternative native compute value.",
+      "details": "Selects the compute alternative native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaComputeDispatchRoute"
+      ],
+      "sourceLine": 238
+    },
+    {
+      "id": "api-arda-fardacomputealternativeplan-0a8fbb2f",
+      "name": "FArdaComputeAlternativePlan",
+      "qualifiedName": "arda::FArdaComputeAlternativePlan",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaComputeAlternativePlan",
+      "summary": "Frozen compute implementation authored explicitly for the operand's resource/value schema.",
+      "details": "Frozen compute implementation authored explicitly for the operand's resource/value schema.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 242
+    },
+    {
+      "id": "api-arda-fardacomputealternativeplan-mstate-f2156d04",
+      "name": "mState",
+      "qualifiedName": "arda::FArdaComputeAlternativePlan::mState",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIComputeState mState",
+      "summary": "Retained pipeline and immutable binding sets; CUDA arguments are not shader bindings.",
+      "details": "Retained pipeline and immutable binding sets; CUDA arguments are not shader bindings.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaComputeAlternativePlan"
+      ],
+      "sourceLine": 245
+    },
+    {
+      "id": "api-arda-fardacomputealternativeplan-mpushconstants-eae87105",
+      "name": "mPushConstants",
+      "qualifiedName": "arda::FArdaComputeAlternativePlan::mPushConstants",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<uint8_t> mPushConstants",
+      "summary": "Owned shader constants copied during preparation; empty when the pipeline has no constants.",
+      "details": "Owned shader constants copied during preparation; empty when the pipeline has no constants.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaComputeAlternativePlan"
+      ],
+      "sourceLine": 247
+    },
+    {
+      "id": "api-arda-fardacomputealternativeplan-mgroupsx-29ce9a42",
+      "name": "mGroupsX",
+      "qualifiedName": "arda::FArdaComputeAlternativePlan::mGroupsX",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mGroupsX = 1",
+      "summary": "Work-group count on the X axis.",
+      "details": "Work-group count on the X axis.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaComputeAlternativePlan"
+      ],
+      "sourceLine": 249
+    },
+    {
+      "id": "api-arda-fardacomputealternativeplan-mgroupsy-33d24cb8",
+      "name": "mGroupsY",
+      "qualifiedName": "arda::FArdaComputeAlternativePlan::mGroupsY",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mGroupsY = 1",
+      "summary": "Work-group count on the Y axis.",
+      "details": "Work-group count on the Y axis.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaComputeAlternativePlan"
+      ],
+      "sourceLine": 251
+    },
+    {
+      "id": "api-arda-fardacomputealternativeplan-mgroupsz-f6885732",
+      "name": "mGroupsZ",
+      "qualifiedName": "arda::FArdaComputeAlternativePlan::mGroupsZ",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mGroupsZ = 1",
+      "summary": "Work-group count on the Z axis.",
+      "details": "Work-group count on the Z axis.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaComputeAlternativePlan"
+      ],
+      "sourceLine": 253
+    },
+    {
+      "id": "api-arda-fardacomputealternativeplan-mbnowork-f30e9975",
+      "name": "mbNoWork",
+      "qualifiedName": "arda::FArdaComputeAlternativePlan::mbNoWork",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbNoWork = false",
+      "summary": "Explicit empty mathematical operation; no pipeline or GPU work is required.",
+      "details": "Explicit empty mathematical operation; no pipeline or GPU work is required.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaComputeAlternativePlan"
+      ],
+      "sourceLine": 255
+    },
+    {
+      "id": "api-arda-fardacudadispatchplan-31e70bad",
+      "name": "FArdaCudaDispatchPlan",
+      "qualifiedName": "arda::FArdaCudaDispatchPlan",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaDispatchPlan",
+      "summary": "Frozen values/resources/selection. Returned as shared_ptr<const> by operand preparation. CUDA sequences admit only the Cuda route; schedulers must lower ComputeAlternative to ordinary compute work.",
+      "details": "Frozen values/resources/selection. Returned as shared_ptr<const> by operand preparation. CUDA sequences admit only the Cuda route; schedulers must lower ComputeAlternative to ordinary compute work.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 261
+    },
+    {
+      "id": "api-arda-fardacudadispatchplan-mdevice-05d203af",
+      "name": "mDevice",
+      "qualifiedName": "arda::FArdaCudaDispatchPlan::mDevice",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIDeviceRef mDevice",
+      "summary": "Stores device in this public native compute value.",
+      "details": "Stores device in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaDispatchPlan"
+      ],
+      "sourceLine": 263
+    },
+    {
+      "id": "api-arda-fardacudadispatchplan-mqueue-c50b1a54",
+      "name": "mQueue",
+      "qualifiedName": "arda::FArdaCudaDispatchPlan::mQueue",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics",
+      "summary": "Stores queue in this public native compute value.",
+      "details": "Stores queue in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaDispatchPlan"
+      ],
+      "sourceLine": 264
+    },
+    {
+      "id": "api-arda-fardacudadispatchplan-mselection-2420b2de",
+      "name": "mSelection",
+      "qualifiedName": "arda::FArdaCudaDispatchPlan::mSelection",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaCudaKernelSelection mSelection",
+      "summary": "Stores selection in this public native compute value.",
+      "details": "Stores selection in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaDispatchPlan"
+      ],
+      "sourceLine": 265
+    },
+    {
+      "id": "api-arda-fardacudadispatchplan-mdispatch-4d70e563",
+      "name": "mDispatch",
+      "qualifiedName": "arda::FArdaCudaDispatchPlan::mDispatch",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaCudaDispatch mDispatch",
+      "summary": "Stores dispatch in this public native compute value.",
+      "details": "Stores dispatch in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaDispatchPlan"
+      ],
+      "sourceLine": 266
+    },
+    {
+      "id": "api-arda-fardacudadispatchplan-mroute-1a16d56e",
+      "name": "mRoute",
+      "qualifiedName": "arda::FArdaCudaDispatchPlan::mRoute",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "EArdaComputeDispatchRoute mRoute = EArdaComputeDispatchRoute::Cuda",
+      "summary": "Selected implementation; never changed after a recording or execution failure.",
+      "details": "Selected implementation; never changed after a recording or execution failure.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaDispatchPlan"
+      ],
+      "sourceLine": 268
+    },
+    {
+      "id": "api-arda-fardacudadispatchplan-mcomputealternative-b2ad4fab",
+      "name": "mComputeAlternative",
+      "qualifiedName": "arda::FArdaCudaDispatchPlan::mComputeAlternative",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaComputeAlternativePlan mComputeAlternative",
+      "summary": "Populated only when mRoute is ComputeAlternative.",
+      "details": "Populated only when mRoute is ComputeAlternative.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaKernelVariants.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaDispatchPlan"
+      ],
+      "sourceLine": 270
+    },
+    {
+      "id": "api-arda-eardacudamoduleformat-95da79a9",
+      "name": "EArdaCudaModuleFormat",
+      "qualifiedName": "arda::EArdaCudaModuleFormat",
+      "kind": "enum",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaCudaModuleFormat : uint8_t",
+      "summary": "Defines e arda cuda module format in the public native compute contract.",
+      "details": "Defines e arda cuda module format in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 8
+    },
+    {
+      "id": "api-arda-eardacudamoduleformat-cubin-54605a5a",
+      "name": "Cubin",
+      "qualifiedName": "arda::EArdaCudaModuleFormat::Cubin",
+      "kind": "enumerator",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "Cubin",
+      "summary": "Selects the cubin native compute value.",
+      "details": "Selects the cubin native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaCudaModuleFormat"
+      ],
+      "sourceLine": 10
+    },
+    {
+      "id": "api-arda-eardacudamoduleformat-ptx-68b49748",
+      "name": "Ptx",
+      "qualifiedName": "arda::EArdaCudaModuleFormat::Ptx",
+      "kind": "enumerator",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "Ptx",
+      "summary": "Selects the ptx native compute value.",
+      "details": "Selects the ptx native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaCudaModuleFormat"
+      ],
+      "sourceLine": 11
+    },
+    {
+      "id": "api-arda-eardacudamoduleargumentkind-f678b714",
+      "name": "EArdaCudaModuleArgumentKind",
+      "qualifiedName": "arda::EArdaCudaModuleArgumentKind",
+      "kind": "enum",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaCudaModuleArgumentKind : uint8_t",
+      "summary": "Defines e arda cuda module argument kind in the public native compute contract.",
+      "details": "Defines e arda cuda module argument kind in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 14
+    },
+    {
+      "id": "api-arda-eardacudamoduleargumentkind-value-2ac52498",
+      "name": "Value",
+      "qualifiedName": "arda::EArdaCudaModuleArgumentKind::Value",
+      "kind": "enumerator",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "Value",
+      "summary": "Selects the value native compute value.",
+      "details": "Selects the value native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaCudaModuleArgumentKind"
+      ],
+      "sourceLine": 16
+    },
+    {
+      "id": "api-arda-eardacudamoduleargumentkind-buffer-084f5e3d",
+      "name": "Buffer",
+      "qualifiedName": "arda::EArdaCudaModuleArgumentKind::Buffer",
+      "kind": "enumerator",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "Buffer",
+      "summary": "Selects the buffer native compute value.",
+      "details": "Selects the buffer native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaCudaModuleArgumentKind"
+      ],
+      "sourceLine": 17
+    },
+    {
+      "id": "api-arda-eardacudamoduleargumentkind-surface-961bea67",
+      "name": "Surface",
+      "qualifiedName": "arda::EArdaCudaModuleArgumentKind::Surface",
+      "kind": "enumerator",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "Surface",
+      "summary": "Selects the surface native compute value.",
+      "details": "Selects the surface native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaCudaModuleArgumentKind"
+      ],
+      "sourceLine": 18
+    },
+    {
+      "id": "api-arda-fardacudamoduleargument-b81c5ec6",
+      "name": "FArdaCudaModuleArgument",
+      "qualifiedName": "arda::FArdaCudaModuleArgument",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaModuleArgument",
+      "summary": "One native function parameter. Offsets describe the CUDA parameter ABI, not a host struct.",
+      "details": "One native function parameter. Offsets describe the CUDA parameter ABI, not a host struct.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 22
+    },
+    {
+      "id": "api-arda-fardacudamoduleargument-moffset-73f0747a",
+      "name": "mOffset",
+      "qualifiedName": "arda::FArdaCudaModuleArgument::mOffset",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mOffset = 0",
+      "summary": "Stores offset in this public native compute value.",
+      "details": "Stores offset in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaModuleArgument"
+      ],
+      "sourceLine": 24
+    },
+    {
+      "id": "api-arda-fardacudamoduleargument-msize-f347c453",
+      "name": "mSize",
+      "qualifiedName": "arda::FArdaCudaModuleArgument::mSize",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mSize = 0",
+      "summary": "Stores size in this public native compute value.",
+      "details": "Stores size in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaModuleArgument"
+      ],
+      "sourceLine": 25
+    },
+    {
+      "id": "api-arda-fardacudamoduleargument-malignment-17a539e4",
+      "name": "mAlignment",
+      "qualifiedName": "arda::FArdaCudaModuleArgument::mAlignment",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mAlignment = 1",
+      "summary": "Stores alignment in this public native compute value.",
+      "details": "Stores alignment in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaModuleArgument"
+      ],
+      "sourceLine": 26
+    },
+    {
+      "id": "api-arda-fardacudamoduleargument-mkind-c7a4752a",
+      "name": "mKind",
+      "qualifiedName": "arda::FArdaCudaModuleArgument::mKind",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "EArdaCudaModuleArgumentKind mKind = EArdaCudaModuleArgumentKind::Value",
+      "summary": "Stores kind in this public native compute value.",
+      "details": "Stores kind in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaModuleArgument"
+      ],
+      "sourceLine": 27
+    },
+    {
+      "id": "api-arda-fardacudamodulekerneldesc-5be30041",
+      "name": "FArdaCudaModuleKernelDesc",
+      "qualifiedName": "arda::FArdaCudaModuleKernelDesc",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaModuleKernelDesc",
+      "summary": "Defines f arda cuda module kernel desc in the public native compute contract.",
+      "details": "Defines f arda cuda module kernel desc in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 30
+    },
+    {
+      "id": "api-arda-fardacudamodulekerneldesc-mentrypoint-13e92369",
+      "name": "mEntryPoint",
+      "qualifiedName": "arda::FArdaCudaModuleKernelDesc::mEntryPoint",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::string mEntryPoint",
+      "summary": "Stores entry point in this public native compute value.",
+      "details": "Stores entry point in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaModuleKernelDesc"
+      ],
+      "sourceLine": 32
+    },
+    {
+      "id": "api-arda-fardacudamodulekerneldesc-mparametersize-34610430",
+      "name": "mParameterSize",
+      "qualifiedName": "arda::FArdaCudaModuleKernelDesc::mParameterSize",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mParameterSize = 0",
+      "summary": "Stores parameter size in this public native compute value.",
+      "details": "Stores parameter size in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaModuleKernelDesc"
+      ],
+      "sourceLine": 33
+    },
+    {
+      "id": "api-arda-fardacudamodulekerneldesc-mparameteralignment-50909938",
+      "name": "mParameterAlignment",
+      "qualifiedName": "arda::FArdaCudaModuleKernelDesc::mParameterAlignment",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mParameterAlignment = 1",
+      "summary": "Stores parameter alignment in this public native compute value.",
+      "details": "Stores parameter alignment in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaModuleKernelDesc"
+      ],
+      "sourceLine": 34
+    },
+    {
+      "id": "api-arda-fardacudamodulekerneldesc-marguments-24897bca",
+      "name": "mArguments",
+      "qualifiedName": "arda::FArdaCudaModuleKernelDesc::mArguments",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaCudaModuleArgument> mArguments",
+      "summary": "Stores arguments in this public native compute value.",
+      "details": "Stores arguments in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaModuleKernelDesc"
+      ],
+      "sourceLine": 35
+    },
+    {
+      "id": "api-arda-fardacudamoduledesc-5bc8eeb4",
+      "name": "FArdaCudaModuleDesc",
+      "qualifiedName": "arda::FArdaCudaModuleDesc",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaModuleDesc",
+      "summary": "Defines f arda cuda module desc in the public native compute contract.",
+      "details": "Defines f arda cuda module desc in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 38
+    },
+    {
+      "id": "api-arda-fardacudamoduledesc-mformat-99ed4a19",
+      "name": "mFormat",
+      "qualifiedName": "arda::FArdaCudaModuleDesc::mFormat",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "EArdaCudaModuleFormat mFormat = EArdaCudaModuleFormat::Cubin",
+      "summary": "Stores format in this public native compute value.",
+      "details": "Stores format in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaModuleDesc"
+      ],
+      "sourceLine": 40
+    },
+    {
+      "id": "api-arda-fardacudamoduledesc-mimage-a65d6596",
+      "name": "mImage",
+      "qualifiedName": "arda::FArdaCudaModuleDesc::mImage",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<uint8_t> mImage",
+      "summary": "Stores image in this public native compute value.",
+      "details": "Stores image in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaModuleDesc"
+      ],
+      "sourceLine": 41
+    },
+    {
+      "id": "api-arda-fardacudamoduledesc-mbuild-d0648a97",
+      "name": "mBuild",
+      "qualifiedName": "arda::FArdaCudaModuleDesc::mBuild",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaCudaBuildInfo mBuild",
+      "summary": "Cubin targets describe native compatibility; PTX targets are minimum virtual architectures. Exact targets remain exact. The driver additionally validates PTX ISA compatibility.",
+      "details": "Cubin targets describe native compatibility; PTX targets are minimum virtual architectures. Exact targets remain exact. The driver additionally validates PTX ISA compatibility.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaModuleDesc"
+      ],
+      "sourceLine": 44
+    },
+    {
+      "id": "api-arda-fardacudamodule-08ac46de",
+      "name": "FArdaCudaModule",
+      "qualifiedName": "arda::FArdaCudaModule",
+      "kind": "class",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "class FArdaCudaModule",
+      "summary": "Immutable host artifact shared by entries. Native modules belong to each execution context.",
+      "details": "Immutable host artifact shared by entries. Native modules belong to each execution context.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 48
+    },
+    {
+      "id": "api-arda-fardacudamodule-getdesc-85ea6272",
+      "name": "GetDesc",
+      "qualifiedName": "arda::FArdaCudaModule::GetDesc",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "const FArdaCudaModuleDesc& GetDesc() const noexcept",
+      "summary": "Performs get desc through the public native compute contract.",
+      "details": "Performs get desc through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaModule"
+      ],
+      "sourceLine": 51
+    },
+    {
+      "id": "api-arda-createardacudamodule-c4a25a3e",
+      "name": "CreateArdaCudaModule",
+      "qualifiedName": "arda::CreateArdaCudaModule",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] TArdaRHIResult<eastl::shared_ptr<const FArdaCudaModule>> CreateArdaCudaModule( FArdaCudaModuleDesc Desc)",
+      "summary": "Validates and owns image bytes without loading CUDA or inspecting device resources. Images are executable trusted artifacts, not sandboxed data. PTX is terminated by this factory.",
+      "details": "Validates and owns image bytes without loading CUDA or inspecting device resources. Images are executable trusted artifacts, not sandboxed data. PTX is terminated by this factory.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 68
+    },
+    {
+      "id": "api-arda-validateardacudamodulekerneldesc-c8e5a062",
+      "name": "ValidateArdaCudaModuleKernelDesc",
+      "qualifiedName": "arda::ValidateArdaCudaModuleKernelDesc",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus ValidateArdaCudaModuleKernelDesc(const FArdaCudaModuleKernelDesc& Desc)",
+      "summary": "Validates the native parameter layout before an image has been compiled or loaded.",
+      "details": "Validates the native parameter layout before an image has been compiled or loaded.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 72
+    },
+    {
+      "id": "api-arda-createardacudamodulekernel-b65a21d8",
+      "name": "CreateArdaCudaModuleKernel",
+      "qualifiedName": "arda::CreateArdaCudaModuleKernel",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] TArdaRHIResult<eastl::shared_ptr<const IArdaCudaKernelEntry>> CreateArdaCudaModuleKernel( eastl::shared_ptr<const FArdaCudaModule> Module, FArdaCudaModuleKernelDesc Desc)",
+      "summary": "Registers a host-only entry. Native loading and ABI verification occur before recording work.",
+      "details": "Registers a host-only entry. Native loading and ABI verification occur before recording work.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 75
+    },
+    {
+      "id": "api-arda-validateardacudamoduleparameters-964ebd9f",
+      "name": "ValidateArdaCudaModuleParameters",
+      "qualifiedName": "arda::ValidateArdaCudaModuleParameters",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus ValidateArdaCudaModuleParameters(const FArdaCudaModuleKernelDesc& Desc, const FArdaCudaKernel& Kernel)",
+      "summary": "Performs validate arda cuda module parameters through the public native compute contract.",
+      "details": "Performs validate arda cuda module parameters through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaModule.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 79
+    },
+    {
+      "id": "api-arda-isardacudasurfaceelementsupported-225b757b",
+      "name": "IsArdaCudaSurfaceElementSupported",
+      "qualifiedName": "arda::IsArdaCudaSurfaceElementSupported",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class T> bool IsArdaCudaSurfaceElementSupported(EArdaRHIFormat Format)",
+      "summary": "Checks scalar channel interpretation, or explicit aggregate pixel storage size, at runtime. Aggregate pixel layouts are author-defined; no color, normalization or channel packing is performed.",
+      "details": "Checks scalar channel interpretation, or explicit aggregate pixel storage size, at runtime. Aggregate pixel layouts are author-defined; no color, normalization or channel packing is performed.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 18
+    },
+    {
+      "id": "api-arda-fardacudahostdomain-ffae65a7",
+      "name": "FArdaCudaHostDomain",
+      "qualifiedName": "arda::FArdaCudaHostDomain",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaHostDomain",
+      "summary": "Host representation of the shared parameter schema.",
+      "details": "Host representation of the shared parameter schema.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 37
+    },
+    {
+      "id": "api-arda-fardacudahostdomain-tardavalue-39db234d",
+      "name": "TArdaValue",
+      "qualifiedName": "arda::FArdaCudaHostDomain::TArdaValue",
+      "kind": "alias",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class T> using TArdaValue = T",
+      "summary": "Defines t arda value in the public native compute contract.",
+      "details": "Defines t arda value in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaHostDomain"
+      ],
+      "sourceLine": 40
+    },
+    {
+      "id": "api-arda-fardacudahostdomain-tardabuffer-9bb43556",
+      "name": "TArdaBuffer",
+      "qualifiedName": "arda::FArdaCudaHostDomain::TArdaBuffer",
+      "kind": "alias",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class T, EArdaComputeAccess Access> using TArdaBuffer = FArdaComputeBufferParameter",
+      "summary": "Defines t arda buffer in the public native compute contract.",
+      "details": "Defines t arda buffer in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaHostDomain"
+      ],
+      "sourceLine": 42
+    },
+    {
+      "id": "api-arda-fardacudahostdomain-tardasurface-3f4e9a9a",
+      "name": "TArdaSurface",
+      "qualifiedName": "arda::FArdaCudaHostDomain::TArdaSurface",
+      "kind": "alias",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class T, EArdaComputeAccess Access> using TArdaSurface = FArdaComputeTextureParameter",
+      "summary": "Defines t arda surface in the public native compute contract.",
+      "details": "Defines t arda surface in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaHostDomain"
+      ],
+      "sourceLine": 44
+    },
+    {
+      "id": "api-arda-fardacudadevicedomain-d8feaea8",
+      "name": "FArdaCudaDeviceDomain",
+      "qualifiedName": "arda::FArdaCudaDeviceDomain",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaDeviceDomain",
+      "summary": "Device representation; unsupported values receive inert storage and fail runtime validation.",
+      "details": "Device representation; unsupported values receive inert storage and fail runtime validation.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 48
+    },
+    {
+      "id": "api-arda-fardacudadevicedomain-tardavalue-1d5ebf5c",
+      "name": "TArdaValue",
+      "qualifiedName": "arda::FArdaCudaDeviceDomain::TArdaValue",
+      "kind": "alias",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class T> using TArdaValue = eastl::conditional_t<eastl::is_trivially_copyable_v<T> && eastl::is_standard_layout_v<T>, T, uint64_t>",
+      "summary": "Defines t arda value in the public native compute contract.",
+      "details": "Defines t arda value in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaDeviceDomain"
+      ],
+      "sourceLine": 51
+    },
+    {
+      "id": "api-arda-fardacudadevicedomain-tardabuffer-4ad1fe96",
+      "name": "TArdaBuffer",
+      "qualifiedName": "arda::FArdaCudaDeviceDomain::TArdaBuffer",
+      "kind": "alias",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class T, EArdaComputeAccess Access> using TArdaBuffer = eastl::conditional_t<Access == EArdaComputeAccess::Read, const T*, T*>",
+      "summary": "Defines t arda buffer in the public native compute contract.",
+      "details": "Defines t arda buffer in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaDeviceDomain"
+      ],
+      "sourceLine": 54
+    },
+    {
+      "id": "api-arda-fardacudadevicedomain-tardasurface-3e1946b0",
+      "name": "TArdaSurface",
+      "qualifiedName": "arda::FArdaCudaDeviceDomain::TArdaSurface",
+      "kind": "alias",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "template <class T, EArdaComputeAccess Access> using TArdaSurface = uint64_t",
+      "summary": "Defines t arda surface in the public native compute contract.",
+      "details": "Defines t arda surface in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaDeviceDomain"
+      ],
+      "sourceLine": 56
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-498b8ac2",
+      "name": "FArdaCudaParameterMember",
+      "qualifiedName": "arda::FArdaCudaParameterMember",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaParameterMember",
+      "summary": "One host member and its corresponding CUDA argument location.",
+      "details": "One host member and its corresponding CUDA argument location.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 60
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-mname-e18b3462",
+      "name": "mName",
+      "qualifiedName": "arda::FArdaCudaParameterMember::mName",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "const char* mName = nullptr",
+      "summary": "Stores name in this public native compute value.",
+      "details": "Stores name in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMember"
+      ],
+      "sourceLine": 62
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-mkind-466c0acc",
+      "name": "mKind",
+      "qualifiedName": "arda::FArdaCudaParameterMember::mKind",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "EArdaComputeParameterKind mKind = EArdaComputeParameterKind::Value",
+      "summary": "Stores kind in this public native compute value.",
+      "details": "Stores kind in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMember"
+      ],
+      "sourceLine": 63
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-maccess-80a89de0",
+      "name": "mAccess",
+      "qualifiedName": "arda::FArdaCudaParameterMember::mAccess",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "EArdaComputeAccess mAccess = EArdaComputeAccess::Read",
+      "summary": "Stores access in this public native compute value.",
+      "details": "Stores access in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMember"
+      ],
+      "sourceLine": 64
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-mhostoffset-df659027",
+      "name": "mHostOffset",
+      "qualifiedName": "arda::FArdaCudaParameterMember::mHostOffset",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mHostOffset = 0",
+      "summary": "Stores host offset in this public native compute value.",
+      "details": "Stores host offset in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMember"
+      ],
+      "sourceLine": 65
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-mcudaoffset-79231a37",
+      "name": "mCudaOffset",
+      "qualifiedName": "arda::FArdaCudaParameterMember::mCudaOffset",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mCudaOffset = 0",
+      "summary": "Stores cuda offset in this public native compute value.",
+      "details": "Stores cuda offset in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMember"
+      ],
+      "sourceLine": 66
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-mhostsize-e7d18d7f",
+      "name": "mHostSize",
+      "qualifiedName": "arda::FArdaCudaParameterMember::mHostSize",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mHostSize = 0",
+      "summary": "Stores host size in this public native compute value.",
+      "details": "Stores host size in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMember"
+      ],
+      "sourceLine": 67
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-mcudasize-a0ce8d3c",
+      "name": "mCudaSize",
+      "qualifiedName": "arda::FArdaCudaParameterMember::mCudaSize",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mCudaSize = 0",
+      "summary": "Stores cuda size in this public native compute value.",
+      "details": "Stores cuda size in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMember"
+      ],
+      "sourceLine": 68
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-mhostalignment-641382c9",
+      "name": "mHostAlignment",
+      "qualifiedName": "arda::FArdaCudaParameterMember::mHostAlignment",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mHostAlignment = 1",
+      "summary": "Stores host alignment in this public native compute value.",
+      "details": "Stores host alignment in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMember"
+      ],
+      "sourceLine": 69
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-melementsize-3e165927",
+      "name": "mElementSize",
+      "qualifiedName": "arda::FArdaCudaParameterMember::mElementSize",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mElementSize = 0",
+      "summary": "Stores element size in this public native compute value.",
+      "details": "Stores element size in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMember"
+      ],
+      "sourceLine": 70
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-melementalignment-a0ed9a43",
+      "name": "mElementAlignment",
+      "qualifiedName": "arda::FArdaCudaParameterMember::mElementAlignment",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mElementAlignment = 1",
+      "summary": "Stores element alignment in this public native compute value.",
+      "details": "Stores element alignment in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMember"
+      ],
+      "sourceLine": 71
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-mformat-0ed57f01",
+      "name": "mFormat",
+      "qualifiedName": "arda::FArdaCudaParameterMember::mFormat",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown",
+      "summary": "Stores format in this public native compute value.",
+      "details": "Stores format in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMember"
+      ],
+      "sourceLine": 72
+    },
+    {
+      "id": "api-arda-fardacudaparametermember-mbsupported-01de9485",
+      "name": "mbSupported",
+      "qualifiedName": "arda::FArdaCudaParameterMember::mbSupported",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbSupported = false",
+      "summary": "Stores supported in this public native compute value.",
+      "details": "Stores supported in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMember"
+      ],
+      "sourceLine": 73
+    },
+    {
+      "id": "api-arda-fardacudaparametermetadata-9bee218f",
+      "name": "FArdaCudaParameterMetadata",
+      "qualifiedName": "arda::FArdaCudaParameterMetadata",
+      "kind": "class",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "class FArdaCudaParameterMetadata",
+      "summary": "Immutable paired layouts and resource declarations derived from one schema.",
+      "details": "Immutable paired layouts and resource declarations derived from one schema.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 77
+    },
+    {
+      "id": "api-arda-fardacudaparametermetadata-fardacudaparametermetadata-2a28fadc",
+      "name": "FArdaCudaParameterMetadata",
+      "qualifiedName": "arda::FArdaCudaParameterMetadata::FArdaCudaParameterMetadata",
+      "kind": "constructor",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaCudaParameterMetadata(const char* Name, size_t HostSize, size_t HostAlignment, FArdaCudaKernelSignature Signature, bool HostLayoutSupported, eastl::vector<FArdaCudaParameterMember> Members)",
+      "summary": "Validates the generated layouts without accessing CUDA or a GPU.",
+      "details": "Validates the generated layouts without accessing CUDA or a GPU.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMetadata"
+      ],
+      "sourceLine": 81
+    },
+    {
+      "id": "api-arda-fardacudaparametermetadata-getstatus-0b36e565",
+      "name": "GetStatus",
+      "qualifiedName": "arda::FArdaCudaParameterMetadata::GetStatus",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "const FArdaRHIStatus& GetStatus() const noexcept",
+      "summary": "Reports unsupported host/device field types and malformed layouts at runtime.",
+      "details": "Reports unsupported host/device field types and malformed layouts at runtime.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMetadata"
+      ],
+      "sourceLine": 89
+    },
+    {
+      "id": "api-arda-fardacudaparametermetadata-gethostmetadata-525db12b",
+      "name": "GetHostMetadata",
+      "qualifiedName": "arda::FArdaCudaParameterMetadata::GetHostMetadata",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "const FArdaComputeParameterMetadata& GetHostMetadata() const noexcept",
+      "summary": "Host resource enumeration for ownership and scheduling.",
+      "details": "Host resource enumeration for ownership and scheduling.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMetadata"
+      ],
+      "sourceLine": 95
+    },
+    {
+      "id": "api-arda-fardacudaparametermetadata-getsignature-563ca9eb",
+      "name": "GetSignature",
+      "qualifiedName": "arda::FArdaCudaParameterMetadata::GetSignature",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaCudaKernelSignature GetSignature() const noexcept",
+      "summary": "Exact single-argument kernel contract.",
+      "details": "Exact single-argument kernel contract.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMetadata"
+      ],
+      "sourceLine": 101
+    },
+    {
+      "id": "api-arda-fardacudaparametermetadata-getmembers-73478663",
+      "name": "GetMembers",
+      "qualifiedName": "arda::FArdaCudaParameterMetadata::GetMembers",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "const eastl::vector<FArdaCudaParameterMember>& GetMembers() const noexcept",
+      "summary": "Paired member locations, in declaration order.",
+      "details": "Paired member locations, in declaration order.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMetadata"
+      ],
+      "sourceLine": 107
+    },
+    {
+      "id": "api-arda-fardacudaparametermetadata-prepare-1a85f794",
+      "name": "Prepare",
+      "qualifiedName": "arda::FArdaCudaParameterMetadata::Prepare",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus Prepare(const void* Parameters, FArdaCudaDispatch& Output) const",
+      "summary": "Freezes plain values and resource patches, retaining resources independently of Parameters. Checks sharing, ranges, element alignment and surface format; the RHI checks device ownership. No native addresses are resolved and no GPU work is issued. Output changes only on success.",
+      "details": "Freezes plain values and resource patches, retaining resources independently of Parameters. Checks sharing, ranges, element alignment and surface format; the RHI checks device ownership. No native addresses are resolved and no GPU work is issued. Output changes only on success.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMetadata"
+      ],
+      "sourceLine": 116
+    },
+    {
+      "id": "api-arda-fardacudaparametermetadata-packarguments-b5807e46",
+      "name": "PackArguments",
+      "qualifiedName": "arda::FArdaCudaParameterMetadata::PackArguments",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIStatus PackArguments(const void* Parameters, FArdaCudaDispatch& Output) const",
+      "summary": "Freeze values and views for variant selection, including resources usable by a shader fallback.",
+      "details": "Freeze values and views for variant selection, including resources usable by a shader fallback.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterMetadata"
+      ],
+      "sourceLine": 119
+    },
+    {
+      "id": "api-arda-arda-cuda-parameter-struct-6ccbb61e",
+      "name": "ARDA_CUDA_PARAMETER_STRUCT",
+      "qualifiedName": "arda::ARDA_CUDA_PARAMETER_STRUCT",
+      "kind": "macro",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "#define ARDA_CUDA_PARAMETER_STRUCT(Name, Fields)",
+      "summary": "Declares a paired parameter schema. Fields is a macro accepting VALUE, BUFFER and SURFACE. BUFFER declares an element type/name/access; SURFACE also declares its exact storage format. TArdaRebind permits a scheduler to provide logical-resource storage without changing the CUDA ABI.",
+      "details": "Declares a paired parameter schema. Fields is a macro accepting VALUE, BUFFER and SURFACE. BUFFER declares an element type/name/access; SURFACE also declares its exact storage format. TArdaRebind permits a scheduler to provide logical-resource storage without changing the CUDA ABI.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaParameters.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 183
+    },
+    {
+      "id": "api-arda-fardaprovidercudabinding-18b6c21b",
+      "name": "FArdaProviderCudaBinding",
+      "qualifiedName": "arda::FArdaProviderCudaBinding",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaProviderCudaBinding",
+      "summary": "Defines f arda provider cuda binding in the public native compute contract.",
+      "details": "Defines f arda provider cuda binding in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaProviderCommands.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 9
+    },
+    {
+      "id": "api-arda-fardaprovidercudabinding-mobject-47ef2be6",
+      "name": "mObject",
+      "qualifiedName": "arda::FArdaProviderCudaBinding::mObject",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaProviderObjectRef mObject",
+      "summary": "Stores object in this public native compute value.",
+      "details": "Stores object in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaProviderCommands.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaProviderCudaBinding"
+      ],
+      "sourceLine": 11
+    },
+    {
+      "id": "api-arda-fardaprovidercudabinding-maccess-260caa1b",
+      "name": "mAccess",
+      "qualifiedName": "arda::FArdaProviderCudaBinding::mAccess",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "EArdaComputeAccess mAccess = EArdaComputeAccess::Read",
+      "summary": "Stores access in this public native compute value.",
+      "details": "Stores access in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaProviderCommands.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaProviderCudaBinding"
+      ],
+      "sourceLine": 12
+    },
+    {
+      "id": "api-arda-fardaprovidercudabinding-mtype-3e787822",
+      "name": "mType",
+      "qualifiedName": "arda::FArdaProviderCudaBinding::mType",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "EArdaComputeBindingType mType = EArdaComputeBindingType::Buffer",
+      "summary": "Stores type in this public native compute value.",
+      "details": "Stores type in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaProviderCommands.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaProviderCudaBinding"
+      ],
+      "sourceLine": 13
+    },
+    {
+      "id": "api-arda-fardaprovidercudabinding-mbufferrange-580d113f",
+      "name": "mBufferRange",
+      "qualifiedName": "arda::FArdaProviderCudaBinding::mBufferRange",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIBufferRange mBufferRange",
+      "summary": "Stores buffer range in this public native compute value.",
+      "details": "Stores buffer range in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaProviderCommands.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaProviderCudaBinding"
+      ],
+      "sourceLine": 14
+    },
+    {
+      "id": "api-arda-fardaprovidercudabinding-mmiplevel-409e09bd",
+      "name": "mMipLevel",
+      "qualifiedName": "arda::FArdaProviderCudaBinding::mMipLevel",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mMipLevel = 0",
+      "summary": "Stores mip level in this public native compute value.",
+      "details": "Stores mip level in this public native compute value. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaCudaProviderCommands.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaProviderCudaBinding"
+      ],
+      "sourceLine": 15
     },
     {
       "id": "api-arda-describeardanativecudaoperand-10b4efd6",
@@ -1890,7 +6792,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] TArdaRHIResult<FArdaNativeOperandDesc> DescribeArdaNativeCudaOperand(const char* Id, const FArdaCudaParameterMetadata& Metadata)",
       "summary": "Start an operand with the resource slots and parameter ABI of an ARDA_CUDA_PARAMETER_STRUCT.",
       "details": "Start an operand with the resource slots and parameter ABI of an ARDA_CUDA_PARAMETER_STRUCT.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaParameters.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaParameters.h",
       "params": [
         {
           "name": "Id",
@@ -1920,7 +6822,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] TArdaRHIResult<eastl::shared_ptr<const IArdaNativeKernelSource>> CreateArdaNativeCudaLinkedSource( const FArdaCudaParameterMetadata& Metadata, eastl::shared_ptr<const IArdaCudaKernelEntry> Entry)",
       "summary": "Bind a linked CUDA entry and derive its resource patches from the same parameter schema.",
       "details": "Bind a linked CUDA entry and derive its resource patches from the same parameter schema.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaParameters.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaParameters.h",
       "params": [
         {
           "name": "Metadata",
@@ -1950,7 +6852,7 @@ window.ArdaNativeComputeApi = {
       "signature": "template <class Parameters> [[nodiscard]] TArdaRHIResult<FArdaNativeInvocation> MakeArdaNativeCudaInvocation(const Parameters& Host)",
       "summary": "Pack the host values and retain the active resource views for route selection.",
       "details": "Pack the host values and retain the active resource views for route selection.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaParameters.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaParameters.h",
       "params": [
         {
           "name": "Host",
@@ -1976,7 +6878,7 @@ window.ArdaNativeComputeApi = {
       "signature": "inline constexpr char ArdaNativeCudaProviderId[] = \"cuda\"",
       "summary": "Provider identity used when constraining execution to a CUDA batch.",
       "details": "Provider identity used when constraining execution to a CUDA batch.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -1985,7 +6887,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 10
+      "sourceLine": 13
     },
     {
       "id": "api-arda-ardanativecudaingraphicsproviderid-452b1e8b",
@@ -1997,28 +6899,7 @@ window.ArdaNativeComputeApi = {
       "signature": "inline constexpr char ArdaNativeCudaInGraphicsProviderId[] = \"cuda-in-graphics\"",
       "summary": "Requires CUDA in Graphics for the active graphics API.",
       "details": "Requires CUDA in Graphics for the active graphics API.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
-      "params": [],
-      "returns": "",
-      "ownership": "",
-      "errors": "",
-      "threading": "",
-      "related": [
-        "arda"
-      ],
-      "sourceLine": 12
-    },
-    {
-      "id": "api-arda-fardanativecudasourcedesc-249e3e98",
-      "name": "FArdaNativeCudaSourceDesc",
-      "qualifiedName": "arda::FArdaNativeCudaSourceDesc",
-      "kind": "struct",
-      "component": "cuda",
-      "page": "api-reference.html",
-      "signature": "struct FArdaNativeCudaSourceDesc",
-      "summary": "Exactly one trusted linked entry, external call, module image, or CUDA C++ translation unit.",
-      "details": "Exactly one trusted linked entry, external call, module image, or CUDA C++ translation unit.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2030,6 +6911,132 @@ window.ArdaNativeComputeApi = {
       "sourceLine": 15
     },
     {
+      "id": "api-arda-ardanativecudabuffercategory-c2497fff",
+      "name": "ArdaNativeCudaBufferCategory",
+      "qualifiedName": "arda::ArdaNativeCudaBufferCategory",
+      "kind": "constant",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "inline constexpr char ArdaNativeCudaBufferCategory[] = \"cuda-linear-buffer\"",
+      "summary": "Defines arda native cuda buffer category in the public native compute contract.",
+      "details": "Defines arda native cuda buffer category in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 16
+    },
+    {
+      "id": "api-arda-ardanativecudasurfacecategory-a71ace36",
+      "name": "ArdaNativeCudaSurfaceCategory",
+      "qualifiedName": "arda::ArdaNativeCudaSurfaceCategory",
+      "kind": "constant",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "inline constexpr char ArdaNativeCudaSurfaceCategory[] = \"cuda-surface\"",
+      "summary": "Defines arda native cuda surface category in the public native compute contract.",
+      "details": "Defines arda native cuda surface category in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 17
+    },
+    {
+      "id": "api-arda-prepareardacudagraphicstonative-c4bc6da6",
+      "name": "PrepareArdaCudaGraphicsToNative",
+      "qualifiedName": "arda::PrepareArdaCudaGraphicsToNative",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus PrepareArdaCudaGraphicsToNative( const FArdaNativeConversionContext& Context, FArdaNativeConversion& Conversion)",
+      "summary": "Prepare direct, CUDA-shared, or pitched-linear native views and ingress copy work.",
+      "details": "Prepare direct, CUDA-shared, or pitched-linear native views and ingress copy work.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 20
+    },
+    {
+      "id": "api-arda-prepareardacudanativetographics-26106485",
+      "name": "PrepareArdaCudaNativeToGraphics",
+      "qualifiedName": "arda::PrepareArdaCudaNativeToGraphics",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus PrepareArdaCudaNativeToGraphics( const FArdaNativeConversionContext& Context, FArdaNativeConversion& Conversion)",
+      "summary": "Prepare copy-back work and restore the declared graphics states.",
+      "details": "Prepare copy-back work and restore the declared graphics states.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 23
+    },
+    {
+      "id": "api-arda-useardanativecudaresources-26e1be6f",
+      "name": "UseArdaNativeCudaResources",
+      "qualifiedName": "arda::UseArdaNativeCudaResources",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "void UseArdaNativeCudaResources(FArdaNativeOperand& Operand)",
+      "summary": "Bind existing CUDA views or stage graphics resources through copy commands. A texture slot can select a native buffer slot to use a pitched linear CUDA view. Supply the kernel's row and slice pitch from GetArdaRHITextureBufferFootprint().",
+      "details": "Bind existing CUDA views or stage graphics resources through copy commands. A texture slot can select a native buffer slot to use a pitched linear CUDA view. Supply the kernel's row and slice pitch from GetArdaRHITextureBufferFootprint().",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 30
+    },
+    {
+      "id": "api-arda-fardanativecudasourcedesc-249e3e98",
+      "name": "FArdaNativeCudaSourceDesc",
+      "qualifiedName": "arda::FArdaNativeCudaSourceDesc",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaNativeCudaSourceDesc",
+      "summary": "Exactly one trusted linked entry, external call, module image, or CUDA C++ translation unit.",
+      "details": "Exactly one trusted linked entry, external call, module image, or CUDA C++ translation unit.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 33
+    },
+    {
       "id": "api-arda-fardanativecudasourcedesc-mentry-27ac7521",
       "name": "mEntry",
       "qualifiedName": "arda::FArdaNativeCudaSourceDesc::mEntry",
@@ -2039,7 +7046,7 @@ window.ArdaNativeComputeApi = {
       "signature": "eastl::shared_ptr<const IArdaCudaKernelEntry> mEntry",
       "summary": "Linked entry with build-profile metadata and architecture coverage.",
       "details": "Linked entry with build-profile metadata and architecture coverage.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2048,7 +7055,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeCudaSourceDesc"
       ],
-      "sourceLine": 18
+      "sourceLine": 36
     },
     {
       "id": "api-arda-fardanativecudasourcedesc-mexternalcall-b912e2eb",
@@ -2060,7 +7067,7 @@ window.ArdaNativeComputeApi = {
       "signature": "eastl::shared_ptr<const IArdaCudaExternalCall> mExternalCall",
       "summary": "External library call that runs on the framework's CUDA stream.",
       "details": "External library call that runs on the framework's CUDA stream.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2069,7 +7076,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeCudaSourceDesc"
       ],
-      "sourceLine": 20
+      "sourceLine": 38
     },
     {
       "id": "api-arda-fardanativecudasourcedesc-mmodule-02faef96",
@@ -2081,7 +7088,7 @@ window.ArdaNativeComputeApi = {
       "signature": "FArdaCudaModuleDesc mModule",
       "summary": "Owned PTX or cubin image and its target metadata.",
       "details": "Owned PTX or cubin image and its target metadata.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2090,7 +7097,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeCudaSourceDesc"
       ],
-      "sourceLine": 22
+      "sourceLine": 40
     },
     {
       "id": "api-arda-fardanativecudasourcedesc-mcudacpp-d18eb660",
@@ -2102,7 +7109,7 @@ window.ArdaNativeComputeApi = {
       "signature": "eastl::string mCudaCpp",
       "summary": "CUDA C++ translation unit to compile with NVRTC during preparation.",
       "details": "CUDA C++ translation unit to compile with NVRTC during preparation.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2111,7 +7118,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeCudaSourceDesc"
       ],
-      "sourceLine": 24
+      "sourceLine": 42
     },
     {
       "id": "api-arda-fardanativecudasourcedesc-mmodulekernel-7df0e61d",
@@ -2123,7 +7130,7 @@ window.ArdaNativeComputeApi = {
       "signature": "FArdaCudaModuleKernelDesc mModuleKernel",
       "summary": "ABI for a module image or NVRTC source. Use an extern \"C\" entry for a stable source symbol.",
       "details": "ABI for a module image or NVRTC source. Use an extern \"C\" entry for a stable source symbol.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2132,7 +7139,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeCudaSourceDesc"
       ],
-      "sourceLine": 26
+      "sourceLine": 44
     },
     {
       "id": "api-arda-fardanativecudasourcedesc-mcomputecapability-86590f80",
@@ -2144,7 +7151,7 @@ window.ArdaNativeComputeApi = {
       "signature": "uint32_t mComputeCapability = 0",
       "summary": "CUDA C++ native target. Zero compiles for the selected device.",
       "details": "CUDA C++ native target. Zero compiles for the selected device.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2153,7 +7160,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeCudaSourceDesc"
       ],
-      "sourceLine": 28
+      "sourceLine": 46
     },
     {
       "id": "api-arda-fardanativecudasourcedesc-mpatches-cfd3ae0a",
@@ -2165,7 +7172,7 @@ window.ArdaNativeComputeApi = {
       "signature": "eastl::vector<FArdaCudaParameterPatch> mPatches",
       "summary": "Maps neutral resource slots to CUDA parameter locations.",
       "details": "Maps neutral resource slots to CUDA parameter locations.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2174,7 +7181,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeCudaSourceDesc"
       ],
-      "sourceLine": 30
+      "sourceLine": 48
     },
     {
       "id": "api-arda-createardanativecudaprovider-41db9033",
@@ -2186,7 +7193,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] eastl::shared_ptr<const IArdaNativeComputeProvider> CreateArdaNativeCudaProvider( eastl::vector<eastl::string> GraphicsApis = {})",
       "summary": "Construct a CUDA provider for the named graphics modules.",
       "details": "Construct a CUDA provider for the named graphics modules.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [
         {
           "name": "GraphicsApis",
@@ -2200,7 +7207,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 38
+      "sourceLine": 56
     },
     {
       "id": "api-arda-createardanativecudaingraphicsprovider-90c985c8",
@@ -2212,7 +7219,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] eastl::shared_ptr<const IArdaNativeComputeProvider> CreateArdaNativeCudaInGraphicsProvider()",
       "summary": "Require D3D12 CiG on a graphics list or Vulkan CiG on a graphics/compute list.",
       "details": "Require D3D12 CiG on a graphics list or Vulkan CiG on a graphics/compute list.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [],
       "returns": "Provider for the native-d3d12 and native-vulkan modules. A context-switch device is ineligible.",
       "ownership": "",
@@ -2221,7 +7228,49 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 45
+      "sourceLine": 63
+    },
+    {
+      "id": "api-arda-registerardacudanativecomputeprovider-ed693e63",
+      "name": "RegisterArdaCudaNativeComputeProvider",
+      "qualifiedName": "arda::RegisterArdaCudaNativeComputeProvider",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus RegisterArdaCudaNativeComputeProvider(FArdaNativeComputeRegistry& Registry)",
+      "summary": "Register the linked CUDA implementation for any graphics backend with qualified CUDA support. Kernel libraries use \"ptx\", \"cubin\", or \"cuda-cpp\". PTX and cubin attributes encode each target as (compute capability << 1) | exact. CUDA C++ accepts one optional compatible target whose low bit is clear. Buffer and surface arguments map to resource slots in argument order.",
+      "details": "Register the linked CUDA implementation for any graphics backend with qualified CUDA support. Kernel libraries use \"ptx\", \"cubin\", or \"cuda-cpp\". PTX and cubin attributes encode each target as (compute capability << 1) | exact. CUDA C++ accepts one optional compatible target whose low bit is clear. Buffer and surface arguments map to resource slots in argument order.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 71
+    },
+    {
+      "id": "api-arda-registerardacignativecomputeprovider-8064084e",
+      "name": "RegisterArdaCiGNativeComputeProvider",
+      "qualifiedName": "arda::RegisterArdaCiGNativeComputeProvider",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus RegisterArdaCiGNativeComputeProvider(FArdaNativeComputeRegistry& Registry)",
+      "summary": "Register the linked implementation that requires CUDA in Graphics.",
+      "details": "Register the linked implementation that requires CUDA in Graphics.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 73
     },
     {
       "id": "api-arda-addardanativecudavariants-83cbba3b",
@@ -2233,7 +7282,7 @@ window.ArdaNativeComputeApi = {
       "signature": "void AddArdaNativeCudaVariants(FArdaNativeOperandDesc& Operand, FArdaNativeKernelVariant Variant)",
       "summary": "Add the same CUDA kernel and launch policy for two execution routes, trying CiG first.",
       "details": "Add the same CUDA kernel and launch policy for two execution routes, trying CiG first.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [
         {
           "name": "Operand",
@@ -2251,7 +7300,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 52
+      "sourceLine": 80
     },
     {
       "id": "api-arda-createardanativecudasource-c4b31319",
@@ -2263,7 +7312,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] TArdaRHIResult<eastl::shared_ptr<const IArdaNativeKernelSource>> CreateArdaNativeCudaSource( FArdaNativeCudaSourceDesc Desc)",
       "summary": "Validate one CUDA source descriptor and keep ownership of the source.",
       "details": "Validate one CUDA source descriptor and keep ownership of the source.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [
         {
           "name": "Desc",
@@ -2277,7 +7326,70 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 60
+      "sourceLine": 88
+    },
+    {
+      "id": "api-arda-importardalegacycudakernel-3f3e8856",
+      "name": "ImportArdaLegacyCudaKernel",
+      "qualifiedName": "arda::ImportArdaLegacyCudaKernel",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] TArdaRHIResult<FArdaNativeKernelKey> ImportArdaLegacyCudaKernel( const FArdaCudaModuleDesc& Module, const FArdaCudaModuleKernelDesc& Kernel)",
+      "summary": "Import a legacy embedded CUDA module into the host catalog under a deterministic key.",
+      "details": "Import a legacy embedded CUDA module into the host catalog under a deterministic key.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 92
+    },
+    {
+      "id": "api-arda-configureardalegacycudaselection-d531c53a",
+      "name": "ConfigureArdaLegacyCudaSelection",
+      "qualifiedName": "arda::ConfigureArdaLegacyCudaSelection",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "void ConfigureArdaLegacyCudaSelection(FArdaNativeComputeContext& Context)",
+      "summary": "Restrict a legacy CUDA sequence to native CUDA providers.",
+      "details": "Restrict a legacy CUDA sequence to native CUDA providers.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 96
+    },
+    {
+      "id": "api-arda-appendardanativeworktocudasequence-ee16850b",
+      "name": "AppendArdaNativeWorkToCudaSequence",
+      "qualifiedName": "arda::AppendArdaNativeWorkToCudaSequence",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus AppendArdaNativeWorkToCudaSequence(const FArdaNativeWorkRef& Work, FArdaCudaSequence& Sequence)",
+      "summary": "Append frozen CUDA work to a legacy typed CUDA sequence.",
+      "details": "Append frozen CUDA work to a legacy typed CUDA sequence.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 99
     },
     {
       "id": "api-arda-getardanativecudaworkplan-60fb3b87",
@@ -2289,7 +7401,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] eastl::shared_ptr<const FArdaCudaDispatchPlan> GetArdaNativeCudaWorkPlan( const FArdaNativeWorkRef& Work)",
       "summary": "Get the frozen dispatch plan for use by a CUDA sequence scheduler.",
       "details": "Get the frozen dispatch plan for use by a CUDA sequence scheduler.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/CUDA/ArdaNativeCudaProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaNativeCudaProvider.h",
       "params": [
         {
           "name": "Work",
@@ -2303,7 +7415,1792 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
+      "sourceLine": 107
+    },
+    {
+      "id": "api-arda-eardacomputebindingtype-f2eadd2b",
+      "name": "EArdaComputeBindingType",
+      "qualifiedName": "arda::EArdaComputeBindingType",
+      "kind": "enum",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaComputeBindingType : uint8_t",
+      "summary": "Shader-independent kind of a CUDA resource binding.",
+      "details": "Shader-independent kind of a CUDA resource binding.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 21
+    },
+    {
+      "id": "api-arda-eardacomputebindingtype-buffer-3d8e5162",
+      "name": "Buffer",
+      "qualifiedName": "arda::EArdaComputeBindingType::Buffer",
+      "kind": "enumerator",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "Buffer",
+      "summary": "A byte range of an IArdaRHIBuffer.",
+      "details": "A byte range of an IArdaRHIBuffer.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaComputeBindingType"
+      ],
+      "sourceLine": 24
+    },
+    {
+      "id": "api-arda-eardacomputebindingtype-surface-f8a3420d",
+      "name": "Surface",
+      "qualifiedName": "arda::EArdaComputeBindingType::Surface",
+      "kind": "enumerator",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "Surface",
+      "summary": "One texture mip exposed as a CUDA surface, including its layers/depth.",
+      "details": "One texture mip exposed as a CUDA surface, including its layers/depth.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaComputeBindingType"
+      ],
+      "sourceLine": 26
+    },
+    {
+      "id": "api-arda-eardacudascalartype-4f4964d0",
+      "name": "EArdaCudaScalarType",
+      "qualifiedName": "arda::EArdaCudaScalarType",
+      "kind": "enum",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaCudaScalarType : uint8_t",
+      "summary": "Raw channel interpretation; normalization and color conversion are not implicit.",
+      "details": "Raw channel interpretation; normalization and color conversion are not implicit.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 29
+    },
+    {
+      "id": "api-arda-eardacudascalartype-uint-05714f06",
+      "name": "UInt",
+      "qualifiedName": "arda::EArdaCudaScalarType::UInt",
+      "kind": "enumerator",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "UInt",
+      "summary": "Unsigned integer channel.",
+      "details": "Unsigned integer channel.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaCudaScalarType"
+      ],
+      "sourceLine": 32
+    },
+    {
+      "id": "api-arda-eardacudascalartype-sint-203e34f8",
+      "name": "SInt",
+      "qualifiedName": "arda::EArdaCudaScalarType::SInt",
+      "kind": "enumerator",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "SInt",
+      "summary": "Signed integer channel.",
+      "details": "Signed integer channel.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaCudaScalarType"
+      ],
+      "sourceLine": 34
+    },
+    {
+      "id": "api-arda-eardacudascalartype-float-2f21c531",
+      "name": "Float",
+      "qualifiedName": "arda::EArdaCudaScalarType::Float",
+      "kind": "enumerator",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "Float",
+      "summary": "IEEE floating-point channel.",
+      "details": "IEEE floating-point channel.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::EArdaCudaScalarType"
+      ],
+      "sourceLine": 36
+    },
+    {
+      "id": "api-arda-fardacudaformatinfo-809af6d3",
+      "name": "FArdaCudaFormatInfo",
+      "qualifiedName": "arda::FArdaCudaFormatInfo",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaFormatInfo",
+      "summary": "Native channel layout for a CUDA-compatible storage format.",
+      "details": "Native channel layout for a CUDA-compatible storage format.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 40
+    },
+    {
+      "id": "api-arda-fardacudaformatinfo-mscalartype-1236da86",
+      "name": "mScalarType",
+      "qualifiedName": "arda::FArdaCudaFormatInfo::mScalarType",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "EArdaCudaScalarType mScalarType = EArdaCudaScalarType::UInt",
+      "summary": "Arithmetic interpretation of each stored channel.",
+      "details": "Arithmetic interpretation of each stored channel.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaFormatInfo"
+      ],
+      "sourceLine": 43
+    },
+    {
+      "id": "api-arda-fardacudaformatinfo-mbits-95622b75",
+      "name": "mBits",
+      "qualifiedName": "arda::FArdaCudaFormatInfo::mBits",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mBits = 0",
+      "summary": "Bits per channel, not bits per pixel.",
+      "details": "Bits per channel, not bits per pixel.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaFormatInfo"
+      ],
+      "sourceLine": 45
+    },
+    {
+      "id": "api-arda-fardacudaformatinfo-mchannels-3ff88f85",
+      "name": "mChannels",
+      "qualifiedName": "arda::FArdaCudaFormatInfo::mChannels",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mChannels = 0",
+      "summary": "Channel count; zero means the RHI format cannot be used as a CUDA surface.",
+      "details": "Channel count; zero means the RHI format cannot be used as a CUDA surface.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaFormatInfo"
+      ],
+      "sourceLine": 47
+    },
+    {
+      "id": "api-arda-getardacudaformatinfo-ca180757",
+      "name": "GetArdaCudaFormatInfo",
+      "qualifiedName": "arda::GetArdaCudaFormatInfo",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaCudaFormatInfo GetArdaCudaFormatInfo(EArdaRHIFormat Format) noexcept",
+      "summary": "Returns the shared format admission table entry; unsupported formats have zero channels.",
+      "details": "Returns the shared format admission table entry; unsupported formats have zero channels.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 51
+    },
+    {
+      "id": "api-arda-fardacudatensortypesupport-b79d232f",
+      "name": "FArdaCudaTensorTypeSupport",
+      "qualifiedName": "arda::FArdaCudaTensorTypeSupport",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaTensorTypeSupport",
+      "summary": "CUDA storage and selected instruction families for one shared Backend dtype. This reports architecture eligibility, not operator coverage, throughput, or a compiler's chosen lowering. Software conversions and promoted arithmetic remain valid kernel implementations.",
+      "details": "CUDA storage and selected instruction families for one shared Backend dtype. This reports architecture eligibility, not operator coverage, throughput, or a compiler's chosen lowering. Software conversions and promoted arithmetic remain valid kernel implementations.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 57
+    },
+    {
+      "id": "api-arda-fardacudatensortypesupport-mbstorage-fe5eec6c",
+      "name": "mbStorage",
+      "qualifiedName": "arda::FArdaCudaTensorTypeSupport::mbStorage",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbStorage = false",
+      "summary": "Qualified CUDA can carry this known dtype in ordinary byte-addressed buffer storage.",
+      "details": "Qualified CUDA can carry this known dtype in ordinary byte-addressed buffer storage.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaTensorTypeSupport"
+      ],
+      "sourceLine": 60
+    },
+    {
+      "id": "api-arda-fardacudatensortypesupport-mbinstructionprofileknown-2c22f099",
+      "name": "mbInstructionProfileKnown",
+      "qualifiedName": "arda::FArdaCudaTensorTypeSupport::mbInstructionProfileKnown",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbInstructionProfileKnown = false",
+      "summary": "Instruction fields are profiled for FP32, FP16, BF16, both FP8 types and signed/unsigned INT8. False for other known storage types means unprofiled, not unsupported arithmetic.",
+      "details": "Instruction fields are profiled for FP32, FP16, BF16, both FP8 types and signed/unsigned INT8. False for other known storage types means unprofiled, not unsupported arithmetic.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaTensorTypeSupport"
+      ],
+      "sourceLine": 64
+    },
+    {
+      "id": "api-arda-fardacudatensortypesupport-mbfloat32conversion-42589577",
+      "name": "mbFloat32Conversion",
+      "qualifiedName": "arda::FArdaCudaTensorTypeSupport::mbFloat32Conversion",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbFloat32Conversion = false",
+      "summary": "Native conversion path to/from FP32; FP8 may use packed FP16 intermediates. FP32 is identity.",
+      "details": "Native conversion path to/from FP32; FP8 may use packed FP16 intermediates. FP32 is identity.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaTensorTypeSupport"
+      ],
+      "sourceLine": 66
+    },
+    {
+      "id": "api-arda-fardacudatensortypesupport-mbscalaraddmultiply-3a88cc2c",
+      "name": "mbScalarAddMultiply",
+      "qualifiedName": "arda::FArdaCudaTensorTypeSupport::mbScalarAddMultiply",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbScalarAddMultiply = false",
+      "summary": "Same-format floating-point add and multiply instructions; excludes integer promotion.",
+      "details": "Same-format floating-point add and multiply instructions; excludes integer promotion.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaTensorTypeSupport"
+      ],
       "sourceLine": 68
+    },
+    {
+      "id": "api-arda-fardacudatensortypesupport-mbscalarfma-b6d2da67",
+      "name": "mbScalarFma",
+      "qualifiedName": "arda::FArdaCudaTensorTypeSupport::mbScalarFma",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbScalarFma = false",
+      "summary": "Same-format floating-point fused multiply-add; BF16 can support this before add/multiply.",
+      "details": "Same-format floating-point fused multiply-add; BF16 can support this before add/multiply.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaTensorTypeSupport"
+      ],
+      "sourceLine": 70
+    },
+    {
+      "id": "api-arda-fardacudatensortypesupport-mbpackedint8dotproduct-527403c1",
+      "name": "mbPackedInt8DotProduct",
+      "qualifiedName": "arda::FArdaCudaTensorTypeSupport::mbPackedInt8DotProduct",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbPackedInt8DotProduct = false",
+      "summary": "Packed four-way INT8 dot product with 32-bit accumulation (dp4a).",
+      "details": "Packed four-way INT8 dot product with 32-bit accumulation (dp4a).",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaTensorTypeSupport"
+      ],
+      "sourceLine": 72
+    },
+    {
+      "id": "api-arda-fardacudatensortypesupport-mbtensorcore-4cde847c",
+      "name": "mbTensorCore",
+      "qualifiedName": "arda::FArdaCudaTensorTypeSupport::mbTensorCore",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbTensorCore = false",
+      "summary": "A Tensor Core matrix instruction family accepting this reduced-precision operand type. Does not imply every tile shape, accumulation type, or sparse mode. FP32 is not TF32.",
+      "details": "A Tensor Core matrix instruction family accepting this reduced-precision operand type. Does not imply every tile shape, accumulation type, or sparse mode. FP32 is not TF32.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaTensorTypeSupport"
+      ],
+      "sourceLine": 76
+    },
+    {
+      "id": "api-arda-getardacudatensortypesupport-412b8842",
+      "name": "GetArdaCudaTensorTypeSupport",
+      "qualifiedName": "arda::GetArdaCudaTensorTypeSupport",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaCudaTensorTypeSupport GetArdaCudaTensorTypeSupport(const FArdaCudaCapabilities& Capabilities, EArdaRHIDataType DataType) noexcept",
+      "summary": "Returns storage and profiled PTX instruction eligibility for a qualified CUDA device. Disabled CUDA, unknown architecture, and unknown dtype return no support. These flags never reject an otherwise valid emulated kernel: dispatch validates the artifact target and the driver validates its actual instructions. Tensor descriptors themselves remain provider-independent.",
+      "details": "Returns storage and profiled PTX instruction eligibility for a qualified CUDA device. Disabled CUDA, unknown architecture, and unknown dtype return no support. These flags never reject an otherwise valid emulated kernel: dispatch validates the artifact target and the driver validates its actual instructions. Tensor descriptors themselves remain provider-independent.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 84
+    },
+    {
+      "id": "api-arda-fardacudabinding-e0fdec99",
+      "name": "FArdaCudaBinding",
+      "qualifiedName": "arda::FArdaCudaBinding",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaBinding",
+      "summary": "A retained resource view; CUDA addresses remain private to the native provider.",
+      "details": "A retained resource view; CUDA addresses remain private to the native provider.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 88
+    },
+    {
+      "id": "api-arda-fardacudabinding-mresource-99707619",
+      "name": "mResource",
+      "qualifiedName": "arda::FArdaCudaBinding::mResource",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIResourceRef mResource",
+      "summary": "Retains the source buffer or texture; it must belong to the command-list device.",
+      "details": "Retains the source buffer or texture; it must belong to the command-list device.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaBinding"
+      ],
+      "sourceLine": 91
+    },
+    {
+      "id": "api-arda-fardacudabinding-maccess-224336b2",
+      "name": "mAccess",
+      "qualifiedName": "arda::FArdaCudaBinding::mAccess",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "EArdaComputeAccess mAccess = EArdaComputeAccess::Read",
+      "summary": "Access declaration supplied by the dispatch implementation, matching its parameter contract.",
+      "details": "Access declaration supplied by the dispatch implementation, matching its parameter contract.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaBinding"
+      ],
+      "sourceLine": 93
+    },
+    {
+      "id": "api-arda-fardacudabinding-mbufferrange-dca332c8",
+      "name": "mBufferRange",
+      "qualifiedName": "arda::FArdaCudaBinding::mBufferRange",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "FArdaRHIBufferRange mBufferRange",
+      "summary": "Buffer-only byte range; the byte offset is incorporated into the kernel address.",
+      "details": "Buffer-only byte range; the byte offset is incorporated into the kernel address.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaBinding"
+      ],
+      "sourceLine": 95
+    },
+    {
+      "id": "api-arda-fardacudabinding-mmiplevel-1786fabe",
+      "name": "mMipLevel",
+      "qualifiedName": "arda::FArdaCudaBinding::mMipLevel",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mMipLevel = 0",
+      "summary": "Texture-only mip index. All layers or depth slices of that mip remain addressable.",
+      "details": "Texture-only mip index. All layers or depth slices of that mip remain addressable.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaBinding"
+      ],
+      "sourceLine": 97
+    },
+    {
+      "id": "api-arda-fardacudaarchitecture-42fc9ad1",
+      "name": "FArdaCudaArchitecture",
+      "qualifiedName": "arda::FArdaCudaArchitecture",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaArchitecture",
+      "summary": "Native binary target emitted by the build; accelerated targets require an exact match.",
+      "details": "Native binary target emitted by the build; accelerated targets require an exact match.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 101
+    },
+    {
+      "id": "api-arda-fardacudaarchitecture-mcomputecapability-97b2d83c",
+      "name": "mComputeCapability",
+      "qualifiedName": "arda::FArdaCudaArchitecture::mComputeCapability",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mComputeCapability = 0",
+      "summary": "Major times ten plus minor.",
+      "details": "Major times ten plus minor.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaArchitecture"
+      ],
+      "sourceLine": 104
+    },
+    {
+      "id": "api-arda-fardacudaarchitecture-mbexact-8ba3439d",
+      "name": "mbExact",
+      "qualifiedName": "arda::FArdaCudaArchitecture::mbExact",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbExact = false",
+      "summary": "Architecture/family-specific code is admitted only on its exact build target.",
+      "details": "Architecture/family-specific code is admitted only on its exact build target.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaArchitecture"
+      ],
+      "sourceLine": 106
+    },
+    {
+      "id": "api-arda-fardacudaarchitecture-supports-bde826d7",
+      "name": "Supports",
+      "qualifiedName": "arda::FArdaCudaArchitecture::Supports",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool Supports(uint32_t DeviceCapability) const noexcept",
+      "summary": "Tests binary compatibility conservatively, without requesting driver compilation.",
+      "details": "Tests binary compatibility conservatively, without requesting driver compilation.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaArchitecture"
+      ],
+      "sourceLine": 109
+    },
+    {
+      "id": "api-arda-fardacudabuildinfo-4d8ad014",
+      "name": "FArdaCudaBuildInfo",
+      "qualifiedName": "arda::FArdaCudaBuildInfo",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaBuildInfo",
+      "summary": "Build-generated identity and native-code coverage for a compilation profile.",
+      "details": "Build-generated identity and native-code coverage for a compilation profile.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 113
+    },
+    {
+      "id": "api-arda-fardacudabuildinfo-mname-8a9f2a87",
+      "name": "mName",
+      "qualifiedName": "arda::FArdaCudaBuildInfo::mName",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::string mName",
+      "summary": "Unique profile name; also isolates symbols compiled with different flags.",
+      "details": "Unique profile name; also isolates symbols compiled with different flags.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaBuildInfo"
+      ],
+      "sourceLine": 116
+    },
+    {
+      "id": "api-arda-fardacudabuildinfo-midentity-c98d85b2",
+      "name": "mIdentity",
+      "qualifiedName": "arda::FArdaCudaBuildInfo::mIdentity",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::string mIdentity",
+      "summary": "Compiler/options/source-build fingerprint for diagnostics and caches.",
+      "details": "Compiler/options/source-build fingerprint for diagnostics and caches.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaBuildInfo"
+      ],
+      "sourceLine": 118
+    },
+    {
+      "id": "api-arda-fardacudabuildinfo-marchitectures-6cffed24",
+      "name": "mArchitectures",
+      "qualifiedName": "arda::FArdaCudaBuildInfo::mArchitectures",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaCudaArchitecture> mArchitectures",
+      "summary": "Native targets actually requested by the build.",
+      "details": "Native targets actually requested by the build.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaBuildInfo"
+      ],
+      "sourceLine": 120
+    },
+    {
+      "id": "api-arda-fardacudabuildinfo-mbfastmath-72da9a15",
+      "name": "mbFastMath",
+      "qualifiedName": "arda::FArdaCudaBuildInfo::mbFastMath",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbFastMath = false",
+      "summary": "True when the build opts into approximate floating-point operations.",
+      "details": "True when the build opts into approximate floating-point operations.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaBuildInfo"
+      ],
+      "sourceLine": 122
+    },
+    {
+      "id": "api-arda-fardacudalaunchconfig-277cad72",
+      "name": "FArdaCudaLaunchConfig",
+      "qualifiedName": "arda::FArdaCudaLaunchConfig",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaLaunchConfig",
+      "summary": "Standard launch geometry. Streams, contexts and submission remain framework-owned.",
+      "details": "Standard launch geometry. Streams, contexts and submission remain framework-owned.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 126
+    },
+    {
+      "id": "api-arda-fardacudalaunchconfig-mgridsize-e26cc179",
+      "name": "mGridSize",
+      "qualifiedName": "arda::FArdaCudaLaunchConfig::mGridSize",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mGridSize[3] = {1, 1, 1}",
+      "summary": "Number of blocks in each axis; each dimension must be nonzero.",
+      "details": "Number of blocks in each axis; each dimension must be nonzero.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaLaunchConfig"
+      ],
+      "sourceLine": 129
+    },
+    {
+      "id": "api-arda-fardacudalaunchconfig-mblocksize-cf7e48df",
+      "name": "mBlockSize",
+      "qualifiedName": "arda::FArdaCudaLaunchConfig::mBlockSize",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mBlockSize[3] = {1, 1, 1}",
+      "summary": "Threads per block in each axis; per-axis and product limits both apply.",
+      "details": "Threads per block in each axis; per-axis and product limits both apply.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaLaunchConfig"
+      ],
+      "sourceLine": 131
+    },
+    {
+      "id": "api-arda-fardacudalaunchconfig-msharedmemorybytes-9f3757aa",
+      "name": "mSharedMemoryBytes",
+      "qualifiedName": "arda::FArdaCudaLaunchConfig::mSharedMemoryBytes",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mSharedMemoryBytes = 0",
+      "summary": "Dynamic shared-memory request for each block, in bytes.",
+      "details": "Dynamic shared-memory request for each block, in bytes.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaLaunchConfig"
+      ],
+      "sourceLine": 133
+    },
+    {
+      "id": "api-arda-fardacudakernelsignature-e13b8196",
+      "name": "FArdaCudaKernelSignature",
+      "qualifiedName": "arda::FArdaCudaKernelSignature",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaKernelSignature",
+      "summary": "Runtime signature of the plain parameter accepted by a kernel or library adapter.",
+      "details": "Runtime signature of the plain parameter accepted by a kernel or library adapter.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 137
+    },
+    {
+      "id": "api-arda-fardacudakernelsignature-mtype-88773501",
+      "name": "mType",
+      "qualifiedName": "arda::FArdaCudaKernelSignature::mType",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "const std::type_info* mType = nullptr",
+      "summary": "C++ type identity, compared at registration; null denotes an unsupported signature.",
+      "details": "C++ type identity, compared at registration; null denotes an unsupported signature.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernelSignature"
+      ],
+      "sourceLine": 140
+    },
+    {
+      "id": "api-arda-fardacudakernelsignature-msize-a07001bb",
+      "name": "mSize",
+      "qualifiedName": "arda::FArdaCudaKernelSignature::mSize",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mSize = 0",
+      "summary": "Size of the CUDA argument object.",
+      "details": "Size of the CUDA argument object.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernelSignature"
+      ],
+      "sourceLine": 142
+    },
+    {
+      "id": "api-arda-fardacudakernelsignature-malignment-2ee9d770",
+      "name": "mAlignment",
+      "qualifiedName": "arda::FArdaCudaKernelSignature::mAlignment",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mAlignment = 1",
+      "summary": "Alignment of the CUDA argument object.",
+      "details": "Alignment of the CUDA argument object.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernelSignature"
+      ],
+      "sourceLine": 144
+    },
+    {
+      "id": "api-arda-fardacudakernelsignature-mbsupported-80cc48ed",
+      "name": "mbSupported",
+      "qualifiedName": "arda::FArdaCudaKernelSignature::mbSupported",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "bool mbSupported = false",
+      "summary": "Runtime eligibility; no facade static assertion is required.",
+      "details": "Runtime eligibility; no facade static assertion is required.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernelSignature"
+      ],
+      "sourceLine": 146
+    },
+    {
+      "id": "api-arda-fardacudakernellimits-e3d2af33",
+      "name": "FArdaCudaKernelLimits",
+      "qualifiedName": "arda::FArdaCudaKernelLimits",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaKernelLimits",
+      "summary": "Kernel-specific native limits queried under the execution context.",
+      "details": "Kernel-specific native limits queried under the execution context.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 150
+    },
+    {
+      "id": "api-arda-fardacudakernellimits-mmaxthreadsperblock-eddb2620",
+      "name": "mMaxThreadsPerBlock",
+      "qualifiedName": "arda::FArdaCudaKernelLimits::mMaxThreadsPerBlock",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mMaxThreadsPerBlock = 0",
+      "summary": "Maximum threads for this compiled function.",
+      "details": "Maximum threads for this compiled function.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernelLimits"
+      ],
+      "sourceLine": 153
+    },
+    {
+      "id": "api-arda-fardacudakernellimits-mstaticsharedmemorybytes-1c529e79",
+      "name": "mStaticSharedMemoryBytes",
+      "qualifiedName": "arda::FArdaCudaKernelLimits::mStaticSharedMemoryBytes",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mStaticSharedMemoryBytes = 0",
+      "summary": "Static shared memory used by the function.",
+      "details": "Static shared memory used by the function.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernelLimits"
+      ],
+      "sourceLine": 155
+    },
+    {
+      "id": "api-arda-fardacudakernellimits-mmaxdynamicsharedmemorybytes-405271c8",
+      "name": "mMaxDynamicSharedMemoryBytes",
+      "qualifiedName": "arda::FArdaCudaKernelLimits::mMaxDynamicSharedMemoryBytes",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mMaxDynamicSharedMemoryBytes = 0",
+      "summary": "Maximum dynamic shared memory accepted by the function.",
+      "details": "Maximum dynamic shared memory accepted by the function.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernelLimits"
+      ],
+      "sourceLine": 157
+    },
+    {
+      "id": "api-arda-iardacudakernelentry-d81012e8",
+      "name": "IArdaCudaKernelEntry",
+      "qualifiedName": "arda::IArdaCudaKernelEntry",
+      "kind": "class",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "class IArdaCudaKernelEntry",
+      "summary": "Provider-facing compiled launch adapter. Implemented by the nvcc registration helper. The current CUDA context is supplied by the provider; the adapter never selects a device. Retain this object and its owning code module through GPU completion.",
+      "details": "Provider-facing compiled launch adapter. Implemented by the nvcc registration helper. The current CUDA context is supplied by the provider; the adapter never selects a device. Retain this object and its owning code module through GPU completion.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 164
+    },
+    {
+      "id": "api-arda-iardacudakernelentry-iardacudakernelentry-c6434efb",
+      "name": "~IArdaCudaKernelEntry",
+      "qualifiedName": "arda::IArdaCudaKernelEntry::~IArdaCudaKernelEntry",
+      "kind": "destructor",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual ~IArdaCudaKernelEntry() = default",
+      "summary": "Destroys the native compute object after dependent work is released.",
+      "details": "Destroys the native compute object after dependent work is released. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaKernelEntry"
+      ],
+      "sourceLine": 167
+    },
+    {
+      "id": "api-arda-iardacudakernelentry-getsignature-5789fdd3",
+      "name": "GetSignature",
+      "qualifiedName": "arda::IArdaCudaKernelEntry::GetSignature",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaCudaKernelSignature GetSignature() const noexcept = 0",
+      "summary": "Reports the registered signature without initializing CUDA.",
+      "details": "Reports the registered signature without initializing CUDA.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaKernelEntry"
+      ],
+      "sourceLine": 170
+    },
+    {
+      "id": "api-arda-iardacudakernelentry-getbuildinfo-14306c57",
+      "name": "GetBuildInfo",
+      "qualifiedName": "arda::IArdaCudaKernelEntry::GetBuildInfo",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual const FArdaCudaBuildInfo& GetBuildInfo() const noexcept = 0",
+      "summary": "Returns the immutable build manifest.",
+      "details": "Returns the immutable build manifest.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaKernelEntry"
+      ],
+      "sourceLine": 173
+    },
+    {
+      "id": "api-arda-iardacudakernelentry-getmodule-9e94acc6",
+      "name": "GetModule",
+      "qualifiedName": "arda::IArdaCudaKernelEntry::GetModule",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual const FArdaCudaModule* GetModule() const noexcept",
+      "summary": "Optional runtime artifact. The provider resolves this entry under its own CUDA context.",
+      "details": "Optional runtime artifact. The provider resolves this entry under its own CUDA context.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaKernelEntry"
+      ],
+      "sourceLine": 176
+    },
+    {
+      "id": "api-arda-iardacudakernelentry-getmodulekernel-c06a9866",
+      "name": "GetModuleKernel",
+      "qualifiedName": "arda::IArdaCudaKernelEntry::GetModuleKernel",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual const FArdaCudaModuleKernelDesc* GetModuleKernel() const noexcept",
+      "summary": "Performs get module kernel through the public native compute contract.",
+      "details": "Performs get module kernel through the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaKernelEntry"
+      ],
+      "sourceLine": 181
+    },
+    {
+      "id": "api-arda-iardacudakernelentry-getlimits-debed1c2",
+      "name": "GetLimits",
+      "qualifiedName": "arda::IArdaCudaKernelEntry::GetLimits",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual TArdaRHIResult<FArdaCudaKernelLimits> GetLimits() const = 0",
+      "summary": "Queries limits in the provider's current context; no kernel is launched.",
+      "details": "Queries limits in the provider's current context; no kernel is launched.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaKernelEntry"
+      ],
+      "sourceLine": 187
+    },
+    {
+      "id": "api-arda-iardacudakernelentry-launch-2a171925",
+      "name": "Launch",
+      "qualifiedName": "arda::IArdaCudaKernelEntry::Launch",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus Launch(void* Stream, const FArdaCudaLaunchConfig& Config, const void* Parameters, size_t ParameterSize) const = 0",
+      "summary": "Enqueues exactly one compiled kernel on the borrowed opaque CUDA stream.",
+      "details": "Enqueues exactly one compiled kernel on the borrowed opaque CUDA stream.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaKernelEntry"
+      ],
+      "sourceLine": 190
+    },
+    {
+      "id": "api-arda-iardacudapreparedcall-eda24f66",
+      "name": "IArdaCudaPreparedCall",
+      "qualifiedName": "arda::IArdaCudaPreparedCall",
+      "kind": "class",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "class IArdaCudaPreparedCall",
+      "summary": "Library state for an uncaptured recording or retained graph variant, such as handles, descriptors and a frozen execution plan. Graph hits reuse the original prepared object. The provider retains this state through GPU completion and destroys it with the preparation context current, before destroying the borrowed stream. Own all native state here; do not share mutable handles or workspace across concurrent recordings.",
+      "details": "Library state for an uncaptured recording or retained graph variant, such as handles, descriptors and a frozen execution plan. Graph hits reuse the original prepared object. The provider retains this state through GPU completion and destroys it with the preparation context current, before destroying the borrowed stream. Own all native state here; do not share mutable handles or workspace across concurrent recordings.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 202
+    },
+    {
+      "id": "api-arda-iardacudapreparedcall-iardacudapreparedcall-9c9a7847",
+      "name": "~IArdaCudaPreparedCall",
+      "qualifiedName": "arda::IArdaCudaPreparedCall::~IArdaCudaPreparedCall",
+      "kind": "destructor",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual ~IArdaCudaPreparedCall() = default",
+      "summary": "Releases native state under the owning CUDA context after retirement or abandoned recording.",
+      "details": "Releases native state under the owning CUDA context after retirement or abandoned recording.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaPreparedCall"
+      ],
+      "sourceLine": 206
+    },
+    {
+      "id": "api-arda-iardacudapreparedcall-enqueue-84291661",
+      "name": "Enqueue",
+      "qualifiedName": "arda::IArdaCudaPreparedCall::Enqueue",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus Enqueue(void* Stream) = 0",
+      "summary": "Enqueues one library operation, which may launch multiple internal kernels. Use only the supplied stream (the same stream as Prepare), preserve its ordering, and return library errors as status. Do not synchronize, select a device, begin capture, or call back into the RHI. GPU-visible state must survive in this object.",
+      "details": "Enqueues one library operation, which may launch multiple internal kernels. Use only the supplied stream (the same stream as Prepare), preserve its ordering, and return library errors as status. Do not synchronize, select a device, begin capture, or call back into the RHI. GPU-visible state must survive in this object.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaPreparedCall"
+      ],
+      "sourceLine": 213
+    },
+    {
+      "id": "api-arda-iardacudaexternalcall-b1621535",
+      "name": "IArdaCudaExternalCall",
+      "qualifiedName": "arda::IArdaCudaExternalCall",
+      "kind": "class",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "class IArdaCudaExternalCall",
+      "summary": "Reusable factory for externally defined CUDA calls; requires no compiled kernel manifest. Library headers and link dependencies belong to the adapter, not the public RHI. Factories must be thread-safe and must not own context-specific native state.",
+      "details": "Reusable factory for externally defined CUDA calls; requires no compiled kernel manifest. Library headers and link dependencies belong to the adapter, not the public RHI. Factories must be thread-safe and must not own context-specific native state.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 220
+    },
+    {
+      "id": "api-arda-iardacudaexternalcall-iardacudaexternalcall-900f4fc2",
+      "name": "~IArdaCudaExternalCall",
+      "qualifiedName": "arda::IArdaCudaExternalCall::~IArdaCudaExternalCall",
+      "kind": "destructor",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual ~IArdaCudaExternalCall() = default",
+      "summary": "Destroys the host-side factory; native state belongs in IArdaCudaPreparedCall.",
+      "details": "Destroys the host-side factory; native state belongs in IArdaCudaPreparedCall.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaExternalCall"
+      ],
+      "sourceLine": 224
+    },
+    {
+      "id": "api-arda-iardacudaexternalcall-getsignature-3180957b",
+      "name": "GetSignature",
+      "qualifiedName": "arda::IArdaCudaExternalCall::GetSignature",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaCudaKernelSignature GetSignature() const noexcept = 0",
+      "summary": "Exact plain parameter schema; addresses are resolved by the provider before Prepare.",
+      "details": "Exact plain parameter schema; addresses are resolved by the provider before Prepare.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaExternalCall"
+      ],
+      "sourceLine": 227
+    },
+    {
+      "id": "api-arda-iardacudaexternalcall-getsupport-7c4c175f",
+      "name": "GetSupport",
+      "qualifiedName": "arda::IArdaCudaExternalCall::GetSupport",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus GetSupport(const FArdaCudaCapabilities& Capabilities) const",
+      "summary": "Host-only capability check. Default admits ContextSwitch and VulkanCiG, rejecting D3D12CiG until an adapter explicitly qualifies its library/version/operation. Must be deterministic, thread-safe, and must not initialize or call CUDA.",
+      "details": "Host-only capability check. Default admits ContextSwitch and VulkanCiG, rejecting D3D12CiG until an adapter explicitly qualifies its library/version/operation. Must be deterministic, thread-safe, and must not initialize or call CUDA.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaExternalCall"
+      ],
+      "sourceLine": 233
+    },
+    {
+      "id": "api-arda-iardacudaexternalcall-supportsgraphcapture-2fecb715",
+      "name": "SupportsGraphCapture",
+      "qualifiedName": "arda::IArdaCudaExternalCall::SupportsGraphCapture",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual bool SupportsGraphCapture(const FArdaCudaCapabilities&) const noexcept",
+      "summary": "Explicit opt-in to capture and repeated replay. Enqueue must use only the supplied stream, create no host callbacks or allocations, and leave all GPU-visible state alive in the prepared call. Hidden configuration must be immutable or change the revision. CiG adapters must also satisfy GetSupport's stricter restrictions. Defaults to false.",
+      "details": "Explicit opt-in to capture and repeated replay. Enqueue must use only the supplied stream, create no host callbacks or allocations, and leave all GPU-visible state alive in the prepared call. Hidden configuration must be immutable or change the revision. CiG adapters must also satisfy GetSupport's stricter restrictions. Defaults to false.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaExternalCall"
+      ],
+      "sourceLine": 240
+    },
+    {
+      "id": "api-arda-iardacudaexternalcall-getgraphcapturerevision-f15aef21",
+      "name": "GetGraphCaptureRevision",
+      "qualifiedName": "arda::IArdaCudaExternalCall::GetGraphCaptureRevision",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual uint64_t GetGraphCaptureRevision() const noexcept",
+      "summary": "Change this value whenever hidden immutable configuration affects captured work.",
+      "details": "Change this value whenever hidden immutable configuration affects captured work.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaExternalCall"
+      ],
+      "sourceLine": 246
+    },
+    {
+      "id": "api-arda-iardacudaexternalcall-checksupport-73646572",
+      "name": "CheckSupport",
+      "qualifiedName": "arda::IArdaCudaExternalCall::CheckSupport",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus CheckSupport(const FArdaCudaCapabilities& Capabilities) const",
+      "summary": "Calls the host support hook, translating adapter exceptions into an InvalidArgument status.",
+      "details": "Calls the host support hook, translating adapter exceptions into an InvalidArgument status.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaExternalCall"
+      ],
+      "sourceLine": 252
+    },
+    {
+      "id": "api-arda-iardacudaexternalcall-createcontextstate-020a3d03",
+      "name": "CreateContextState",
+      "qualifiedName": "arda::IArdaCudaExternalCall::CreateContextState",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual TArdaRHIResult<eastl::unique_ptr<IArdaCudaExternalCallState>> CreateContextState( const FArdaCudaExternalCallContext& Context) const",
+      "summary": "Optionally initializes a cache before first preparation on this context. Default returns null success for no cache. A non-null state retains this factory until device teardown; reuse stable factory instances to reuse caches. No declared resources may be accessed. The provider owns and destroys native state under this context, after all recordings retire.",
+      "details": "Optionally initializes a cache before first preparation on this context. Default returns null success for no cache. A non-null state retains this factory until device teardown; reuse stable factory instances to reuse caches. No declared resources may be accessed. The provider owns and destroys native state under this context, after all recordings retire.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaExternalCall"
+      ],
+      "sourceLine": 259
+    },
+    {
+      "id": "api-arda-iardacudaexternalcall-prepare-a7f69bf2",
+      "name": "Prepare",
+      "qualifiedName": "arda::IArdaCudaExternalCall::Prepare",
+      "kind": "method",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "virtual TArdaRHIResult<eastl::unique_ptr<IArdaCudaPreparedCall>> Prepare( const FArdaCudaExternalCallContext& Context, const void* Parameters, size_t ParameterSize) const = 0",
+      "summary": "Creates exclusive state under the supplied current context before any batch enqueue or CiG capture. Validate parameters and create handles/descriptors/plans here. Do not access declared resources or enqueue algorithm work: graphics may still own them. Copy Parameters; its storage is borrowed. Preparation may fail without executing earlier operations. A successful result must contain a non-null object.",
+      "details": "Creates exclusive state under the supplied current context before any batch enqueue or CiG capture. Validate parameters and create handles/descriptors/plans here. Do not access declared resources or enqueue algorithm work: graphics may still own them. Copy Parameters; its storage is borrowed. Preparation may fail without executing earlier operations. A successful result must contain a non-null object.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::IArdaCudaExternalCall"
+      ],
+      "sourceLine": 268
+    },
+    {
+      "id": "api-arda-fardacudaparameterpatch-2cb3939e",
+      "name": "FArdaCudaParameterPatch",
+      "qualifiedName": "arda::FArdaCudaParameterPatch",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaParameterPatch",
+      "summary": "Patches one resource address/surface into the owned CUDA parameter object.",
+      "details": "Patches one resource address/surface into the owned CUDA parameter object.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 275
+    },
+    {
+      "id": "api-arda-fardacudaparameterpatch-mbindingindex-b80a6151",
+      "name": "mBindingIndex",
+      "qualifiedName": "arda::FArdaCudaParameterPatch::mBindingIndex",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "uint32_t mBindingIndex = 0",
+      "summary": "Retained resource index in the dispatch.",
+      "details": "Retained resource index in the dispatch.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterPatch"
+      ],
+      "sourceLine": 278
+    },
+    {
+      "id": "api-arda-fardacudaparameterpatch-moffset-bb54d7bc",
+      "name": "mOffset",
+      "qualifiedName": "arda::FArdaCudaParameterPatch::mOffset",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mOffset = 0",
+      "summary": "Byte offset of the 64-bit CUDA resource representation.",
+      "details": "Byte offset of the 64-bit CUDA resource representation.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterPatch"
+      ],
+      "sourceLine": 280
+    },
+    {
+      "id": "api-arda-fardacudaparameterpatch-malignment-d62e79c4",
+      "name": "mAlignment",
+      "qualifiedName": "arda::FArdaCudaParameterPatch::mAlignment",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "size_t mAlignment = 1",
+      "summary": "Required native buffer address alignment. Surfaces use one.",
+      "details": "Required native buffer address alignment. Surfaces use one.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaParameterPatch"
+      ],
+      "sourceLine": 282
+    },
+    {
+      "id": "api-arda-fardacudakernel-f9242bfb",
+      "name": "FArdaCudaKernel",
+      "qualifiedName": "arda::FArdaCudaKernel",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaKernel : FArdaCudaLaunchConfig",
+      "summary": "One CUDA operation and an owned, unresolved parameter object. Geometry applies only to compiled kernels.",
+      "details": "One CUDA operation and an owned, unresolved parameter object. Geometry applies only to compiled kernels.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 286
+    },
+    {
+      "id": "api-arda-fardacudakernel-mentry-8f92e672",
+      "name": "mEntry",
+      "qualifiedName": "arda::FArdaCudaKernel::mEntry",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const IArdaCudaKernelEntry> mEntry",
+      "summary": "Retained compiled entry, from nvcc registration or an imported PTX/cubin artifact.",
+      "details": "Retained compiled entry, from nvcc registration or an imported PTX/cubin artifact.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernel"
+      ],
+      "sourceLine": 289
+    },
+    {
+      "id": "api-arda-fardacudakernel-mparameters-2eb1ad50",
+      "name": "mParameters",
+      "qualifiedName": "arda::FArdaCudaKernel::mParameters",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<uint8_t> mParameters",
+      "summary": "Frozen values; resource representations are patched by the provider.",
+      "details": "Frozen values; resource representations are patched by the provider.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernel"
+      ],
+      "sourceLine": 291
+    },
+    {
+      "id": "api-arda-fardacudakernel-mpatches-a87ea994",
+      "name": "mPatches",
+      "qualifiedName": "arda::FArdaCudaKernel::mPatches",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaCudaParameterPatch> mPatches",
+      "summary": "Native resource locations inside the parameter object.",
+      "details": "Native resource locations inside the parameter object.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernel"
+      ],
+      "sourceLine": 293
+    },
+    {
+      "id": "api-arda-fardacudakernel-mexternalcall-4203c06a",
+      "name": "mExternalCall",
+      "qualifiedName": "arda::FArdaCudaKernel::mExternalCall",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const IArdaCudaExternalCall> mExternalCall",
+      "summary": "External library factory, mutually exclusive with mEntry. May enqueue multiple internal kernels.",
+      "details": "External library factory, mutually exclusive with mEntry. May enqueue multiple internal kernels.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernel"
+      ],
+      "sourceLine": 295
+    },
+    {
+      "id": "api-arda-fardacudakernel-mgraphbatch-f296bbbb",
+      "name": "mGraphBatch",
+      "qualifiedName": "arda::FArdaCudaKernel::mGraphBatch",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<const FArdaCudaGraphBatch> mGraphBatch",
+      "summary": "Optional common retained-graph metadata; ordinary raw dispatches leave this empty.",
+      "details": "Optional common retained-graph metadata; ordinary raw dispatches leave this empty.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaKernel"
+      ],
+      "sourceLine": 297
+    },
+    {
+      "id": "api-arda-fardacudadispatch-7832a24b",
+      "name": "FArdaCudaDispatch",
+      "qualifiedName": "arda::FArdaCudaDispatch",
+      "kind": "struct",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "struct FArdaCudaDispatch",
+      "summary": "A single operation dispatch; use DispatchCudaSequence to group kernels and library calls.",
+      "details": "A single operation dispatch; use DispatchCudaSequence to group kernels and library calls.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 301
+    },
+    {
+      "id": "api-arda-fardacudadispatch-mbindings-ef7c9d8f",
+      "name": "mBindings",
+      "qualifiedName": "arda::FArdaCudaDispatch::mBindings",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaCudaBinding> mBindings",
+      "summary": "Resource views retained by the kernel in this dispatch.",
+      "details": "Resource views retained by the kernel in this dispatch.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaDispatch"
+      ],
+      "sourceLine": 304
+    },
+    {
+      "id": "api-arda-fardacudadispatch-mkernels-9a7d2f5f",
+      "name": "mKernels",
+      "qualifiedName": "arda::FArdaCudaDispatch::mKernels",
+      "kind": "member variable",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaCudaKernel> mKernels",
+      "summary": "Exactly one compiled kernel or external call, validated and submitted through the shared batch path.",
+      "details": "Exactly one compiled kernel or external call, validated and submitted through the shared batch path.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::FArdaCudaDispatch"
+      ],
+      "sourceLine": 306
+    },
+    {
+      "id": "api-arda-validateardacudatexture-dc3d493c",
+      "name": "ValidateArdaCudaTexture",
+      "qualifiedName": "arda::ValidateArdaCudaTexture",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus ValidateArdaCudaTexture(const FArdaRHITextureDesc& Desc)",
+      "summary": "Rejects unsupported texture layouts/formats before native allocation; does not test device support.",
+      "details": "Rejects unsupported texture layouts/formats before native allocation; does not test device support.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 310
+    },
+    {
+      "id": "api-arda-validateardacudabuffer-dcddcda3",
+      "name": "ValidateArdaCudaBuffer",
+      "qualifiedName": "arda::ValidateArdaCudaBuffer",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus ValidateArdaCudaBuffer(const FArdaRHIBufferDesc& Desc)",
+      "summary": "Admits dedicated device-local buffers; rejects sparse, placed, versioned, CPU-visible and AS storage.",
+      "details": "Admits dedicated device-local buffers; rejects sparse, placed, versioned, CPU-visible and AS storage.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 313
+    },
+    {
+      "id": "api-arda-validateardacudakernels-a5864f6f",
+      "name": "ValidateArdaCudaKernels",
+      "qualifiedName": "arda::ValidateArdaCudaKernels",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus ValidateArdaCudaKernels(const eastl::vector<FArdaCudaKernel>& Kernels, size_t BindingCount, const FArdaCudaCapabilities& Capabilities)",
+      "summary": "Checks code, dimensions, shared memory and argument references; does not prove kernel memory safety.",
+      "details": "Checks code, dimensions, shared memory and argument references; does not prove kernel memory safety.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 316
+    },
+    {
+      "id": "api-arda-validateardacudakernelbatch-4faaf91a",
+      "name": "ValidateArdaCudaKernelBatch",
+      "qualifiedName": "arda::ValidateArdaCudaKernelBatch",
+      "kind": "function",
+      "component": "cuda",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus ValidateArdaCudaKernelBatch(const eastl::vector<FArdaCudaKernel>& Kernels, size_t BindingCount, const FArdaCudaCapabilities& Capabilities)",
+      "summary": "Validates one or more ordered kernels/library calls against a shared binding table. Single-operation operands and DispatchCuda continue to use ValidateArdaCudaKernels.",
+      "details": "Validates one or more ordered kernels/library calls against a shared binding table. Single-operation operands and DispatchCuda continue to use ValidateArdaCudaKernels.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/Cuda/Public/CUDA/ArdaRHICuda.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 323
     },
     {
       "id": "api-arda-ardanativenvapiproviderid-0c6a4d9b",
@@ -2315,7 +9212,7 @@ window.ArdaNativeComputeApi = {
       "signature": "inline constexpr char ArdaNativeNvapiProviderId[] = \"nvapi\"",
       "summary": "Registry ID for native D3D12 NVAPI shader extensions.",
       "details": "Registry ID for native D3D12 NVAPI shader extensions.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2327,6 +9224,111 @@ window.ArdaNativeComputeApi = {
       "sourceLine": 9
     },
     {
+      "id": "api-arda-ardanativenvapirawbuffercategory-ffc24d6a",
+      "name": "ArdaNativeNvapiRawBufferCategory",
+      "qualifiedName": "arda::ArdaNativeNvapiRawBufferCategory",
+      "kind": "constant",
+      "component": "nvapi",
+      "page": "api-reference.html",
+      "signature": "inline constexpr char ArdaNativeNvapiRawBufferCategory[] = \"nvapi-raw-buffer\"",
+      "summary": "Defines arda native nvapi raw buffer category in the public native compute contract.",
+      "details": "Defines arda native nvapi raw buffer category in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 10
+    },
+    {
+      "id": "api-arda-ardanativenvapitexturecategory-b8726500",
+      "name": "ArdaNativeNvapiTextureCategory",
+      "qualifiedName": "arda::ArdaNativeNvapiTextureCategory",
+      "kind": "constant",
+      "component": "nvapi",
+      "page": "api-reference.html",
+      "signature": "inline constexpr char ArdaNativeNvapiTextureCategory[] = \"nvapi-texture\"",
+      "summary": "Defines arda native nvapi texture category in the public native compute contract.",
+      "details": "Defines arda native nvapi texture category in the public native compute contract. The signature is generated from the current public header.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 11
+    },
+    {
+      "id": "api-arda-prepareardanvapigraphicstonative-5072769a",
+      "name": "PrepareArdaNvapiGraphicsToNative",
+      "qualifiedName": "arda::PrepareArdaNvapiGraphicsToNative",
+      "kind": "function",
+      "component": "nvapi",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus PrepareArdaNvapiGraphicsToNative( const FArdaNativeConversionContext& Context, FArdaNativeConversion& Conversion)",
+      "summary": "Prepare NVAPI views and ingress copies for one operand invocation.",
+      "details": "Prepare NVAPI views and ingress copies for one operand invocation.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 14
+    },
+    {
+      "id": "api-arda-prepareardanvapinativetographics-7dac2ead",
+      "name": "PrepareArdaNvapiNativeToGraphics",
+      "qualifiedName": "arda::PrepareArdaNvapiNativeToGraphics",
+      "kind": "function",
+      "component": "nvapi",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus PrepareArdaNvapiNativeToGraphics( const FArdaNativeConversionContext& Context, FArdaNativeConversion& Conversion)",
+      "summary": "Prepare copy-back work and restore the declared graphics states.",
+      "details": "Prepare copy-back work and restore the declared graphics states.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 17
+    },
+    {
+      "id": "api-arda-useardanativenvapiresources-3b0468c9",
+      "name": "UseArdaNativeNvapiResources",
+      "qualifiedName": "arda::UseArdaNativeNvapiResources",
+      "kind": "function",
+      "component": "nvapi",
+      "page": "api-reference.html",
+      "signature": "void UseArdaNativeNvapiResources(FArdaNativeOperand& Operand)",
+      "summary": "Bind compatible views or stage graphics resources into NVAPI raw buffers and typed textures.",
+      "details": "Bind compatible views or stage graphics resources into NVAPI raw buffers and typed textures.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 21
+    },
+    {
       "id": "api-arda-fardanativenvapisourcedesc-b5d5a5d0",
       "name": "FArdaNativeNvapiSourceDesc",
       "qualifiedName": "arda::FArdaNativeNvapiSourceDesc",
@@ -2336,7 +9338,7 @@ window.ArdaNativeComputeApi = {
       "signature": "struct FArdaNativeNvapiSourceDesc",
       "summary": "Compile HLSL with DXC and supply the resulting compute shader container.",
       "details": "Compile HLSL with DXC and supply the resulting compute shader container.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2345,7 +9347,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 12
+      "sourceLine": 24
     },
     {
       "id": "api-arda-fardanativenvapisourcedesc-mdxil-f67142ab",
@@ -2357,7 +9359,7 @@ window.ArdaNativeComputeApi = {
       "signature": "eastl::vector<uint8_t> mDxil",
       "summary": "Owned DXIL compiled with the NVIDIA nvHLSLExtns.h shader header.",
       "details": "Owned DXIL compiled with the NVIDIA nvHLSLExtns.h shader header.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2366,7 +9368,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeNvapiSourceDesc"
       ],
-      "sourceLine": 15
+      "sourceLine": 27
     },
     {
       "id": "api-arda-fardanativenvapisourcedesc-mrequiredopcodes-d0a7cda9",
@@ -2378,7 +9380,7 @@ window.ArdaNativeComputeApi = {
       "signature": "eastl::vector<uint32_t> mRequiredOpcodes",
       "summary": "Required NV_EXTN_OP_* numbers from nvShaderExtnEnums.h.",
       "details": "Required NV_EXTN_OP_* numbers from nvShaderExtnEnums.h.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2387,7 +9389,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeNvapiSourceDesc"
       ],
-      "sourceLine": 17
+      "sourceLine": 29
     },
     {
       "id": "api-arda-fardanativenvapisourcedesc-mextensionuavslot-f6f49b84",
@@ -2399,7 +9401,7 @@ window.ArdaNativeComputeApi = {
       "signature": "uint32_t mExtensionUavSlot = 0",
       "summary": "The u register declared by NV_SHADER_EXTN_SLOT in HLSL.",
       "details": "The u register declared by NV_SHADER_EXTN_SLOT in HLSL.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2408,7 +9410,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeNvapiSourceDesc"
       ],
-      "sourceLine": 19
+      "sourceLine": 31
     },
     {
       "id": "api-arda-fardanativenvapisourcedesc-mextensionregisterspace-26840261",
@@ -2420,7 +9422,7 @@ window.ArdaNativeComputeApi = {
       "signature": "uint32_t mExtensionRegisterSpace = 1",
       "summary": "The nonzero space declared by NV_SHADER_EXTN_REGISTER_SPACE in HLSL. Space zero holds operand resources.",
       "details": "The nonzero space declared by NV_SHADER_EXTN_REGISTER_SPACE in HLSL. Space zero holds operand resources.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2429,7 +9431,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda::FArdaNativeNvapiSourceDesc"
       ],
-      "sourceLine": 21
+      "sourceLine": 33
     },
     {
       "id": "api-arda-createardanativenvapisource-9d14c5f4",
@@ -2441,7 +9443,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] TArdaRHIResult<eastl::shared_ptr<const IArdaNativeKernelSource>> CreateArdaNativeNvapiSource(FArdaNativeNvapiSourceDesc Desc)",
       "summary": "Retain an NVAPI shader and its driver requirements. In space zero, operand slot i maps to ti for reads or ui for writes and read/write access. Buffers use ByteAddressBuffer views. Parameters are 32-bit root constants at b0. The compiled shader fixes numthreads.",
       "details": "Retain an NVAPI shader and its driver requirements. In space zero, operand slot i maps to ti for reads or ui for writes and read/write access. Buffers use ByteAddressBuffer views. Parameters are 32-bit root constants at b0. The compiled shader fixes numthreads.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2450,7 +9452,7 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 30
+      "sourceLine": 42
     },
     {
       "id": "api-arda-createardanativenvapiprovider-99703ff8",
@@ -2462,7 +9464,7 @@ window.ArdaNativeComputeApi = {
       "signature": "[[nodiscard]] eastl::shared_ptr<const IArdaNativeComputeProvider> CreateArdaNativeNvapiProvider()",
       "summary": "Register the \"nvapi\" provider for \"native-d3d12\". Opcode support is checked on the selected device.",
       "details": "Register the \"nvapi\" provider for \"native-d3d12\". Opcode support is checked on the selected device.",
-      "source": "Source/ArdaInfra/ArdaNativeCompute/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
       "params": [],
       "returns": "",
       "ownership": "",
@@ -2471,7 +9473,28 @@ window.ArdaNativeComputeApi = {
       "related": [
         "arda"
       ],
-      "sourceLine": 33
+      "sourceLine": 45
+    },
+    {
+      "id": "api-arda-registerardanvapinativecomputeprovider-583a9200",
+      "name": "RegisterArdaNvapiNativeComputeProvider",
+      "qualifiedName": "arda::RegisterArdaNvapiNativeComputeProvider",
+      "kind": "function",
+      "component": "nvapi",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus RegisterArdaNvapiNativeComputeProvider(FArdaNativeComputeRegistry& Registry)",
+      "summary": "Register the linked NVAPI provider. Kernel libraries use \"nvapi-dxil\" payloads with attributes ordered as the extension UAV slot, register space, then required opcodes.",
+      "details": "Register the linked NVAPI provider. Kernel libraries use \"nvapi-dxil\" payloads with attributes ordered as the extension UAV slot, register space, then required opcodes.",
+      "source": "Source/ArdaInfra/ArdaBackendImpls/NVAPI/Public/NVAPI/ArdaNativeNvapiProvider.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda"
+      ],
+      "sourceLine": 51
     }
   ]
 };

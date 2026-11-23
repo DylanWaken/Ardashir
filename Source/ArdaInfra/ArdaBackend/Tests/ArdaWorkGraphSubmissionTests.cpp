@@ -53,7 +53,7 @@ namespace
 			ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 			mDevice = GetDevice();
 			ASSERT_TRUE(mDevice);
-			if (mDevice->GetCapabilities().mWorkGraphTier == EArdaRHIWorkGraphTier::None)
+			if (!mDevice->GetFeatures()->Supports("work-graph.dispatch"))
 			{
 				GTEST_SKIP() << "D3D12 work graphs are unavailable.";
 			}
@@ -272,7 +272,7 @@ namespace
 
 	TEST_F(FArdaWorkGraphSubmissionTest, BackingMemoryReuseOrdersIndependentQueues)
 	{
-		ASSERT_TRUE(mDevice->GetCapabilities().mQueues.mbCompute);
+		ASSERT_TRUE(mDevice->GetFeatures()->Supports("queue.compute"));
 		FArdaRecording Graphics, Compute, ComputeAgain;
 		ASSERT_NO_FATAL_FAILURE(Record(Graphics, 0x12345678u));
 		ASSERT_NO_FATAL_FAILURE(Record(Compute, 0x87654321u, EArdaRHIQueueType::Compute));

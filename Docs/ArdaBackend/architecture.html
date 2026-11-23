@@ -176,7 +176,7 @@
             <dt>Application policy</dt>
             <dd>Selects startup mode, backend preference, validation profile, logging, lifecycle owner, and shutdown policy.</dd>
             <dt>Public backend layer — <code>arda</code></dt>
-            <dd>Owns process configuration and context, shader registration and global maps, pipeline-state cache, and presentation interfaces.</dd>
+            <dd><code>ArdaBackend.h</code> exposes process configuration, backend registration and selection, device initialization, and presentation startup. The facade implementation lives in <code>Private/ArdaBackend.cpp</code>. Shader maps, pipeline caches, and presentation interfaces have their own headers.</dd>
             <dt>Public RHI layer — <code>arda</code></dt>
             <dd>Defines descriptors, capabilities, result types, resource interfaces, command lists, and the device creation/submission surface.</dd>
             <dt>Backend provider contract</dt>
@@ -208,9 +208,9 @@
             <dt>Diagnostic callback</dt>
             <dd>Caller-owned raw pointer stored by configuration. It must outlive backend use and is not deleted by ArdaBackend.</dd>
             <dt>Process backend state</dt>
-            <dd>Owns the selected configuration, backend runtime, public RHI device, current error, default callback, and mutex.</dd>
-            <dt>Device context</dt>
-            <dd>Contains an intrusive device reference, selected backend, and queue capabilities. The context is process storage; copies of its device reference are independent owners.</dd>
+            <dd>Owns the configuration, error and default callback, plus the module runtime and RHI device for each configured adapter.</dd>
+            <dt>Device snapshot</dt>
+            <dd><code>GetDevices()</code> returns copies of adapter identities and retained device references. <code>GetDevice()</code> copies the selected default device reference.</dd>
             <dt>Swap chain</dt>
             <dd>Returned as <code>eastl::unique_ptr&lt;IArdaSwapChain&gt;</code> and exclusively owned by the caller. It must be destroyed before backend shutdown.</dd>
             <dt>Shader map and pipeline cache</dt>
@@ -249,17 +249,17 @@
 
         <section id="process-state">
           <h2>Process singleton state</h2>
-          <p>The private <code>FArdaBackendState</code> is a function-local process singleton. It contains a mutex, configuration, default callback, backend runtime, public RHI device, external-device provider, and error text.</p>
+          <p>The private <code>FArdaBackendState</code> is a function-local process singleton. Its lifecycle mutex serializes configuration, initialization, default-device changes, and shutdown. The registry mutex protects backend module records and short reads or updates of the published devices and active module. The external-resource provider registry has its own lock.</p>
 
           <h3>Why process-wide state exists</h3>
-          <p>Shader directory freezing, global shader registration, compilation mode, persistent cache paths, and a canonical device context all benefit from one authoritative lifecycle. Startup-mode shader ensure occurs before native device creation; native pipeline-cache loading occurs while that device is constructed. A process facade also makes simple tools and applications easy to bootstrap.</p>
+          <p>The facade coordinates shader directory freezing, global shader registration, compilation policy, persistent cache paths, and the device set. Startup mode ensures shader artifacts before native device creation. Each provider loads supported native pipeline-cache data while constructing its device.</p>
 
           <h3>Publication model</h3>
-          <p>Initialization holds the lifecycle mutex while it validates registries and creates the backend. It writes context fields first, then stores the initialized flag with release ordering. <a href="api-reference.html#api-arda-backend-isbackendinitialized-d99926a4"><code>IsBackendInitialized()</code></a> performs an acquire load.</p>
-          <p>That atomic flag does not make every context accessor safe during concurrent mutation. References returned by <code>GetDeviceContext()</code> and <code>GetQueueCapabilities()</code> point into process storage. The public contract still requires lifecycle operations and device use not to race.</p>
+          <p>Initialization holds the lifecycle mutex while creating devices in local storage and preparing an optional swap chain. When every requested device succeeds, it publishes the complete device set and active module together under the registry mutex. <code>IsBackendInitialized()</code> checks whether the published set is nonempty under the same lock. <a href="api-reference.html#api-arda-backend-isbackendinitialized-d99926a4">Initialization status</a></p>
+          <p><code>GetDevice()</code>, <code>GetDevice(index)</code>, and <code>GetDevices()</code> copy their results under the registry mutex. Each retained device exposes its own queue capabilities. <code>GetBackendConfiguration()</code> borrows process configuration, so read or copy it within an application-controlled lifecycle interval.</p>
 
-          <h3>Tradeoff</h3>
-          <p>A singleton simplifies one-device applications but constrains multi-adapter, multi-device, isolated test, hot-reload, and plugin scenarios. A future explicit backend-instance object would improve composition at the cost of passing context through more systems and redesigning global shader registration assumptions.</p>
+          <h3>Multiple adapters and the default device</h3>
+          <p>One selected backend module can initialize devices for several adapter IDs in <code>mAdapters</code>. An empty list requests one automatically selected device. <code>mDefaultDeviceIndex</code> selects the initial default and the device used to create a presentation swap chain. <code>SetDefaultDevice(index)</code> redirects future default lookups. Existing graphs, resources and the swap chain retain their original device affinity.</p>
         </section>
 
         <section id="affinity">
@@ -293,7 +293,7 @@ if (!result &amp;&amp;
 
         <section id="worked-example">
           <h2>Worked example: one backend, one ownership chain</h2>
-          <p>This example follows one legal process-wide lifecycle from configuration to shutdown. It combines the contracts exercised by the backend and pipeline-cache tests: initialization publishes one device, copied device references remain owners, resources are device-affine, cache calls reject a mismatched requesting device, and shutdown clears singleton availability without forcibly clearing every copied reference.</p>
+          <p>This example follows the default device from configuration to shutdown. It exercises copied device ownership, resources and caches bound to that device, and the independent lifetime of a retained device after shutdown.</p>
 
           <aside class="callout">
             <h3>One live process backend—not two</h3>
@@ -373,7 +373,7 @@ else
           <h3>Step 2: assign owners and affinity</h3>
           <p>Track four kinds of ownership.</p>
           <ol>
-            <li>The process singleton's <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a> retains one reference to the device.</li>
+            <li>The process device set retains one reference to each initialized device.</li>
             <li>The local <code>device</code> variable retains another reference through <a href="api-reference.html#api-arda-rhi-fardarhideviceref-bbf7458c"><code>FArdaRHIDeviceRef</code></a>.</li>
             <li>The caller exclusively owns <code>swapChain</code>; the process API does not destroy that <code>unique_ptr</code> for the caller.</li>
             <li><code>buffer.mValue</code> retains the created <a class="term" data-term="resource" href="../glossary.html#term-resource">resource</a>, whose private implementation identity is associated with the creating device.</li>
@@ -390,18 +390,18 @@ else
           </aside>
 
           <h3>Step 4: reverse the ownership timeline</h3>
-          <p>Normative production shutdown reverses dependent renderer ownership, then lets the process singleton flush native pipeline data while its context still owns the device:</p>
+          <p>Release renderer dependents first, then let the process singleton flush native pipeline data while it still owns the devices.</p>
           <ol>
             <li><strong>Stop producers.</strong> Prevent frame, upload, and compilation tasks from creating more work.</li>
             <li><strong>Complete GPU use.</strong> Wait until submitted work no longer needs the buffer or swap-chain images. CPU <a class="term" data-term="lifetime" href="../glossary.html#term-lifetime">lifetime</a> alone does not establish GPU completion.</li>
             <li><strong>Release presentation and renderer state.</strong> Destroy the swap chain, clear device-bound caches/maps, and release renderer-owned resources.</li>
-            <li><strong>Flush and clear process availability.</strong> Call <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a>. It invokes the device's optional persistence flush-and-disable entry point; a supporting backend waits and atomically saves dirty native data, while an unsupported backend performs no disk operation. It then clears context ownership and queue capabilities and marks the singleton uninitialized.</li>
+            <li><strong>Flush and clear process availability.</strong> <code>ShutdownBackend()</code> flushes and disables persistence on each device, then removes the published device set and active module together. <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995">ShutdownBackend</a></li>
             <li><strong>Release ordinary copied owners.</strong> Reset caller-held device and resource references once shutdown has disabled persistence.</li>
           </ol>
           <p>The conformance branch keeps one copied <code>FArdaRHIDeviceRef</code>, shuts down the singleton, probes the retained device, and then releases the copy. The retained object also retains its concrete backend or external lifetime token. Pipeline persistence is already disabled, so later pipeline creation or device destruction cannot write through stale cache configuration or call a released diagnostic callback.</p>
 
           <h3>Process availability versus retained lifetime</h3>
-          <p>After shutdown, <a href="api-reference.html#api-arda-backend-isbackendinitialized-d99926a4"><code>IsBackendInitialized()</code></a> is false, <code>GetDevice()</code> is empty, and process queue capabilities are reset. Those observations describe the singleton facade. They do not mutate a copied <a class="term" data-term="intrusive-reference-counting" href="../glossary.html#term-intrusive-reference-counting">intrusive reference</a> held elsewhere.</p>
+          <p>After shutdown, <code>IsBackendInitialized()</code> is false, <code>GetDevices()</code> returns an empty list, and <code>GetDevice()</code> returns an empty reference. Each copied intrusive reference still owns its device and can query that device's capabilities.</p>
           <p>The backend tests retain a shared device reference across <code>ShutdownBackend()</code>, verify that it still reports capabilities, and successfully create a sampler while the process singleton reports uninitialized. This proves process availability and object <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a> are different state dimensions. Production code should still stop work and release dependent renderer objects first, call shutdown to flush/disable persistence, then release any remaining device references.</p>
 
           <h3>Checkpoint</h3>
@@ -439,7 +439,9 @@ else
 
           <dl>
             <dt>Lifecycle domain</dt>
-            <dd>Configure, initialize, context mutation, and shutdown are mutex-serialized internally, but must not race device use. The application supplies lifecycle exclusion.</dd>
+            <dd>Configuration, initialization, default selection, and shutdown are mutex-serialized. The application coordinates lifecycle changes with device use.</dd>
+            <dt>Registry and snapshot domain</dt>
+            <dd>Provider callbacks can query the backend module registry and published device snapshots under the separate registry lock. External resource registration has its own lock.</dd>
             <dt>Reference domain</dt>
             <dd>Do not concurrently mutate one smart-reference object. Separate references do not imply that methods on the referred object are safe concurrently.</dd>
             <dt>Device creation domain</dt>
@@ -455,8 +457,8 @@ else
           </dl>
 
           <aside class="callout warning">
-            <h3>A mutex does not extend borrowed-reference lifetime</h3>
-            <p>Accessors returning references to process storage remain valid only while lifecycle state is stable. Copy the intrusive device reference when retaining it; do not keep a reference to mutable process context across shutdown.</p>
+            <h3>Access borrowed configuration during a stable interval</h3>
+            <p><code>GetBackendConfiguration()</code> refers to process storage. Coordinate with lifecycle changes when reading or copying it. Use the owning references returned by <code>GetDevice()</code> or <code>GetDevices()</code> when retaining devices.</p>
           </aside>
         </section>
 
@@ -516,8 +518,8 @@ else
             <dd>Look for concurrent producers, callback lifetime violations, in-flight GPU work, or retained objects destroyed after their platform prerequisites.</dd>
             <dt>Validation reports after successful status</dt>
             <dd>The immediate wrapper operation may have succeeded while native validation detected a broader state, synchronization, or lifetime defect. Preserve both channels.</dd>
-            <dt>Context observation races restart</dt>
-            <dd>Internal atomics do not authorize concurrent lifecycle mutation. Add application-level exclusion and copy owning references within the stable phase.</dd>
+            <dt>Configuration observation races restart</dt>
+            <dd>Coordinate configuration reads with lifecycle changes. Use device snapshots to inspect the published device set and retain the devices it returns.</dd>
           </dl>
 
           <h3>Production invariants</h3>
@@ -540,7 +542,7 @@ else
             <li>Public backend systems own process policy and authored rendering integration; private layers own conversion and native objects.</li>
             <li>Intrusive references share RHI ownership and can pin concrete implementation lifetime beyond the global context.</li>
             <li>Retained devices remain functional after shutdown, while pipeline persistence is deliberately disabled to detach retired paths and callbacks.</li>
-            <li>The process singleton simplifies one-device operation but requires lifecycle exclusion and limits multi-device composition.</li>
+            <li>The process singleton publishes one selected module and all its configured devices together. Each resource or graph retains its creating device's affinity.</li>
             <li>Device affinity, explicit status, scoped thread-safety contracts, and audited native interop keep failures diagnosable.</li>
           </ul>
 
@@ -567,7 +569,7 @@ else
 
         <aside class="callout">
           <h3>Related API</h3>
-          <p>Use the centralized <a href="api-reference.html">API reference</a> for exact contracts. Key architectural types are <a href="api-reference.html#api-arda-rhi-iardarhiresource-88cc5c73"><code>IArdaRHIResource</code></a>, <a href="api-reference.html#api-arda-rhi-tardarhiref-b3e2cfff"><code>TArdaRHIRef</code></a>, <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>, and <a href="api-reference.html#api-arda-rhi-fardarhistatus-a19f9625"><code>FArdaRHIStatus</code></a>.</p>
+          <p>Use the centralized API reference for exact contracts. <a href="api-reference.html#api-arda-rhi-iardarhiresource-88cc5c73">IArdaRHIResource</a> · <a href="api-reference.html#api-arda-rhi-tardarhiref-b3e2cfff">TArdaRHIRef</a> · <a href="api-reference.html#api-arda-fardabackenddevice-22043bca">FArdaBackendDeviceReg</a> · <a href="api-reference.html#api-arda-rhi-fardarhistatus-a19f9625">FArdaRHIStatus</a></p>
         </aside>
     </article>
     <nav class="page-nav" aria-label="Document navigation"><a href="quick-guide.html" rel="prev"><span class="page-nav-label"><svg class="icon icon-previous" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6"/></svg>Previous</span><span class="page-nav-title">Quick guide</span></a><a href="backend-modules.html" rel="next"><span class="page-nav-label">Next<svg class="icon icon-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span><span class="page-nav-title">Backend modules</span></a></nav>

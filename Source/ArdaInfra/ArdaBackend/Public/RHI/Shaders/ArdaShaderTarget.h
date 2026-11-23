@@ -8,6 +8,10 @@
 
 namespace arda
 {
+	// ================================
+	// Shader targets and provider compiler invocation
+	// ================================
+
 	/** Identifies the bytecode family consumed by a backend module. */
 	enum class EArdaShaderBinaryFormat : uint8_t
 	{

@@ -272,8 +272,8 @@ namespace arda::inductor_memory_gpu_tests
 
 	TEST_P(FArdaInductorMemoryGpu, EfficiencyWithLooseBudgetKeepsIndependentWorkspaceUsersParallel)
 	{
-		const auto& Caps = mDevice->GetCapabilities();
-		if (!Caps.IsQueueSupported(EArdaRHIQueueType::Compute) || !Caps.mQueues.mbGpuWaits)
+		if (!mDevice->IsQueueSupported(EArdaRHIQueueType::Compute) ||
+		    !mDevice->GetFeatures()->Supports("queue.gpu-waits"))
 		{
 			GTEST_SKIP() << "Independent compute queues are unavailable";
 		}
@@ -476,7 +476,7 @@ namespace arda::inductor_memory_gpu_tests
 			ASSERT_LT(HeapIndex, Plan.mHeaps.size());
 			const auto& Heap = Plan.mHeaps[HeapIndex];
 			const uint64_t Alignment =
-			    eastl::max(Request.mRequirements.mAlignment, mDevice->GetCapabilities().mHeapAllocationAlignment);
+			    eastl::max(Request.mRequirements.mAlignment, mDevice->GetFeatures()->GetValueOr("memory.heap-capacity-alignment", 1));
 			EXPECT_EQ(Heap.mDesc.mCapacity % Alignment, 0u);
 			EXPECT_GE(Heap.mDesc.mCapacity, Request.mRequirements.mSize);
 			EXPECT_LT(Heap.mDesc.mCapacity - Request.mRequirements.mSize, Alignment);
@@ -491,8 +491,9 @@ namespace arda::inductor_memory_gpu_tests
 
 	TEST_P(FArdaInductorMemoryGpu, SeparatelyRecordedASBarrierPreservesSubmittedBuildLifecycle)
 	{
-		const auto& Ray = mDevice->GetCapabilities().mRayTracing;
-		if (!Ray.mbBottomLevel || !Ray.mbCompaction)
+		const auto Features = mDevice->GetFeatures();
+		if (!Features->Supports("ray-tracing.bottom-level-acceleration-structure") ||
+		    !Features->Supports("ray-tracing.acceleration-structure-compaction"))
 		{
 			GTEST_SKIP() << "BLAS compaction is unavailable";
 		}

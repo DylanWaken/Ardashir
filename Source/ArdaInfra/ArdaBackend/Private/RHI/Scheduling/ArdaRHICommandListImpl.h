@@ -14,6 +14,11 @@
 #include "RHI/Scheduling/ArdaRHISignalImpl.h"
 #include <EASTL/unordered_map.h>
 
+namespace arda
+{
+	struct FArdaCudaBinding;
+}
+
 namespace arda::detail
 {
 	class FArdaRHIDeviceImpl;

@@ -12,6 +12,10 @@
 
 namespace arda
 {
+	// ================================
+	// Shader compilation errors
+	// ================================
+
 	/**
      * Identifies failures from development/cook shader compilation.
      * Shipping-style runtime use can leave compilation unconfigured and load
@@ -53,6 +57,11 @@ namespace arda
      * compile missing and stale artifacts; shipping-style applications should
      * disable both switches and deploy prebuilt bytecode.
      */
+
+	// ================================
+	// Shader compiler configuration
+	// ================================
+
 	/** Additional compiler arguments for one exact registered backend module. */
 	struct FArdaShaderCompilerModuleArguments
 	{
@@ -88,6 +97,10 @@ namespace arda
 		/** Per-module arguments selected by stable backend name. */
 		eastl::vector<FArdaShaderCompilerModuleArguments> mModuleArguments;
 	};
+
+	// ================================
+	// Compile jobs and results
+	// ================================
 
 	/** Describes one deterministic unit of external shader compilation. */
 	struct FArdaShaderCompileJob
@@ -156,6 +169,10 @@ namespace arda
 		}
 	};
 
+	// ================================
+	// Compiler configuration API
+	// ================================
+
 	/**
      * Copies a new process-wide development compiler configuration.
      * @param Configuration Configuration to copy under the process mutex.
@@ -170,6 +187,10 @@ namespace arda
 
 	/** Restores development defaults and build/environment executable resolution. */
 	void ResetShaderCompilerConfiguration();
+
+	// ================================
+	// Shader artifact compilation
+	// ================================
 
 	/** Builds deterministic jobs for exact registered module names. */
 	[[nodiscard]] FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(

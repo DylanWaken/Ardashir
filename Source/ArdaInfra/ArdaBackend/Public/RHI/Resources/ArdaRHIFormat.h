@@ -9,6 +9,10 @@
 
 namespace arda
 {
+	// ================================
+	// Pixel and vertex formats
+	// ================================
+
 	/** Enumerates format values. */
 	enum class EArdaRHIFormat : uint8_t
 	{
@@ -84,6 +88,10 @@ namespace arda
 	{
 		return Format > EArdaRHIFormat::Unknown && Format < EArdaRHIFormat::Count;
 	}
+
+	// ================================
+	// Format properties and queries
+	// ================================
 
 	/** Describes format info. */
 	struct FArdaRHIFormatInfo

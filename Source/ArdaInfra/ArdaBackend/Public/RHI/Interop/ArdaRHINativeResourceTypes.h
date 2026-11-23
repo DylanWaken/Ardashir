@@ -9,6 +9,10 @@
 
 namespace arda
 {
+	// ================================
+	// Native resource types and ownership
+	// ================================
+
 	/** Identifies the backend representation of an imported native resource. */
 	enum class EArdaRHINativeResourceType : uint8_t
 	{

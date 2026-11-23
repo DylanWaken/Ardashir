@@ -8,14 +8,15 @@
 
 namespace arda
 {
-	/** Execution domain; CUDA is kept on one framework stream per compiled batch. */
+	/** Execution domain of a logical node. */
 	enum class EArdaDependencyNodeKind : uint8_t
 	{
 		Graphics,
 		Compute,
 		Copy,
 		Cuda,
-		Synchronization
+		Synchronization,
+		Native
 	};
 
 	/** Authored requirements plus compiler-populated pipeline metadata.

@@ -11,6 +11,10 @@
 
 namespace arda
 {
+	// ================================
+	// Viewports and scissor rectangles
+	// ================================
+
 	/** Describes viewport. */
 	struct FArdaRHIViewport
 	{
@@ -40,6 +44,10 @@ namespace arda
 		/** Maximum Y coordinate. */
 		int32_t mMaxY = 0;
 	};
+
+	// ================================
+	// Draw arguments and vertex buffer bindings
+	// ================================
 
 	/** Describes draw arguments. */
 	struct FArdaRHIDrawArguments

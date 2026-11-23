@@ -8,6 +8,10 @@
 
 namespace arda
 {
+	// ================================
+	// Log categories and verbosity
+	// ================================
+
 	/** Controls the importance and filtering of a log record. */
 	enum class EArdaLogVerbosity : std::uint8_t
 	{
@@ -58,6 +62,10 @@ namespace arda
 		/** Least-important verbosity currently emitted. */
 		eastl::atomic<EArdaLogVerbosity> mMinimumVerbosity;
 	};
+
+	// ================================
+	// Log records and output
+	// ================================
 
 	/**
      * Describes one formatted log record.
@@ -123,6 +131,10 @@ namespace arda
 	    const char* format,
 	    ...) noexcept;
 }
+
+// ================================
+// Log category and message macros
+// ================================
 
 /** Declares an externally defined log category. */
 #define ARDA_DECLARE_LOG_CATEGORY_EXTERN(CategoryName) extern ::arda::FArdaLogCategory CategoryName

@@ -62,14 +62,17 @@ if(NOT PROVISION OR CROSS_COMPILING)
 endif()
 
 find_program(GIT_EXECUTABLE git)
+set(LAYER_BUILD_DIR "${VALIDATION_ROOT}/build")
 if(NOT LAYER_SOURCE)
-    set(LAYER_SOURCE "${VALIDATION_ROOT}/source")
+    # The stable SDK validation layer carries its own SDK-matched Vulkan headers.
+    set(LAYER_SDK "1.4.363.1")
+    set(LAYER_SOURCE "${VALIDATION_ROOT}/source-${LAYER_SDK}")
+    set(LAYER_BUILD_DIR "${VALIDATION_ROOT}/build-${LAYER_SDK}")
     if(NOT EXISTS "${LAYER_SOURCE}/CMakeLists.txt")
         if(NOT GIT_EXECUTABLE)
             message(WARNING "Git is unavailable; cannot provision Vulkan validation layers.")
             return()
         endif()
-        # Fixed Khronos source revision matching the project's Vulkan 1.4.357 headers.
         set(RESULT 0)
         if(NOT EXISTS "${LAYER_SOURCE}/.git")
             execute_process(COMMAND "${GIT_EXECUTABLE}" clone --no-checkout
@@ -79,7 +82,7 @@ if(NOT LAYER_SOURCE)
         endif()
         if("${RESULT}" STREQUAL "0")
             execute_process(COMMAND "${GIT_EXECUTABLE}" -C "${LAYER_SOURCE}" checkout
-                e4786f7ce8f1319215eff0d938f4be4651cbb85d
+                317cff060893783f96d4174f50491e6374eb3714
                 RESULT_VARIABLE RESULT TIMEOUT 120
                 OUTPUT_FILE "${VALIDATION_ROOT}/checkout.log" ERROR_FILE "${VALIDATION_ROOT}/checkout.log")
         endif()
@@ -113,16 +116,16 @@ if(MAKE_PROGRAM)
     list(APPEND CONFIGURE_ARGS "-DCMAKE_MAKE_PROGRAM=${MAKE_PROGRAM}")
 endif()
 message(STATUS "Building pinned Vulkan validation layers locally; logs: ${VALIDATION_ROOT}")
-execute_process(COMMAND "${CMAKE_COMMAND}" -S "${LAYER_SOURCE}" -B "${VALIDATION_ROOT}/build" ${CONFIGURE_ARGS}
+execute_process(COMMAND "${CMAKE_COMMAND}" -S "${LAYER_SOURCE}" -B "${LAYER_BUILD_DIR}" ${CONFIGURE_ARGS}
     RESULT_VARIABLE RESULT TIMEOUT 900
     OUTPUT_FILE "${VALIDATION_ROOT}/configure.log" ERROR_FILE "${VALIDATION_ROOT}/configure.log")
 if("${RESULT}" STREQUAL "0")
-    execute_process(COMMAND "${CMAKE_COMMAND}" --build "${VALIDATION_ROOT}/build" --config Release --parallel 4
+    execute_process(COMMAND "${CMAKE_COMMAND}" --build "${LAYER_BUILD_DIR}" --config Release --parallel 4
         RESULT_VARIABLE RESULT TIMEOUT 1800
         OUTPUT_FILE "${VALIDATION_ROOT}/build.log" ERROR_FILE "${VALIDATION_ROOT}/build.log")
 endif()
 if("${RESULT}" STREQUAL "0")
-    execute_process(COMMAND "${CMAKE_COMMAND}" --install "${VALIDATION_ROOT}/build" --config Release
+    execute_process(COMMAND "${CMAKE_COMMAND}" --install "${LAYER_BUILD_DIR}" --config Release
         RESULT_VARIABLE RESULT TIMEOUT 120
         OUTPUT_FILE "${VALIDATION_ROOT}/install.log" ERROR_FILE "${VALIDATION_ROOT}/install.log")
 endif()

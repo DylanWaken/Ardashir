@@ -1,9 +1,10 @@
 #include "Graph/Node/ArdaRuntimeNodeDefinition.h"
 
+#include "NativeCompute/ArdaNativeCompute.h"
 #include "Graph/Node/ArdaDependencyKey.h"
+#include "Graph/Node/ArdaLegacyRuntimeKernel.h"
 #include "Inductor/Runtime/ArdaDependencyExecutionContext.h"
-#include "CUDA/ArdaNativeCudaProvider.h"
-#include "RHI/Providers/ArdaBackendProvider.h"
+#include "Inductor/Runtime/ArdaInductorNativeContract.h"
 #include <EASTL/unordered_set.h>
 #include <cstring>
 
@@ -16,41 +17,80 @@ namespace arda
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, Message);
 		}
 
-		FArdaCudaModuleKernelDesc GetKernelDesc(const FArdaRuntimeNodeDesc& Desc)
+		bool IsIdentifier(const eastl::string& Value)
 		{
-			FArdaCudaModuleKernelDesc Kernel;
-			Kernel.mEntryPoint = Desc.mEntryPoint;
-			Kernel.mParameterSize = Desc.mParameterSize;
-			Kernel.mParameterAlignment = Desc.mParameterAlignment;
-			for (const auto& Argument : Desc.mArguments)
-			{
-				Kernel.mArguments.push_back(Argument.mAbi);
-			}
-			return Kernel;
+			return !Value.empty() && Value.find('\0') == eastl::string::npos;
 		}
 
-		TArdaRHIResult<eastl::shared_ptr<const IArdaCudaKernelEntry>> ValidateRuntimeDefinition(
-		    const FArdaRuntimeNodeDesc& Desc)
+		bool IsAlignment(size_t Value)
 		{
-			if (Desc.mName.empty() || !Desc.mVersion)
+			return Value && (Value & (Value - 1)) == 0;
+		}
+
+		EArdaNativeArgumentKind GetGraphicsBindingKind(const FArdaRuntimeNodeDesc& Desc, size_t Index)
+		{
+			switch (Desc.mArguments[Index].mResourceType)
 			{
-				return {{}, RuntimeInvalid("A runtime node requires a name and a positive version.")};
+			case EArdaRHIResourceType::Buffer:
+				return EArdaNativeArgumentKind::Buffer;
+			case EArdaRHIResourceType::Texture:
+				return EArdaNativeArgumentKind::Surface;
+			default:
+				return Desc.mLayout.mArguments[Index].mKind;
 			}
-			eastl::unordered_set<eastl::string> Names;
-			for (const auto& Argument : Desc.mArguments)
+		}
+
+		bool RequiresRegisteredConversions(const FArdaRuntimeNodeDesc& Desc)
+		{
+			for (size_t Index = 0; Index < Desc.mArguments.size(); ++Index)
 			{
-				if (Argument.mName.empty() || !Names.insert(Argument.mName).second ||
-				    Argument.mAccess > EArdaComputeAccess::ReadWrite ||
-				    Argument.mAbi.mKind > EArdaCudaModuleArgumentKind::Buffer || Argument.mAbi.mOffset > UINT32_MAX ||
-				    Argument.mAbi.mSize > UINT32_MAX || Argument.mAbi.mAlignment > UINT32_MAX)
+				if (GetGraphicsBindingKind(Desc, Index) != Desc.mLayout.mArguments[Index].mKind)
 				{
-					return {{},
-					    RuntimeInvalid("Runtime parameters require unique names and a supported portable ABI.")};
+					return true;
 				}
 			}
-			auto Module = CreateArdaCudaModule(Desc.mModule);
-			return Module ? CreateArdaCudaModuleKernel(Module.mValue, GetKernelDesc(Desc))
-			              : TArdaRHIResult<eastl::shared_ptr<const IArdaCudaKernelEntry>>{{}, Module.mStatus};
+			const auto Operand = GetArdaNativeComputeRegistry().FindOperand(Desc.mName.c_str());
+			return Desc.mbRequiresRegisteredConversions ||
+			    (Operand && Operand->mSignature == Desc.mKernel.mSignature &&
+			        HasArdaNativeResourceConversions(*Operand));
+		}
+
+		FArdaRHIStatus ValidateRuntimeDefinition(const FArdaRuntimeNodeDesc& Desc)
+		{
+			const auto& Key = Desc.mKernel;
+			if (!IsIdentifier(Desc.mName) || !Desc.mVersion || !IsValidArdaNativeKernelKey(Key))
+			{
+				return RuntimeInvalid("A runtime node requires a name, a positive version and a complete kernel key.");
+			}
+			const auto& Layout = Desc.mLayout;
+			if (!IsAlignment(Layout.mParameterAlignment) || Layout.mArguments.size() != Desc.mArguments.size())
+			{
+				return RuntimeInvalid("Runtime argument layout and graph binding schema do not match.");
+			}
+			eastl::unordered_set<eastl::string> Names;
+			size_t End = 0;
+			for (size_t Index = 0; Index < Desc.mArguments.size(); ++Index)
+			{
+				const auto& Argument = Desc.mArguments[Index];
+				const auto& Abi = Layout.mArguments[Index];
+				if (!IsIdentifier(Argument.mName) || !Names.insert(Argument.mName).second ||
+				    Argument.mAccess > EArdaComputeAccess::ReadWrite || Abi.mKind > EArdaNativeArgumentKind::Surface ||
+				    (Argument.mResourceType != EArdaRHIResourceType::Count &&
+				        (Abi.mKind == EArdaNativeArgumentKind::Value ||
+				            (Argument.mResourceType != EArdaRHIResourceType::Buffer &&
+				                Argument.mResourceType != EArdaRHIResourceType::Texture))) ||
+				    (Argument.mFormat != EArdaRHIFormat::Unknown &&
+				        (GetGraphicsBindingKind(Desc, Index) != EArdaNativeArgumentKind::Surface ||
+				            !IsArdaRHIFormatKnown(Argument.mFormat))) ||
+				    !Abi.mSize || !IsAlignment(Abi.mAlignment) || Abi.mAlignment > Layout.mParameterAlignment ||
+				    Abi.mOffset % Abi.mAlignment || Abi.mOffset < End || Abi.mOffset > Layout.mParameterSize ||
+				    Abi.mSize > Layout.mParameterSize - Abi.mOffset)
+				{
+					return RuntimeInvalid("Runtime parameters require unique names and a valid packed layout.");
+				}
+				End = Abi.mOffset + Abi.mSize;
+			}
+			return {};
 		}
 
 		FArdaRHIStatus ValidateRuntimeParameters(const FArdaRuntimeNodeDesc& Desc,
@@ -60,92 +100,173 @@ namespace arda
 			{
 				return RuntimeInvalid("Runtime argument count does not match its definition.");
 			}
-			uint64_t Threads = 1;
 			for (size_t Axis = 0; Axis < 3; ++Axis)
 			{
-				if (!Parameters.mGrid[Axis] || !Parameters.mBlock[Axis] || Parameters.mBlock[Axis] > 1024)
+				if (!Parameters.mGrid[Axis] || !Parameters.mBlock[Axis])
 				{
-					return RuntimeInvalid("Runtime launch dimensions must be nonzero and fit CUDA block limits.");
+					return RuntimeInvalid("Runtime launch dimensions must be nonzero.");
 				}
-				Threads *= Parameters.mBlock[Axis];
-			}
-			if (Threads > 1024)
-			{
-				return RuntimeInvalid("Runtime launch exceeds the CUDA thread block limit.");
 			}
 			for (size_t Index = 0; Index < Parameters.mArguments.size(); ++Index)
 			{
 				const auto& Argument = Parameters.mArguments[Index];
-				const auto& Schema = Desc.mArguments[Index];
-				if (Schema.mAbi.mKind == EArdaCudaModuleArgumentKind::Buffer)
+				const auto& Abi = Desc.mLayout.mArguments[Index];
+				const bool bHasBufferRange =
+				    Argument.mRange.mByteOffset || Argument.mRange.mByteSize != ArdaRHIWholeBuffer;
+				switch (GetGraphicsBindingKind(Desc, Index))
 				{
-					if (!Argument.mBuffer || !Argument.mValue.empty() || !Argument.mRange.mByteSize)
+				case EArdaNativeArgumentKind::Buffer:
+					if (!Argument.mBuffer || Argument.mSurface || Argument.mMipLevel || !Argument.mValue.empty() ||
+					    !Argument.mRange.mByteSize)
 					{
 						return RuntimeInvalid("A runtime buffer parameter needs a nonempty declared buffer range.");
 					}
-				}
-				else if (Argument.mBuffer || Argument.mValue.size() != Schema.mAbi.mSize ||
-				    Argument.mRange.mByteOffset || Argument.mRange.mByteSize != ArdaRHIWholeBuffer)
-				{
-					return RuntimeInvalid("A runtime scalar needs exact ABI bytes and no resource reference.");
+					break;
+				case EArdaNativeArgumentKind::Surface:
+					if (!Argument.mSurface || Argument.mBuffer || bHasBufferRange || !Argument.mValue.empty())
+					{
+						return RuntimeInvalid("A runtime surface parameter needs a declared texture mip.");
+					}
+					break;
+				case EArdaNativeArgumentKind::Value:
+					if (Argument.mBuffer || Argument.mSurface || Argument.mMipLevel ||
+					    Argument.mValue.size() != Abi.mSize || bHasBufferRange)
+					{
+						return RuntimeInvalid("A runtime scalar needs exact ABI bytes and no resource reference.");
+					}
+					break;
 				}
 			}
 			return {};
 		}
 
-		void WriteRuntimeParameters(FArdaGraphArchiveWriter& Archive, const FArdaRuntimeNodeParameters& Parameters)
+		template <class ArchiveType, class ArgumentType>
+		void RuntimeArgumentFields(ArchiveType& Archive, EArdaNativeArgumentKind Kind, ArgumentType& Argument)
 		{
-			Archive.Fields(Parameters.mGrid, Parameters.mBlock, Parameters.mSharedMemoryBytes);
-			Archive.WriteInteger(Parameters.mArguments.size(), 8);
-			for (const auto& Argument : Parameters.mArguments)
+			if (Kind == EArdaNativeArgumentKind::Surface)
+			{
+				Archive.Fields(Argument.mSurface, Argument.mMipLevel);
+			}
+			else
 			{
 				Archive.Fields(Argument.mBuffer, Argument.mRange, Argument.mValue);
 			}
 		}
 
-		void ReadRuntimeParameters(FArdaGraphArchiveReader& Archive, FArdaRuntimeNodeParameters& Parameters)
+		void WriteRuntimeParameters(FArdaGraphArchiveWriter& Archive,
+		    const FArdaRuntimeNodeDesc& Desc,
+		    const FArdaRuntimeNodeParameters& Parameters)
+		{
+			Archive.Fields(Parameters.mGrid, Parameters.mBlock, Parameters.mSharedMemoryBytes);
+			Archive.WriteInteger(Parameters.mArguments.size(), 8);
+			for (size_t Index = 0; Index < Parameters.mArguments.size(); ++Index)
+			{
+				RuntimeArgumentFields(Archive, GetGraphicsBindingKind(Desc, Index), Parameters.mArguments[Index]);
+			}
+		}
+
+		void ReadRuntimeParameters(FArdaGraphArchiveReader& Archive,
+		    const FArdaRuntimeNodeDesc& Desc,
+		    FArdaRuntimeNodeParameters& Parameters)
 		{
 			Archive.Fields(Parameters.mGrid, Parameters.mBlock, Parameters.mSharedMemoryBytes);
 			const auto Count = Archive.ReadCount();
+			if (Count != Desc.mArguments.size())
+			{
+				Archive.Fail("Runtime argument count does not match its definition.");
+				return;
+			}
+			Parameters.mArguments.resize(Count);
 			for (size_t Index = 0; Index < Count && Archive.GetStatus(); ++Index)
 			{
-				FArdaRuntimeNodeArgument Argument;
-				Archive.Fields(Argument.mBuffer, Argument.mRange, Argument.mValue);
-				Parameters.mArguments.push_back(eastl::move(Argument));
+				RuntimeArgumentFields(Archive, GetGraphicsBindingKind(Desc, Index), Parameters.mArguments[Index]);
 			}
+		}
+
+		FArdaRHIStatus ReadLegacyDefinition(FArdaGraphArchiveReader& Archive, FArdaRuntimeNodeDesc& Desc)
+		{
+			FArdaCudaModuleDesc Module;
+			Archive.Fields(Module.mFormat,
+			    Module.mImage,
+			    Module.mBuild.mName,
+			    Module.mBuild.mIdentity,
+			    Module.mBuild.mbFastMath);
+			const auto Count = Archive.ReadCount();
+			for (size_t Index = 0; Index < Count && Archive.GetStatus(); ++Index)
+			{
+				FArdaCudaArchitecture Architecture;
+				Archive.Fields(Architecture.mComputeCapability, Architecture.mbExact);
+				Module.mBuild.mArchitectures.push_back(Architecture);
+			}
+			eastl::string EntryPoint;
+			Archive.Fields(EntryPoint, Desc.mLayout.mParameterSize, Desc.mLayout.mParameterAlignment);
+			graph_detail::ReadLegacyKernelArguments(Archive, Desc);
+			if (auto Status = Archive.Finish(); !Status)
+			{
+				return Status;
+			}
+			return graph_detail::ImportLegacyRuntimeKernel(Desc, Module, EntryPoint);
 		}
 	}
 
 	TArdaRHIResult<eastl::string> FArdaRuntimeNodeDefinition::Serialize(const FArdaRuntimeNodeDesc& Desc)
 	{
-		if (const auto Validated = ValidateRuntimeDefinition(Desc); !Validated)
+		if (const auto Status = ValidateRuntimeDefinition(Desc); !Status)
 		{
-			return {{}, Validated.mStatus};
+			return {{}, Status};
 		}
 		FArdaGraphArchiveWriter Archive;
-		Archive.Fields(uint32_t{1},
+		const auto& Key = Desc.mKernel;
+		const bool bHasStates = eastl::any_of(Desc.mArguments.begin(),
+		    Desc.mArguments.end(),
+		    [](const auto& Argument)
+		    {
+			    return Argument.mState != EArdaRHIResourceState::UnorderedAccess;
+		    });
+		const bool bRequiresConversions = RequiresRegisteredConversions(Desc);
+		const bool bHasBindingOverrides = eastl::any_of(Desc.mArguments.begin(),
+		    Desc.mArguments.end(),
+		    [](const auto& Argument)
+		    {
+			    return Argument.mResourceType != EArdaRHIResourceType::Count ||
+			        Argument.mFormat != EArdaRHIFormat::Unknown;
+		    });
+		const uint32_t Version = bRequiresConversions || bHasBindingOverrides ? 4 : bHasStates ? 3 : 2;
+		Archive.Fields(Version,
 		    Desc.mName,
 		    Desc.mVersion,
-		    Desc.mModule.mFormat,
-		    Desc.mModule.mImage,
-		    Desc.mModule.mBuild.mName,
-		    Desc.mModule.mBuild.mIdentity,
-		    Desc.mModule.mBuild.mbFastMath);
-		Archive.WriteInteger(Desc.mModule.mBuild.mArchitectures.size(), 8);
-		for (const auto& Architecture : Desc.mModule.mBuild.mArchitectures)
+		    Key.mLibrary,
+		    Key.mProvider,
+		    Key.mName,
+		    Key.mSignature,
+		    Desc.mLayout.mParameterSize,
+		    Desc.mLayout.mParameterAlignment);
+		if (Version >= 4)
 		{
-			Archive.Fields(Architecture.mComputeCapability, Architecture.mbExact);
+			Archive.Write(bRequiresConversions);
 		}
-		Archive.Fields(Desc.mEntryPoint, Desc.mParameterSize, Desc.mParameterAlignment);
 		Archive.WriteInteger(Desc.mArguments.size(), 8);
-		for (const auto& Argument : Desc.mArguments)
+		for (size_t Index = 0; Index < Desc.mArguments.size(); ++Index)
 		{
+			const auto& Argument = Desc.mArguments[Index];
+			const auto& Abi = Desc.mLayout.mArguments[Index];
 			Archive.Fields(Argument.mName,
-			    Argument.mAbi.mKind,
 			    Argument.mAccess,
-			    uint32_t(Argument.mAbi.mOffset),
-			    uint32_t(Argument.mAbi.mSize),
-			    uint32_t(Argument.mAbi.mAlignment));
+			    Abi.mKind,
+			    uint32_t(Abi.mOffset),
+			    uint32_t(Abi.mSize),
+			    uint32_t(Abi.mAlignment));
+			if (Version >= 3)
+			{
+				Archive.Write(Argument.mState);
+			}
+			if (Version >= 4)
+			{
+				const uint8_t Binding = Argument.mResourceType == EArdaRHIResourceType::Buffer ? 1
+				    : Argument.mResourceType == EArdaRHIResourceType::Texture                  ? 2
+				                                                                               : 0;
+				Archive.Fields(Binding, Argument.mFormat);
+			}
 		}
 		return {Archive.GetData(), Archive.GetStatus()};
 	}
@@ -155,104 +276,106 @@ namespace arda
 		FArdaGraphArchiveReader Archive(Bytes);
 		FArdaRuntimeNodeDesc Desc;
 		uint32_t Version = 0;
-		Archive.Fields(Version,
-		    Desc.mName,
-		    Desc.mVersion,
-		    Desc.mModule.mFormat,
-		    Desc.mModule.mImage,
-		    Desc.mModule.mBuild.mName,
-		    Desc.mModule.mBuild.mIdentity,
-		    Desc.mModule.mBuild.mbFastMath);
-		if (Version != 1)
+		Archive.Fields(Version, Desc.mName, Desc.mVersion);
+		if (Version == 1)
+		{
+			if (auto Status = ReadLegacyDefinition(Archive, Desc); !Status)
+			{
+				return {{}, eastl::move(Status)};
+			}
+		}
+		else if (Version >= 2 && Version <= 4)
+		{
+			auto& Key = Desc.mKernel;
+			Archive.Fields(Key.mLibrary,
+			    Key.mProvider,
+			    Key.mName,
+			    Key.mSignature,
+			    Desc.mLayout.mParameterSize,
+			    Desc.mLayout.mParameterAlignment);
+			if (Version >= 4)
+			{
+				Archive.Read(Desc.mbRequiresRegisteredConversions);
+			}
+			const auto Count = Archive.ReadCount();
+			for (size_t Index = 0; Index < Count && Archive.GetStatus(); ++Index)
+			{
+				FArdaRuntimeNodeArgumentDesc Argument;
+				EArdaNativeArgumentKind Kind{};
+				uint32_t Offset = 0, Size = 0, Alignment = 0;
+				Archive.Fields(Argument.mName, Argument.mAccess, Kind, Offset, Size, Alignment);
+				if (Version >= 3)
+				{
+					Archive.Read(Argument.mState);
+				}
+				if (Version >= 4)
+				{
+					uint8_t Binding = 0;
+					Archive.Fields(Binding, Argument.mFormat);
+					if (Binding > 2)
+					{
+						return {{}, RuntimeInvalid("Runtime argument has an unknown graphics binding kind.")};
+					}
+					Argument.mResourceType = Binding == 1 ? EArdaRHIResourceType::Buffer
+					    : Binding == 2                    ? EArdaRHIResourceType::Texture
+					                                      : EArdaRHIResourceType::Count;
+				}
+				Desc.mArguments.push_back(eastl::move(Argument));
+				Desc.mLayout.mArguments.push_back({Offset, Size, Alignment, Kind});
+			}
+			if (auto Status = Archive.Finish(); !Status)
+			{
+				return {{}, eastl::move(Status)};
+			}
+		}
+		else
 		{
 			return {{}, RuntimeInvalid("Unsupported portable runtime definition version.")};
 		}
-		const auto ArchitectureCount = Archive.ReadCount();
-		for (size_t Index = 0; Index < ArchitectureCount && Archive.GetStatus(); ++Index)
-		{
-			FArdaCudaArchitecture Architecture;
-			Archive.Fields(Architecture.mComputeCapability, Architecture.mbExact);
-			Desc.mModule.mBuild.mArchitectures.push_back(Architecture);
-		}
-		Archive.Fields(Desc.mEntryPoint, Desc.mParameterSize, Desc.mParameterAlignment);
-		const auto ArgumentCount = Archive.ReadCount();
-		for (size_t Index = 0; Index < ArgumentCount && Archive.GetStatus(); ++Index)
-		{
-			FArdaRuntimeNodeArgumentDesc Argument;
-			uint32_t Offset = 0;
-			uint32_t Size = 0;
-			uint32_t Alignment = 0;
-			Archive.Fields(Argument.mName, Argument.mAbi.mKind, Argument.mAccess, Offset, Size, Alignment);
-			Argument.mAbi.mOffset = Offset;
-			Argument.mAbi.mSize = Size;
-			Argument.mAbi.mAlignment = Alignment;
-			Desc.mArguments.push_back(eastl::move(Argument));
-		}
-		if (auto Status = Archive.Finish(); !Status)
-		{
-			return {{}, eastl::move(Status)};
-		}
-		if (const auto Validated = ValidateRuntimeDefinition(Desc); !Validated)
-		{
-			return {{}, Validated.mStatus};
-		}
-		return {eastl::move(Desc), {}};
+		const auto Status = ValidateRuntimeDefinition(Desc);
+		return {eastl::move(Desc), Status};
 	}
 
 	TArdaRHIResult<eastl::shared_ptr<const FArdaDependencyNodeExecutable>> FArdaRuntimeNodeDefinition::Create(
 	    const FArdaRuntimeNodeDesc& Description)
 	{
-		const auto Entry = ValidateRuntimeDefinition(Description);
-		if (!Entry)
-		{
-			return {{}, Entry.mStatus};
-		}
 		const auto Portable = Serialize(Description);
 		if (!Portable)
 		{
 			return {{}, Portable.mStatus};
 		}
-		auto InvocationSchema = Description;
-		// The module entry retains the interned artifact, and the portable definition owns its archive.
-		// Invocation hooks only require the compact ABI, not another copy of the device image.
-		InvocationSchema.mModule = {};
-		const auto Desc = eastl::make_shared<const FArdaRuntimeNodeDesc>(eastl::move(InvocationSchema));
-		auto Registry = eastl::make_shared<FArdaNativeComputeRegistry>();
-		// Runtime archives can run on custom graphics modules registered by the application.
-		// The CUDA adapter still qualifies the actual device and queue before preparing a kernel.
-		eastl::vector<eastl::string> GraphicsApis;
-		for (auto& Backend : EnumerateBackendModules())
-		{
-			GraphicsApis.push_back(eastl::move(Backend.mName));
-		}
-		if (auto Status = Registry->RegisterProvider(CreateArdaNativeCudaProvider(eastl::move(GraphicsApis))); !Status)
-		{
-			return {{}, eastl::move(Status)};
-		}
-		if (auto Status = Registry->RegisterProvider(CreateArdaNativeCudaInGraphicsProvider()); !Status)
-		{
-			return {{}, eastl::move(Status)};
-		}
-		FArdaNativeOperandDesc Operand;
+		const auto Desc = eastl::make_shared<const FArdaRuntimeNodeDesc>(Description);
+		auto Registry = eastl::make_shared<FArdaNativeComputeRegistry>(true);
+		FArdaNativeOperand Operand;
 		Operand.mId = Desc->mName;
-		Operand.mParameterSize = Desc->mParameterSize;
-		FArdaNativeCudaSourceDesc Source;
-		Source.mEntry = Entry.mValue;
-		for (const auto& Argument : Desc->mArguments)
+		Operand.mParameterSize = Desc->mLayout.mParameterSize;
+		Operand.mSignature = Desc->mKernel.mSignature;
+		Operand.mbRequiresRegisteredConversions = RequiresRegisteredConversions(*Desc);
+		if (!Operand.mbRequiresRegisteredConversions)
 		{
-			if (Argument.mAbi.mKind == EArdaCudaModuleArgumentKind::Buffer)
+			UseArdaNativeDirectResources(Operand);
+		}
+		FArdaNativeResourceSlotsCreator Slots;
+		for (size_t Index = 0; Index < Desc->mArguments.size(); ++Index)
+		{
+			const auto Kind = GetGraphicsBindingKind(*Desc, Index);
+			const auto& Argument = Desc->mArguments[Index];
+			if (Kind == EArdaNativeArgumentKind::Buffer)
 			{
-				Source.mPatches.push_back({static_cast<uint32_t>(Operand.mResources.size()), Argument.mAbi.mOffset, 1});
-				Operand.mResources.push_back({Argument.mName, EArdaRHIResourceType::Buffer, Argument.mAccess});
+				Slots.AddBuffer(Argument.mName, Argument.mAccess);
+			}
+			else if (Kind == EArdaNativeArgumentKind::Surface)
+			{
+				Slots.AddTexture(Argument.mName, Argument.mAccess, Argument.mFormat);
 			}
 		}
-		auto NativeSource = CreateArdaNativeCudaSource(eastl::move(Source));
-		if (!NativeSource)
+		Operand.mResources = Slots.Finalize();
+		auto Packaged = MakeArdaPackagedNativeOperand(Desc->mKernel, Desc->mLayout, eastl::move(Operand));
+		if (!Packaged)
 		{
-			return {{}, eastl::move(NativeSource.mStatus)};
+			return {{}, eastl::move(Packaged.mStatus)};
 		}
-		AddArdaNativeCudaVariants(Operand, {Desc->mEntryPoint, eastl::move(NativeSource.mValue), {}});
-		if (auto Status = Registry->RegisterOperand(eastl::move(Operand)); !Status)
+		if (auto Status = Registry->RegisterOperand(eastl::move(Packaged.mValue)); !Status)
 		{
 			return {{}, eastl::move(Status)};
 		}
@@ -260,34 +383,61 @@ namespace arda
 		Definition->mName = Desc->mName;
 		Definition->mVersion = Desc->mVersion;
 		Definition->mPortableDefinition = Portable.mValue;
-		Definition->mKind = EArdaDependencyNodeKind::Cuda;
+		Definition->mKind = EArdaDependencyNodeKind::Native;
+		Definition->mNativeRegistry = Registry;
+		Definition->mSelectNativeExecutionMode =
+		    [Desc, Registry](const FArdaNativeComputeContext& Context, eastl::string& ProviderId)
+		{
+			return Registry->QueryExecutionMode(Desc->mName.c_str(),
+			    Context,
+			    &ProviderId,
+			    [&](EArdaNativeComputeRoute Route,
+			        const IArdaNativeKernelSource*,
+			        const eastl::vector<EArdaRHIResourceState>& RequiredStates)
+			    {
+				    size_t ResourceIndex = 0;
+				    for (size_t Index = 0; Index < Desc->mArguments.size(); ++Index)
+				    {
+					    if (Desc->mLayout.mArguments[Index].mKind == EArdaNativeArgumentKind::Value)
+					    {
+						    continue;
+					    }
+					    const auto& Argument = Desc->mArguments[Index];
+					    const auto State =
+					        RequiredStates.empty() ? EArdaRHIResourceState::Unknown : RequiredStates[ResourceIndex];
+					    if (!AllowsArdaInductorNativeResourceState(Route, Argument.mAccess, Argument.mState, State))
+					    {
+						    return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+						        ("Runtime operand resource '" + Argument.mName +
+						            "' has an incompatible state for this route.")
+						            .c_str());
+					    }
+					    ++ResourceIndex;
+				    }
+				    return FArdaRHIStatus{};
+			    });
+		};
 		Definition->mParameterType = &ArdaDependencyParameterType<FArdaRuntimeNodeParameters>;
 		Definition->mPreparedParameterType = Definition->mParameterType;
-		Definition->mSerializeParameters = [](const void* Value, FArdaGraphArchiveWriter& Archive)
+		Definition->mSerializeParameters = [Desc](const void* Value, FArdaGraphArchiveWriter& Archive)
 		{
-			WriteRuntimeParameters(Archive, *static_cast<const FArdaRuntimeNodeParameters*>(Value));
+			WriteRuntimeParameters(Archive, *Desc, *static_cast<const FArdaRuntimeNodeParameters*>(Value));
 			return Archive.GetStatus();
 		};
 		Definition->mDeserializeParameters =
 		    [Desc](FArdaGraphArchiveReader& Archive) -> TArdaRHIResult<eastl::shared_ptr<const void>>
 		{
 			auto Parameters = eastl::make_shared<FArdaRuntimeNodeParameters>();
-			ReadRuntimeParameters(Archive, *Parameters);
+			ReadRuntimeParameters(Archive, *Desc, *Parameters);
 			auto Status = Archive.GetStatus() ? ValidateRuntimeParameters(*Desc, *Parameters) : Archive.GetStatus();
 			return {eastl::move(Parameters), eastl::move(Status)};
 		};
-		Definition->mGetRequirements = [Desc](const void* Value)
+		Definition->mGetRequirements = [](const void*)
 		{
-			const auto& Parameters = *static_cast<const FArdaRuntimeNodeParameters*>(Value);
-			FArdaDependencyNodeRequirements Requirements;
-			Requirements.mbRequireCuda = true;
-			Requirements.mMinCudaThreadsPerBlock = Parameters.mBlock[0] * Parameters.mBlock[1] * Parameters.mBlock[2];
-			Requirements.mMinCudaSharedMemoryBytes = Parameters.mSharedMemoryBytes;
-			return Requirements;
+			return FArdaDependencyNodeRequirements{};
 		};
-		Definition->mAddIntrinsicRequirements = [](FArdaDependencyNodeRequirements& Requirements)
+		Definition->mAddIntrinsicRequirements = [](FArdaDependencyNodeRequirements&)
 		{
-			Requirements.mbRequireCuda = true;
 		};
 		Definition->mResolveResources =
 		    [Desc](FArdaDependencyResourceContext& Context,
@@ -302,6 +452,24 @@ namespace arda
 			for (size_t Index = 0; Index < Parameters->mArguments.size(); ++Index)
 			{
 				auto& Argument = Parameters->mArguments[Index];
+				if (Argument.mSurface)
+				{
+					const auto* Resource = Context.Find(Argument.mSurface.GetHandle());
+					if (!Resource || !Resource->mbTexture || Argument.mMipLevel >= Resource->mTexture.mMipLevels)
+					{
+						return {{}, RuntimeInvalid("Runtime argument references an invalid graph texture mip.")};
+					}
+					if (Desc->mArguments[Index].mAccess != EArdaComputeAccess::Read)
+					{
+						if (auto Status =
+						        Context.Texture(Argument.mSurface, Desc->mArguments[Index].mName, Resource->mTexture);
+						    !Status)
+						{
+							return {{}, eastl::move(Status)};
+						}
+					}
+					continue;
+				}
 				if (!Argument.mBuffer)
 				{
 					continue;
@@ -338,9 +506,6 @@ namespace arda
 		{
 			const auto& Parameters = *static_cast<const FArdaRuntimeNodeParameters*>(Value);
 			FArdaDependencyKeyBuilder Key;
-			// The common attachment/revision contract separately retains and compares the immutable
-			// executable identity. Store invocation semantics here, as class-authored nodes do;
-			// duplicating an entire module into every key makes large compiled libraries quadratic.
 			Key.String(Name)
 			    .Value(Version)
 			    .Value(uint64_t(Parameters.mArguments.size()))
@@ -354,6 +519,10 @@ namespace arda
 				Key.Resource(Argument.mBuffer.GetHandle())
 				    .BufferRange(Argument.mRange)
 				    .Bytes(Argument.mValue.data(), Argument.mValue.size());
+				if (Argument.mSurface)
+				{
+					Key.Resource(Argument.mSurface.GetHandle()).Value(Argument.mMipLevel);
+				}
 			}
 			return Key.Build();
 		};
@@ -381,20 +550,27 @@ namespace arda
 				{
 					Result.mAccesses.push_back({Argument.mBuffer.GetHandle(),
 					    static_cast<EArdaDependencyAccess>(Desc->mArguments[Index].mAccess),
-					    EArdaRHIResourceState::UnorderedAccess,
+					    Desc->mArguments[Index].mState,
 					    Argument.mRange,
 					    {}});
+				}
+				else if (Argument.mSurface)
+				{
+					Result.mAccesses.push_back({Argument.mSurface.GetHandle(),
+					    static_cast<EArdaDependencyAccess>(Desc->mArguments[Index].mAccess),
+					    Desc->mArguments[Index].mState,
+					    {},
+					    {Argument.mMipLevel, 1}});
 				}
 			}
 			return {eastl::move(Result), {}};
 		};
-		Definition->mPrepareCuda = [Desc, Registry](FArdaDependencyExecutionContext& Context,
-		                               const void* Value,
-		                               FArdaCudaSequence& Sequence)
+		Definition->mPrepareNative = [Desc, Registry](FArdaDependencyExecutionContext& Context,
+		                                 const void* Value) -> TArdaRHIResult<FArdaNativeComputePlan>
 		{
 			const auto& Parameters = *static_cast<const FArdaRuntimeNodeParameters*>(Value);
 			FArdaNativeInvocation Invocation;
-			Invocation.mParameters.resize(Desc->mParameterSize, 0);
+			Invocation.mParameters.resize(Desc->mLayout.mParameterSize, 0);
 			Invocation.mLaunch.mSharedMemoryBytes = Parameters.mSharedMemoryBytes;
 			for (size_t Axis = 0; Axis < 3; ++Axis)
 			{
@@ -404,24 +580,40 @@ namespace arda
 			for (size_t Index = 0; Index < Parameters.mArguments.size(); ++Index)
 			{
 				const auto& Argument = Parameters.mArguments[Index];
-				const auto& Schema = Desc->mArguments[Index];
-				if (Schema.mAbi.mKind == EArdaCudaModuleArgumentKind::Buffer)
+				const auto& Abi = Desc->mLayout.mArguments[Index];
+				switch (GetGraphicsBindingKind(*Desc, Index))
+				{
+				case EArdaNativeArgumentKind::Buffer:
 				{
 					const auto Buffer = Context.GetBuffer(Argument.mBuffer.GetHandle());
 					if (!Buffer)
 					{
-						return RuntimeInvalid("Runtime kernel cannot resolve a declared buffer.");
+						return {{}, RuntimeInvalid("Runtime kernel cannot resolve a declared buffer.")};
 					}
 					Invocation.mResources.push_back({Buffer, Argument.mRange});
+					break;
 				}
-				else
+				case EArdaNativeArgumentKind::Surface:
 				{
-					std::memcpy(Invocation.mParameters.data() + Schema.mAbi.mOffset,
+					const auto Surface = Context.GetTexture(Argument.mSurface.GetHandle());
+					if (!Surface)
+					{
+						return {{}, RuntimeInvalid("Runtime kernel cannot resolve a declared texture.")};
+					}
+					Invocation.mResources.push_back({Surface, {}, Argument.mMipLevel});
+					break;
+				}
+				case EArdaNativeArgumentKind::Value:
+					std::memcpy(Invocation.mParameters.data() + Abi.mOffset,
 					    Argument.mValue.data(),
 					    Argument.mValue.size());
+					break;
 				}
 			}
-			return Context.AppendNativeCudaCompute(Sequence, *Registry, Desc->mName.c_str(), Invocation);
+			return Context.PrepareNativeCompute(*Registry,
+			    Desc->mName.c_str(),
+			    Invocation,
+			    EArdaNativeComputePreference::PreferNative);
 		};
 		return {eastl::move(Definition), {}};
 	}

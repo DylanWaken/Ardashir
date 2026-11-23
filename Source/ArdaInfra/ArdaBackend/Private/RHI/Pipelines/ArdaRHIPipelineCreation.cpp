@@ -4,7 +4,7 @@
 namespace arda::detail
 {
 	template <typename TDesc>
-	FArdaRHIStatus ValidatePipelineAttachments(const TDesc& Desc, const IArdaRHIDevice& Device)
+	FArdaRHIStatus ValidatePipelineAttachments(const TDesc& Desc, const IArdaRHIProviderDevice& Device)
 	{
 		const auto& Capabilities = Device.GetCapabilities();
 		if (Capabilities.mLimits.mMaxColorAttachments &&
@@ -48,7 +48,7 @@ namespace arda::detail
 			return Failure<FArdaRHIGraphicsPipelineRef>(eastl::move(Status));
 		}
 		FArdaProviderGraphicsPipelineCreateInfo Info{Desc};
-		if (auto Status = ValidatePipelineAttachments(Desc, *this); !Status)
+		if (auto Status = ValidatePipelineAttachments(Desc, *mDevice); !Status)
 		{
 			return Failure<FArdaRHIGraphicsPipelineRef>(Status);
 		}
@@ -133,7 +133,7 @@ namespace arda::detail
 		}
 
 		FArdaProviderMeshletPipelineCreateInfo Info{Desc};
-		if (auto Status = ValidatePipelineAttachments(Desc, *this); !Status)
+		if (auto Status = ValidatePipelineAttachments(Desc, *mDevice); !Status)
 		{
 			return Failure<FArdaRHIMeshletPipelineRef>(Status);
 		}

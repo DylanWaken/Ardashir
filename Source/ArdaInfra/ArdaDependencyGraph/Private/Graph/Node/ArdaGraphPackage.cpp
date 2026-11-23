@@ -4,7 +4,8 @@
 #include "Graph/DefaultNodes/ArdaGraphOperations.h"
 #include "Graph/DefaultNodes/ArdaMemoryNodes.h"
 #include "Graph/Node/ArdaGraphArchive.h"
-#include "Graph/Node/ArdaRuntimeNodeDefinition.h"
+#include "Graph/Node/ArdaLegacyRuntimeKernel.h"
+#include "Graph/DefaultNodes/ArdaMemoryNodes.h"
 #include <EASTL/algorithm.h>
 #include <EASTL/unordered_map.h>
 #include <EASTL/unordered_set.h>
@@ -50,49 +51,17 @@ namespace arda
 
 		FArdaRuntimeNodeDesc MakePackageFillDefinition()
 		{
-			constexpr char Source[] = R"ptx(.version 6.0
-.target sm_50
-.address_size 64
-.visible .entry ArdaPackageFill(.param .u64 output, .param .u64 count, .param .u32 pattern)
-{
- .reg .pred p;
- .reg .b32 a, b, c, shift, value;
- .reg .b64 index, size, pointer, address;
- mov.u32 a, %ctaid.x;
- mov.u32 b, %ntid.x;
- mov.u32 c, %tid.x;
- mul.wide.u32 index, a, b;
- cvt.u64.u32 address, c;
- add.u64 index, index, address;
- ld.param.u64 size, [count];
- setp.ge.u64 p, index, size;
- @p bra done;
- ld.param.u64 pointer, [output];
- add.u64 address, pointer, index;
- cvt.u32.u64 shift, index;
- and.b32 shift, shift, 3;
- shl.b32 shift, shift, 3;
- ld.param.u32 value, [pattern];
- shr.u32 value, value, shift;
- st.global.u8 [address], value;
-done:
- ret;
-}
-)ptx";
 			FArdaRuntimeNodeDesc Desc;
 			Desc.mName = "arda.runtime.fill.v1";
-			Desc.mModule.mFormat = EArdaCudaModuleFormat::Ptx;
-			Desc.mModule.mBuild.mName = Desc.mName;
-			Desc.mModule.mBuild.mIdentity = Desc.mName;
-			Desc.mModule.mBuild.mArchitectures.push_back({50, false});
-			Desc.mModule.mImage.assign(Source, Source + sizeof(Source) - 1);
-			Desc.mEntryPoint = "ArdaPackageFill";
-			Desc.mParameterSize = 24;
-			Desc.mParameterAlignment = 8;
-			Desc.mArguments = {
-			    {"Destination", {0, 8, 8, EArdaCudaModuleArgumentKind::Buffer}, EArdaComputeAccess::Write},
-			    {"Count", {8, 8, 8, EArdaCudaModuleArgumentKind::Value}, EArdaComputeAccess::Read},
-			    {"Pattern", {16, 4, 4, EArdaCudaModuleArgumentKind::Value}, EArdaComputeAccess::Read}};
+			Desc.mKernel = {"arda-model-transfers-v1", "cuda", "fill", "fill-v1"};
+			Desc.mLayout.mParameterSize = 24;
+			Desc.mLayout.mParameterAlignment = 8;
+			Desc.mArguments = {{"Destination", EArdaComputeAccess::Write},
+			    {"Count", EArdaComputeAccess::Read},
+			    {"Pattern", EArdaComputeAccess::Read}};
+			Desc.mLayout.mArguments = {{0, 8, 8, EArdaNativeArgumentKind::Buffer},
+			    {8, 8, 8, EArdaNativeArgumentKind::Value},
+			    {16, 4, 4, EArdaNativeArgumentKind::Value}};
 			return Desc;
 		}
 
@@ -108,46 +77,17 @@ done:
 
 		FArdaRuntimeNodeDesc MakePackageCopyDefinition()
 		{
-			constexpr char Source[] = R"ptx(.version 6.0
-.target sm_50
-.address_size 64
-.visible .entry ArdaPackageCopy(.param .u64 source, .param .u64 destination, .param .u64 count)
-{
- .reg .pred p;
- .reg .b32 a, b, c, value;
- .reg .b64 index, size, src, dst, temporary;
- mov.u32 a, %ctaid.x;
- mov.u32 b, %ntid.x;
- mov.u32 c, %tid.x;
- mul.wide.u32 index, a, b;
- cvt.u64.u32 temporary, c;
- add.u64 index, index, temporary;
- ld.param.u64 size, [count];
- setp.ge.u64 p, index, size;
- @p bra done;
- ld.param.u64 src, [source];
- ld.param.u64 dst, [destination];
- add.u64 src, src, index;
- add.u64 dst, dst, index;
- ld.global.u8 value, [src];
- st.global.u8 [dst], value;
-done:
- ret;
-}
-)ptx";
 			FArdaRuntimeNodeDesc Desc;
 			Desc.mName = "arda.runtime.copy.v1";
-			Desc.mModule.mFormat = EArdaCudaModuleFormat::Ptx;
-			Desc.mModule.mBuild.mName = Desc.mName;
-			Desc.mModule.mBuild.mIdentity = Desc.mName;
-			Desc.mModule.mBuild.mArchitectures.push_back({50, false});
-			Desc.mModule.mImage.assign(Source, Source + sizeof(Source) - 1);
-			Desc.mEntryPoint = "ArdaPackageCopy";
-			Desc.mParameterSize = 24;
-			Desc.mParameterAlignment = 8;
-			Desc.mArguments = {{"Source", {0, 8, 8, EArdaCudaModuleArgumentKind::Buffer}, EArdaComputeAccess::Read},
-			    {"Destination", {8, 8, 8, EArdaCudaModuleArgumentKind::Buffer}, EArdaComputeAccess::Write},
-			    {"Count", {16, 8, 8, EArdaCudaModuleArgumentKind::Value}, EArdaComputeAccess::Read}};
+			Desc.mKernel = {"arda-model-transfers-v1", "cuda", "copy", "copy-v1"};
+			Desc.mLayout.mParameterSize = 24;
+			Desc.mLayout.mParameterAlignment = 8;
+			Desc.mArguments = {{"Source", EArdaComputeAccess::Read},
+			    {"Destination", EArdaComputeAccess::Write},
+			    {"Count", EArdaComputeAccess::Read}};
+			Desc.mLayout.mArguments = {{0, 8, 8, EArdaNativeArgumentKind::Buffer},
+			    {8, 8, 8, EArdaNativeArgumentKind::Buffer},
+			    {16, 8, 8, EArdaNativeArgumentKind::Value}};
 			return Desc;
 		}
 	}
@@ -170,7 +110,7 @@ done:
 			    Size <= mBuffers[Buffer].mByteSize - Offset;
 		}
 
-		FArdaRHIStatus Validate() const
+		FArdaRHIStatus Validate(bool bLegacyCuda) const
 		{
 			if (mName.empty() || mBuffers.empty() || mCommands.empty())
 			{
@@ -240,21 +180,28 @@ done:
 					for (size_t Axis = 0; Axis < 3; ++Axis)
 					{
 						if (!Command.mParameters.mGrid[Axis] || !Command.mParameters.mBlock[Axis] ||
-						    Command.mParameters.mBlock[Axis] > 1024)
+						    (bLegacyCuda && Command.mParameters.mBlock[Axis] > 1024))
 						{
 							return PackageInvalid("Package dispatch has invalid launch dimensions.");
 						}
-						Threads *= Command.mParameters.mBlock[Axis];
+						if (bLegacyCuda)
+						{
+							Threads *= Command.mParameters.mBlock[Axis];
+						}
 					}
-					if (Threads > 1024)
+					if (bLegacyCuda && Threads > 1024)
 					{
 						return PackageInvalid("Package dispatch exceeds the CUDA thread block limit.");
 					}
 					for (size_t Index = 0; Index < Command.mArguments.size(); ++Index)
 					{
 						const auto& Argument = Command.mArguments[Index];
-						const auto& Schema = mKernels[Command.mKernel].mArguments[Index];
-						if (Schema.mAbi.mKind == EArdaCudaModuleArgumentKind::Buffer)
+						const auto& Kernel = mKernels[Command.mKernel];
+						const auto& Schema = Kernel.mArguments[Index];
+						const auto& Abi = Kernel.mLayout.mArguments[Index];
+						if (Schema.mResourceType == EArdaRHIResourceType::Buffer ||
+						    (Schema.mResourceType == EArdaRHIResourceType::Count &&
+						        Abi.mKind == EArdaNativeArgumentKind::Buffer))
 						{
 							if (!HasRange(Argument.mBuffer, Argument.mOffset, Argument.mSize) ||
 							    !Argument.mValue.empty())
@@ -266,8 +213,8 @@ done:
 								return PackageInvalid("Package kernels cannot overwrite checkpoint storage.");
 							}
 						}
-						else if (Argument.mBuffer != UINT32_MAX || Argument.mOffset || Argument.mSize ||
-						    Argument.mValue.size() != Schema.mAbi.mSize)
+						else if (Abi.mKind != EArdaNativeArgumentKind::Value || Argument.mBuffer != UINT32_MAX ||
+						    Argument.mOffset || Argument.mSize || Argument.mValue.size() != Abi.mSize)
 						{
 							return PackageInvalid("Package scalar argument has an incompatible ABI representation.");
 						}
@@ -351,14 +298,14 @@ done:
 		Archive.ReadBytes(Magic, 8);
 		uint32_t Version = 0;
 		Archive.Read(Version);
-		if (Magic != eastl::string("ARDAGPU\0", 8) || (Version != 1 && Version != 2))
+		if (Magic != eastl::string("ARDAGPU\0", 8) || (Version < 1 || Version > 3))
 		{
 			return {{}, PackageInvalid("Unsupported compiled graph package format.")};
 		}
 		auto Impl = eastl::make_shared<FArdaImpl>();
 		Archive.Read(Impl->mName);
 		eastl::vector<FArdaCudaModuleDesc> Modules;
-		const auto ModuleCount = Archive.ReadCount();
+		const auto ModuleCount = Version < 3 ? Archive.ReadCount() : 0;
 		for (size_t Index = 0; Index < ModuleCount && Archive.GetStatus(); ++Index)
 		{
 			FArdaCudaModuleDesc Module;
@@ -394,30 +341,48 @@ done:
 			    Tensor.mDesc.mByteOffset);
 			Impl->mTensors.push_back(eastl::move(Tensor));
 		}
+
+		struct FArdaLegacyKernel
+		{
+			uint32_t mModule = 0;
+			eastl::string mEntryPoint;
+		};
+
+		eastl::vector<FArdaLegacyKernel> LegacyKernels;
 		const auto KernelCount = Archive.ReadCount();
 		for (size_t Index = 0; Index < KernelCount && Archive.GetStatus(); ++Index)
 		{
+			if (Version == 3)
+			{
+				eastl::string Definition;
+				Archive.Read(Definition);
+				FArdaGraphArchiveReader Format(Definition);
+				const auto DefinitionVersion = Format.ReadInteger(4);
+				if (DefinitionVersion < 2 || DefinitionVersion > 4)
+				{
+					return {{}, PackageInvalid("Package kernels require a portable kernel reference.")};
+				}
+				auto Decoded = FArdaRuntimeNodeDefinition::Deserialize(Definition);
+				if (!Decoded)
+				{
+					return {{}, Decoded.mStatus};
+				}
+				Impl->mKernels.push_back(eastl::move(Decoded.mValue));
+				continue;
+			}
 			FArdaRuntimeNodeDesc Kernel;
-			uint32_t Module = 0;
-			Archive.Fields(Kernel.mName, Module, Kernel.mEntryPoint, Kernel.mParameterSize, Kernel.mParameterAlignment);
-			if (Module >= Modules.size())
+			FArdaLegacyKernel Legacy;
+			Archive.Fields(Kernel.mName,
+			    Legacy.mModule,
+			    Legacy.mEntryPoint,
+			    Kernel.mLayout.mParameterSize,
+			    Kernel.mLayout.mParameterAlignment);
+			if (Legacy.mModule >= Modules.size())
 			{
 				return {{}, PackageInvalid("Package kernel references an unknown module.")};
 			}
-			Kernel.mModule = Modules[Module];
-			const auto ArgumentCount = Archive.ReadCount();
-			for (size_t ArgumentIndex = 0; ArgumentIndex < ArgumentCount && Archive.GetStatus(); ++ArgumentIndex)
-			{
-				FArdaRuntimeNodeArgumentDesc Argument;
-				uint32_t Offset = 0;
-				uint32_t Size = 0;
-				uint32_t Alignment = 0;
-				Archive.Fields(Argument.mName, Argument.mAbi.mKind, Argument.mAccess, Offset, Size, Alignment);
-				Argument.mAbi.mOffset = Offset;
-				Argument.mAbi.mSize = Size;
-				Argument.mAbi.mAlignment = Alignment;
-				Kernel.mArguments.push_back(eastl::move(Argument));
-			}
+			graph_detail::ReadLegacyKernelArguments(Archive, Kernel);
+			LegacyKernels.push_back(eastl::move(Legacy));
 			Impl->mKernels.push_back(eastl::move(Kernel));
 		}
 		const auto CommandCount = Archive.ReadCount();
@@ -457,7 +422,7 @@ done:
 			}
 			Impl->mCommands.push_back(eastl::move(Command));
 		}
-		if (Version == 2)
+		if (Version >= 2)
 		{
 			const auto SlotCount = Archive.ReadCount();
 			for (size_t Index = 0; Index < SlotCount && Archive.GetStatus(); ++Index)
@@ -476,7 +441,7 @@ done:
 		{
 			return {{}, eastl::move(Status)};
 		}
-		if (auto Status = Impl->Validate(); !Status)
+		if (auto Status = Impl->Validate(Version < 3); !Status)
 		{
 			return {{}, eastl::move(Status)};
 		}
@@ -489,6 +454,17 @@ done:
 			Slot.mStorageByteSize = Impl->mBuffers[Slot.mBuffer].mByteSize;
 		}
 		auto Definitions = Impl->mKernels;
+		for (size_t Index = 0; Index < LegacyKernels.size(); ++Index)
+		{
+			const auto& Legacy = LegacyKernels[Index];
+			if (auto Status = graph_detail::ImportLegacyRuntimeKernel(Definitions[Index],
+			        Modules[Legacy.mModule],
+			        Legacy.mEntryPoint);
+			    !Status)
+			{
+				return {{}, eastl::move(Status)};
+			}
+		}
 		if (eastl::any_of(Impl->mCommands.begin(),
 		        Impl->mCommands.end(),
 		        [](const auto& Command)
@@ -546,6 +522,7 @@ done:
 		{
 			return {{}, PackageInvalid("Package file is unreadable or exceeds the archive size limit.")};
 		}
+		AddArdaNativeKernelDirectory(std::filesystem::absolute(Path).parent_path());
 		return Deserialize(Data);
 	}
 
@@ -707,7 +684,6 @@ done:
 				FArdaRHIBufferDesc Desc;
 				Desc.mByteSize = mImpl->mBuffers[Index].mByteSize;
 				Desc.mUsage = EArdaRHIBufferUsage::UnorderedAccess | EArdaRHIBufferUsage::ShaderResource;
-				Desc.mbCudaInterop = true;
 				Buffers[Index] = mImpl->mBuffers[Index].mInitializer.empty()
 				    ? AllocateBuffer(Edit, Desc, Name + "/" + mImpl->mBuffers[Index].mName)
 				    : AllocateInitializedBuffer(Edit,
@@ -755,6 +731,16 @@ done:
 				    {{}, {}, PackageScalar(Command.mByteSize, 8)},
 				    {{}, {}, PackageScalar(Pattern, 4)}};
 				Operation = Edit.Invoke(mImpl->mFillDefinition, eastl::move(Parameters), OperationName);
+			}
+			else if (Buffers[Command.mSource].GetHandle() != Buffers[Command.mDestination].GetHandle())
+			{
+				FArdaMemoryCopyBufferParameters Parameters;
+				Parameters.mSource = Buffers[Command.mSource].GetHandle();
+				Parameters.mDestination = Buffers[Command.mDestination].GetHandle();
+				Parameters.mSourceOffset = BaseOffsets[Command.mSource] + Command.mSourceOffset;
+				Parameters.mDestinationOffset = BaseOffsets[Command.mDestination] + Command.mDestinationOffset;
+				Parameters.mByteSize = Command.mByteSize;
+				Operation = CopyBuffer(Edit, eastl::move(Parameters), OperationName);
 			}
 			else
 			{

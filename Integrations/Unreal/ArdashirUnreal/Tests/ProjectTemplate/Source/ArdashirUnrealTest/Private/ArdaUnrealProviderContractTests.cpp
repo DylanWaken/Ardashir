@@ -36,6 +36,21 @@ namespace arda
 			    TestTrue(TEXT("Initialization preserves the shared device registry"),
 			        Device.Get() == GetUnrealBackendDevice().Get());
 
+#if __has_include("RHI/Config/ArdaBackendFeatures.h")
+			    if (const auto Features = Device->GetFeatures())
+			    {
+				    TestTrue(TEXT("The host graphics queue is supported"), Features->Supports("queue.graphics"));
+				    TestFalse(TEXT("No independent compute queue is advertised"), Features->Supports("queue.compute"));
+				    TestFalse(TEXT("No independent copy queue is advertised"), Features->Supports("queue.copy"));
+				    TestFalse(TEXT("Unsupported ray pipelines are not advertised"),
+				        Features->Supports("ray-tracing.pipeline"));
+				    TestFalse(TEXT("Unsupported placed heaps are not advertised"), Features->Supports("memory.explicit-heap"));
+			    }
+			    else
+			    {
+				    AddError(TEXT("The Unreal backend did not publish a feature list"));
+			    }
+#else
 			    const FArdaRHICapabilities& Capabilities = Device->GetCapabilities();
 			    TestTrue(TEXT("The host graphics queue is supported"),
 			        Capabilities.IsQueueSupported(EArdaRHIQueueType::Graphics));
@@ -46,6 +61,7 @@ namespace arda
 			    TestFalse(TEXT("Unsupported ray pipelines are not advertised"),
 			        Capabilities.mRayTracing.mbPipelineShaders);
 			    TestFalse(TEXT("Unsupported placed heaps are not advertised"), Capabilities.mbHeaps);
+#endif
 
 			    const auto OutsideList = Device->CreateCommandList(EArdaRHIQueueType::Graphics, true);
 			    TestFalse(TEXT("Recording cannot begin without a borrowed Unreal list"),

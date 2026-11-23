@@ -24,6 +24,10 @@
 
 namespace arda
 {
+	// ================================
+	// Graphics pipeline descriptor
+	// ================================
+
 	/** Describes graphics pipeline desc. */
 	struct FArdaRHIGraphicsPipelineDesc
 	{
@@ -83,6 +87,10 @@ namespace arda
 		}
 	};
 
+	// ================================
+	// Graphics pipeline resource and draw state
+	// ================================
+
 	/** Interface for graphics pipeline. */
 	class IArdaRHIGraphicsPipeline : public virtual IArdaRHIResource
 	{
@@ -116,6 +124,10 @@ namespace arda
 		/** Stores the scissors. */
 		eastl::vector<FArdaRHIRect> mScissors;
 	};
+
+	// ================================
+	// Descriptor hashing and validation
+	// ================================
 
 	/**
      * Tests for the requested h value.

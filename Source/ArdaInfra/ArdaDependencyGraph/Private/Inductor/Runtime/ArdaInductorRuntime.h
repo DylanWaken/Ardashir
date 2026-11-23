@@ -65,6 +65,11 @@ namespace arda
 		static FArdaRHIStatus FinalizeFrameBoundary(FArdaInductorFrame& Storage,
 		    const eastl::vector<uint32_t>& OrderedAliasedImages,
 		    const eastl::unordered_map<uint32_t, FArdaInductorCommandHandle>& ImageRetirements);
+		static void RecordLegacyCudaNodes(const eastl::vector<FArdaGraphNodeHandle>& Nodes,
+		    FArdaDependencyExecutionContext& Context,
+		    const eastl::shared_ptr<FArdaCudaGraphCache>& CudaCache,
+		    const eastl::shared_ptr<FArdaCudaTimingQuery>& CudaTimer,
+		    bool SampleTiming);
 		static FArdaInductorRecordFunction MakeNodeRecorder(const eastl::vector<FArdaGraphNodeHandle>& Nodes,
 		    bool bCuda,
 		    eastl::shared_ptr<FArdaCudaGraphCache> CudaCache,

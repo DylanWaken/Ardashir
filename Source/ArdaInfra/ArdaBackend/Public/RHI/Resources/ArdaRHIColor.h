@@ -8,6 +8,10 @@
 
 namespace arda
 {
+	// ================================
+	// RGBA color
+	// ================================
+
 	/** Describes color. */
 	struct FArdaRHIColor
 	{

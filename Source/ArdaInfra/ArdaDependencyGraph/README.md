@@ -15,18 +15,38 @@ operations.
 
 ## Runtime kernels, tensor ports and model packages
 
-Class-authored operations and imported CUDA kernels use the same registry, graph
-edits, dependency analysis, resource planning and executor. Applications can keep
-using `TArdaNodeDefinition` and named callables. Imported kernels use
-[`FArdaRuntimeNodeDefinition`](Public/Graph/Node/ArdaRuntimeNodeDefinition.h): an
-immutable descriptor supplies PTX/cubin, entry point, target, scalar/buffer ABI and
-declared access modes. Invocation supplies scalar bytes, graph buffer ranges and
-launch dimensions. Registering a library is atomic; repeated registration requires
-identical definitions. No C++ operation class is generated for each model operator.
+Class-authored operations and imported native kernels use the same registry, graph
+edits, dependency analysis, resource planning and executor. A class-authored
+node can register a `FArdaNativeOperand` with ordered native variants and shader
+fallbacks. For imported kernels, the immutable
+[`FArdaRuntimeNodeDefinition`](Public/Graph/Node/ArdaRuntimeNodeDefinition.h)
+descriptor supplies a library/provider/kernel/signature key, argument layout and
+declared resource accesses. Invocation supplies scalar bytes, graph resource views
+and launch dimensions. The provider resolves its payload from a `.ardakernels`
+library when the graph selects the route.
+
+Register an operand's `mGraphicsToNative` and `mNativeToGraphics` callbacks for
+work that converts resource views at the boundary. Declare the original graphics
+bindings and their entry and return states in the graph schema. Inductor records
+the first conversion before native dispatch and the second before subsequent
+graphics passes consume the results. A shader fallback receives the original
+graphics bindings. A saved runtime node that uses custom conversions requires
+the matching operand registration to select its native route on reload.
+
+`Edit.Commit()` checks that native compute operands used by the graph have an
+eligible implementation on the target device. It uses the active backend device
+when the graph has no explicit device. An eligible shader fallback satisfies the
+check. A rejected edit leaves the published graph unchanged. Offline archive
+loading preserves the reference schema. A device-less subgraph builder stays
+deferred until preprocessing, so bind a target device for commit-time validation
+of native compute operands created by that builder.
 
 [`FArdaGraphPackage`](Public/Graph/Node/ArdaGraphPackage.h) loads an `.ardagpu` model
 descriptor containing a reusable subgraph recipe and named typed state slots.
-`LoadStateDict` loads a separate `.ardastate` checkpoint; `Invoke` joins the loaded
+Deploy version 3 `.ardagpu` descriptors with the `.ardakernels` sidecars listed
+in the export manifest. `Load` searches for them beside the descriptor. Legacy
+versions 1 and 2 with embedded CUDA payloads remain readable.
+`LoadStateDict` loads a separate `.ardastate` checkpoint, and `Invoke` joins the loaded
 dispatch/fill/copy program into the caller's edit. Weights and graph constants use
 the general `AllocateInitializedBuffer` mechanism, which initializes
 persistent storage once when a new physical allocation is prepared. Model inference
@@ -73,9 +93,9 @@ operations participate in normal parent-graph preprocessing and scheduling.
 
 | Area | Implemented | Remaining work |
 | --- | --- | --- |
-| Runtime definitions | Immutable ABI-described kernels, atomic registration, driver module loading and shared native modules | More execution providers and a shared code-asset table in graph archives |
+| Runtime definitions | Immutable key and argument layout, shared kernel libraries and provider-owned module loading | Broader model export and device coverage |
 | Tensor metadata | Backend dtype, dimensions, strides and byte offsets; graph views share buffer storage; static dense FP32/FP16/BF16/FP8/INT8/INT32 export | Dynamic dimensions, arbitrary strided exported ports and broader operator coverage |
-| Checkpoints and archives | Separate named state dicts, immutable loaded instances and portable runtime definitions. Graph archive v4 reads v2 and v3 | Larger/streamed weight assets and migration tooling |
+| Checkpoints and archives | Separate named state dicts, immutable loaded instances and portable runtime definitions. Graph archive v4 reads v2 and v3. Model package v3 references kernel sidecars | Larger and streamed weight assets |
 | Offline model export | Supported static ONNX lowered to standalone CUDA kernels; pretrained OIDN and NPPD examples | Universal PyTorch/operator coverage, dynamic shapes and data-dependent host control flow |
 | Graphics integration | Cornell rendering, feature packing, CUDA inference and presentation in one graph; temporal state feedback | Moving-camera motion/reprojection in the Cornell demonstration |
 
@@ -93,13 +113,13 @@ runtime variant selector. Select a compatible package in the application and val
 it on the deployment GPU. PTX may be JIT-compiled by the installed driver; a declared
 target is not proof of compatibility with every GPU or driver.
 
-Package and graph archive readers currently cap input at 512 MiB. A package stores
-each module once and the CUDA provider shares native modules, but each expanded
-portable runtime definition still carries its code in graph serialization. A saved
-expanded graph can therefore be much larger than its original descriptor. Named
-model state is externalized before compilation and can be replaced without changing
-the descriptor. Topology, static input shapes, dtypes or frozen configuration changes
-require a new export. Legacy version-one packages still load as embedded snapshots.
+Package and graph archive readers currently cap input at 512 MiB. An expanded graph
+archive stores kernel keys, layouts and bindings. Deploy its kernel libraries
+alongside the graph or add their location with `AddArdaNativeKernelDirectory`.
+Saving a graph writes generated kernel libraries beside the graph, including
+libraries converted from a legacy archive. Named model state is externalized
+before compilation and can be replaced without changing the descriptor. Topology,
+static input shapes, dtypes and frozen configuration changes require a new export.
 
 The installed offline Python package exposes an ONNX-style call:
 `arda.export(model, args=(), f=None, *, kwargs=None, target_archs=("sm_80",), ...)`.
@@ -208,6 +228,10 @@ return Loaded.mValue->Compile();
 the same format in memory. The existing `FArdaGraphSerialization` service remains
 available and shares the same implementation. Save uses the
 backend's shared atomic-write helper and Load uses its binary-read helper.
+Saving to a new directory stages available referenced kernel libraries beside
+the archive through `StageArdaNativeKernelLibrary`. It copies deployed libraries
+or writes sidecars from registered in-memory entries. A graph can resolve native
+kernels from these sidecars after loading from the new location.
 Archives contain resource declarations, registered node type names and versions,
 public parameters, connections, and registered rule options. Preprocessed graphs
 retain their transformed topology and culling annotations. Nested bodies in an

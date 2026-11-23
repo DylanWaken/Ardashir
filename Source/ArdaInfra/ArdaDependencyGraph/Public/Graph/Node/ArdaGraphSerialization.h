@@ -19,17 +19,21 @@ namespace arda
 		/** Encode a closed construction as a deterministic binary string. */
 		[[nodiscard]] static TArdaRHIResult<eastl::string> Serialize(const FArdaDependencyGraph& Graph);
 		/** Restore into a new graph and queue its construction atomically. Native class definitions must be registered;
-		 * portable kernel definitions are embedded and registered after the complete archive passes validation.
+		 * Runtime kernel references and binding schemas are restored from the archive.
 		 * incompatible versions and malformed references fail without publishing any partial graph.
 		 */
 		[[nodiscard]] static TArdaRHIResult<eastl::unique_ptr<FArdaDependencyGraph>> Deserialize(
 		    const eastl::string& Data,
 		    FArdaRHIDeviceRef Device = {});
-		/** Atomically replace Path using backend FileOperations after successful serialization. */
+		/** Save the graph archive and stage available kernel libraries beside it. */
 		[[nodiscard]] static FArdaRHIStatus Save(const FArdaDependencyGraph& Graph, const std::filesystem::path& Path);
 		/** Read Path using backend FileOperations and restore its closed construction. */
 		[[nodiscard]] static TArdaRHIResult<eastl::unique_ptr<FArdaDependencyGraph>> Load(
 		    const std::filesystem::path& Path,
 		    FArdaRHIDeviceRef Device = {});
+
+	private:
+		static TArdaRHIResult<eastl::string> Serialize(const FArdaDependencyGraph& Graph,
+		    eastl::vector<eastl::string>* ReferencedLibraries);
 	};
 }

@@ -102,6 +102,7 @@ namespace arda
 		eastl::unordered_set<uint32_t> Emitted;
 		eastl::unordered_map<uint32_t, FArdaBatchAccess> Accesses;
 		eastl::vector<uint8_t> PreviousKey;
+		eastl::string PreviousProvider;
 		EArdaRHIQueueType PreviousQueue{};
 		for (size_t Position = 0; Position < Result.mExecutionOrder.size(); ++Position)
 		{
@@ -124,6 +125,7 @@ namespace arda
 					Emitted.insert(Member.GetIndex());
 				}
 				PreviousKey.clear();
+				PreviousProvider.clear();
 				Accesses.clear();
 				continue;
 			}
@@ -132,8 +134,22 @@ namespace arda
 			{
 				return Key.mStatus;
 			}
-			bool bJoin = !Key.mValue.empty() && Key.mValue == PreviousKey &&
-			    Result.mQueues[Position] == PreviousQueue && !Boundaries.count(Handle.GetIndex());
+			const auto Queue = Result.mQueues[Position];
+			eastl::string Provider;
+			const bool bNative = Node.mDefinition->mKind == EArdaDependencyNodeKind::Native;
+			if (bNative)
+			{
+				Key.mValue.clear();
+				const auto& Route = State.mCompile.mNodes.at(Handle).mNativeRoutes[GetArdaRHIQueueIndex(Queue)];
+				if (Route.mSelection && Route.mSelection.mValue == EArdaNativeExecutionMode::ContextSwitching)
+				{
+					Provider = Route.mProviderId;
+				}
+			}
+			const bool Compatible = bNative
+			    ? !Provider.empty() && Provider == PreviousProvider
+			    : PreviousProvider.empty() && !Key.mValue.empty() && Key.mValue == PreviousKey;
+			bool bJoin = Compatible && Queue == PreviousQueue && !Boundaries.count(Handle.GetIndex());
 			for (const auto& Access : State.GetNodeDescription(Node).mAccesses)
 			{
 				const auto& Resource = State.mResources[Access.mResource.mIndex];
@@ -142,6 +158,7 @@ namespace arda
 				{
 					bJoin = false;
 					Key.mValue.clear();
+					Provider.clear();
 				}
 				const auto Existing = Accesses.find(Access.mResource.mIndex);
 				if (!bJoin || Existing == Accesses.end())
@@ -202,7 +219,8 @@ namespace arda
 				}
 			}
 			PreviousKey = eastl::move(Key.mValue);
-			PreviousQueue = Result.mQueues[Position];
+			PreviousProvider = eastl::move(Provider);
+			PreviousQueue = Queue;
 		}
 		return {};
 	}

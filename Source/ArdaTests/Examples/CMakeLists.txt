@@ -10,3 +10,7 @@ endif()
 if(ARDASHIR_BUILD_PIXEL_SORT)
     add_subdirectory(PixelSort)
 endif()
+
+if(_ardashir_cig_operand_example)
+    add_subdirectory(CiGOperand)
+endif()

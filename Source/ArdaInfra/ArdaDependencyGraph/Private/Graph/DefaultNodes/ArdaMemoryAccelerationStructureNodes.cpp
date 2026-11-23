@@ -44,7 +44,7 @@ namespace arda
 	FArdaDependencyNodeRequirements FArdaMemoryCopyAccelerationStructureNode::GetRequirements(const FArdaParameters&)
 	{
 		FArdaDependencyNodeRequirements Requirements;
-		Requirements.mFeatures.mbRequireAccelerationStructures = true;
+		Requirements.mFeatures.Require("ray-tracing.acceleration-structure");
 		return Requirements;
 	}
 
@@ -76,8 +76,8 @@ namespace arda
 	FArdaDependencyNodeRequirements FArdaMemoryCompactAccelerationStructureNode::GetRequirements(const FArdaParameters&)
 	{
 		FArdaDependencyNodeRequirements Requirements;
-		Requirements.mFeatures.mbRequireAccelerationStructures = true;
-		Requirements.mFeatures.mbRequireAccelerationStructureCompaction = true;
+		Requirements.mFeatures.Require("ray-tracing.acceleration-structure");
+		Requirements.mFeatures.Require("ray-tracing.acceleration-structure-compaction");
 		return Requirements;
 	}
 

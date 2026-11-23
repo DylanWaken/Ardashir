@@ -3,6 +3,9 @@
  */
 #pragma once
 
+#include <mutex>
+
+#include "RHI/Config/ArdaCudaConfig.h"
 #include "RHI/Config/ArdaRHICapabilities.h"
 #include "RHI/Device/ArdaRHIDiagnostics.h"
 #include "RHI/Interop/ArdaRHINativeResourceImports.h"
@@ -19,6 +22,10 @@
 
 namespace arda
 {
+	// ================================
+	// Device statistics
+	// ================================
+
 	/** Sizes of the bounded descriptor caches owned by a device. */
 	struct FArdaRHICacheStats
 	{
@@ -60,10 +67,31 @@ namespace arda
 		}
 	};
 
+	// ================================
+	// RHI device interface
+	// ================================
+
+	struct FArdaNativeDeviceProviders;
+
 	/** Interface for device. */
 	class IArdaRHIDevice : public virtual IArdaRHIResource
 	{
+		friend class FArdaNativeComputeRegistry;
+		mutable std::mutex mNativeProviderMutex;
+		mutable eastl::shared_ptr<FArdaNativeDeviceProviders> mNativeProviders;
+
+	protected:
+		/** Provider-side operational details used by resource and command validation. */
+		[[nodiscard]] virtual const FArdaRHICapabilities& GetCapabilities() const noexcept = 0;
+
+		/** Release provider state after GPU completion while the graphics device is still alive. */
+		void ReleaseNativeComputeContexts() { mNativeProviders.reset(); }
+
 	public:
+		// ================================
+		// Capabilities and diagnostics
+		// ================================
+
 		/** Registered graphics backend that created this device. Custom facades may return an empty name. */
 		[[nodiscard]] virtual const char* GetBackendName() const noexcept
 		{
@@ -86,6 +114,12 @@ namespace arda
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Compute pipeline extension unavailable.");
 		}
 
+		/** Check whether this device exposes an extension, independently of shader arguments. */
+		[[nodiscard]] virtual FArdaRHIStatus CheckComputePipelineExtensionAvailability(const char*) const
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Compute pipeline extension unavailable.");
+		}
+
 		/** Reads this device's qualified CUDA launch mode, architecture, limits and surface support.
          * @return An owned snapshot. A false boolean conversion means no CUDA launch mode;
          * mUnavailableReason explains why. Surface support and its diagnostic are independent.
@@ -99,11 +133,36 @@ namespace arda
 			return {};
 		}
 
-		/**
-         * Returns the capabilities.
-         * @return A reference to the requested value.
-         */
-		[[nodiscard]] virtual const FArdaRHICapabilities& GetCapabilities() const noexcept = 0;
+		/** Immutable Arda features for this device. Startup, graph and operand requirements read the same values. */
+		[[nodiscard]] virtual FArdaBackendFeatureListRef GetFeatures() const
+		{
+			return GetCapabilities().GetBackendFeatureList();
+		}
+
+		/** Dimensions, alignment and binding limits used to describe resources and dispatches. */
+		[[nodiscard]] const FArdaRHIDeviceLimits& GetLimits() const noexcept { return GetCapabilities().mLimits; }
+
+		/** Native queue family index used for resource ownership transfers. */
+		[[nodiscard]] uint32_t GetQueueFamily(EArdaRHIQueueType Queue) const noexcept
+		{
+			return GetCapabilities().mQueues.GetFamily(Queue);
+		}
+
+		/** Checks the published queue capability for the requested scheduling class. */
+		[[nodiscard]] bool IsQueueSupported(EArdaRHIQueueType Queue) const
+		{
+			constexpr const char* Names[] = {"queue.graphics", "queue.compute", "queue.copy"};
+			const auto Index = GetArdaRHIQueueIndex(Queue);
+			return Index < ArdaRHIQueueTypeCount && GetFeatures()->Supports(Names[Index]);
+		}
+
+		/** Significant bits in a timestamp written by this queue. Zero indicates an unavailable timestamp. */
+		[[nodiscard]] uint32_t GetTimestampValidBits(EArdaRHIQueueType Queue) const
+		{
+			constexpr const char* Names[] = {"queue.graphics.timestamp-bits", "queue.compute.timestamp-bits", "queue.copy.timestamp-bits"};
+			const auto Index = GetArdaRHIQueueIndex(Queue);
+			return Index < ArdaRHIQueueTypeCount ? static_cast<uint32_t>(GetFeatures()->GetValueOr(Names[Index], 0)) : 0;
+		}
 
 		/** Returns native per-format facts without creating resources; zero facts mean unavailable/unreported. */
 		[[nodiscard]] virtual FArdaRHIFormatSupport QueryFormatSupport(EArdaRHIFormat) const noexcept
@@ -125,7 +184,7 @@ namespace arda
 		[[nodiscard]] FArdaRHIFeatureSupportReport CheckFeatureSupport(
 		    const FArdaRHIFeatureRequirements& Requirements) const
 		{
-			return GetCapabilities().Evaluate(Requirements);
+			return GetFeatures()->Evaluate(Requirements);
 		}
 
 		/** Returns Unsupported with every missing ability when requirements fail. */
@@ -133,6 +192,10 @@ namespace arda
 		{
 			return CheckFeatureSupport(Requirements).ToStatus();
 		}
+
+		// ================================
+		// Resource creation and imports
+		// ================================
 
 		/**
          * Creates a texture.
@@ -190,6 +253,10 @@ namespace arda
          */
 		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIBufferRef> ImportNativeBuffer(
 		    const FArdaRHINativeBufferImportDesc& Desc) = 0;
+
+		// ================================
+		// GPU heaps and placed resources
+		// ================================
 
 		/**
          * Creates a heap.
@@ -257,6 +324,10 @@ namespace arda
 		{
 		}
 
+		// ================================
+		// Staging resources and views
+		// ================================
+
 		/**
          * Creates a staging texture.
          * @param Desc The desc.
@@ -310,6 +381,10 @@ namespace arda
          * @return The requested value and its operation status.
          */
 		[[nodiscard]] virtual TArdaRHIResult<FArdaRHISamplerRef> CreateSampler(const FArdaRHISamplerDesc& Desc) = 0;
+
+		// ================================
+		// Shaders and descriptor bindings
+		// ================================
 
 		/**
          * Creates a shader.
@@ -435,6 +510,10 @@ namespace arda
 		virtual FArdaRHIStatus WriteDescriptorTable(const FArdaRHIDescriptorTableRef& Table,
 		    const FArdaRHIBindingItem& Item) = 0;
 
+		// ================================
+		// Framebuffers and pipeline state
+		// ================================
+
 		/**
          * Creates a framebuffer.
          * @param Desc The desc.
@@ -490,6 +569,10 @@ namespace arda
          */
 		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIDepthStencilStateRef> CreateDepthStencilState(
 		    const FArdaRHIDepthStencilState& Desc) = 0;
+
+		// ================================
+		// Ray tracing and acceleration structures
+		// ================================
 
 		/**
          * Creates a accel struct.
@@ -593,6 +676,10 @@ namespace arda
 		    const char* ExportName,
 		    const FArdaRHIBindingSetRef& Bindings = {}) = 0;
 
+		// ================================
+		// Sampler feedback and dispatch pipelines
+		// ================================
+
 		/**
          * Creates a sampler feedback texture.
          * @param PairedTexture The paired texture.
@@ -625,6 +712,10 @@ namespace arda
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Shader bundles are unsupported by this device.");
 		}
+
+		// ================================
+		// Queries and GPU fences
+		// ================================
 
 		/**
          * Creates a event query.
@@ -725,6 +816,10 @@ namespace arda
          */
 		virtual FArdaRHIStatus ResetGpuFence(const FArdaRHIGpuFenceRef& Fence) = 0;
 
+		// ================================
+		// Command submission and queue waits
+		// ================================
+
 		/**
          * Creates a command list.
          * @param Queue The queue.
@@ -763,6 +858,10 @@ namespace arda
 		virtual FArdaRHIStatus QueueWait(EArdaRHIQueueType WaitQueue,
 		    EArdaRHIQueueType ExecutionQueue,
 		    uint64_t Instance) = 0;
+
+		// ================================
+		// Resource memory requirements and binding
+		// ================================
 
 		/**
          * Queries texture allocation requirements without allocating or binding GPU memory.
@@ -839,6 +938,10 @@ namespace arda
 		virtual FArdaRHIStatus BindAccelStructMemory(const FArdaRHIAccelStructRef& AccelStruct,
 		    const FArdaRHIHeapRef& Heap,
 		    uint64_t Offset) = 0;
+
+		// ================================
+		// Sparse resources and streaming budgets
+		// ================================
 
 		/**
          * Returns the texture tiling.
@@ -920,29 +1023,25 @@ namespace arda
 			    "Streaming budget reservation is unsupported by this device.");
 		}
 
-		/**
-         * Performs the query work graph support operation.
-         * @return A status describing whether the operation succeeded.
-         */
+		// ================================
+		// Optional feature support
+		// ================================
+
+		/** Returns support for the named feature `work-graph.dispatch` as a status. */
 		[[nodiscard]] virtual FArdaRHIStatus QueryWorkGraphSupport() const = 0;
 
-		/**
-         * Performs the query shader bundle support operation.
-         * @return A status describing whether the operation succeeded.
-         */
+		/** Returns support for the named feature `shader.bundle-dispatch` as a status. */
 		[[nodiscard]] virtual FArdaRHIStatus QueryShaderBundleSupport() const = 0;
 
-		/**
-         * Performs the query custom present support operation.
-         * @return A status describing whether the operation succeeded.
-         */
+		/** Returns support for the named feature `presentation.custom-present` as a status. */
 		[[nodiscard]] virtual FArdaRHIStatus QueryCustomPresentSupport() const = 0;
 
-		/**
-         * Performs the query stream source support operation.
-         * @return A status describing whether the operation succeeded.
-         */
+		/** Returns support for the named feature `presentation.stream-source` as a status. */
 		[[nodiscard]] virtual FArdaRHIStatus QueryStreamSourceSupport() const = 0;
+
+		// ================================
+		// Device maintenance and retirement
+		// ================================
 
 		/** Evicts all descriptor-cached objects; outstanding caller references remain valid. */
 		virtual void TrimDescriptorCaches() = 0;
@@ -987,5 +1086,6 @@ namespace arda
 
 		/** Collects retired resources and delivers ready host-copy callbacks on providers that support polling. */
 		virtual void RunGarbageCollection() = 0;
+
 	};
 }

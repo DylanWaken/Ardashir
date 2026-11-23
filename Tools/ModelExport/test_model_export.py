@@ -29,6 +29,20 @@ def package_fixture():
                            {"buffer": 0xffffffff, "offset": 0, "range": 0, "value": b"\4\0\0\0"}]}]}
 
 
+def check_portable_roundtrip(test, path, expected):
+    actual = read_package(path)
+    test.assertEqual(actual["version"], 3)
+    test.assertEqual(actual["state_slots"], expected.get("state_slots", []))
+    for field in ("name", "buffers", "tensors", "kernels", "commands"):
+        test.assertEqual(actual[field], expected[field])
+    for original, restored in zip(expected["modules"], actual["modules"], strict=True):
+        for field in ("format", "target_sm", "image"):
+            test.assertEqual(original[field], restored[field])
+        test.assertNotIn(original["image"], path.read_bytes())
+        library = path.parent / (restored["build_identity"] + ".ardakernels")
+        test.assertIn(original["image"], library.read_bytes())
+
+
 class PackageContractTests(unittest.TestCase):
     def test_package_architecture_must_match_embedded_ptx_target(self):
         package = package_fixture()
@@ -50,7 +64,7 @@ class PackageContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "test.ardagpu"
             write_package(package, path)
-            self.assertEqual(package, read_package(path))
+            check_portable_roundtrip(self, path, package)
             valid = path.read_bytes()
             for corrupted in (valid[:-1], valid + b"extra", valid[:12] + bytes([255]) * 8 + valid[20:]):
                 path.write_bytes(corrupted)
@@ -208,7 +222,7 @@ class StateDictContractTests(unittest.TestCase):
             model_path, state_path = Path(directory) / "model.ardagpu", Path(directory) / "first.ardastate"
             write_package(descriptor, model_path)
             write_state_dict(state, state_path, descriptor)
-            self.assertEqual(read_package(model_path), descriptor)
+            check_portable_roundtrip(self, model_path, descriptor)
             self.assertEqual(read_state_dict(state_path), state)
             first = load_state_dict(descriptor, state_path)
             state["entries"][0]["data"] = struct.pack("<ff", 7.0, 11.0)
@@ -217,7 +231,7 @@ class StateDictContractTests(unittest.TestCase):
             self.assertNotEqual(first["buffers"][1]["initializer"], second["buffers"][1]["initializer"])
             self.assertEqual(first["modules"], second["modules"])
             self.assertEqual(first["commands"], second["commands"])
-            self.assertEqual(read_package(model_path), descriptor)
+            check_portable_roundtrip(self, model_path, descriptor)
             valid = state_path.read_bytes()
             for corrupted in (valid[:-1], valid + b"extra", valid[:12] + b"\xff" * 8 + valid[20:]):
                 state_path.write_bytes(corrupted)

@@ -4,7 +4,7 @@
 #include "RHI/Providers/ArdaBackendProvider.h"
 #include "ArdaTestComputeOperand.h"
 #include "ArdaDependencyGraph.h"
-#include "RHI/CUDA/ArdaCudaExternalCall.h"
+#include "CUDA/ArdaCudaExternalCall.h"
 #include <gtest/gtest.h>
 #include <cstring>
 #include <stdexcept>

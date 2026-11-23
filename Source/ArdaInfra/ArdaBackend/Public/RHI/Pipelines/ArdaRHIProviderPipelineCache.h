@@ -14,6 +14,10 @@ namespace arda
 {
 	class IArdaDiagnosticCallback;
 
+	// ================================
+	// Provider pipeline cache utilities
+	// ================================
+
 	/** Maximum admitted native pipeline-cache payload size, in bytes. */
 	inline constexpr uint64_t ArdaProviderPipelineCacheMaxPayloadSize = 256ull * 1024ull * 1024ull;
 

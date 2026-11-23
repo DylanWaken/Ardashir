@@ -1070,30 +1070,30 @@ TEST(ArdaRHI, CapabilityAdmissionReportsEveryMissingAdvancedAbility)
 {
 	using namespace arda;
 	FArdaRHIFeatureRequirements Requirements;
-	Requirements.mbRequireRayTracingInfrastructure = true;
-	Requirements.mbRequireHardwareRayTracing = true;
-	Requirements.mbRequireRayTracingPipelines = true;
-	Requirements.mbRequireAccelerationStructures = true;
-	Requirements.mbRequireAccelerationStructureUpdate = true;
-	Requirements.mbRequireAccelerationStructureCompaction = true;
-	Requirements.mbRequireIndirectRayDispatch = true;
-	Requirements.mbRequireLocalShaderTableArguments = true;
-	Requirements.mbRequireOpacityMicromaps = true;
-	Requirements.mbRequireMeshShaders = true;
-	Requirements.mbRequireUnboundedDescriptors = true;
-	Requirements.mbRequireUpdateAfterBind = true;
-	Requirements.mbRequireDirectDescriptorIndexing = true;
-	Requirements.mbRequireDedicatedComputeQueue = true;
-	Requirements.mbRequireDedicatedCopyQueue = true;
-	Requirements.mbRequireGpuQueueWaits = true;
-	Requirements.mbRequireSparseResidency = true;
-	Requirements.mbRequireStreamingBudget = true;
-	Requirements.mbRequireSamplerFeedback = true;
-	Requirements.mbRequireWorkGraphs = true;
-	Requirements.mbRequireShaderBundles = true;
-	Requirements.mbRequireCustomPresent = true;
-	Requirements.mbRequireNativeFloat16 = true;
-	Requirements.mbRequireNativeInt8 = true;
+	Requirements.Require("ray-tracing.infrastructure");
+	Requirements.Require("ray-tracing.hardware");
+	Requirements.Require("ray-tracing.pipeline");
+	Requirements.Require("ray-tracing.acceleration-structure");
+	Requirements.Require("ray-tracing.acceleration-structure-update");
+	Requirements.Require("ray-tracing.acceleration-structure-compaction");
+	Requirements.Require("ray-tracing.indirect-dispatch");
+	Requirements.Require("ray-tracing.local-shader-table-arguments");
+	Requirements.Require("ray-tracing.opacity-micromap");
+	Requirements.Require("shader.mesh");
+	Requirements.Require("descriptor.unbounded-arrays");
+	Requirements.Require("descriptor.update-after-bind");
+	Requirements.Require("descriptor.direct-resource-heap-indexing");
+	Requirements.Require("queue.dedicated-compute");
+	Requirements.Require("queue.dedicated-copy");
+	Requirements.Require("queue.gpu-waits");
+	Requirements.Require("resource.sparse-binding");
+	Requirements.Require("memory.streaming-budget");
+	Requirements.Require("sampler.feedback");
+	Requirements.Require("work-graph.dispatch");
+	Requirements.Require("shader.bundle-dispatch");
+	Requirements.Require("presentation.custom-present");
+	Requirements.Require("shader.float16");
+	Requirements.Require("shader.integer-dot-product");
 
 	const FArdaRHICapabilities Empty;
 	const auto Report = Empty.Evaluate(Requirements);
@@ -1101,30 +1101,30 @@ TEST(ArdaRHI, CapabilityAdmissionReportsEveryMissingAdvancedAbility)
 	EXPECT_EQ(Report.mMissingAbilities.size(), 24u);
 	const auto Status = Report.ToStatus();
 	EXPECT_EQ(Status.mCode, EArdaRHIResult::Unsupported);
-	for (const char* Name : {"ray-tracing infrastructure",
-	         "hardware ray tracing",
-	         "ray-tracing pipelines",
-	         "acceleration structures",
-	         "acceleration-structure update",
-	         "acceleration-structure compaction",
-	         "indirect ray dispatch",
-	         "local shader-table arguments",
-	         "opacity micromaps",
-	         "mesh shaders",
-	         "unbounded descriptors",
-	         "descriptor update-after-bind",
-	         "direct descriptor indexing",
-	         "dedicated compute queue",
-	         "dedicated copy queue",
-	         "GPU queue waits",
-	         "sparse residency",
-	         "streaming budget telemetry",
-	         "native sampler feedback",
-	         "work graphs",
-	         "shader bundles",
-	         "custom present",
-	         "native float16",
-	         "native int8"})
+	for (const char* Name : {"ray-tracing.infrastructure",
+	         "ray-tracing.hardware",
+	         "ray-tracing.pipeline",
+	         "ray-tracing.acceleration-structure",
+	         "ray-tracing.acceleration-structure-update",
+	         "ray-tracing.acceleration-structure-compaction",
+	         "ray-tracing.indirect-dispatch",
+	         "ray-tracing.local-shader-table-arguments",
+	         "ray-tracing.opacity-micromap",
+	         "shader.mesh",
+	         "descriptor.unbounded-arrays",
+	         "descriptor.update-after-bind",
+	         "descriptor.direct-resource-heap-indexing",
+	         "queue.dedicated-compute",
+	         "queue.dedicated-copy",
+	         "queue.gpu-waits",
+	         "resource.sparse-binding",
+	         "memory.streaming-budget",
+	         "sampler.feedback",
+	         "work-graph.dispatch",
+	         "shader.bundle-dispatch",
+	         "presentation.custom-present",
+	         "shader.float16",
+	         "shader.integer-dot-product"})
 	{
 		EXPECT_NE(Status.mMessage.find(Name), eastl::string::npos) << Name;
 	}
@@ -1160,30 +1160,30 @@ TEST(ArdaRHI, CapabilityAdmissionAcceptsCompleteAdvancedDesktopProfile)
 	Capabilities.mMachineLearning.mbNativeInt8 = true;
 
 	FArdaRHIFeatureRequirements Requirements;
-	Requirements.mbRequireRayTracingInfrastructure = true;
-	Requirements.mbRequireHardwareRayTracing = true;
-	Requirements.mbRequireRayTracingPipelines = true;
-	Requirements.mbRequireAccelerationStructures = true;
-	Requirements.mbRequireAccelerationStructureUpdate = true;
-	Requirements.mbRequireAccelerationStructureCompaction = true;
-	Requirements.mbRequireIndirectRayDispatch = true;
-	Requirements.mbRequireLocalShaderTableArguments = true;
-	Requirements.mbRequireOpacityMicromaps = true;
-	Requirements.mbRequireMeshShaders = true;
-	Requirements.mbRequireUnboundedDescriptors = true;
-	Requirements.mbRequireUpdateAfterBind = true;
-	Requirements.mbRequireDirectDescriptorIndexing = true;
-	Requirements.mbRequireDedicatedComputeQueue = true;
-	Requirements.mbRequireDedicatedCopyQueue = true;
-	Requirements.mbRequireGpuQueueWaits = true;
-	Requirements.mbRequireSparseResidency = true;
-	Requirements.mbRequireStreamingBudget = true;
-	Requirements.mbRequireSamplerFeedback = true;
-	Requirements.mbRequireWorkGraphs = true;
-	Requirements.mbRequireShaderBundles = true;
-	Requirements.mbRequireCustomPresent = true;
-	Requirements.mbRequireNativeFloat16 = true;
-	Requirements.mbRequireNativeInt8 = true;
+	Requirements.Require("ray-tracing.infrastructure");
+	Requirements.Require("ray-tracing.hardware");
+	Requirements.Require("ray-tracing.pipeline");
+	Requirements.Require("ray-tracing.acceleration-structure");
+	Requirements.Require("ray-tracing.acceleration-structure-update");
+	Requirements.Require("ray-tracing.acceleration-structure-compaction");
+	Requirements.Require("ray-tracing.indirect-dispatch");
+	Requirements.Require("ray-tracing.local-shader-table-arguments");
+	Requirements.Require("ray-tracing.opacity-micromap");
+	Requirements.Require("shader.mesh");
+	Requirements.Require("descriptor.unbounded-arrays");
+	Requirements.Require("descriptor.update-after-bind");
+	Requirements.Require("descriptor.direct-resource-heap-indexing");
+	Requirements.Require("queue.dedicated-compute");
+	Requirements.Require("queue.dedicated-copy");
+	Requirements.Require("queue.gpu-waits");
+	Requirements.Require("resource.sparse-binding");
+	Requirements.Require("memory.streaming-budget");
+	Requirements.Require("sampler.feedback");
+	Requirements.Require("work-graph.dispatch");
+	Requirements.Require("shader.bundle-dispatch");
+	Requirements.Require("presentation.custom-present");
+	Requirements.Require("shader.float16");
+	Requirements.Require("shader.integer-dot-product");
 
 	const auto Report = Capabilities.Evaluate(Requirements);
 	EXPECT_TRUE(Report.IsSupported());

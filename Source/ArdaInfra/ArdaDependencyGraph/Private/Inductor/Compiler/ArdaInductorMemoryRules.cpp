@@ -59,6 +59,33 @@ namespace arda::inductor_detail
 		for (size_t I = 0; I < mNodes.size(); ++I)
 		{
 			const auto& N = mGraph.mTopology.TryGetNode(mNodes[I])->mPayload;
+			const bool bLegacyCuda = N.mDefinition->mKind == EArdaDependencyNodeKind::Cuda;
+			eastl::vector<eastl::shared_ptr<const IArdaNativeComputeProvider>> Providers;
+			const auto Operand = N.mDefinition->mNativeRegistry
+			    ? N.mDefinition->mNativeRegistry->FindOperand(N.mDefinition->mName.c_str())
+			    : nullptr;
+			if (mGraph.mCompile.mExecution->mDevice && Operand && !Operand->mbRequiresRegisteredConversions &&
+			    !HasArdaNativeResourceConversions(*Operand))
+			{
+				const auto& Routes = mGraph.mCompile.mNodes.at(mNodes[I]).mNativeRoutes;
+				const auto AddProvider = [&](EArdaRHIQueueType Queue)
+				{
+					const auto& Route = Routes[GetArdaRHIQueueIndex(Queue)];
+					if (Route.mSelection && !Route.mProviderId.empty())
+					{
+						auto Provider = N.mDefinition->mNativeRegistry->FindProvider(Route.mProviderId.c_str());
+						if (Provider && eastl::find(Providers.begin(), Providers.end(), Provider) == Providers.end())
+						{
+							Providers.push_back(eastl::move(Provider));
+						}
+					}
+				};
+				AddProvider(EArdaRHIQueueType::Graphics);
+				if (mGraph.mOptions.mbEnableAsyncCompute)
+				{
+					AddProvider(EArdaRHIQueueType::Compute);
+				}
+			}
 			for (auto E : mGraph.mTopology.GetIncomingEdges(mNodes[I]))
 			{
 				auto P = mIndices.find(mGraph.mTopology.TryGetEdge(E)->mFrom.GetIndex());
@@ -72,10 +99,22 @@ namespace arda::inductor_detail
 			for (const auto& A : mGraph.GetNodeDescription(N).mAccesses)
 			{
 				const auto R = A.mResource.mIndex;
-				mRequests[R].mbUsed = true;
-				if (N.mDefinition->mKind == EArdaDependencyNodeKind::Cuda)
+				auto& Request = mRequests[R];
+				Request.mbUsed = true;
+				if (bLegacyCuda)
 				{
-					mRequests[R].mbAllowHeapPlacement = false;
+					Request.mbAllowHeapPlacement = false;
+				}
+				for (const auto& Provider : Providers)
+				{
+					if (Request.mKind == EArdaMemoryKind::Texture && !Request.mExternalTexture)
+					{
+						Provider->ConfigureTexture(Request.mTextureDesc);
+					}
+					else if (Request.mKind == EArdaMemoryKind::Buffer && !Request.mExternalBuffer)
+					{
+						Provider->ConfigureBuffer(Request.mBufferDesc);
+					}
 				}
 				if (eastl::find(mUses[I].begin(), mUses[I].end(), R) == mUses[I].end())
 				{
@@ -91,9 +130,9 @@ namespace arda::inductor_detail
 				Scratch.mBufferDesc.mByteSize = mGraph.GetNodeDescription(N).mTransientWorkspaceBytes;
 				Scratch.mBufferDesc.mUsage = EArdaRHIBufferUsage::UnorderedAccess | EArdaRHIBufferUsage::Raw;
 				Scratch.mTextureDesc.mUsage = EArdaRHITextureUsage::None;
-				Scratch.mBufferDesc.mbCudaInterop = N.mDefinition->mKind == EArdaDependencyNodeKind::Cuda;
+				Scratch.mBufferDesc.mbCudaInterop = bLegacyCuda;
 				Scratch.mBufferDesc.mInitialState = EArdaRHIResourceState::Common;
-				Scratch.mbAllowHeapPlacement = N.mDefinition->mKind != EArdaDependencyNodeKind::Cuda;
+				Scratch.mbAllowHeapPlacement = !bLegacyCuda;
 				mResult.mWorkspaceResourceIds.emplace(mNodes[I].GetIndex(), Scratch.mIdentifier);
 				mUses[I].push_back(Scratch.mIdentifier);
 				mRequests.push_back(eastl::move(Scratch));

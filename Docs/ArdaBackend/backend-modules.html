@@ -157,9 +157,9 @@
         <section id="public-private-boundary">
           <h2>Two API audiences</h2>
           <h3>Ardashir/application audience</h3>
-          <p>Application and renderer code uses <code>ArdaBackend.h</code>, the RHI headers, shader APIs, and optional external-provider APIs. It may select a module by stable name with <a href="api-reference.html#api-arda-backend-configurebackend-42d0f49a"><code>ConfigureBackend(const char*)</code></a>, or leave <code>mBackendName</code> empty and select the highest-priority module compatible with <code>mBackend</code>.</p>
+          <p><code>ArdaBackend.h</code> is the application entry point for lifecycle, backend selection, and provider registration. An application can select a linked module by stable name or leave <code>mBackendName</code> empty to select the highest-priority module. <a href="api-reference.html#api-arda-backend-configurebackend-42d0f49a">ConfigureBackend(const char*)</a></p>
           <h3>Backend implementer audience</h3>
-          <p>A backend library includes <code>ArdaBackendProvider.h</code> and implements <a href="api-reference.html#api-arda-backend-iardabackendmodule-83673c0b"><code>IArdaBackendModule</code></a> plus <a href="api-reference.html#api-arda-iardabackendruntime-b02a9dac"><code>IArdaBackendRuntime</code></a>. Native SDK or engine headers belong in that library. Do not add their types to <code>Source/ArdaInfra/ArdaBackend/Public</code>; carry them as <code>FArdaNativeObject</code>, stable named objects, or module-owned private state.</p>
+          <p>A backend library implements <code>IArdaBackendModule</code> and <code>IArdaBackendRuntime</code> from <code>RHI/Providers/ArdaBackendProvider.h</code>. It includes <code>ArdaBackend.h</code> to register the module. Keep native SDK or engine types in the library and carry native identifiers across the boundary through <code>FArdaNativeObject</code> or stable named objects. <a href="api-reference.html#api-arda-backend-iardabackendmodule-83673c0b">Backend module interface</a> · <a href="api-reference.html#api-arda-iardabackendruntime-b02a9dac">Backend runtime interface</a></p>
           <p>This keeps the public binary and include boundary independent of Vulkan, D3D12, Unreal, Unity, and Godot. It also makes an implementation replaceable by changing build options and linked registration functions rather than rewriting Ardashir call sites.</p>
         </section>
 
@@ -167,7 +167,7 @@
           <h2>The module descriptor is the registration declaration</h2>
           <p><a href="api-reference.html#api-arda-backend-fardabackendmoduledescriptor-76f21395"><code>FArdaBackendModuleDescriptor</code></a> is copied when the module is registered. Every field participates in selection or validation:</p>
           <dl>
-            <dt><code>mInterfaceVersion</code></dt><dd>Set this to <a href="api-reference.html#api-arda-backend-ardabackendproviderinterfaceversion-acd31b06"><code>ArdaBackendProviderInterfaceVersion</code></a>, which is 15. Rebuild linked provider modules against the same headers to match the C++ virtual interface.</dd>
+            <dt><code>mInterfaceVersion</code></dt><dd>Set this to <a href="api-reference.html#api-arda-backend-ardabackendproviderinterfaceversion-acd31b06"><code>ArdaBackendProviderInterfaceVersion</code></a>. Rebuild linked provider modules against the same headers to match the C++ virtual interface.</dd>
             <dt><code>mName</code></dt><dd>Stable machine key used by configuration and external providers. Treat it as persistent configuration data.</dd>
             <dt><code>mDisplayName</code></dt><dd>Human-facing diagnostic label; it need not be stable.</dd>
             <dt><code>mShaderBinaryFormat</code>, <code>mShaderArtifactExtension</code>, and <code>mShaderCompilerIdentity</code></dt><dd>State what the module consumes. DXIL and SPIR-V can use core's DXC-compatible fallback. An in-process or BackendDefined compiler supplies a stable identity and an operative module hook.</dd>
@@ -280,7 +280,7 @@ add_subdirectory(path/to/Ardashir)</code></pre>
             <li><strong>Backend runtime:</strong> uniquely owned by core; owns module-private lifetime and presentation state; borrows host objects for external-device mode.</li>
             <li><strong>Descriptors:</strong> copied value metadata. Opaque handles remain non-owning unless a documented native retention mechanism or lifetime token says otherwise.</li>
             <li><strong>Queues:</strong> the module may submit directly. The host must grant a coordinated interval; registration mutexes do not synchronize GPU queues.</li>
-            <li><strong>Registry:</strong> registration functions are thread-safe, but callbacks must not reenter registry/lifecycle operations. Serialize configuration, initialization, shutdown, plugin unloading, and device use.</li>
+            <li><strong>Registry:</strong> provider callbacks can query module records and published device snapshots under the registry mutex. Serialize lifecycle changes, plugin unloading, and device use, and keep callbacks from reentering lifecycle operations.</li>
           </ul>
           <p>The abstraction adds virtual dispatch at device-service boundaries and descriptor translation during object creation. GPU submission, shader compilation, and pipeline creation dominate those costs. Prefer honest, coarse backend operations; do not leak a native command per virtual call simply to mimic an engine API. Cache translated immutable layouts and states only with device identity and module-specific compatibility in the key.</p>
         </section>
@@ -288,9 +288,11 @@ add_subdirectory(path/to/Ardashir)</code></pre>
         <section id="platform-notes">
           <h2>Platform and engine integration notes</h2>
           <h3>Native Vulkan</h3>
-          <p>Available when its CMake option is enabled. It consumes SPIR-V, dynamically loads the platform Vulkan loader, targets Vulkan 1.4 headers, and requires Vulkan 1.3 dynamic rendering and synchronization2 support at runtime. The module creates a native device or adopts a host-owned device with an explicit enabled-feature contract. It persists validated <code>VkPipelineCache</code> data; see <a href="external-interop.html#vulkan">Vulkan device adoption</a> for queue synchronization and lifetime requirements.</p>
+          <p>Available when its CMake option is enabled. It consumes SPIR-V, dynamically loads the platform Vulkan loader, targets Vulkan-Headers 1.4.369 by default, and requires Vulkan 1.3 dynamic rendering and synchronization2 support at runtime. The module creates a native device or adopts a host-owned device with an explicit enabled-feature contract. It persists validated <code>VkPipelineCache</code> data. See <a href="external-interop.html#vulkan">Vulkan device adoption</a> for queue synchronization and lifetime requirements.</p>
+          <p>The Vulkan provider handles native feature structs and extension checks internally. Its results use the <a href="rhi-feature-guide.html#admission">shared feature keys</a>.</p>
           <h3>Native D3D12</h3>
-          <p>Available on Windows when enabled. It consumes DXIL and selects the retail Direct3D 12 Agility SDK 1.619.5 runtime through the application-local <code>D3D12</code> directory. It creates graphics and compute queues, can adopt an external <code>ID3D12Device</code> with direct graphics and optional compute queues, and persists stable-keyed <code>ID3D12PipelineLibrary</code> data.</p>
+          <p>Available on Windows when enabled. It consumes DXIL and selects the retail Direct3D 12 Agility SDK 1.620.2 runtime through the application-local <code>D3D12</code> directory. It creates graphics and compute queues, can adopt an external <code>ID3D12Device</code> with direct graphics and optional compute queues, and persists stable-keyed <code>ID3D12PipelineLibrary</code> data.</p>
+          <p>The D3D12 provider translates native feature selectors and capability tiers into the <a href="rhi-feature-guide.html#admission">shared feature keys</a>.</p>
           <h3>Unreal, Unity, Godot, and other hosts</h3>
           <p>Prefer adapting the engine's supported RHI/device access surface over reaching through private internals. The module should identify an exact engine/version support range, acquire typed interfaces, convert engine resource/queue/state concepts to Arda contracts, and define where execution occurs relative to the engine render/RHI thread. The current repository provides the extension points, not these engine adapters.</p>
         </section>

@@ -11,6 +11,7 @@ namespace arda
 	class FArdaNativeComputeRegistry;
 	enum class EArdaNativeComputePreference : uint8_t;
 	struct FArdaNativeInvocation;
+	struct FArdaNativeComputeContext;
 	struct FArdaInductorNativeResourceAccess;
 
 	/** Typed callbacks resolve only their declared resources and automatically assigned pipeline slots. */
@@ -19,6 +20,12 @@ namespace arda
 	public:
 		IArdaRHICommandList& GetCommands() const;
 		FArdaRHIDeviceRef GetDevice() const;
+
+		/** Freeze one implementation compatible with the node's declared accesses. */
+		TArdaRHIResult<FArdaNativeComputePlan> PrepareNativeCompute(const FArdaNativeComputeRegistry& Registry,
+		    const char* OperandId,
+		    const FArdaNativeInvocation& Invocation,
+		    EArdaNativeComputePreference Preference) const;
 
 		/** Selects an implementation compatible with the node's declared accesses and records on its command list. */
 		FArdaRHIStatus RecordNativeCompute(const FArdaNativeComputeRegistry& Registry,
@@ -96,8 +103,7 @@ namespace arda
 		TArdaRHIResult<FArdaNativeComputePlan> PrepareNativeCompute(const FArdaNativeComputeRegistry& Registry,
 		    const char* OperandId,
 		    const FArdaNativeInvocation& Invocation,
-		    EArdaNativeComputePreference Preference,
-		    bool bCudaBatch) const;
+		    FArdaNativeComputeContext Selection) const;
 		eastl::vector<FArdaInductorNativeResourceAccess> GetNativeResourceAccesses() const;
 		TArdaRHIResult<eastl::shared_ptr<const void>> ResolveExternalValue(const eastl::string& Name,
 		    const void* Type) const;

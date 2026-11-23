@@ -12,6 +12,10 @@
 
 namespace arda
 {
+	// ================================
+	// Compute parameter kinds and bindings
+	// ================================
+
 	/** Value members are host data; Buffer/Texture members declare external dependencies. */
 	enum class EArdaComputeParameterKind : uint8_t
 	{
@@ -106,6 +110,10 @@ namespace arda
 		FArdaRHITensorDesc mTensorDesc;
 	};
 
+	// ================================
+	// Parameter metadata
+	// ================================
+
 	/** Immutable C++ layout metadata, with no compilation or GPU execution. */
 	class FArdaComputeParameterMetadata final
 	{
@@ -149,6 +157,10 @@ namespace arda
 		/** Finds a direct member by name, or returns null. */
 		[[nodiscard]] const FArdaComputeParameterMember* FindMember(const char* Name) const noexcept;
 
+		// ================================
+		// Parameter enumeration and resource access
+		// ================================
+
 		/** Recursively visits leaf elements. Parameters must be a live instance of this exact
          * type. Null/misaligned input or an empty visitor returns InvalidArgument. Value members
          * are not searched for hidden pointers/resources; declare dependencies explicitly.
@@ -181,6 +193,10 @@ namespace arda
 		FArdaRHIStatus mStatus;
 	};
 }
+
+// ================================
+// Parameter struct declaration macros
+// ================================
 
 /** Begins a user-defined parameter struct. */
 #define ARDA_BEGIN_COMPUTE_PARAMETER_STRUCT(StructType)                                                                \
@@ -250,6 +266,10 @@ public:                                                                         
 	}                                                                                                                  \
 	;
 
+// ================================
+// Scalar and resource parameter macros
+// ================================
+
 /** Declares arbitrary host data; it is not packed into kernel arguments automatically. */
 #define ARDA_COMPUTE_PARAMETER(CppType, MemberName)                                                                    \
 	ARDA_INTERNAL_COMPUTE_PARAMETER(::arda::EArdaComputeParameterKind::Value,                                          \
@@ -299,6 +319,10 @@ public:                                                                         
 	    MemberName,                                                                                                    \
 	    1,                                                                                                             \
 	    &StructType::GetStaticMetadata())
+
+// ================================
+// Parameter array macros
+// ================================
 
 /** Internal array alias keeps comma-containing array types out of macro argument lists. */
 #define ARDA_INTERNAL_COMPUTE_ARRAY(Kind, Access, CppType, MemberName, Count, Nested)                                  \

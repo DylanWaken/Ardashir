@@ -59,7 +59,7 @@ namespace arda
 	{
 		mDevice = eastl::move(Device);
 		mSettings = Settings;
-		if (!mDevice || !mDevice->GetCapabilities().mQueues.mbGraphics)
+		if (!mDevice || !mDevice->GetFeatures()->Supports("queue.graphics"))
 		{
 			mError = "The initialized backend does not expose a graphics device.";
 			return false;
@@ -171,16 +171,12 @@ namespace arda
 			}
 		}
 
-		const arda::FArdaRHIRayTracingCapabilities& RayTracing = mDevice->GetCapabilities().mRayTracing;
-		if (!RayTracing.mbHardwareAccelerated || !RayTracing.mbPipelineShaders ||
-		    !RayTracing.mbAccelerationStructures || !RayTracing.mbBottomLevel || !RayTracing.mbTopLevel)
+		const auto RaySupport = mDevice->RequireFeatures({{"ray-tracing.hardware"}, {"ray-tracing.pipeline"},
+		    {"ray-tracing.acceleration-structure"}, {"ray-tracing.bottom-level-acceleration-structure"},
+		    {"ray-tracing.top-level-acceleration-structure"}, {"ray-tracing.recursion-depth", 1}});
+		if (!RaySupport)
 		{
-			mError = "CornellBox requires hardware ray tracing, pipeline shaders, and BLAS/TLAS support.";
-			return false;
-		}
-		if (RayTracing.mMaxRecursionDepth < 1)
-		{
-			mError = "The ray-tracing device reports no supported recursion depth.";
+			mError = RaySupport.mMessage;
 			return false;
 		}
 
@@ -241,7 +237,7 @@ namespace arda
 
 	bool FArdaCornellBoxRenderer::BuildSceneAccelerationStructures()
 	{
-		const bool bCanCompact = mSettings.mbCompactStaticBlas && mDevice->GetCapabilities().mRayTracing.mbCompaction;
+		const bool bCanCompact = mSettings.mbCompactStaticBlas && mDevice->GetFeatures()->Supports("ray-tracing.acceleration-structure-compaction");
 		if (!BuildUncompactedSceneAccelerationStructures())
 		{
 			return false;
@@ -263,7 +259,7 @@ namespace arda
 
 	bool FArdaCornellBoxRenderer::BuildUncompactedSceneAccelerationStructures()
 	{
-		const bool Compact = mSettings.mbCompactStaticBlas && mDevice->GetCapabilities().mRayTracing.mbCompaction;
+		const bool Compact = mSettings.mbCompactStaticBlas && mDevice->GetFeatures()->Supports("ray-tracing.acceleration-structure-compaction");
 		FArdaRHIAccelStructDesc Desc;
 		Desc.mBottomLevelGeometries = {MakeGeometryDesc(mVertexBuffer, mIndexBuffer)};
 		Desc.mBuildFlags = GetStaticBuildFlags(Compact);
@@ -846,7 +842,7 @@ namespace arda
 		// Bound the dispatch by device limits, scratch storage, addressing, and the per-frame path-work budget.
 		const uint32_t RemainingSamples =
 		    mAccumulatedSamples < mSettings.mMaxSamples ? mSettings.mMaxSamples - mAccumulatedSamples : 0;
-		const uint32_t DeviceInvocationLimit = mDevice->GetCapabilities().mRayTracing.mMaxRayDispatchInvocations;
+		const uint64_t DeviceInvocationLimit = mDevice->GetFeatures()->GetValueOr("ray-tracing.max-dispatch-invocations", 0);
 		const uint64_t MaxSamplesByDevice =
 		    DeviceInvocationLimit == 0 ? uint64_t(UINT32_MAX) : DeviceInvocationLimit / PixelCount;
 		const uint64_t BytesPerSample = PixelCount * sizeof(float) * (mbTemporalDenoising ? 12ull : 4ull);

@@ -28,7 +28,7 @@ namespace arda
 	bool FArdaTriangleRenderer::Initialize(arda::FArdaRHIDeviceRef device, arda::EArdaRHIFormat swapChainFormat)
 	{
 		mDevice = eastl::move(device);
-		if (!mDevice || !mDevice->GetCapabilities().mQueues.mbGraphics)
+		if (!mDevice || !mDevice->GetFeatures()->Supports("queue.graphics"))
 		{
 			mError = "The initialized backend does not expose a graphics device.";
 			return false;

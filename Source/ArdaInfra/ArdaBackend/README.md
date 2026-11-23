@@ -3,30 +3,36 @@
 ArdaBackend defines the rendering hardware interface used to create GPU
 resources, record commands, and submit work. Start with the
 [backend setup guide](../../../Docs/ArdaBackend/getting-started.html) to create a
-device. Include `ArdaBackend.h` for the full public API or include the header for
-the RHI feature you use.
+device. Include `ArdaBackend.h` for the facade API and the headers for the
+provider features you use.
 
-`Public` contains `ArdaBackend.h`, `RHI`, and `FileOperations`.
+`Public/ArdaBackend.h` declares process configuration, backend and provider
+registration, adapter and device selection, initialization, presentation startup,
+and shutdown. The lifecycle implementation lives in `Private/ArdaBackend.cpp`.
+
+`Public` contains `ArdaBackend.h`, `RHI`, `NativeCompute`, and `FileOperations`.
 `Private` mirrors the public categories for implementation and internal state.
 Find backend tests and their shader fixtures in `Tests`.
 
-Native Vulkan, D3D12 and CUDA implementations remain separate linked targets in
-`ArdaBackendImpls` and implement the contracts in `RHI/Providers`. Public contracts
-do not include native provider SDKs or private implementation headers.
+Vulkan and D3D12 graphics modules and CUDA, CiG, and NVAPI compute providers are
+implemented in `ArdaBackendImpls`. Graphics modules implement the contracts in
+`RHI/Providers`. Native compute providers implement `IArdaNativeComputeProvider`
+and register with the facade in `NativeCompute/ArdaNativeCompute.h`.
 
 | Directory | Responsibility |
 | --- | --- |
-| `RHI/Context` | Shared backend and registry state, resource lifetime tracking, and shader compiler, pipeline cache, allocator and CUDA execution contexts. |
-| `RHI/Device` | Adapter identity, backend lifecycle, device interface and facade implementation, device diagnostics. |
-| `RHI/Providers` | Backend module, provider device, command list and translated provider object contracts; module registration. |
+| `ArdaBackend.h` and `Private/ArdaBackend.cpp` | Process lifecycle, backend and external-provider registration, configuration, device selection and presentation startup. |
+| `RHI/Context` | Resource lifetime tracking, shader compiler, pipeline cache and allocator contexts. |
+| `RHI/Device` | Adapter identities, device interfaces and implementation, and device diagnostics. |
+| `RHI/Providers` | Module, provider device, command list and translated object contracts. |
 | `RHI/Resources` | Abstract resource and reference ownership, buffer/texture/view/sampler/framebuffer/acceleration structure categories and resource creation. |
-| `RHI/CUDA` | Kernel registration and module artifacts, launch parameters, external call preparation and CUDA command recording. |
 | `RHI/Pipelines` | Individual graphics, compute, meshlet, ray tracing and work graph pipelines; fixed function states, resolution and persistent pipeline caches. |
 | `RHI/Shaders` | Shader types and parameter structures, compiler invocation, registered shader maps/artifacts, binding layouts/sets, bindless descriptor tables and shader tables. |
 | `RHI/Memory` | GPU allocation, heaps, memory requirements/planning, residency and sparse tiling. |
-| `RHI/Interop` | Opaque native handles, external device/resource descriptions, resource imports and CUDA resource mappings. |
-| `RHI/Scheduling` | Command lists, resource transitions and copies, queues, fences, queries, CUDA batches/semaphores/graphs/timing/sequences and presentation. |
-| `RHI/Config` | Backend/device configuration, feature requirements and capability hierarchy, CUDA execution policy, result types, assertions and logging. |
+| `RHI/Interop` | Opaque native handles, external device and resource descriptions, and resource imports. |
+| `RHI/Scheduling` | Command lists, resource transitions and copies, queues, fences, queries and presentation. |
+| `RHI/Config` | Device configuration, feature requirements and capability hierarchy, result types, assertions and logging. |
+| `NativeCompute` | The operand contract shared by native provider variants and shader fallbacks. |
 | `FileOperations` | Shared path checks, binary/text reads, temporary-file lifetime, atomic replacement and multi-file cache publication. |
 
 Use category paths such as `RHI/Resources/ArdaRHIBuffer.h`,
@@ -35,11 +41,23 @@ There are no forwarding headers at the root of `RHI` or former category paths.
 The abstract resource contract is defined in `RHI/Resources/ArdaRHIResource.h`;
 individual resource categories own their descriptions and interfaces.
 
-Devices coordinate the facade and provider. Find CUDA launch setup in
-`RHI/CUDA`, execution contexts in `RHI/Context`, and ordering, graph and timing
-operations in `RHI/Scheduling`. Shared filesystem operations live in `FileOperations`.
-See [native compute sources](../../../Docs/ArdaRDG/native-compute.html#sources)
-for loading PTX or cubin and compiling CUDA C++ with NVRTC during preparation.
+Register a `FArdaNativeOperand` with ordered native variants and shader fallbacks
+that share one resource and parameter contract. The facade qualifies providers
+per device and resolves kernel support before preparing an invocation. The operand's
+boundary hooks prepare any graphics-to-native and native-to-graphics conversions
+around the dispatch. Use `UseArdaNativeDirectResources` to bind shared views directly. Native
+kernel libraries use stable keys to resolve provider-specific artifacts. See the
+[native compute provider guide](../../../Docs/ArdaNativeCompute/providers.html)
+for module registration and kernel library deployment.
+
+The [CUDA public headers](../ArdaBackendImpls/Cuda/Public) define the typed kernel
+and external call APIs. The CUDA and [NVAPI](../ArdaBackendImpls/NVAPI/Public)
+modules also own their typed RHI compatibility headers under their public
+`RHI` directories. Include `CUDA/ArdaCudaProviderCommands.h` when implementing the
+typed CUDA recording entry point in a graphics backend. CUDA device contexts,
+command recording, timing and sequences are implemented in `ArdaBackendImpls/Cuda`. See
+[CUDA sources](../../../Docs/ArdaRDG/native-compute.html#sources) for loading PTX
+or cubin and compiling CUDA C++ with NVRTC during preparation.
 
 Public headers must compile independently, without private implementation or
 native provider include directories. Add dependencies to the header that uses
@@ -57,7 +75,7 @@ exercise backend behavior and downstream integration. CUDA registration's
 `ArdaCudaKernelBinding.cuh` is intended for nvcc and is exercised by CUDA kernel
 targets rather than the host-only header checks.
 
-## Optional compute alternatives
+## Typed CUDA compute alternatives
 
 `TArdaComputeOperand<Parameters, Payload>` can supply an ordinary compute shader
 implementation through three public hooks:

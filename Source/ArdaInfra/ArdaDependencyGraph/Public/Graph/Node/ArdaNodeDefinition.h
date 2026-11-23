@@ -35,7 +35,9 @@ namespace arda
 		RayIntersection,
 		RayCallable,
 		/** Deferred graph content, authored by Build(FArdaSubgraphContext&, const Parameters&). */
-		Subgraph
+		Subgraph,
+		/** Operand recorded through the native compute facade. */
+		Native
 	};
 
 	template <EArdaNodeType Type>
@@ -57,6 +59,7 @@ namespace arda
 	ARDA_NODE_DEFINITION_DOMAIN(RayTracing, Compute);
 	ARDA_NODE_DEFINITION_DOMAIN(WorkGraph, Compute);
 	ARDA_NODE_DEFINITION_DOMAIN(Subgraph, Synchronization);
+	ARDA_NODE_DEFINITION_DOMAIN(Native, Native);
 #undef ARDA_NODE_DEFINITION_DOMAIN
 
 #define ARDA_NODE_DEFINITION_GRAPHICS(Stage)                                                                           \
@@ -111,10 +114,22 @@ namespace arda
 		{
 			using FArdaBase = typename TArdaNodeDefinitionTraits<Type>::template FArdaBase<Node, Parameters>;
 			FArdaBase::AddIntrinsicRequirements(Requirements);
-			Requirements.mFeatures.mbRequireMeshShaders |= Type == EArdaNodeType::Meshlet;
-			Requirements.mFeatures.mbRequireRayTracingPipelines |= Type == EArdaNodeType::RayTracing;
-			Requirements.mFeatures.mbRequirePersistentShaderTables |= Type == EArdaNodeType::RayTracing;
-			Requirements.mFeatures.mbRequireWorkGraphs |= Type == EArdaNodeType::WorkGraph;
+			if (Type == EArdaNodeType::Meshlet)
+			{
+				Requirements.mFeatures.Require("shader.mesh");
+			}
+			if (Type == EArdaNodeType::RayTracing)
+			{
+				Requirements.mFeatures.Require("ray-tracing.pipeline");
+			}
+			if (Type == EArdaNodeType::RayTracing)
+			{
+				Requirements.mFeatures.Require("ray-tracing.persistent-shader-tables");
+			}
+			if (Type == EArdaNodeType::WorkGraph)
+			{
+				Requirements.mFeatures.Require("work-graph.dispatch");
+			}
 		}
 	};
 }

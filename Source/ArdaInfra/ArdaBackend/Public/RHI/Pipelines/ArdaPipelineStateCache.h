@@ -14,6 +14,10 @@
 
 namespace arda
 {
+	// ================================
+	// Pipeline cache settings and diagnostics
+	// ================================
+
 	/** Identifies the kind of cached pipeline state. */
 	enum class EArdaPipelineStateKind : uint8_t
 	{
@@ -81,6 +85,10 @@ namespace arda
 		eastl::string mMessage;
 	};
 
+	// ================================
+	// Pipeline state cache
+	// ================================
+
 	/**
      * Thread-safe renderer-facing PSO cache bound permanently to one RHI device.
      * The device may itself perform lower-level descriptor caching.
@@ -110,6 +118,10 @@ namespace arda
 
 		/** Pipeline state caches cannot be move-assigned. */
 		FArdaPipelineStateCache& operator=(FArdaPipelineStateCache&&) = delete;
+
+		// ================================
+		// Pipeline lookup and creation
+		// ================================
 
 		/**
          * Resolves or creates a compute pipeline state.
@@ -160,6 +172,10 @@ namespace arda
 		    arda::FArdaRHIWorkGraphPipelineRef& OutPipeline,
 		    const arda::IArdaRHIDevice* RequestingDevice = nullptr);
 
+		// ================================
+		// Pipeline precaching
+		// ================================
+
 		/**
          * Creates and caches a compute pipeline without returning it.
          * @param Initializer Compute pipeline description.
@@ -200,6 +216,10 @@ namespace arda
 		[[nodiscard]] arda::FArdaRHIStatus PrecacheWorkGraph(const FArdaWorkGraphPipelineStateInitializer& Initializer,
 		    const arda::IArdaRHIDevice* RequestingDevice = nullptr);
 
+		// ================================
+		// Resolving and binding pipeline state
+		// ================================
+
 		/**
          * Resolves and binds a compute pipeline state.
          * @param CommandList Command list receiving the state.
@@ -232,6 +252,10 @@ namespace arda
 		[[nodiscard]] arda::FArdaRHIStatus SetMeshletPipelineState(arda::IArdaRHICommandList& CommandList,
 		    const FArdaMeshletPipelineStateInitializer& Initializer,
 		    arda::FArdaRHIMeshletState State);
+
+		// ================================
+		// Cache maintenance and inspection
+		// ================================
 
 		/**
          * Evicts least-recently-used entries until capacities are satisfied.

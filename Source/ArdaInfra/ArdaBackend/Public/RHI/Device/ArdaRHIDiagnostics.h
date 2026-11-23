@@ -14,6 +14,10 @@
 
 namespace arda
 {
+	// ================================
+	// Device diagnostic snapshots
+	// ================================
+
 	/** Maximum entries retained in each diagnostic list; excess native records are reported as truncated. */
 	inline constexpr uint32_t ArdaRHIMaxDiagnosticEntries = 64;
 

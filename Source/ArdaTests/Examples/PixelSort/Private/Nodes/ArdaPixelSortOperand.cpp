@@ -1,26 +1,17 @@
 #include "ArdaPixelSortNodeInternal.h"
-#include "ArdaNativeCompute.h"
-#include "CUDA/ArdaNativeCudaParameters.h"
+#include "NativeCompute/ArdaNativeCompute.h"
+#include "CUDA/ArdaNativeCudaProvider.h"
 #include "RHI/Pipelines/ArdaRHIComputePipeline.h"
 #include "RHI/Scheduling/ArdaRHICommandList.h"
 
+#include <cstddef>
 #include <cstring>
-
-#if defined(ARDA_PIXEL_SORT_NATIVE_KERNELS)
-// Explicit references retain the compiled entries when linking the static CUDA archive.
-namespace arda_cuda_pixel_sort
-{
-	eastl::shared_ptr<const arda::IArdaCudaKernelEntry> GetPixelSortRowEntry();
-	eastl::shared_ptr<const arda::IArdaCudaKernelEntry> GetPixelSortColumnEntry();
-}
-#endif
 
 namespace arda
 {
 	namespace
 	{
-		using FArdaRegistryRef = eastl::shared_ptr<const FArdaNativeComputeRegistry>;
-		using FArdaPixelSortKernelParameters = FArdaPixelSortParameters::FArdaCuda;
+		constexpr char PixelSortSignature[] = "rgba8-radix-v1";
 
 		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPixelSortFallbackParameters)
 			ARDA_SHADER_TEXTURE_UAV_ACCESS(mInput, 1, 0, EArdaRHIShaderStage::Compute, EArdaShaderResourceAccess::Read)
@@ -45,11 +36,11 @@ namespace arda
 		    "SortCS",
 		    EArdaRHIShaderStage::Compute)
 
-		FArdaPixelSortKernelParameters ReadPixelSortParameters(const FArdaNativeInvocation& Invocation)
+		FArdaPixelSortShaderConstants ReadPixelSortParameters(const FArdaNativeInvocation& Invocation)
 		{
 			FArdaPixelSortKernelParameters Parameters{};
 			std::memcpy(&Parameters, Invocation.mParameters.data(), sizeof(Parameters));
-			return Parameters;
+			return Parameters.mConstants;
 		}
 
 		FArdaRHIStatus ValidatePixelSortInvocation(const FArdaNativeInvocation& Invocation)
@@ -75,7 +66,7 @@ namespace arda
 			return {};
 		}
 
-		FArdaNativeLaunch PixelSortLaunch(const FArdaPixelSortKernelParameters& P)
+		FArdaNativeLaunch PixelSortLaunch(const FArdaPixelSortShaderConstants& P)
 		{
 			const bool bVertical = P.mHeight > P.mWidth;
 			const uint32_t Threads = bVertical ? ArdaPixelSortColumnThreads : ArdaPixelSortRowThreads;
@@ -89,35 +80,81 @@ namespace arda
 		}
 
 #if defined(ARDA_PIXEL_SORT_NATIVE_KERNELS)
-		FArdaRHIStatus AddPixelSortCudaVariants(FArdaNativeOperandDesc& Operand)
+		TArdaRHIResult<FArdaNativeOperand> AddPixelSortKernelVariants(FArdaNativeOperand Operand)
 		{
-			const auto& Metadata = FArdaPixelSortParameters::GetCudaMetadata();
-			for (const bool bVertical : {false, true})
+			using FArdaParameters = FArdaPixelSortKernelParameters;
+			using FArdaConstants = FArdaPixelSortShaderConstants;
+			using EArdaArgumentKind = EArdaNativeArgumentKind;
+			const size_t ScalarStart = offsetof(FArdaParameters, mConstants);
+			const FArdaNativeKernelLayout Layout{sizeof(FArdaParameters),
+			    alignof(FArdaParameters),
+			    {{offsetof(FArdaParameters, mInput), sizeof(uint64_t), alignof(uint64_t), EArdaArgumentKind::Surface},
+			        {offsetof(FArdaParameters, mOutput),
+			            sizeof(uint64_t),
+			            alignof(uint64_t),
+			            EArdaArgumentKind::Surface},
+			        {ScalarStart + offsetof(FArdaConstants, mWidth),
+			            sizeof(uint32_t),
+			            alignof(uint32_t),
+			            EArdaArgumentKind::Value},
+			        {ScalarStart + offsetof(FArdaConstants, mHeight),
+			            sizeof(uint32_t),
+			            alignof(uint32_t),
+			            EArdaArgumentKind::Value},
+			        {ScalarStart + offsetof(FArdaConstants, mChannel),
+			            sizeof(uint32_t),
+			            alignof(uint32_t),
+			            EArdaArgumentKind::Value},
+			        {ScalarStart + offsetof(FArdaConstants, mThreshold),
+			            sizeof(uint32_t),
+			            alignof(uint32_t),
+			            EArdaArgumentKind::Value}}};
+			const char* Architectures[] = {
+#include "ArdaPixelSortArchitectures.inl"
+			};
+			auto NativeResources = Operand.mResources;
+			for (auto& Slot : NativeResources)
 			{
-				auto Entry = bVertical ? arda_cuda_pixel_sort::GetPixelSortColumnEntry()
-				                       : arda_cuda_pixel_sort::GetPixelSortRowEntry();
-				auto NativeSource = CreateArdaNativeCudaLinkedSource(Metadata, eastl::move(Entry));
-				if (!NativeSource)
-				{
-					return eastl::move(NativeSource.mStatus);
-				}
-				AddArdaNativeCudaVariants(Operand,
-				    {bVertical ? "columns.256" : "rows.128",
-				        eastl::move(NativeSource.mValue),
-				        [bVertical](const FArdaNativeComputeContext&,
-				            const FArdaNativeInvocation& Invocation) -> TArdaRHIResult<FArdaNativeLaunch>
-				        {
-					        const auto P = ReadPixelSortParameters(Invocation);
-					        if ((P.mHeight > P.mWidth) != bVertical)
-					        {
-						        return {{},
-						            FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
-						                "PixelSort variant handles the other orientation.")};
-					        }
-					        return {PixelSortLaunch(P), {}};
-				        }});
+				Slot.mCategory = ArdaNativeCudaSurfaceCategory;
 			}
-			return {};
+			for (const char* Provider : {ArdaNativeCudaInGraphicsProviderId, ArdaNativeCudaProviderId})
+			{
+				for (const char* Arch : Architectures)
+				{
+					for (const bool bVertical : {false, true})
+					{
+						const auto Name = eastl::string(bVertical ? "Columns.sm" : "Rows.sm") + Arch;
+						auto Packaged =
+						    MakeArdaPackagedNativeOperand({"arda-pixel-sort", Provider, Name, PixelSortSignature},
+						        Layout,
+						        eastl::move(Operand));
+						if (!Packaged)
+						{
+							return Packaged;
+						}
+						Operand = eastl::move(Packaged.mValue);
+						auto& Variant = Operand.mVariants.back();
+						Variant.mName += eastl::string(".") + Provider;
+						Variant.mNativeResources = NativeResources;
+						Variant.mGraphicsStates = {EArdaRHIResourceState::UnorderedAccess,
+						    EArdaRHIResourceState::UnorderedAccess};
+						Variant.mSelect =
+						    [bVertical](const FArdaNativeComputeContext&,
+						        const FArdaNativeInvocation& Invocation) -> TArdaRHIResult<FArdaNativeLaunch>
+						{
+							const auto P = ReadPixelSortParameters(Invocation);
+							if ((P.mHeight > P.mWidth) != bVertical)
+							{
+								return {{},
+								    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+								        "PixelSort variant handles the other orientation.")};
+							}
+							return {PixelSortLaunch(P), {}};
+						};
+					}
+				}
+			}
+			return {eastl::move(Operand), {}};
 		}
 #endif
 
@@ -153,9 +190,8 @@ namespace arda
 			{
 				return {{}, eastl::move(Set.mStatus)};
 			}
-			const auto P = ReadPixelSortParameters(Invocation);
-			const FArdaPixelSortShaderConstants Constants{P.mWidth, P.mHeight, P.mChannel, P.mThreshold};
-			const auto Launch = PixelSortLaunch(P);
+			const auto Constants = ReadPixelSortParameters(Invocation);
+			const auto Launch = PixelSortLaunch(Constants);
 			FArdaRHIComputeState State{eastl::move(Pipeline.mValue), {eastl::move(Set.mValue)}};
 			return {MakeArdaNativeWork(
 			            [State = eastl::move(State), Constants, Launch](IArdaRHICommandList& Commands)
@@ -171,59 +207,60 @@ namespace arda
 			    {}};
 		}
 
-		TArdaRHIResult<FArdaRegistryRef> RegisterPixelSortOperand()
+		FArdaRHIStatus RegisterPixelSortOperand()
 		{
-			const auto& Metadata = FArdaPixelSortParameters::GetCudaMetadata();
-			auto Description = DescribeArdaNativeCudaOperand(ArdaPixelSortOperandId, Metadata);
-			if (!Description)
-			{
-				return {{}, eastl::move(Description.mStatus)};
-			}
-			auto Registry = eastl::make_shared<FArdaNativeComputeRegistry>();
-			auto& Operand = Description.mValue;
+			FArdaNativeOperand Operand;
+			Operand.mId = ArdaPixelSortOperandId;
+			Operand.mSignature = PixelSortSignature;
+			Operand.mParameterSize = sizeof(FArdaPixelSortKernelParameters);
+			FArdaNativeResourceSlotsCreator ResourceSlots;
+			ResourceSlots.AddTexture("Input", EArdaComputeAccess::Read, EArdaRHIFormat::RGBA8UInt);
+			ResourceSlots.AddTexture("Output", EArdaComputeAccess::Write, EArdaRHIFormat::RGBA8UInt);
+			Operand.mResources = ResourceSlots.Finalize();
 			Operand.mValidate = ValidatePixelSortInvocation;
-			Operand.mFallback.mPrepare = PreparePixelSortShader;
+			Operand.mShaderFallbacks.push_back({EArdaNativeComputeRoute::ComputeShader, PreparePixelSortShader});
 #if defined(ARDA_PIXEL_SORT_NATIVE_KERNELS)
-			if (auto Status = AddPixelSortCudaVariants(Operand); !Status)
+			AddArdaNativeKernelDirectory(GetArdaExampleDirectory());
+			UseArdaNativeCudaResources(Operand);
+			auto Result = AddPixelSortKernelVariants(eastl::move(Operand));
+			if (!Result)
 			{
-				return {{}, eastl::move(Status)};
+				return eastl::move(Result.mStatus);
 			}
-			if (auto Status = Registry->RegisterProvider(CreateArdaNativeCudaProvider()); !Status)
-			{
-				return {{}, eastl::move(Status)};
-			}
-			if (auto Status = Registry->RegisterProvider(CreateArdaNativeCudaInGraphicsProvider()); !Status)
-			{
-				return {{}, eastl::move(Status)};
-			}
+			Operand = eastl::move(Result.mValue);
 #endif
-			auto Status = Registry->RegisterOperand(eastl::move(Operand));
-			return {eastl::move(Registry), eastl::move(Status)};
+			return GetArdaNativeComputeRegistry().RegisterOperand(eastl::move(Operand));
 		}
 	}
 
-	TArdaRHIResult<FArdaRegistryRef> GetPixelSortRegistry()
+	FArdaRHIStatus EnsurePixelSortOperandRegistered()
 	{
-		static const auto Registry = RegisterPixelSortOperand();
-		return Registry;
+		static const auto Status = RegisterPixelSortOperand();
+		return Status;
 	}
 
 	FArdaRHIStatus CheckPixelSortNativeSupport(const IArdaRHIDevice* Device)
 	{
-		const auto Registry = GetPixelSortRegistry();
-		if (!Registry)
+		if (auto Status = EnsurePixelSortOperandRegistered(); !Status)
 		{
-			return Registry.mStatus;
+			return Status;
 		}
 		// The preflight takes a temporary reference and only queries device capabilities.
-		return Registry.mValue->CheckSupport(ArdaPixelSortOperandId,
+		return GetArdaNativeComputeRegistry().CheckSupport(ArdaPixelSortOperandId,
 		    {FArdaRHIDeviceRef(const_cast<IArdaRHIDevice*>(Device)),
 		        EArdaRHIQueueType::Graphics,
 		        EArdaNativeComputePreference::NativeOnly});
 	}
 
-	TArdaRHIResult<FArdaNativeInvocation> MakePixelSortInvocation(const FArdaPixelSortParameters& Parameters)
+	FArdaNativeInvocation MakePixelSortInvocation(FArdaRHITextureRef Input,
+	    FArdaRHITextureRef Output,
+	    FArdaPixelSortShaderConstants Constants)
 	{
-		return MakeArdaNativeCudaInvocation(Parameters);
+		FArdaNativeInvocation Invocation;
+		Invocation.mResources = {{eastl::move(Input), {}, 0}, {eastl::move(Output), {}, 0}};
+		const FArdaPixelSortKernelParameters Parameters{0, 0, Constants};
+		Invocation.mParameters.resize(sizeof(Parameters));
+		std::memcpy(Invocation.mParameters.data(), &Parameters, sizeof(Parameters));
+		return Invocation;
 	}
 }

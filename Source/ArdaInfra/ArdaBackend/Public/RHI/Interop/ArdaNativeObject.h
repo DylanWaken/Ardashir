@@ -6,6 +6,10 @@
 
 namespace arda
 {
+	// ================================
+	// Native object handles
+	// ================================
+
 	/** Stores a platform-native handle without exposing its native type. */
 	struct FArdaNativeObject
 	{

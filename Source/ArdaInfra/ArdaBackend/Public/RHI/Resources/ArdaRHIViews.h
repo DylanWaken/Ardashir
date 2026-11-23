@@ -14,6 +14,10 @@
 
 namespace arda
 {
+	// ================================
+	// Resource view descriptions and validation
+	// ================================
+
 	/** Describes view desc. */
 	struct FArdaRHIViewDesc
 	{
@@ -51,6 +55,10 @@ namespace arda
      * @return A status describing whether the operation succeeded.
      */
 	[[nodiscard]] FArdaRHIStatus Validate(const FArdaRHIViewDesc& Value) noexcept;
+
+	// ================================
+	// Shader resource and unordered access views
+	// ================================
 
 	/** Interface for shader resource view. */
 	class IArdaRHIShaderResourceView : public virtual IArdaRHIResource

@@ -9,283 +9,283 @@ namespace
 	struct FArdaBooleanRequirementCase
 	{
 		const char* mName;
-		bool FArdaRHIFeatureRequirements::* mRequirement;
+		const char* mRequirement;
 		bool& (*mCapability)(FArdaRHICapabilities&);
 	};
 
 	const FArdaBooleanRequirementCase BooleanRequirements[] = {
 	    {"IndirectFirstInstance",
-	        &FArdaRHIFeatureRequirements::mbRequireIndirectFirstInstance,
+	        "command.indirect-first-instance",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbIndirectFirstInstance;
 	        }},
 	    {"InlineRayQueries",
-	        &FArdaRHIFeatureRequirements::mbRequireInlineRayQueries,
+	        "ray-tracing.inline-query",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mRayTracing.mbInlineRayQueries;
 	        }},
 	    {"BottomLevelAccelerationStructures",
-	        &FArdaRHIFeatureRequirements::mbRequireBottomLevelAccelerationStructures,
+	        "ray-tracing.bottom-level-acceleration-structure",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mRayTracing.mbBottomLevel;
 	        }},
 	    {"TopLevelAccelerationStructures",
-	        &FArdaRHIFeatureRequirements::mbRequireTopLevelAccelerationStructures,
+	        "ray-tracing.top-level-acceleration-structure",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mRayTracing.mbTopLevel;
 	        }},
 	    {"IndirectTopLevelBuild",
-	        &FArdaRHIFeatureRequirements::mbRequireIndirectTopLevelBuild,
+	        "ray-tracing.indirect-top-level-build",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mRayTracing.mbIndirectTopLevelBuild;
 	        }},
 	    {"PersistentShaderTables",
-	        &FArdaRHIFeatureRequirements::mbRequirePersistentShaderTables,
+	        "ray-tracing.persistent-shader-tables",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mRayTracing.mbPersistentShaderTables;
 	        }},
 	    {"Bindless",
-	        &FArdaRHIFeatureRequirements::mbRequireBindless,
+	        "descriptor.bindless",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mDescriptors.mbBindless;
 	        }},
 	    {"RuntimeDescriptorArrays",
-	        &FArdaRHIFeatureRequirements::mbRequireRuntimeDescriptorArrays,
+	        "descriptor.runtime-arrays",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mDescriptors.mbRuntimeDescriptorArrays;
 	        }},
 	    {"PartiallyBoundDescriptors",
-	        &FArdaRHIFeatureRequirements::mbRequirePartiallyBoundDescriptors,
+	        "descriptor.partially-bound",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mDescriptors.mbPartiallyBound;
 	        }},
 	    {"UpdateUnusedWhilePending",
-	        &FArdaRHIFeatureRequirements::mbRequireUpdateUnusedWhilePending,
+	        "descriptor.update-unused-while-pending",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mDescriptors.mbUpdateUnusedWhilePending;
 	        }},
 	    {"VariableDescriptorCount",
-	        &FArdaRHIFeatureRequirements::mbRequireVariableDescriptorCount,
+	        "descriptor.variable-count",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mDescriptors.mbVariableDescriptorCount;
 	        }},
 	    {"DirectSamplerHeapIndexing",
-	        &FArdaRHIFeatureRequirements::mbRequireDirectSamplerHeapIndexing,
+	        "descriptor.direct-sampler-heap-indexing",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mDescriptors.mbDirectSamplerHeapIndexing;
 	        }},
 	    {"DescriptorBuffer",
-	        &FArdaRHIFeatureRequirements::mbRequireDescriptorBuffer,
+	        "descriptor.buffer",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mDescriptors.mbDescriptorBuffer;
 	        }},
 	    {"DescriptorHeap",
-	        &FArdaRHIFeatureRequirements::mbRequireDescriptorHeap,
+	        "descriptor.heap",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mDescriptors.mbDescriptorHeap;
 	        }},
 	    {"GraphicsQueue",
-	        &FArdaRHIFeatureRequirements::mbRequireGraphicsQueue,
+	        "queue.graphics",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mQueues.mbGraphics;
 	        }},
 	    {"ComputeQueue",
-	        &FArdaRHIFeatureRequirements::mbRequireComputeQueue,
+	        "queue.compute",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mQueues.mbCompute;
 	        }},
 	    {"CopyQueue",
-	        &FArdaRHIFeatureRequirements::mbRequireCopyQueue,
+	        "queue.copy",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mQueues.mbCopy;
 	        }},
 	    {"TimelineSynchronization",
-	        &FArdaRHIFeatureRequirements::mbRequireTimelineSynchronization,
+	        "synchronization.timeline-semaphore",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mQueues.mbTimelineSynchronization;
 	        }},
 	    {"QueueFamilyOwnershipTransfer",
-	        &FArdaRHIFeatureRequirements::mbRequireQueueFamilyOwnershipTransfer,
+	        "queue.family-ownership-transfer",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mQueues.mbQueueFamilyOwnershipTransfer;
 	        }},
 	    {"SparseBindingQueue",
-	        &FArdaRHIFeatureRequirements::mbRequireSparseBindingQueue,
+	        "queue.sparse-binding",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mQueues.mbSparseBindingQueue;
 	        }},
 	    {"ReservedBuffers",
-	        &FArdaRHIFeatureRequirements::mbRequireReservedBuffers,
+	        "resource.reserved-buffer",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mResidency.mbReservedBuffers;
 	        }},
 	    {"ReservedTexture2D",
-	        &FArdaRHIFeatureRequirements::mbRequireReservedTexture2D,
+	        "resource.reserved-texture-2d",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mResidency.mbReservedTexture2D;
 	        }},
 	    {"ReservedTexture3D",
-	        &FArdaRHIFeatureRequirements::mbRequireReservedTexture3D,
+	        "resource.reserved-texture-3d",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mResidency.mbReservedTexture3D;
 	        }},
 	    {"AliasedMappings",
-	        &FArdaRHIFeatureRequirements::mbRequireAliasedMappings,
+	        "resource.aliased-sparse-mapping",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mResidency.mbAliasedMappings;
 	        }},
 	    {"BudgetReservation",
-	        &FArdaRHIFeatureRequirements::mbRequireBudgetReservation,
+	        "memory.budget-reservation",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mResidency.mbBudgetReservation;
 	        }},
 	    {"GeometryShaders",
-	        &FArdaRHIFeatureRequirements::mbRequireGeometryShaders,
+	        "shader.geometry",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbGeometryShaders;
 	        }},
 	    {"TessellationShaders",
-	        &FArdaRHIFeatureRequirements::mbRequireTessellationShaders,
+	        "shader.tessellation",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbTessellationShaders;
 	        }},
 	    {"VertexShaderStoresAndAtomics",
-	        &FArdaRHIFeatureRequirements::mbRequireVertexShaderStoresAndAtomics,
+	        "shader.vertex-stores-and-atomics",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbVertexShaderStoresAndAtomics;
 	        }},
 	    {"FragmentShaderStoresAndAtomics",
-	        &FArdaRHIFeatureRequirements::mbRequireFragmentShaderStoresAndAtomics,
+	        "shader.fragment-stores-and-atomics",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbFragmentShaderStoresAndAtomics;
 	        }},
 	    {"ResourceCollections",
-	        &FArdaRHIFeatureRequirements::mbRequireResourceCollections,
+	        "resource.collections",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbResourceCollections;
 	        }},
 	    {"ConservativeRasterization",
-	        &FArdaRHIFeatureRequirements::mbRequireConservativeRasterization,
+	        "rendering.conservative-rasterization",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbConservativeRasterization;
 	        }},
 	    {"VariableRateShading",
-	        &FArdaRHIFeatureRequirements::mbRequireVariableRateShading,
+	        "rendering.variable-rate-shading",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbVariableRateShading;
 	        }},
 	    {"VirtualResources",
-	        &FArdaRHIFeatureRequirements::mbRequireVirtualResources,
+	        "resource.virtual",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbVirtualResources;
 	        }},
 	    {"Heaps",
-	        &FArdaRHIFeatureRequirements::mbRequireHeaps,
+	        "memory.explicit-heap",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbHeaps;
 	        }},
 	    {"StagingTextures",
-	        &FArdaRHIFeatureRequirements::mbRequireStagingTextures,
+	        "texture.staging",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbStagingTextures;
 	        }},
 	    {"TextureCopies",
-	        &FArdaRHIFeatureRequirements::mbRequireTextureCopies,
+	        "texture.copy",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbTextureCopies;
 	        }},
 	    {"TextureResolve",
-	        &FArdaRHIFeatureRequirements::mbRequireTextureResolve,
+	        "texture.resolve",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbTextureResolve;
 	        }},
 	    {"ExplicitTransitions",
-	        &FArdaRHIFeatureRequirements::mbRequireExplicitTransitions,
+	        "synchronization.explicit-transition",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbExplicitTransitions;
 	        }},
 	    {"SplitTransitions",
-	        &FArdaRHIFeatureRequirements::mbRequireSplitTransitions,
+	        "synchronization.split-transition",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbSplitTransitions;
 	        }},
 	    {"IndirectCommands",
-	        &FArdaRHIFeatureRequirements::mbRequireIndirectCommands,
+	        "command.indirect",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbIndirectCommands;
 	        }},
 	    {"AliasingBarriers",
-	        &FArdaRHIFeatureRequirements::mbRequireAliasingBarriers,
+	        "synchronization.aliasing-barrier",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbAliasingBarriers;
 	        }},
 	    {"Queries",
-	        &FArdaRHIFeatureRequirements::mbRequireQueries,
+	        "query.gpu",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbQueries;
 	        }},
 	    {"ShaderLibraries",
-	        &FArdaRHIFeatureRequirements::mbRequireShaderLibraries,
+	        "shader.library",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbShaderLibraries;
 	        }},
 	    {"PipelineCachePersistence",
-	        &FArdaRHIFeatureRequirements::mbRequirePipelineCachePersistence,
+	        "pipeline.cache-persistence",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mbPipelineCachePersistence;
 	        }},
 	    {"SubgroupOperations",
-	        &FArdaRHIFeatureRequirements::mbRequireSubgroupOperations,
+	        "shader.wave-operations",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mMachineLearning.mbSubgroupOperations;
 	        }},
 	    {"BufferDeviceAddress",
-	        &FArdaRHIFeatureRequirements::mbRequireBufferDeviceAddress,
+	        "resource.buffer-device-address",
 	        [](FArdaRHICapabilities& C) -> bool&
 	        {
 		        return C.mMachineLearning.mbBufferDeviceAddress;
@@ -294,58 +294,125 @@ namespace
 	struct FArdaLimitRequirementCase
 	{
 		const char* mName;
-		uint32_t FArdaRHIFeatureRequirements::* mRequirement;
+		const char* mRequirement;
 		uint32_t& (*mCapability)(FArdaRHICapabilities&);
 	};
 
 	const FArdaLimitRequirementCase LimitRequirements[] = {{"ResourceDescriptors",
-	                                                           &FArdaRHIFeatureRequirements::mMinResourceDescriptors,
+	                                                           "descriptor.resource-capacity",
 	                                                           [](FArdaRHICapabilities& C) -> uint32_t&
 	                                                           {
 		                                                           return C.mDescriptors.mMaxResourceDescriptors;
 	                                                           }},
 	    {"SamplerDescriptors",
-	        &FArdaRHIFeatureRequirements::mMinSamplerDescriptors,
+	        "descriptor.sampler-capacity",
 	        [](FArdaRHICapabilities& C) -> uint32_t&
 	        {
 		        return C.mDescriptors.mMaxSamplerDescriptors;
 	        }},
 	    {"RayRecursionDepth",
-	        &FArdaRHIFeatureRequirements::mMinRayRecursionDepth,
+	        "ray-tracing.recursion-depth",
 	        [](FArdaRHICapabilities& C) -> uint32_t&
 	        {
 		        return C.mRayTracing.mMaxRecursionDepth;
 	        }},
 	    {"RayPayloadSize",
-	        &FArdaRHIFeatureRequirements::mMinRayPayloadSize,
+	        "ray-tracing.max-payload-bytes",
 	        [](FArdaRHICapabilities& C) -> uint32_t&
 	        {
 		        return C.mRayTracing.mMaxRayPayloadSize;
 	        }},
 	    {"RayDispatchInvocations",
-	        &FArdaRHIFeatureRequirements::mMinRayDispatchInvocations,
+	        "ray-tracing.max-dispatch-invocations",
 	        [](FArdaRHICapabilities& C) -> uint32_t&
 	        {
 		        return C.mRayTracing.mMaxRayDispatchInvocations;
 	        }},
 	    {"GraphicsTimestampValidBits",
-	        &FArdaRHIFeatureRequirements::mMinGraphicsTimestampValidBits,
+	        "queue.graphics.timestamp-bits",
 	        [](FArdaRHICapabilities& C) -> uint32_t&
 	        {
 		        return C.mQueues.mGraphicsTimestampValidBits;
 	        }},
 	    {"ComputeTimestampValidBits",
-	        &FArdaRHIFeatureRequirements::mMinComputeTimestampValidBits,
+	        "queue.compute.timestamp-bits",
 	        [](FArdaRHICapabilities& C) -> uint32_t&
 	        {
 		        return C.mQueues.mComputeTimestampValidBits;
 	        }},
 	    {"CopyTimestampValidBits",
-	        &FArdaRHIFeatureRequirements::mMinCopyTimestampValidBits,
+	        "queue.copy.timestamp-bits",
 	        [](FArdaRHICapabilities& C) -> uint32_t&
 	        {
 		        return C.mQueues.mCopyTimestampValidBits;
 	        }}};
+
+	TEST(ArdaFeatureRequirements, NamedConstraintsIntersectBoundsAndCombineRequiredBits)
+	{
+		FArdaRHIFeatureRequirements Requirements{{"example.mask", 3, 1, 15}, {"shader.float64"}};
+		Requirements.Require("example.mask", 5, 4, 12);
+		ASSERT_EQ(Requirements.GetEntries().size(), 2u);
+		const auto* Mask = Requirements.Find("example.mask");
+		ASSERT_NE(Mask, nullptr);
+		EXPECT_EQ(Mask->mMinimumValue, 5u);
+		EXPECT_EQ(Mask->mRequiredBits, 5u);
+		EXPECT_EQ(Mask->mMaximumValue, 12u);
+		FArdaRHICapabilities Device;
+		auto Features = eastl::make_shared<FArdaBackendFeatureList>();
+		Features->Add("example.mask", 5);
+		Features->Add("shader.float64", 1);
+		Device.PublishBackendFeatures(eastl::move(Features));
+		EXPECT_TRUE(Device.Evaluate(Requirements).IsSupported());
+		Requirements.Require("example.mask", 13);
+		EXPECT_FALSE(Device.Evaluate(Requirements).IsSupported());
+	}
+
+	TEST(ArdaFeatureRequirements, QualifiedOperationAndStartupUseTheSamePublishedValue)
+	{
+		FArdaRHICapabilities Device;
+		auto Features = eastl::make_shared<FArdaBackendFeatureList>();
+		Features->Add("ray-tracing.pipeline", 1);
+		Features->Add("example.driver-ability", 1);
+		Device.mRayTracing.mbPipelineShaders = false;
+		Device.PublishBackendFeatures(eastl::move(Features));
+		EXPECT_FALSE(Device.mBackendFeatures->Supports("ray-tracing.pipeline"));
+		EXPECT_FALSE(Device.Evaluate({{"ray-tracing.pipeline"}}).IsSupported());
+		EXPECT_TRUE(Device.Evaluate({{"example.driver-ability"}}).IsSupported());
+	}
+
+	TEST(ArdaFeatureRequirements, PublishedSnapshotIsIndependentOfARetainedProviderBuilder)
+	{
+		auto Builder = eastl::make_shared<FArdaBackendFeatureList>();
+		Builder->Add("example.optional", 1);
+		FArdaRHICapabilities Device;
+		Device.PublishBackendFeatures(Builder);
+		Builder->Add("example.optional", 0);
+		EXPECT_TRUE(Device.GetBackendFeatureList()->Supports("example.optional"));
+	}
+
+	TEST(ArdaFeatureRequirements, BoundsMustAdmitTheRequestedFlagBits)
+	{
+		FArdaBackendFeatureRequirement Mask{"example.mask", 7, 8, 8};
+		EXPECT_TRUE(Mask.IsValid());
+		Mask.mMaximumValue = 7;
+		EXPECT_FALSE(Mask.IsValid());
+		Mask.mMaximumValue = UINT64_MAX;
+		Mask.mRequiredBits = uint64_t{1} << 63;
+		EXPECT_TRUE(Mask.IsValid());
+		Mask.mMaximumValue = Mask.mRequiredBits - 1;
+		EXPECT_FALSE(Mask.IsValid());
+	}
+
+	TEST(ArdaFeatureRequirements, ProviderMustRegisterCanonicalNames)
+	{
+		FArdaBackendFeatureList Features;
+		for (const char* Name : {"", "shader", ".shader", "shader.", "shader..mesh", "Shader.mesh", "VK_KHR_ray_query"})
+		{
+			EXPECT_THROW(Features.Add(Name, 1), std::invalid_argument) << Name;
+		}
+		EXPECT_NO_THROW(Features.Add("shader.float16", 0));
+		EXPECT_NO_THROW(Features.Add("format.rgba8-unorm.sampled", 1));
+	}
 
 	TEST(ArdaFeatureRequirements, EmptyRequirementsAdmitAnUnqualifiedProvider)
 	{
@@ -363,7 +430,7 @@ namespace
 		{
 			SCOPED_TRACE(Case.mName);
 			FArdaRHIFeatureRequirements Requirements;
-			Requirements.*(Case.mRequirement) = true;
+			Requirements.Require(Case.mRequirement);
 			FArdaRHICapabilities Capabilities;
 			Case.mCapability(Capabilities) = false;
 			const auto Missing = Capabilities.Evaluate(Requirements);
@@ -379,22 +446,22 @@ namespace
 	TEST(ArdaFeatureRequirements, ReportsAllMissingOperationAndCapacityRequirementsTogether)
 	{
 		FArdaRHIFeatureRequirements Requirements;
-		Requirements.mbRequireTextureCopies = true;
-		Requirements.mbRequireResourceCollections = true;
-		Requirements.mbRequireDirectSamplerHeapIndexing = true;
-		Requirements.mMinResourceDescriptors = 4096;
-		Requirements.mMinRayPayloadSize = 64;
+		Requirements.Require("texture.copy");
+		Requirements.Require("resource.collections");
+		Requirements.Require("descriptor.direct-sampler-heap-indexing");
+		Requirements.Require("descriptor.resource-capacity", 4096);
+		Requirements.Require("ray-tracing.max-payload-bytes", 64);
 
 		FArdaRHICapabilities Capabilities;
 		const auto Report = Capabilities.Evaluate(Requirements);
 		ASSERT_EQ(Report.mMissingAbilities.size(), 5u);
 		const auto Status = Report.ToStatus();
 		EXPECT_EQ(Status.mCode, EArdaRHIResult::Unsupported);
-		for (const char* Label : {"texture copies",
-		         "resource collections",
-		         "direct sampler heap indexing",
-		         "resource descriptor capacity",
-		         "ray payload size"})
+		for (const char* Label : {"texture.copy",
+		         "resource.collections",
+		         "descriptor.direct-sampler-heap-indexing",
+		         "descriptor.resource-capacity",
+		         "ray-tracing.max-payload-bytes"})
 		{
 			EXPECT_NE(Status.mMessage.find(Label), eastl::string::npos) << Label;
 		}
@@ -413,7 +480,7 @@ namespace
 		{
 			SCOPED_TRACE(Case.mName);
 			FArdaRHIFeatureRequirements Requirements;
-			Requirements.*(Case.mRequirement) = 16;
+			Requirements.Require(Case.mRequirement, 16);
 			FArdaRHICapabilities Capabilities;
 			Capabilities.mQueues.mbGraphics = true;
 			Capabilities.mQueues.mbCompute = true;
@@ -434,7 +501,7 @@ namespace
 	TEST(ArdaFeatureRequirements, TimestampWidthsDoNotAdmitAnUnavailableQueue)
 	{
 		FArdaRHIFeatureRequirements Requirements;
-		Requirements.mMinCopyTimestampValidBits = 32;
+		Requirements.Require("queue.copy.timestamp-bits", 32);
 		FArdaRHICapabilities Capabilities;
 		Capabilities.mQueues.mCopyTimestampValidBits = 64;
 		EXPECT_FALSE(Capabilities.Evaluate(Requirements).IsSupported());
@@ -445,10 +512,10 @@ namespace
 	TEST(ArdaFeatureRequirements, MinimumTiersRejectWeakerQualifiedImplementations)
 	{
 		FArdaRHIFeatureRequirements Requirements;
-		Requirements.mMinRayTracingTier = EArdaRHIRayTracingTier::HardwareInlineQueries;
-		Requirements.mMinMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
-		Requirements.mMinWorkGraphTier = EArdaRHIWorkGraphTier::MeshNodes;
-		Requirements.mMinSamplerFeedbackTier = EArdaRHISamplerFeedbackTier::UnrestrictedAddressingAndViews;
+		Requirements.Require("ray-tracing.tier", static_cast<uint64_t>(EArdaRHIRayTracingTier::HardwareInlineQueries));
+		Requirements.Require("shader.mesh-tier", 2);
+		Requirements.Require("work-graph.tier", static_cast<uint64_t>(EArdaRHIWorkGraphTier::MeshNodes));
+		Requirements.Require("sampler.feedback-tier", static_cast<uint64_t>(EArdaRHISamplerFeedbackTier::UnrestrictedAddressingAndViews));
 
 		FArdaRHICapabilities Capabilities;
 		EXPECT_EQ(Capabilities.Evaluate(Requirements).mMissingAbilities.size(), 4u);
@@ -473,25 +540,25 @@ namespace
 		static_assert(static_cast<uint8_t>(EArdaRHIMeshShaderTier::MeshAndAmplificationShaders) == 1);
 		static_assert(static_cast<uint8_t>(EArdaRHIMeshShaderTier::MeshShadersOnly) == 2);
 		FArdaRHIFeatureRequirements Requirements;
-		Requirements.mbRequireMeshShaders = true;
+		Requirements.Require("shader.mesh");
 		FArdaRHICapabilities Capabilities;
 		Capabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::MeshShadersOnly;
 		EXPECT_TRUE(Capabilities.Evaluate(Requirements).IsSupported());
-		Requirements.mMinMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
+		Requirements.Require("shader.mesh-tier", 2);
 		EXPECT_FALSE(Capabilities.Evaluate(Requirements).IsSupported());
-		Requirements.mMinMeshShaderTier = EArdaRHIMeshShaderTier::MeshShadersOnly;
+		Requirements = {{"shader.mesh-tier", 1}};
 		EXPECT_TRUE(Capabilities.Evaluate(Requirements).IsSupported());
 		Capabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
 		EXPECT_TRUE(Capabilities.Evaluate(Requirements).IsSupported());
-		Requirements.mMinMeshShaderTier = static_cast<EArdaRHIMeshShaderTier>(255);
+		Requirements.Require("shader.mesh-tier", 255);
 		EXPECT_FALSE(Capabilities.Evaluate(Requirements).IsSupported());
 	}
 
 	TEST(ArdaFeatureRequirements, SubgroupContractCoversEveryPossibleNativeWidth)
 	{
 		FArdaRHIFeatureRequirements Requirements;
-		Requirements.mMinSubgroupSize = 32;
-		Requirements.mMaxSubgroupSize = 64;
+		Requirements.Require("shader.subgroup-min-size", 32);
+		Requirements.Require("shader.subgroup-max-size", 1, 0, 64);
 		FArdaRHICapabilities Capabilities;
 		EXPECT_FALSE(Capabilities.Evaluate(Requirements).IsSupported());
 		auto& ML = Capabilities.mMachineLearning;
@@ -508,7 +575,7 @@ namespace
 		EXPECT_FALSE(Capabilities.Evaluate(Requirements).IsSupported());
 
 		// An exposed [32,64] interval does not promise a selectable 32-lane subgroup.
-		Requirements.mMaxSubgroupSize = 32;
+		Requirements.Require("shader.subgroup-max-size", 1, 0, 32);
 		ML.mSubgroupMaxSize = 64;
 		EXPECT_FALSE(Capabilities.Evaluate(Requirements).IsSupported());
 		ML.mSubgroupMaxSize = 32;
@@ -526,15 +593,15 @@ namespace
 		ML.mSubgroupMinSize = 32;
 		ML.mSubgroupMaxSize = 64;
 
-		Requirements.mMinSubgroupSize = 16;
+		Requirements.Require("shader.subgroup-min-size", 16);
 		EXPECT_TRUE(Capabilities.Evaluate(Requirements).IsSupported());
-		Requirements.mMinSubgroupSize = 0;
-		Requirements.mMaxSubgroupSize = 128;
+		Requirements = {};
+		Requirements.Require("shader.subgroup-max-size", 1, 0, 128);
 		EXPECT_TRUE(Capabilities.Evaluate(Requirements).IsSupported());
-		Requirements.mMinSubgroupSize = 64;
-		Requirements.mMaxSubgroupSize = 32;
+		Requirements.Require("shader.subgroup-min-size", 64);
+		Requirements.Require("shader.subgroup-max-size", 1, 0, 32);
 		EXPECT_FALSE(Capabilities.Evaluate(Requirements).IsSupported());
-		Requirements.mMinSubgroupSize = 0;
+		Requirements = {{"shader.subgroup-max-size", 1, 0, 32}};
 		ML.mSubgroupMinSize = 64;
 		ML.mSubgroupMaxSize = 32;
 		EXPECT_FALSE(Capabilities.Evaluate(Requirements).IsSupported());

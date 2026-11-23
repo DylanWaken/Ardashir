@@ -150,7 +150,7 @@ namespace
 	{
 		for (const auto Queue : {EArdaRHIQueueType::Graphics, EArdaRHIQueueType::Compute, EArdaRHIQueueType::Copy})
 		{
-			if (!mDevice->GetCapabilities().IsQueueSupported(Queue))
+			if (!mDevice->IsQueueSupported(Queue))
 			{
 				continue;
 			}
@@ -200,7 +200,7 @@ namespace
 		EXPECT_EQ(mDevice->ExecuteCommandList(Commands.mValue).mStatus.mCode, EArdaRHIResult::InvalidState);
 		for (uint32_t Axis = 0; Axis < 3; ++Axis)
 		{
-			const uint32_t Limit = mDevice->GetCapabilities().mLimits.mMaxComputeWorkGroupCount[Axis];
+			const uint32_t Limit = mDevice->GetLimits().mMaxComputeWorkGroupCount[Axis];
 			ASSERT_GT(Limit, 0u);
 			ASSERT_LT(Limit, UINT32_MAX);
 			ASSERT_TRUE(Commands.mValue->Reset());
@@ -237,7 +237,7 @@ namespace
 		EXPECT_EQ(Commands.mValue->Close().mCode, EArdaRHIResult::InvalidState);
 		for (const auto Queue : {EArdaRHIQueueType::Compute, EArdaRHIQueueType::Copy})
 		{
-			if (!mDevice->GetCapabilities().IsQueueSupported(Queue))
+			if (!mDevice->IsQueueSupported(Queue))
 			{
 				continue;
 			}

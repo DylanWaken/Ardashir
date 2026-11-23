@@ -16,6 +16,10 @@
 
 namespace arda
 {
+	// ================================
+	// Shader binding kinds
+	// ================================
+
 	/** Enumerates bindless layout type values. */
 	enum class EArdaRHIBindlessLayoutType : uint8_t
 	{
@@ -43,6 +47,10 @@ namespace arda
 		RayTracingAccelStruct,
 		SamplerFeedbackTextureUAV
 	};
+
+	// ================================
+	// Binding layout descriptors
+	// ================================
 
 	/** Describes binding layout item. */
 	struct FArdaRHIBindingLayoutItem
@@ -105,6 +113,10 @@ namespace arda
      */
 	[[nodiscard]] FArdaRHIStatus Validate(const FArdaRHIBindingLayoutDesc& Value) noexcept;
 
+	// ================================
+	// Binding layout resource
+	// ================================
+
 	struct FArdaRHIBindlessLayoutDesc;
 
 	/** Interface for binding layout. */
@@ -123,6 +135,10 @@ namespace arda
 			return nullptr;
 		}
 	};
+
+	// ================================
+	// Bindless layout descriptors
+	// ================================
 
 	/** Describes bindless layout desc. */
 	struct FArdaRHIBindlessLayoutDesc

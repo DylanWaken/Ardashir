@@ -9,9 +9,9 @@ namespace arda
 	FArdaDependencyNodeRequirements FArdaCornellCompactBlasNode::GetRequirements(const FArdaParameters&)
 	{
 		FArdaDependencyNodeRequirements R;
-		R.mFeatures.mbRequireAccelerationStructures = true;
-		R.mFeatures.mbRequireBottomLevelAccelerationStructures = true;
-		R.mFeatures.mbRequireAccelerationStructureCompaction = true;
+		R.mFeatures.Require("ray-tracing.acceleration-structure");
+		R.mFeatures.Require("ray-tracing.bottom-level-acceleration-structure");
+		R.mFeatures.Require("ray-tracing.acceleration-structure-compaction");
 		return R;
 	}
 

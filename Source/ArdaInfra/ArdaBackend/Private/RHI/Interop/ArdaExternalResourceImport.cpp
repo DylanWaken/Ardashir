@@ -1,8 +1,9 @@
-#include "RHI/Device/ArdaBackendDevice.h"
+#include "ArdaBackend.h"
 #include "RHI/Context/ArdaExternalResourceContext.h"
 
 #include "RHI/Interop/ArdaExternalInterop.h"
 #include "RHI/Providers/ArdaExternalResourceProvider.h"
+#include <cstring>
 
 namespace arda
 {
@@ -38,15 +39,16 @@ namespace arda
 				    arda::FArdaRHIStatus::Error(arda::EArdaRHIResult::InvalidArgument,
 				        "External resource provider is not registered.")};
 			}
-			if (!IsBackendInitialized())
+			const FArdaRHIDeviceRef Device = GetDevice();
+			if (!Device)
 			{
 				return {{},
 				    arda::FArdaRHIStatus::Error(arda::EArdaRHIResult::InvalidState,
 				        "External resources require an initialized backend.")};
 			}
-			const FArdaBackendConfiguration& Configuration = GetBackendConfiguration();
 			const char* RequiredBackendName = Provider->GetBackendName();
-			if (!RequiredBackendName || !RequiredBackendName[0] || Configuration.mBackendName != RequiredBackendName)
+			if (!RequiredBackendName || !RequiredBackendName[0] ||
+			    std::strcmp(Device->GetBackendName(), RequiredBackendName) != 0)
 			{
 				return {{},
 				    arda::FArdaRHIStatus::Error(arda::EArdaRHIResult::WrongDevice,
@@ -58,13 +60,6 @@ namespace arda
 			if (!Status)
 			{
 				return {{}, eastl::move(Status)};
-			}
-			arda::FArdaRHIDeviceRef Device = GetDevice();
-			if (!Device)
-			{
-				return {{},
-				    arda::FArdaRHIStatus::Error(arda::EArdaRHIResult::InvalidState,
-				        "The active backend has no RHI device.")};
 			}
 			return (Device.Get()->*Import)(Description);
 		}

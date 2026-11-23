@@ -29,7 +29,7 @@ foreach(ARDA_GRAPH_VISIBILITY Public Private)
     if(ARDA_GRAPH_VISIBILITY STREQUAL "Private")
         target_include_directories(${ARDA_GRAPH_HEADER_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
     endif()
-    target_link_libraries(${ARDA_GRAPH_HEADER_TARGET} PRIVATE Ardashir::ArdaBackend Ardashir::ArdaGraph)
+    target_link_libraries(${ARDA_GRAPH_HEADER_TARGET} PRIVATE Ardashir::ArdaBackend Ardashir::ArdaGraph Ardashir::ArdaNativeCompute)
     set_target_properties(${ARDA_GRAPH_HEADER_TARGET} PROPERTIES FOLDER "Ardashir/Tests" UNITY_BUILD OFF)
 endforeach()
 

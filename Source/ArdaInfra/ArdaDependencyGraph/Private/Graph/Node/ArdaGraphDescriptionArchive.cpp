@@ -192,99 +192,177 @@ namespace arda
 			}
 		}
 
-		template <class Archive, class Requirements>
-		void FeatureFields(Archive& A, Requirements& R)
+		void ReadLegacyFeatures(FArdaGraphArchiveReader& A, FArdaRHIFeatureRequirements& R)
 		{
-			A.Fields(R.mbRequireRayTracingInfrastructure,
-			    R.mbRequireHardwareRayTracing,
-			    R.mbRequireRayTracingPipelines,
-			    R.mbRequireAccelerationStructures,
-			    R.mbRequireAccelerationStructureUpdate,
-			    R.mbRequireAccelerationStructureCompaction,
-			    R.mbRequireIndirectRayDispatch,
-			    R.mbRequireLocalShaderTableArguments,
-			    R.mbRequireOpacityMicromaps,
-			    R.mbRequireMeshShaders,
-			    R.mbRequireGeometryShaders,
-			    R.mbRequireTessellationShaders,
-			    R.mbRequireVertexShaderStoresAndAtomics,
-			    R.mbRequireFragmentShaderStoresAndAtomics,
-			    R.mbRequireUnboundedDescriptors,
-			    R.mbRequireUpdateAfterBind,
-			    R.mbRequireDirectDescriptorIndexing,
-			    R.mbRequireDedicatedComputeQueue,
-			    R.mbRequireDedicatedCopyQueue,
-			    R.mbRequireGpuQueueWaits,
-			    R.mbRequireSparseResidency,
-			    R.mbRequireStreamingBudget,
-			    R.mbRequireSamplerFeedback,
-			    R.mbRequireWorkGraphs,
-			    R.mbRequireShaderBundles,
-			    R.mbRequireCustomPresent,
-			    R.mbRequireNativeFloat16,
-			    R.mbRequireNativeInt8,
-			    R.mbRequireInlineRayQueries,
-			    R.mbRequireBottomLevelAccelerationStructures,
-			    R.mbRequireTopLevelAccelerationStructures,
-			    R.mbRequireIndirectTopLevelBuild,
-			    R.mbRequirePersistentShaderTables,
-			    R.mbRequireBindless,
-			    R.mbRequireRuntimeDescriptorArrays,
-			    R.mbRequirePartiallyBoundDescriptors,
-			    R.mbRequireUpdateUnusedWhilePending,
-			    R.mbRequireVariableDescriptorCount,
-			    R.mbRequireDirectSamplerHeapIndexing,
-			    R.mbRequireDescriptorBuffer,
-			    R.mbRequireDescriptorHeap,
-			    R.mbRequireGraphicsQueue,
-			    R.mbRequireComputeQueue,
-			    R.mbRequireCopyQueue,
-			    R.mbRequireTimelineSynchronization,
-			    R.mbRequireQueueFamilyOwnershipTransfer,
-			    R.mbRequireSparseBindingQueue,
-			    R.mbRequireReservedBuffers,
-			    R.mbRequireReservedTexture2D,
-			    R.mbRequireReservedTexture3D,
-			    R.mbRequireAliasedMappings,
-			    R.mbRequireBudgetReservation,
-			    R.mbRequireResourceCollections,
-			    R.mbRequireConservativeRasterization,
-			    R.mbRequireVariableRateShading,
-			    R.mbRequireVirtualResources,
-			    R.mbRequireHeaps,
-			    R.mbRequireStagingTextures,
-			    R.mbRequireTextureCopies,
-			    R.mbRequireTextureResolve,
-			    R.mbRequireExplicitTransitions,
-			    R.mbRequireSplitTransitions,
-			    R.mbRequireIndirectCommands,
-			    R.mbRequireIndirectFirstInstance,
-			    R.mbRequireAliasingBarriers,
-			    R.mbRequireQueries,
-			    R.mbRequireShaderLibraries,
-			    R.mbRequirePipelineCachePersistence,
-			    R.mbRequireSubgroupOperations,
-			    R.mbRequireBufferDeviceAddress,
-			    R.mMinRayTracingTier,
-			    R.mMinMeshShaderTier,
-			    R.mMinWorkGraphTier,
-			    R.mMinSamplerFeedbackTier,
-			    R.mMinResourceDescriptors,
-			    R.mMinSamplerDescriptors,
-			    R.mMinRayRecursionDepth,
-			    R.mMinRayPayloadSize,
-			    R.mMinRayDispatchInvocations,
-			    R.mMinGraphicsTimestampValidBits,
-			    R.mMinComputeTimestampValidBits,
-			    R.mMinCopyTimestampValidBits,
-			    R.mMinSubgroupSize,
-			    R.mMaxSubgroupSize);
+			// Versions 2 through 4 serialized fields positionally. Preserve their exact byte order.
+			static constexpr const char* BooleanKeys[] = {
+			    "ray-tracing.infrastructure",
+			    "ray-tracing.hardware",
+			    "ray-tracing.pipeline",
+			    "ray-tracing.acceleration-structure",
+			    "ray-tracing.acceleration-structure-update",
+			    "ray-tracing.acceleration-structure-compaction",
+			    "ray-tracing.indirect-dispatch",
+			    "ray-tracing.local-shader-table-arguments",
+			    "ray-tracing.opacity-micromap",
+			    "shader.mesh",
+			    "shader.geometry",
+			    "shader.tessellation",
+			    "shader.vertex-stores-and-atomics",
+			    "shader.fragment-stores-and-atomics",
+			    "descriptor.unbounded-arrays",
+			    "descriptor.update-after-bind",
+			    "descriptor.direct-resource-heap-indexing",
+			    "queue.dedicated-compute",
+			    "queue.dedicated-copy",
+			    "queue.gpu-waits",
+			    "resource.sparse-binding",
+			    "memory.streaming-budget",
+			    "sampler.feedback",
+			    "work-graph.dispatch",
+			    "shader.bundle-dispatch",
+			    "presentation.custom-present",
+			    "shader.float16",
+			    "shader.integer-dot-product",
+			    "ray-tracing.inline-query",
+			    "ray-tracing.bottom-level-acceleration-structure",
+			    "ray-tracing.top-level-acceleration-structure",
+			    "ray-tracing.indirect-top-level-build",
+			    "ray-tracing.persistent-shader-tables",
+			    "descriptor.bindless",
+			    "descriptor.runtime-arrays",
+			    "descriptor.partially-bound",
+			    "descriptor.update-unused-while-pending",
+			    "descriptor.variable-count",
+			    "descriptor.direct-sampler-heap-indexing",
+			    "descriptor.buffer",
+			    "descriptor.heap",
+			    "queue.graphics",
+			    "queue.compute",
+			    "queue.copy",
+			    "synchronization.timeline-semaphore",
+			    "queue.family-ownership-transfer",
+			    "queue.sparse-binding",
+			    "resource.reserved-buffer",
+			    "resource.reserved-texture-2d",
+			    "resource.reserved-texture-3d",
+			    "resource.aliased-sparse-mapping",
+			    "memory.budget-reservation",
+			    "resource.collections",
+			    "rendering.conservative-rasterization",
+			    "rendering.variable-rate-shading",
+			    "resource.virtual",
+			    "memory.explicit-heap",
+			    "texture.staging",
+			    "texture.copy",
+			    "texture.resolve",
+			    "synchronization.explicit-transition",
+			    "synchronization.split-transition",
+			    "command.indirect",
+			    "command.indirect-first-instance",
+			    "synchronization.aliasing-barrier",
+			    "query.gpu",
+			    "shader.library",
+			    "pipeline.cache-persistence",
+			    "shader.wave-operations",
+			    "resource.buffer-device-address",
+			};
+			for (const char* Key : BooleanKeys)
+			{
+				bool Value = false;
+				A.Read(Value);
+				if (Value)
+				{
+					R.Require(Key);
+				}
+			}
+			const auto ReadLegacyMinimum = [&](auto Value, const char* Key)
+			{
+				A.Read(Value);
+				if (Value)
+				{
+					R.Require(Key, Value);
+				}
+			};
+			ReadLegacyMinimum(uint8_t{}, "ray-tracing.tier");
+			// The old enum stored amplification support as 1 and mesh-only as 2.
+			uint8_t MeshTier = 0;
+			A.Read(MeshTier);
+			if (MeshTier == 1 || MeshTier == 2)
+			{
+				R.Require("shader.mesh-tier", 3 - MeshTier);
+			}
+			else if (MeshTier > 2)
+			{
+				A.Fail("Archived mesh shader tier is invalid.");
+			}
+			ReadLegacyMinimum(uint8_t{}, "work-graph.tier");
+			ReadLegacyMinimum(uint8_t{}, "sampler.feedback-tier");
+			ReadLegacyMinimum(uint32_t{}, "descriptor.resource-capacity");
+			ReadLegacyMinimum(uint32_t{}, "descriptor.sampler-capacity");
+			ReadLegacyMinimum(uint32_t{}, "ray-tracing.recursion-depth");
+			ReadLegacyMinimum(uint32_t{}, "ray-tracing.max-payload-bytes");
+			ReadLegacyMinimum(uint32_t{}, "ray-tracing.max-dispatch-invocations");
+			ReadLegacyMinimum(uint32_t{}, "queue.graphics.timestamp-bits");
+			ReadLegacyMinimum(uint32_t{}, "queue.compute.timestamp-bits");
+			ReadLegacyMinimum(uint32_t{}, "queue.copy.timestamp-bits");
+			ReadLegacyMinimum(uint32_t{}, "shader.subgroup-min-size");
+			uint32_t MaxSubgroupSize = 0;
+			A.Read(MaxSubgroupSize);
+			if (MaxSubgroupSize)
+			{
+				R.Require("shader.subgroup-max-size", 1, 0, MaxSubgroupSize);
+			}
+		}
+
+		void FeatureFields(FArdaGraphArchiveWriter& A, const FArdaRHIFeatureRequirements& R, bool)
+		{
+			VisitValues(A, R.GetEntries(), [&](const auto& Value)
+			{
+				if (!Value.IsValid())
+				{
+					A.Fail("Archived feature requirement has an invalid name or impossible bounds.");
+					return;
+				}
+				A.Fields(Value.mName, Value.mMinimumValue, Value.mRequiredBits, Value.mMaximumValue);
+			});
+		}
+
+		void FeatureFields(FArdaGraphArchiveReader& A, FArdaRHIFeatureRequirements& R, bool LegacyFeatures)
+		{
+			R = FArdaRHIFeatureRequirements{};
+			if (LegacyFeatures)
+			{
+				ReadLegacyFeatures(A, R);
+				return;
+			}
+			const auto Count = A.ReadCount();
+			for (size_t Index = 0; Index < Count && A.GetStatus(); ++Index)
+			{
+				FArdaBackendFeatureRequirement Value;
+				A.Fields(Value.mName, Value.mMinimumValue, Value.mRequiredBits, Value.mMaximumValue);
+				if (!A.GetStatus())
+				{
+					return;
+				}
+				if (!Value.IsValid())
+				{
+					A.Fail("Archived feature requirement has an invalid name or impossible bounds.");
+					return;
+				}
+				if (R.Contains(Value.mName.c_str()))
+				{
+					A.Fail("Archived feature name is repeated.");
+					return;
+				}
+				R.Require(Value.mName.c_str(), Value.mMinimumValue, Value.mRequiredBits, Value.mMaximumValue);
+			}
 		}
 
 		template <class Archive, class Requirements>
-		void RequirementFields(Archive& A, Requirements& R)
+		void RequirementFields(Archive& A, Requirements& R, bool LegacyFeatures)
 		{
-			FeatureFields(A, R.mFeatures);
+			FeatureFields(A, R.mFeatures, LegacyFeatures);
 			A.Fields(R.mbRequireCuda,
 			    R.mbRequireCudaSurfaces,
 			    R.mbRequireCudaLayeredSurfaces,
@@ -302,7 +380,7 @@ namespace arda
 		}
 
 		template <class Archive, class Description>
-		void DescriptionFields(Archive& A, Description& D)
+		void DescriptionFields(Archive& A, Description& D, bool LegacyFeatures)
 		{
 			A.Fields(D.mGraphicsStage,
 			    D.mGraphicsInput,
@@ -400,7 +478,7 @@ namespace arda
 				    A.Fields(P.mSlot, P.mKind, P.mGroup);
 				    PipelineConfiguration(A, P.mConfiguration);
 			    });
-			RequirementFields(A, D.mRequirements);
+			RequirementFields(A, D.mRequirements, LegacyFeatures);
 			if (!D.mEstimatedCost || D.mGraphicsStage > EArdaGraphicsStage::Mesh)
 			{
 				A.Fail("Archived node description is invalid.");
@@ -410,24 +488,24 @@ namespace arda
 
 	void WriteArdaGraphDescription(FArdaGraphArchiveWriter& Archive, const FArdaDependencyNodeDesc& Description)
 	{
-		DescriptionFields(Archive, Description);
+		DescriptionFields(Archive, Description, false);
 	}
 
-	void ReadArdaGraphDescription(FArdaGraphArchiveReader& Archive, FArdaDependencyNodeDesc& Description)
+	void ReadArdaGraphDescription(FArdaGraphArchiveReader& Archive, FArdaDependencyNodeDesc& Description, bool LegacyFeatures)
 	{
-		DescriptionFields(Archive, Description);
+		DescriptionFields(Archive, Description, LegacyFeatures);
 		Description.mbArchivedShaderAccesses = true;
 	}
 
 	void WriteArdaGraphRequirements(FArdaGraphArchiveWriter& Archive,
 	    const FArdaDependencyNodeRequirements& Requirements)
 	{
-		RequirementFields(Archive, Requirements);
+		RequirementFields(Archive, Requirements, false);
 	}
 
-	void ReadArdaGraphRequirements(FArdaGraphArchiveReader& Archive, FArdaDependencyNodeRequirements& Requirements)
+	void ReadArdaGraphRequirements(FArdaGraphArchiveReader& Archive, FArdaDependencyNodeRequirements& Requirements, bool LegacyFeatures)
 	{
-		RequirementFields(Archive, Requirements);
+		RequirementFields(Archive, Requirements, LegacyFeatures);
 	}
 
 }

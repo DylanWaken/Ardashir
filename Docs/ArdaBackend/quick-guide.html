@@ -189,7 +189,7 @@ endif()</code></pre>
 
         <section id="startup">
           <h2>2. Choose the device source and establish the context</h2>
-          <p>Every path starts by choosing a backend, diagnostics policy, and device source. The resulting <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a> is the common root for resource creation and command submission; a window, swap chain, and shaders are optional consumers of that context.</p>
+          <p>Every path starts by choosing a backend, diagnostics policy, and device source. After initialization, retain the device returned by <code>GetDevice()</code> for resource creation, command submission, and shader setup. <a href="api-reference.html#api-arda-backend-getdevice-740751f4">GetDevice</a></p>
           <figure>
             <img src="Assets/backend-initialization-flow.svg" alt="Backend initialization transaction from configuration and shader registration through device creation and optional presentation to context publication.">
             <figcaption>Choose exactly one initialization branch. Headless and external workloads publish a device context without creating presentation objects.</figcaption>
@@ -214,9 +214,8 @@ RegisterApplicationShaderDirectoriesBeforeBackendInitialization();
 if (!arda::ConfigureBackend(config) || !arda::InitializeBackend())
     return Fail(arda::GetBackendError());
 
-const arda::FArdaDeviceContext&amp; context = arda::GetDeviceContext();
-arda::FArdaRHIDeviceRef device = context.mDevice;
-if (!device || !context.mQueueCapabilities.mbGraphics)
+arda::FArdaRHIDeviceRef device = arda::GetDevice();
+if (!device || !device-&gt;IsQueueSupported(arda::EArdaRHIQueueType::Graphics))
     return Fail("The requested backend did not publish a graphics device.");</code></pre>
 
           <h3>Choose one branch before initialization</h3>
@@ -248,8 +247,7 @@ if (!arda::ConfigureBackend(config) ||
     !arda::InitializeBackend())
     return Fail(arda::GetBackendError());
 
-arda::FArdaRHIDeviceRef device =
-    arda::GetDeviceContext().mDevice;</code></pre>
+arda::FArdaRHIDeviceRef device = arda::GetDevice();</code></pre>
           <p>The native D3D12 wrapper retains required COM references but never assumes host ownership. Establish an exclusive/coordinated host queue interval around every Arda submission, then release all copied Arda references before native/plugin teardown.</p>
 
           <h3>Vulkan provider recipe</h3>
@@ -314,10 +312,8 @@ const auto init = arda::InitializeBackendForPresentation(
 if (init != arda::EArdaInitializeResult::Success)
     return Fail(arda::GetBackendError());
 
-const arda::FArdaDeviceContext&amp; context =
-    arda::GetDeviceContext();
-arda::FArdaRHIDeviceRef device = context.mDevice;
-if (!device || !context.mQueueCapabilities.mbGraphics)
+arda::FArdaRHIDeviceRef device = arda::GetDevice();
+if (!device || !device-&gt;IsQueueSupported(arda::EArdaRHIQueueType::Graphics))
     return Fail("A graphics queue is required for presentation.");</code></pre>
           <p><a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a> must already have selected the desired device source. Do not call headless initialization first. For an external provider, the host must declare the enabled presentation extensions and supply compatible queues; see <a href="external-interop.html#presentation">external presentation</a>. Keep headless initialization when the host acquires and presents its own frame images.</p>
         </section>
@@ -377,9 +373,9 @@ if (!arda::ConfigureBackend(config) ||
     !arda::InitializeBackend())
     return Fail(arda::GetBackendError());
 
-// Phase 2: the global map requires the context created above.
+// Phase 2: initialize the global map for the selected device.
 arda::FArdaGlobalShaderMap shaderMap;
-if (!shaderMap.Initialize(arda::GetDeviceContext()))
+if (!shaderMap.Initialize(arda::GetDevice()))
 {
     const auto&amp; diagnostics = shaderMap.GetDiagnostics();
     return Fail(diagnostics.empty()
@@ -564,13 +560,12 @@ commandList->DrawIndexed({ indexCount });
           <p><code>ArdaBackendTests</code> builds and updates native BLAS/TLAS objects, queries and copies compacted structures, creates hit groups and shader-table records with local arguments, and executes direct/indirect ray dispatch on D3D12 and Vulkan when the selected adapter advertises each ability. This recipe remains an application integration checklist because the windowed examples are intentionally small.</p>
 
           <section id="rt-capabilities">
-          <h3>11.1 Evaluate the renderer's complete profile</h3>
-          <pre><code>const auto requirements = arda::GetArdaRHIProfileRequirements(
-    arda::EArdaRHIDeviceProfile::RealtimeRayTracingAndML);
-const auto admission = device->GetCapabilities().Evaluate(requirements);
-if (!admission.IsSupported())
-    return Fail(admission.ToStatus().mMessage); // Names every missing ability.</code></pre>
-          <p>Real-time Ardashir modules may explicitly require hardware RT, AS build/update/compaction, ray pipelines, local shader-table arguments, indirect trace, descriptor indexing, queue synchronization, and ML compute facts. Do not infer any of them from the backend name, and do not silently launch a raster fallback. A software tracer should define a separate profile that omits hardware RT cores.</p>
+          <h3>11.1 Require the features used by your renderer</h3>
+          <p>Declare the features your renderer needs before calling <code>ConfigureBackend</code>. The same key works with the Vulkan and D3D12 providers.</p>
+          <pre><code>config.mRequiredFeatures = {{ "ray-tracing.pipeline" }};
+if (!arda::ConfigureBackend(config) || !arda::InitializeBackend())
+    return Fail(arda::GetBackendError());</code></pre>
+          <p>After startup, <a href="api-reference.html#api-arda-getbackendfeatures-541aecbb"><code>GetBackendFeatures()</code></a> returns the default device's snapshot. Use <a href="api-reference.html#api-arda-getbackendfeatures-0bf0ac88"><code>GetBackendFeatures(deviceIndex)</code></a> for another configured device. If you already hold a device, use <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>device-&gt;GetFeatures()</code></a> or <a href="api-reference.html#api-arda-iardarhidevice-checkfeaturesupport"><code>device-&gt;CheckFeatureSupport(requirements)</code></a>.</p>
           </section>
 
           <section id="rt-shaders">
@@ -699,7 +694,7 @@ bool Check(const arda::FArdaRHIStatus&amp; status, eastl::string&amp; error)
             <li>Release shader tables, RT pipelines, TLAS, BLAS, graphics/compute pipelines, binding sets/layouts, views, textures, and buffers.</li>
             <li>Clear the PSO cache and global shader map.</li>
             <li>Destroy the caller-owned swap chain before the GLFW window.</li>
-            <li>Call <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend</code></a> while the process context still owns the device. When the selected module reports native pipeline-cache persistence, shutdown waits idle as needed, atomically writes a dirty native blob, then disables further persistence before clearing context ownership.</li>
+            <li><code>ShutdownBackend()</code> flushes supported native pipeline caches and disables further persistence before removing the published device set. <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995">ShutdownBackend</a></li>
             <li>Release retained device references. They may remain usable after process shutdown, but cannot write through the cleared cache path or callback.</li>
             <li>Destroy the diagnostic callback only after shutdown.</li>
           </ol>
@@ -715,7 +710,7 @@ bool Check(const arda::FArdaRHIStatus&amp; status, eastl::string&amp; error)
           <ol>
             <li><a href="api-reference.html#api-arda-backend-fardabackendconfiguration-b6f71e2e"><code>FArdaBackendConfiguration</code></a> and <a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a>.</li>
             <li><a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend</code></a> for Arda-created headless work, or register an <a href="api-reference.html#api-arda-backend-iardaexternaldeviceprovider-f1c0d75e"><code>IArdaExternalDeviceProvider</code></a> first.</li>
-            <li><a href="api-reference.html#api-arda-backend-getdevicecontext-1ba97e9b"><code>GetDeviceContext</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhidevice-getcapabilities-0ed4a202"><code>GetCapabilities</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-backend-getdevice-740751f4"><code>GetDevice</code></a> and <a href="api-reference.html#api-arda-iardarhidevice-getfeatures-00625a53"><code>GetFeatures</code></a>.</li>
           </ol>
 
           <h3>Optional presented startup</h3>

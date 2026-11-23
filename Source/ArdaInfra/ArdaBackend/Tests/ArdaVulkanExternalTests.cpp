@@ -346,15 +346,19 @@ namespace
 	TEST_F(FArdaVulkanMeshOnlyExternal, ReportsMeshWithoutDisabledAmplification)
 	{
 		ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
-		EXPECT_EQ(GetDevice()->GetCapabilities().mMeshShaderTier, EArdaRHIMeshShaderTier::MeshShadersOnly);
-		EXPECT_FALSE(GetDevice()->GetCapabilities().mbIndirectFirstInstance);
+		const auto Features = GetDevice()->GetFeatures();
+		EXPECT_EQ(Features->GetValueOr("shader.mesh-tier", 0), 1u);
+		EXPECT_FALSE(Features->Supports("shader.task"));
+		EXPECT_FALSE(Features->Supports("command.indirect-first-instance"));
+		EXPECT_FALSE(Features->Supports("shader.float64"));
+		EXPECT_TRUE(Features->Supports("diagnostics.validation-enabled"));
 	}
 
 	TEST_F(FArdaVulkanExternal, LowersMultiDrawAndResumesRenderingAfterTransfer)
 	{
 		ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
 		auto Device = GetDevice();
-		EXPECT_FALSE(Device->GetCapabilities().mbIndirectFirstInstance);
+		EXPECT_FALSE(Device->GetFeatures()->Supports("command.indirect-first-instance"));
 		const auto LoadShader = [&](const char* File, const char* Entry, EArdaRHIShaderStage Stage)
 		{
 			std::ifstream Stream(std::string(ARDA_BACKEND_TEST_SHADER_DIR) + "/" + File + ".spv", std::ios::binary);
@@ -495,8 +499,8 @@ namespace
 	{
 		ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
 		auto Device = GetDevice();
-		EXPECT_FALSE(Device->GetCapabilities().mResidency.mbSparseBinding);
-		EXPECT_FALSE(Device->GetCapabilities().mDescriptors.mbRuntimeDescriptorArrays);
+		EXPECT_FALSE(Device->GetFeatures()->Supports("resource.sparse-binding"));
+		EXPECT_FALSE(Device->GetFeatures()->Supports("descriptor.runtime-arrays"));
 		EXPECT_FALSE(Device->GetCudaCapabilities());
 		FArdaRHIBufferDesc Desc;
 		Desc.mUsage = EArdaRHIBufferUsage::None;
